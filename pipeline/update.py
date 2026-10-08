@@ -496,18 +496,21 @@ def build_world(clubs, teams, fx, lu, squads, people):
         if t and t.get('id'):
             top[t['id']] = c
     window = [(fid, f) for fid, f in fx.items()
-              if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat() and f['hg'] is not None
-              and 'friendl' not in (f.get('lg') or '').lower()]   # competitive matches only
+              if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat() and f['hg'] is not None]
     club_res = defaultdict(list)
     starts = defaultdict(list)
     for fid, f in window:
         h, a = f['h'], f['a']
-        if h in top and a in top:
-            club_res[h].append((f['d'], f['hg'], f['ag']))
-            club_res[a].append((f['d'], f['ag'], f['hg']))
         sides = lu.get(fid) or {}
+        friendly = 'friendl' in (f.get('lg') or '').lower()
         for side, opp, sc, co in ((h, a, f['hg'], f['ag']), (a, h, f['ag'], f['hg'])):
-            if opp in top and str(side) in sides:
+            xi = sides.get(str(side)) or []
+            # friendlies count only for a side whose line-up came with positions
+            if friendly and not (xi and all(e[1] for e in xi)):
+                continue
+            if side in top and opp in top:
+                club_res[side].append((f['d'], sc, co))
+            if opp in top and xi:
                 for pid, code, *_ in sides[str(side)]:
                     starts[pid].append((f['d'], sc, co, code))
     out_clubs = []
