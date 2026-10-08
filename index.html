@@ -128,8 +128,8 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .slot.empty.target .dot{border-color:var(--gold);color:var(--gold)}
 .hint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
 .slot .rt{display:flex;gap:3px;font:600 11px/1 var(--display)}
-.slot .rt span{padding:2px 5px;border-radius:4px;background:var(--gold);color:var(--gold-ink)}
-.slot .rt span+span{background:#9DB8E0;color:#0B1626}
+.gt{display:inline-grid;place-items:center;min-width:17px;padding:2px 4px;border-radius:4px;font:600 11px/1 var(--display);color:#14181F}
+.gpair{display:flex;gap:4px;flex:none}.gpair .gt{min-width:24px;padding:5px 6px;font-size:15px}
 .teamrt{display:flex;gap:10px;margin-bottom:12px}
 .teamrt div{flex:1;background:var(--panel);border-radius:12px;padding:10px 14px}
 .teamrt b{display:block;font:600 34px/1 var(--display)}
@@ -492,6 +492,9 @@ const ORDER = 'ABCDE';
    Team: the weighted average of its drum, ranked among the top-100 clubs' last 10 results. */
 function pctBelow(arr, v){ let lo = 0, eq = 0; for (const x of arr){ if (x < v) lo++; else if (x === v) eq++; } return (lo + eq / 2) / arr.length; }
 const R = x => Math.round(40 + 59 * Math.max(0, Math.min(1, x)));
+// player grades: the 40-99 scale cut into five equal bands (A 88+, B 76-87, C 64-75, D 52-63, E up to 51)
+const grade = n => n >= 88 ? 'A' : n >= 76 ? 'B' : n >= 64 ? 'C' : n >= 52 ? 'D' : 'E';
+const gTag = n => `<span class="gt g${grade(n)}">${grade(n)}</span>`;
 function playerRating(pid, role){
   const p = W.P[pid];
   return { off: R(pctBelow(W.SS, p.avgS) * CFG.WA[role] / 6), def: R((1 - pctBelow(W.SC, p.avgC)) * CFG.WD[role] / 6) };
@@ -749,7 +752,7 @@ function cardHTML(p){
     <div class="r"><span>Club</span><span style="text-align:right">${esc(c.name)}</span></div>
     <div class="r"><span>Positions</span><span class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</span></div>
     <div class="r"><span>Starts vs top 100</span><span class="num">${p.starts}</span></div>
-    ${locked() && S.run.picks.includes(p.id) ? (r => `<div class="r"><span>Attack / Defence</span><span class="num"><b>${r.off}</b> / <b>${r.def}</b></span></div>`)(playerRating(p.id, roleOf(p.id))) : ''}`;
+    ${locked() && S.run.picks.includes(p.id) ? (r => `<div class="r"><span>Attack / Defence</span><span>${gTag(r.off)} ${gTag(r.def)}</span></div>`)(playerRating(p.id, roleOf(p.id))) : ''}`;
 }
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
@@ -765,7 +768,7 @@ function pitch(pids, form, kept, rated, editable){
     if (!pid) return `<div class="slot empty${cls(j)}"${act(j)} style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
     const p = W.P[pid];
     const rt = rated ? playerRating(pid, FORMS[f][j][3]) : null;
-    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}"><div class="dot">${code}</div><div class="lbl">${esc(short(p.name))}</div>${rt ? `<div class="rt num"><span>${rt.off}</span><span>${rt.def}</span></div>` : ''}</div>`;
+    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}"><div class="dot">${code}</div><div class="lbl">${esc(short(p.name))}</div>${rt ? `<div class="rt">${gTag(rt.off)}${gTag(rt.def)}</div>` : ''}</div>`;
   }).join('') + `</div>`;
 }
 function shapes(pids, active, clickable){
@@ -928,7 +931,7 @@ function viewDone(){
     const on = r.keepSel.includes(p.id);
     return `<button class="krow${on ? ' on' : ''}" data-act="keep" data-p="${p.id}" data-pid="${p.id}" aria-pressed="${on}" ${n ? '' : 'disabled'}>
       <span class="box">${on ? '✓' : ''}</span><span style="min-width:0"><div class="nm" style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${natTag(p)} · ${p.pos.join(' · ')} · ${esc(W.C[p.club].name)}</div></span>
-      ${(rt => `<span class="num" style="font:600 18px var(--display);color:var(--gold)">${rt.off}</span><span class="num" style="font:600 18px var(--display);color:#9DB8E0">${rt.def}</span>`)(playerRating(p.id, roleOf(p.id)))}</button>`;
+      ${(rt => `<span class="gpair" title="Attack / Defence">${gTag(rt.off)}${gTag(rt.def)}</span>`)(playerRating(p.id, roleOf(p.id)))}</button>`;
   }).join('');
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div>${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}</header>
