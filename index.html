@@ -118,6 +118,11 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .pcard .poss b,.pcard .poss i{font-style:normal;font-weight:500;font-size:11px;padding:0 5px;border-radius:4px;background:var(--panel)}
 .pcard .poss b{background:var(--gold);color:var(--gold-ink)}
 .pcard .gr{display:flex;gap:6px;margin-top:12px}
+.slot.edit{cursor:pointer}
+.slot.sel .dot{box-shadow:0 0 0 3px var(--text),0 4px 12px rgba(0,0,0,.4)}
+.slot.target .dot{outline:3px dashed var(--gold);outline-offset:3px;animation:pulse 1.2s ease-in-out infinite}
+.slot.empty.target .dot{border-color:var(--gold);color:var(--gold)}
+.hint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
 .slot .rt{display:flex;gap:3px;font:600 11px/1 var(--display)}
 .slot .rt span{padding:2px 5px;border-radius:4px;background:var(--gold);color:var(--gold-ink)}
 .slot .rt span+span{background:#9DB8E0;color:#0B1626}
@@ -126,7 +131,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .teamrt b{display:block;font:600 34px/1 var(--display)}
 .teamrt span{font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
 .slot .lbl{font-size:11px;line-height:1.15;text-align:center;background:rgba(11,22,38,.78);padding:2px 6px;border-radius:5px;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.shapes{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+.shapes{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
 .shape{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 10px;font:500 14px var(--display);letter-spacing:.04em}
 .shape.on{border-color:var(--gold);background:var(--gold);color:var(--gold-ink)}
 .shape.ok{border-color:var(--gold);color:var(--gold)}
@@ -184,7 +189,7 @@ const CFG = {
   // MIDB/MIDF = back and front midfield line when a formation has two; MID = the only midfield line
   WD: { GK: 6, DEF: 5, MIDB: 4, MID: 3, MIDF: 2, FWD: 1 },
   WA: { GK: 1, DEF: 2, MIDB: 3, MID: 4, MIDF: 5, FWD: 6 },
-  STORE: 'ttny.v6'
+  STORE: 'ttny.v7'
 };
 const STAGE_NAME = { league: 'League phase', playoff: 'Knockout play-off', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', champion: 'Champions' };
 
@@ -462,12 +467,12 @@ function playerRating(pid, role){
   return { off: R(pctBelow(W.SS, p.avgS) * CFG.WA[role] / 6), def: R((1 - pctBelow(W.SC, p.avgC)) * CFG.WD[role] / 6) };
 }
 function teamRating(picks, form){
-  const a = assign(picks, form); let sa = 0, wa = 0, sd = 0, wd = 0;
+  const a = arrangement(picks, form); let sa = 0, wa = 0, sd = 0, wd = 0;
   a.forEach((pid, j) => { const role = FORMS[form][j][3], p = W.P[pid]; sa += CFG.WA[role] * p.avgS; wa += CFG.WA[role]; sd += CFG.WD[role] * p.avgC; wd += CFG.WD[role]; });
   return { off: R(pctBelow(W.CS, sa / wa)), def: R(1 - pctBelow(W.CC, sd / wd)) };
 }
 const locked = () => S.run && (S.run.phase === 'cup' || S.run.phase === 'done');
-function roleOf(pid){ const r = S.run, a = assign(r.picks, r.form); return FORMS[r.form][a.indexOf(pid)][3]; }
+function roleOf(pid){ const r = S.run, a = arrangement(r.picks, r.form); return FORMS[r.form][a.indexOf(pid)][3]; }
 
 /* ================= FORMATION FIT ================= */
 function assign(pids, form){
@@ -487,10 +492,27 @@ function assign(pids, form){
 }
 const feasible = pids => FORM_ORDER.filter(f => assign(pids, f));
 const fits = pids => FORM_ORDER.some(f => assign(pids, f));
+/* The arrangement the player sees and plays with: his manual moves for this formation are kept
+   where still valid, new picks fill the free compatible slots; otherwise fall back to auto. */
+function arrangement(pids, form){
+  const slots = FORMS[form], man = S.run && S.run.manual && S.run.manual[form];
+  if (man){
+    const a = Array(slots.length).fill(null), used = new Set();
+    man.forEach((pid, j) => { if (pid && pids.includes(pid) && !used.has(pid) && W.P[pid].pos.includes(slots[j][0])){ a[j] = pid; used.add(pid); } });
+    const rest = pids.filter(p => !used.has(p));
+    const bt = k => { if (k === rest.length) return true; const p = W.P[rest[k]];
+      for (let j = 0; j < slots.length; j++) if (!a[j] && p.pos.includes(slots[j][0])){ a[j] = rest[k]; if (bt(k + 1)) return true; a[j] = null; }
+      return false; };
+    if (bt(0)) return a;
+  }
+  return assign(pids, form);
+}
+const canMove = (a, form, from, to) => { const slots = FORMS[form], p = W.P[a[from]], q = a[to] && W.P[a[to]];
+  return from !== to && p.pos.includes(slots[to][0]) && (!q || q.pos.includes(slots[from][0])); };
 
 /* ================= MATCH ENGINE ================= */
 function drums(pids, form){
-  const a = assign(pids, form), sc = [], co = [];
+  const a = arrangement(pids, form), sc = [], co = [];
   a.forEach((pid, j) => {
     const line = FORMS[form][j][3], p = W.P[pid];
     for (const v of p.sc) for (let k = 0; k < CFG.WA[line]; k++) sc.push(v);
@@ -633,7 +655,8 @@ function drawClub(){
 function choose(pid){
   const r = S.run; if (!r || r.phase !== 'draft' || !pickable(r.club).includes(pid)) return;
   r.picks.push(pid); r.step++; r.tried = [];
-  if (r.picks.length === 11){ r.phase = 'lineup'; r.form = feasible(r.picks)[0]; }
+  r.sel = null;
+  if (r.picks.length === 11){ r.phase = 'lineup'; const ok = feasible(r.picks); if (!ok.includes(r.form)) r.form = ok[0]; }
   else drawClub();
   save(); render();
 }
@@ -696,15 +719,18 @@ function cardHTML(p){
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
 
-function pitch(pids, form, kept, rated){
-  const f = form || feasible(pids)[0] || '4-3-3';
-  const a = (pids.length ? assign(pids, f) : null) || Array(11).fill(null);
+function pitch(pids, form, kept, rated, editable){
+  const f = form || feasible(pids)[0] || FORM_ORDER[0];
+  const a = (pids.length ? arrangement(pids, f) : null) || Array(11).fill(null);
+  const sel = editable && S.run.sel != null && a[S.run.sel] ? S.run.sel : null;
+  const act = j => editable ? ` data-act="slot" data-j="${j}"` : '';
+  const cls = j => (j === sel ? ' sel' : '') + (sel != null && canMove(a, f, sel, j) ? ' target' : '') + (editable ? ' edit' : '');
   return `<div class="pitch" role="img" aria-label="Formation ${f}">` + FORMS[f].map(([code, x, y], j) => {
     const pid = a[j];
-    if (!pid) return `<div class="slot empty" style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
+    if (!pid) return `<div class="slot empty${cls(j)}"${act(j)} style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
     const p = W.P[pid];
     const rt = rated ? playerRating(pid, FORMS[f][j][3]) : null;
-    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}" data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}"><div class="dot">${code}</div><div class="lbl">${esc(short(p.name))}</div>${rt ? `<div class="rt num"><span>${rt.off}</span><span>${rt.def}</span></div>` : ''}</div>`;
+    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}"><div class="dot">${code}</div><div class="lbl">${esc(short(p.name))}</div>${rt ? `<div class="rt num"><span>${rt.off}</span><span>${rt.def}</span></div>` : ''}</div>`;
   }).join('') + `</div>`;
 }
 function shapes(pids, active, clickable){
@@ -778,12 +804,14 @@ function viewDraft(){
         <span style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : ' · no slot left'}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
+  if (!shp.includes(r.form)) r.form = shp[0];
+  const anim = r.anim !== r.club; r.anim = r.club;
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
   <div class="drafthead"><div><div class="eyebrow">Draft</div><h2>Pick ${r.picks.length + 1} of 11</h2></div><span class="muted" style="font-size:13px">${r.kept.length ? r.kept.length + ' kept from last run' : 'Fresh squad'}</span></div>
   <div class="pots" aria-label="Pots">${cells}</div>
   <div class="grid2" style="margin-top:16px">
-    <section class="card clubcard reveal" aria-live="polite">
+    <section class="card clubcard${anim ? ' reveal' : ''}" aria-live="polite">
       <div class="eyebrow">Pot ${pot + 1}</div>
       <h2 style="margin-top:6px">${esc(club.name)}</h2>
       <div class="meta">${COUNTRY[club.ctry] || esc(club.ctry)} · UEFA rank ${club.rank} · ${club.elig.length} rated players</div>
@@ -791,8 +819,9 @@ function viewDraft(){
       <div class="plist">${rows}</div>
     </section>
     <section class="sticky">
-      ${pitch(r.picks, shp[0], r.kept)}
-      ${shapes(r.picks, shp[0], false)}
+      ${shapes(r.picks, r.form, true)}
+      ${pitch(r.picks, r.form, r.kept, false, true)}
+      ${r.picks.length > 1 ? '<div class="hint">Tap a player, then a highlighted spot, to move him.</div>' : ''}
     </section>
   </div>`;
 }
@@ -805,7 +834,8 @@ function viewLineup(){
     <div><div class="eyebrow">Your XI</div><h2 style="font-size:30px;margin-top:4px">Pick your shape</h2>
     <p class="muted" style="margin:6px 0 0">Where a player stands decides how much he adds to the attack and defence drums.</p></div>
     ${shapes(r.picks, r.form, true)}
-    ${pitch(r.picks, r.form, r.kept)}
+    ${pitch(r.picks, r.form, r.kept, false, true)}
+    <div class="hint">Tap a player, then a highlighted spot, to move him.</div>
   </div>
   <div class="dock"><div class="btnrow"><button class="btn primary" data-act="kickoff">Kick off the Champions League</button></div></div>`;
 }
@@ -860,7 +890,7 @@ function viewCup(){
 function viewDone(){
   const r = S.run, st = r.cup.stage, n = r.keepN, champ = st === 'champion';
   const head = champ ? 'Champions of Europe' : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase();
-  const lst = assign(r.picks, r.form).map(pid => W.P[pid]).map(p => {
+  const lst = arrangement(r.picks, r.form).map(pid => W.P[pid]).map(p => {
     const on = r.keepSel.includes(p.id);
     return `<button class="krow${on ? ' on' : ''}" data-act="keep" data-p="${p.id}" data-pid="${p.id}" aria-pressed="${on}" ${n ? '' : 'disabled'}>
       <span class="box">${on ? '✓' : ''}</span><span style="min-width:0"><div class="nm" style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${natTag(p)} · ${p.pos.join(' · ')} · ${esc(W.C[p.club].name)}</div></span>
@@ -901,7 +931,16 @@ document.addEventListener('click', e => {
   if (a === 'start') newRun();
   else if (a === 'fresh'){ if (S.armed === 'fresh'){ S.dyn = null; S.armed = null; S.stats.streak = 0; save(); newRun(); } else { S.armed = 'fresh'; render(); } }
   else if (a === 'pick') choose(b.dataset.p);
-  else if (a === 'form'){ S.run.form = b.dataset.f; save(); render(); }
+  else if (a === 'form'){ S.run.form = b.dataset.f; S.run.sel = null; save(); render(); }
+  else if (a === 'slot'){
+    const r = S.run; if (!r || locked()) return;
+    const f = r.form, arr = arrangement(r.picks, f), j = +b.dataset.j;
+    if (r.sel == null || !arr[r.sel]) r.sel = arr[j] ? j : null;
+    else if (r.sel === j) r.sel = null;
+    else if (canMove(arr, f, r.sel, j)){ const pid = arr[r.sel]; arr[r.sel] = arr[j] || null; arr[j] = pid; r.manual = r.manual || {}; r.manual[f] = arr; r.sel = null; }
+    else r.sel = arr[j] ? j : null;
+    save(); render();
+  }
   else if (a === 'kickoff') kickoff();
   else if (a === 'next') step(false);
   else if (a === 'all') step(true);
