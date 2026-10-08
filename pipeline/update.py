@@ -501,8 +501,11 @@ def fetch_profiles(top_ids, squads, people, meta):
 # ---------------- build ----------------
 def display_name(e, pid):
     """'L. Díaz' + first name 'Luis Fernando' -> 'Luis Díaz'; 'Brahim Díaz' and 'Endrick' stay as they are."""
-    sq, first = e.get('sq') or '', (e.get('fn') or '').split(' ')[0]
-    if re.match(r'^[A-ZÀ-Ý][a-z]?\. ', sq) and first:
+    sq, firsts = e.get('sq') or '', (e.get('fn') or '').split()
+    m = re.match(r'^([A-ZÀ-Ý][a-z]?)\. ', sq)
+    if m and firsts:
+        # 'E. Martínez' + 'Damián Emiliano' -> 'Emiliano Martínez': use the first name the initial points to
+        first = next((f for f in firsts if f.startswith(m.group(1))), firsts[0])
         return first + ' ' + sq.split('. ', 1)[1]
     return sq or e.get('n') or str(pid)
 
