@@ -496,7 +496,8 @@ def build_world(clubs, teams, fx, lu, squads, people):
         if t and t.get('id'):
             top[t['id']] = c
     window = [(fid, f) for fid, f in fx.items()
-              if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat() and f['hg'] is not None]
+              if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat() and f['hg'] is not None
+              and 'friendl' not in (f.get('lg') or '').lower()]   # competitive matches only
     club_res = defaultdict(list)
     starts = defaultdict(list)
     for fid, f in window:
