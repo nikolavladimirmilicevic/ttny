@@ -88,6 +88,10 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .plist{display:flex;flex-direction:column;gap:6px;margin-top:14px}
 .prow{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center;background:var(--panel-2);border-radius:10px;padding:8px 8px 8px 12px;border:1px solid transparent;text-align:left;width:100%}
 .prow:hover:not(:disabled){border-color:var(--gold)}
+.prow.kitcard{background:var(--kit);color:var(--kit-ink);border:2px solid rgba(255,255,255,.08)}
+.prow.kitcard:hover:not(:disabled){border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
+.prow.kitcard .pos,.prow.kitcard .pos b,.prow.kitcard .go{color:inherit}
+.prow.kitcard .pos{opacity:.85}
 .prow:disabled{opacity:.38;cursor:not-allowed}
 .prow .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .prow .pos{font-size:12px;color:var(--muted);margin-top:1px}
@@ -800,8 +804,8 @@ function viewDraft(){
   const ok = new Set(pickable(r.club));
   const rows = club.elig.filter(p => !r.picks.includes(p)).map(pid => W.P[pid])
     .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || POS_ORDER.indexOf(a.prim) - POS_ORDER.indexOf(b.prim) || a.name.localeCompare(b.name))
-    .map(p => `<button class="prow" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
-        <span style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : ' · no slot left'}</div></span>
+    .map(p => `<button class="prow kitcard" style="${kit(p)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
+        <span style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="pos">${esc(natInfo(p.nat)[0])} · ${posText(p)}${ok.has(p.id) ? '' : ' · no slot left'}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   if (!shp.includes(r.form)) r.form = shp[0];
