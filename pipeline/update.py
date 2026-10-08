@@ -20,7 +20,7 @@ Environment:
   TODAY                YYYY-MM-DD override, for testing
   API_BASE             override the API host, for testing
 """
-import csv, datetime as dt, difflib, json, os, sys, time, unicodedata, urllib.parse, urllib.request
+import csv, datetime as dt, difflib, json, os, re, sys, time, unicodedata, urllib.parse, urllib.request
 from collections import Counter, defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -279,12 +279,33 @@ def manual_ids():
     return out
 
 
+# UEFA short names -> what API-Football calls the club
+UEFA_ALIAS = {
+    'man city': 'Manchester City', 'man utd': 'Manchester United', 'atleti': 'Atletico Madrid', 'b. dortmund': 'Borussia Dortmund',
+    'paris': 'Paris Saint Germain', 'frankfurt': 'Eintracht Frankfurt', 'gnk dinamo': 'Dinamo Zagreb', 'olympiacos': 'Olympiakos',
+    'm. tel-aviv': 'Maccabi Tel Aviv', "nott'm forest": 'Nottingham Forest', 's. bratislava': 'Slovan Bratislava',
+    'union sg': 'Union St. Gilloise', 'rapid': 'Rapid Vienna', 'bod/glimt': 'Bodo', 'salzburg': 'Red Bull Salzburg',
+    'leipzig': 'RB Leipzig', 'leverkusen': 'Bayer Leverkusen', 'stuttgart': 'VfB Stuttgart', 'djurgarden': 'Djurgardens IF',
+    'ferencvaros': 'Ferencvarosi TC', 'viktoria plzen': 'Plzen', 'psv': 'PSV Eindhoven', 'sporting cp': 'Sporting CP',
+    'm. haifa': 'Maccabi Haifa', 'h. beer-sheva': 'Hapoel Beer Sheva', 'crvena zvezda': 'Crvena Zvezda', 'gladbach': 'Borussia Monchengladbach',
+    'wolves': 'Wolverhampton', 'spurs': 'Tottenham', 'inter': 'Inter', 'milan': 'AC Milan', 'roma': 'AS Roma',
+}
+NOT_FIRST_TEAM = re.compile(r'(\bW\b|\bU1\d\b|\bU2\d\b|\bII\b|\bB\b|women|youth|reserves|femenino|feminin|\bF\b)\s*$', re.I)
+
+
+def first_team(t):
+    return not NOT_FIRST_TEAM.search(t.get('name') or '')
+
+
 def tkey(c):
     return norm(c['name']) + '|' + c['code']
 
 
 def search_terms(c):
     terms = []
+    alias = UEFA_ALIAS.get(norm(c['name'])) or UEFA_ALIAS.get(c['name'].lower())
+    if alias:
+        terms.append(alias)
     if c.get('search'):
         terms.append(c['search'])
     plain = unicodedata.normalize('NFKD', c['name']).encode('ascii', 'ignore').decode()
@@ -296,6 +317,8 @@ def search_terms(c):
         if len(longest) >= 4:
             terms.append(longest)
     seen, out = set(), []
+    terms = [' '.join(''.join(ch if ch.isalnum() or ch == ' ' else ' ' for ch in
+                              unicodedata.normalize('NFKD', t).encode('ascii', 'ignore').decode()).split()) for t in terms]
     for t in terms:
         if len(t) >= 3 and t.lower() not in seen:
             seen.add(t.lower())
@@ -311,15 +334,17 @@ def resolve_teams(clubs, teams):
         if norm(c['name']) in fixes:
             teams[key] = {'id': fixes[norm(c['name'])], 'name': c['name'], 'how': 'manual'}
             continue
-        if key in teams and (teams[key].get('id') or days_old(teams[key].get('tried')) < 7):
+        if key in teams and ((teams[key].get('id') and first_team(teams[key])) or days_old(teams[key].get('tried')) < 7):
             continue
         best = None
         for term in search_terms(c):
             data = api('teams', search=term)
-            cands = [x['team'] for x in data.get('response', []) if not x['team'].get('national')]
+            cands = [x['team'] for x in data.get('response', []) if not x['team'].get('national') and first_team(x['team'])]
             same = [t for t in cands if norm(t.get('country')) == norm(c['country'])]
             if same:
-                best = max(same, key=lambda t: difflib.SequenceMatcher(None, norm(t['name']), norm(c['name'])).ratio())
+                target = norm(term)
+                best = max(same, key=lambda t: max(difflib.SequenceMatcher(None, norm(t['name']), target).ratio(),
+                                                   difflib.SequenceMatcher(None, norm(t['name']), norm(c['name'])).ratio()) - (0.05 if t['id'] > 5000 else 0))
                 break
         if not best:
             log(f"  could not find {c['name']} ({c['country']}); add it to pipeline/team_ids.csv")
