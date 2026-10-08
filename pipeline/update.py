@@ -527,7 +527,7 @@ def build_world(clubs, teams, fx, lu, squads, people):
             if len(st) < 10:
                 continue
             seen.add(pid)
-            cnt = Counter(s[3] for s in st if s[3])
+            cnt = Counter(s[3] for s in st[:10] if s[3])   # positions from the same last 10 starts as the grades
             pos = [k for k, _ in cnt.most_common()] or ['CM']
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': display_name(e, pid), 'nat': e.get('nat'), 'age': e.get('age'),
