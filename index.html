@@ -281,7 +281,13 @@ for (const [f, rows] of Object.entries(FORM_DEF)){
   const out = [['GK', 50, 90, 'GK']], L = rows.length;
   const role = i => i === 0 ? 'DEF' : i === L - 1 ? 'FWD' : L === 3 ? 'MID' : i === 1 ? 'MIDB' : 'MIDF';
   rows.forEach((row, i) => {
-    const codes = row.split(' '), xs = codes.length === 3 && i === 0 ? [27, 50, 73] : XS[codes.length];
+    const codes = row.split(' ');
+    // wide positions always hug the touchlines; central ones share the middle
+    const wide = c => /^L(B|MF|WF)$/.test(c) ? 'L' : /^R(B|MF|WF)$/.test(c) ? 'R' : '';
+    const central = codes.filter(c => !wide(c)), CX = { 1:[50], 2:[37,63], 3:[28,50,72], 4:[22,41,59,78], 5:[10,30,50,70,90] };
+    const cx = i === 0 && central.length === codes.length ? (codes.length === 3 ? [27, 50, 73] : XS[codes.length]) : CX[central.length] || [];
+    let ci = 0;
+    const xs = codes.map(c => wide(c) === 'L' ? (i === 0 && codes.length === 5 ? 10 : 13) : wide(c) === 'R' ? (i === 0 && codes.length === 5 ? 90 : 87) : cx[ci++]);
     const y = 75 - i * (59 / Math.max(1, L - 1));
     codes.forEach((c, j) => out.push([c, xs[j], Math.round(y + (YNUDGE[c] || 0)), role(i)]));
   });
