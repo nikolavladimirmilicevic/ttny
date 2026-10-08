@@ -3,7 +3,7 @@
 <title>This Time Next Year</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Rubik:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Rubik:wght@400;500;700&family=Noto+Color+Emoji&display=swap">
 <style>
 /* Layout: one centred column (max 980px), stadium-night look; draft splits into list | pitch on wide screens */
 :root{
@@ -113,6 +113,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .slot.full .dot{background:var(--kit);color:var(--kit-ink);border:2px solid rgba(11,22,38,.55)}
 .slot.kept .dot{box-shadow:0 0 0 3px var(--gold),0 4px 12px rgba(0,0,0,.4)}
 .slot[data-pid]{cursor:help}
+.flag{font-family:'Noto Color Emoji',sans-serif;font-size:14px;line-height:1;margin-right:5px;flex:none;vertical-align:-1px}
 .kit{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--kit);border:2px solid var(--kit-ink);vertical-align:-1px;margin-right:5px;flex:none}
 .pcard{position:fixed;z-index:20;width:200px;background:var(--panel-2);border:1px solid var(--gold);border-radius:10px;padding:10px 12px;box-shadow:0 10px 28px rgba(0,0,0,.5);pointer-events:none;font-size:12px;line-height:1.35}
 .pcard h4{margin:0;font:600 16px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
@@ -736,7 +737,12 @@ const LINES = ['GK', 'DEF', 'MID', 'FWD'];
 const POS_ORDER = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'CF'];
 const quitBtn = () => `<button class="chip quit${S.armed === 'quit' ? ' warn' : ''}" data-act="quit">${S.armed === 'quit' ? (S.run && S.run.kept.length ? 'Tap again: dynasty ends' : 'Tap again to quit') : 'Quit run'}</button>`;
 const kit = p => { const n = natInfo(p.nat); return `--kit:${n[1]};--kit-ink:${n[2]}`; };
-const natTag = p => `<span class="kit" style="${kit(p)}"></span>${esc(natInfo(p.nat)[0])}`;
+const ISO = {'England':'gb-eng','Scotland':'gb-sct','Wales':'gb-wls','Spain':'ES','Germany':'DE','Italy':'IT','France':'FR','Portugal':'PT','Netherlands':'NL','Belgium':'BE','Türkiye':'TR','Greece':'GR','Czechia':'CZ','Norway':'NO','Denmark':'DK','Sweden':'SE','Ukraine':'UA','Austria':'AT','Switzerland':'CH','Croatia':'HR','Serbia':'RS','Azerbaijan':'AZ','Hungary':'HU','Poland':'PL','Romania':'RO','Slovenia':'SI','Slovakia':'SK','Bulgaria':'BG','Cyprus':'CY','Israel':'IL','Brazil':'BR','Argentina':'AR','Uruguay':'UY','Colombia':'CO','Senegal':'SN','Nigeria':'NG','Ghana':'GH','Ivory Coast':'CI','Cameroon':'CM','Morocco':'MA','Japan':'JP','South Korea':'KR','USA':'US','Algeria':'DZ','Mali':'ML','Guinea':'GN','Egypt':'EG','Tunisia':'TN','Ecuador':'EC','Paraguay':'PY','Chile':'CL','Mexico':'MX','Canada':'CA','Australia':'AU','Republic of Ireland':'IE','Ireland':'IE','Georgia':'GE','Albania':'AL','Kosovo':'XK','Bosnia and Herzegovina':'BA','North Macedonia':'MK','Montenegro':'ME','Iceland':'IS','Finland':'FI','Burkina Faso':'BF','Gabon':'GA','Congo DR':'CD','Angola':'AO','Cape Verde Islands':'CV','Jamaica':'JM','Venezuela':'VE','Peru':'PE','Iran':'IR','Armenia':'AM','Russia':'RU','Lithuania':'LT','Luxembourg':'LU','Zambia':'ZM','Zimbabwe':'ZW','Gambia':'GM','Togo':'TG','Benin':'BJ','Equatorial Guinea':'GQ','Suriname':'SR','Curaçao':'CW','Haiti':'HT','China':'CN','Uzbekistan':'UZ','New Zealand':'NZ','South Africa':'ZA','Kenya':'KE','Estonia':'EE','Latvia':'LV','Belarus':'BY','Moldova':'MD','Costa Rica':'CR','Honduras':'HN','Panama':'PA','Bolivia':'BO','Sierra Leone':'SL','Mozambique':'MZ','Comoros':'KM','Iraq':'IQ','Liberia':'LR','Central African Republic':'CF','Jordan':'JO','Saudi Arabia':'SA','Congo':'CG','Guinea-Bissau':'GW','Qatar':'QA','Syria':'SY','Lebanon':'LB','Palestine':'PS','Faroe Islands':'FO','Malta':'MT','Andorra':'AD','Kazakhstan':'KZ','Trinidad and Tobago':'TT','Guadeloupe':'GP','Martinique':'MQ','French Guiana':'GF','Madagascar':'MG','Mauritania':'MR','Sudan':'SD','Tanzania':'TZ','Uganda':'UG','Rwanda':'RW','Burundi':'BI','Ethiopia':'ET','Libya':'LY','Philippines':'PH','Indonesia':'ID','Thailand':'TH','Vietnam':'VN','India':'IN','Cuba':'CU','Dominican Republic':'DO','El Salvador':'SV','Guatemala':'GT','Belize':'BZ'};
+const flagOf = name => { const c = ISO[name]; if (!c) return '';
+  if (c.startsWith('gb-')) return '\u{1F3F4}' + [...c.replace('-', '')].map(ch => String.fromCodePoint(0xE0000 + ch.charCodeAt(0))).join('') + '\u{E007F}';
+  return [...c].map(ch => String.fromCodePoint(0x1F1E6 + ch.charCodeAt(0) - 65)).join(''); };
+const natTag = p => { const n = natInfo(p.nat)[0], f = flagOf(n);
+  return (f ? `<span class="flag">${f}</span>` : `<span class="kit" style="${kit(p)}"></span>`) + esc(n); };
 function cardHTML(p){
   const c = W.C[p.club];
   return `<h4>${esc(p.name)}</h4>
