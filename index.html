@@ -173,9 +173,11 @@ const CFG = {
   SHOOTOUT_P: 0.686,          // World Cup shootout conversion, all tournaments (Opta / The Analyst)
   TIMER_MS: 10 * 60 * 1000,   // 10 minutes to start the next run, 10 minutes to finish a started run
   KEEP: { league: 0, playoff: 1, r16: 2, qf: 3, sf: 4, final: 5, champion: 6 },
-  WA: { GK: 1, DEF: 2, MID: 3, FWD: 4 },   // balls per result, goals scored drum
-  WD: { GK: 4, DEF: 3, MID: 2, FWD: 1 },   // balls per result, goals conceded drum
-  STORE: 'ttny.v3'
+  // balls per result by the line a player stands in: goals conceded drum (WD) / goals scored drum (WA)
+  // MIDB/MIDF = back and front midfield line when a formation has two; MID = the only midfield line
+  WD: { GK: 6, DEF: 5, MIDB: 4, MID: 3, MIDF: 2, FWD: 1 },
+  WA: { GK: 1, DEF: 2, MIDB: 3, MID: 4, MIDF: 5, FWD: 6 },
+  STORE: 'ttny.v5'
 };
 const STAGE_NAME = { league: 'League phase', playoff: 'Knockout play-off', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', champion: 'Champions' };
 
@@ -276,11 +278,12 @@ const XS = { 1:[50], 2:[36,64], 3:[22,50,78], 4:[13,37,63,87], 5:[10,30,50,70,90
 const YNUDGE = { DMF: 4, AMF: -3, SS: -2, LMF: -2, RMF: -2 };
 const FORMS = {};
 for (const [f, rows] of Object.entries(FORM_DEF)){
-  const out = [['GK', 50, 90]], L = rows.length;
+  const out = [['GK', 50, 90, 'GK']], L = rows.length;
+  const role = i => i === 0 ? 'DEF' : i === L - 1 ? 'FWD' : L === 3 ? 'MID' : i === 1 ? 'MIDB' : 'MIDF';
   rows.forEach((row, i) => {
     const codes = row.split(' '), xs = codes.length === 3 && i === 0 ? [27, 50, 73] : XS[codes.length];
     const y = 75 - i * (59 / Math.max(1, L - 1));
-    codes.forEach((c, j) => out.push([c, xs[j], Math.round(y + (YNUDGE[c] || 0))]));
+    codes.forEach((c, j) => out.push([c, xs[j], Math.round(y + (YNUDGE[c] || 0)), role(i)]));
   });
   FORMS[f] = out;
 }
@@ -456,7 +459,7 @@ const fits = pids => FORM_ORDER.some(f => assign(pids, f));
 function drums(pids, form){
   const a = assign(pids, form), sc = [], co = [];
   a.forEach((pid, j) => {
-    const line = LINE[FORMS[form][j][0]], p = W.P[pid];
+    const line = FORMS[form][j][3], p = W.P[pid];
     for (const v of p.sc) for (let k = 0; k < CFG.WA[line]; k++) sc.push(v);
     for (const v of p.co) for (let k = 0; k < CFG.WD[line]; k++) co.push(v);
   });
@@ -716,7 +719,7 @@ function viewHome(){
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>Grades come from the goals his team scored and conceded in his last 10 of those starts, compared with every other player. Some grades are capped on screen by position. The match engine uses the real value.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
-        <li>Matches are drawn from a drum of real scorelines. Where a player plays decides how many balls he adds. The opponent's recent results decide which scorelines are possible.</li>
+        <li>Matches are drawn from a drum of real scorelines. The line a player stands in decides how many balls he adds: from 6 to defence and 1 to attack for the goalkeeper, to 1 and 6 for the front line. The opponent's recent results decide which scorelines are possible.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
         <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends.</li>
       </ol>
