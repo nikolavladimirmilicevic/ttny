@@ -674,7 +674,7 @@ function pitch(pids, form, kept){
 }
 function shapes(pids, active, clickable){
   const ok = feasible(pids);
-  if (!clickable) return `<div class="shapes"><span class="muted" style="font-size:13px">${ok.length === FORM_ORDER.length ? 'All ' + ok.length + ' PES formations still open' : ok.length + ' of ' + FORM_ORDER.length + ' formations still open'}${ok.length <= 8 ? ': ' + ok.join(' · ') : ''}</span></div>`;
+  if (!clickable) return `<div class="shapes">` + ok.map(f => `<span class="shape${f === active ? ' on' : ' ok'}">${f}</span>`).join('') + `</div>`;
   return `<div class="shapes">` + FORM_ORDER.map(f => {
     const on = f === active, can = ok.includes(f);
     if (clickable) return can ? `<button class="shape${on ? ' on' : ' ok'}" data-act="form" data-f="${f}" aria-pressed="${on}">${f}</button>` : '';
