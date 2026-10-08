@@ -189,7 +189,7 @@ const CFG = {
   // MIDB/MIDF = back and front midfield line when a formation has two; MID = the only midfield line
   WD: { GK: 6, DEF: 5, MIDB: 4, MID: 3, MIDF: 2, FWD: 1 },
   WA: { GK: 1, DEF: 2, MIDB: 3, MID: 4, MIDF: 5, FWD: 6 },
-  STORE: 'ttny.v8'
+  STORE: 'ttny.v9'
 };
 const STAGE_NAME = { league: 'League phase', playoff: 'Knockout play-off', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', champion: 'Champions' };
 
@@ -274,18 +274,18 @@ const natInfo = n => NAT[n] || KIT_BY_NAME[n] || KIT_BY_NAME[NAT_ALIAS[n]] || [n
 const NGROUP = { ENG:'en',SCO:'en',ESP:'es',GER:'de',AUT:'de',SUI:'de',ITA:'it',FRA:'fr',BEL:'fr',POR:'pt',NED:'nl',TUR:'tr',GRE:'gr',CYP:'gr',NOR:'nd',DEN:'nd',SWE:'nd',CZE:'sl',SRB:'sl',CRO:'sl',SVK:'sl',POL:'sl',SLO:'sl',UKR:'sl',BUL:'sl',ROU:'sl',AZE:'sl',HUN:'hu',ISR:'xx' };
 
 /* PES 2021 positions and preset formations */
-const LINE = { GK:'GK', CB:'DEF', LB:'DEF', RB:'DEF', DMF:'MID', CMF:'MID', LMF:'MID', RMF:'MID', AMF:'MID', LWF:'FWD', RWF:'FWD', SS:'FWD', CF:'FWD' };
+const LINE = { GK:'GK', CB:'DEF', LB:'DEF', RB:'DEF', DMF:'MID', CMF:'MID', LMF:'MID', RMF:'MID', AMF:'MID', LWF:'FWD', RWF:'FWD', CF:'FWD' };
 const FORM_DEF = { // the 14 PES 2021 preset formations: lines from the back, each left to right
   '4-2-3-1':['LB CB CB RB','DMF DMF','LMF AMF RMF','CF'], '4-1-4-1':['LB CB CB RB','DMF','LMF AMF AMF RMF','CF'],
-  '4-3-2-1':['LB CB CB RB','CMF DMF CMF','AMF AMF','CF'], '4-2-2-2':['LB CB CB RB','CMF CMF','LMF RMF','CF SS'],
-  '4-3-1-2':['LB CB CB RB','CMF DMF CMF','AMF','CF SS'], '4-2-1-3':['LB CB CB RB','DMF DMF','AMF','LWF CF RWF'],
+  '4-3-2-1':['LB CB CB RB','CMF DMF CMF','AMF AMF','CF'], '4-2-2-2':['LB CB CB RB','CMF CMF','LMF RMF','CF CF'],
+  '4-3-1-2':['LB CB CB RB','CMF DMF CMF','AMF','CF CF'], '4-2-1-3':['LB CB CB RB','DMF DMF','AMF','LWF CF RWF'],
   '4-1-2-3':['LB CB CB RB','DMF','AMF AMF','LWF CF RWF'], '3-2-4-1':['CB CB CB','DMF DMF','LMF AMF AMF RMF','CF'],
-  '3-2-3-2':['CB CB CB','DMF DMF','LMF AMF RMF','CF SS'], '3-3-2-2':['CB CB CB','LMF DMF RMF','CMF CMF','CF SS'],
+  '3-2-3-2':['CB CB CB','DMF DMF','LMF AMF RMF','CF CF'], '3-3-2-2':['CB CB CB','LMF DMF RMF','CMF CMF','CF CF'],
   '3-2-2-3':['CB CB CB','CMF CMF','LMF RMF','LWF CF RWF'], '5-2-2-1':['LB CB CB CB RB','DMF DMF','LMF RMF','CF'],
-  '5-2-1-2':['LB CB CB CB RB','DMF DMF','AMF','CF SS'], '5-3-2':['LB CB CB CB RB','CMF DMF CMF','CF SS']
+  '5-2-1-2':['LB CB CB CB RB','DMF DMF','AMF','CF CF'], '5-3-2':['LB CB CB CB RB','CMF DMF CMF','CF CF']
 };
 const XS = { 1:[50], 2:[36,64], 3:[22,50,78], 4:[13,37,63,87], 5:[10,30,50,70,90] };
-const YNUDGE = { DMF: 4, AMF: -3, SS: -2, LMF: -2, RMF: -2 };
+const YNUDGE = { DMF: 4, AMF: -3, LMF: -2, RMF: -2 };
 const FORMS = {};
 for (const [f, rows] of Object.entries(FORM_DEF)){
   const out = [['GK', 50, 90, 'GK']], L = rows.length;
@@ -333,10 +333,10 @@ function buildWorld(){
       case 'RB': if (r() < .35) a('RMF'); break;
       case 'DMF': a('CMF'); if (r() < .25) a('CB'); break;
       case 'CMF': if (r() < .5) a('DMF'); if (r() < .4) a('AMF'); break;
-      case 'AMF': a('CMF'); if (r() < .3) a('SS'); if (r() < .25) a(r() < .5 ? 'LMF' : 'RMF'); break;
+      case 'AMF': a('CMF'); if (r() < .25) a(r() < .5 ? 'LMF' : 'RMF'); break;
       case 'LWF': a('LMF'); if (r() < .3) a('CF'); if (r() < .2) a('RWF'); break;
       case 'RWF': a('RMF'); if (r() < .3) a('CF'); if (r() < .2) a('LWF'); break;
-      case 'CF': if (r() < .35) a('SS'); break;
+      case 'CF': break;
     }
     return [...s];
   }
@@ -701,7 +701,7 @@ function tick(){
 const gBadge = (g, lbl) => `<span class="g g${g}" title="${lbl} ${g}"><small>${lbl}</small>${g}</span>`;
 function posText(p){ return `<b>${p.prim}</b>${p.pos.length > 1 ? ' · ' + p.pos.filter(x => x !== p.prim).join(' · ') : ''}`; }
 const LINES = ['GK', 'DEF', 'MID', 'FWD'];
-const POS_ORDER = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'SS', 'CF'];
+const POS_ORDER = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'CF'];
 const quitBtn = () => `<button class="chip quit${S.armed === 'quit' ? ' warn' : ''}" data-act="quit">${S.armed === 'quit' ? (S.run && S.run.kept.length ? 'Tap again: dynasty ends' : 'Tap again to quit') : 'Quit run'}</button>`;
 const kit = p => { const n = natInfo(p.nat); return `--kit:${n[1]};--kit-ink:${n[2]}`; };
 const natTag = p => `<span class="kit" style="${kit(p)}"></span>${esc(natInfo(p.nat)[0])}`;
