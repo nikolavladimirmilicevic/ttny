@@ -33,6 +33,7 @@ h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.1;tex
 .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
 .chip.hot{border-color:var(--gold);color:var(--gold)}
 .chip.warn{border-color:var(--loss);color:var(--loss)}
+.chip.quit{background:transparent;cursor:pointer}
 
 .btn{border:0;border-radius:10px;padding:13px 18px;font:600 16px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;background:var(--panel-2);color:var(--text)}
 .btn.primary{background:var(--gold);color:var(--gold-ink)}
@@ -627,6 +628,7 @@ function tick(){
 const gBadge = (g, lbl) => `<span class="g g${g}" title="${lbl} ${g}"><small>${lbl}</small>${g}</span>`;
 function posText(p){ return `<b>${p.prim}</b>${p.pos.length > 1 ? ' · ' + p.pos.filter(x => x !== p.prim).join(' · ') : ''}`; }
 const LINES = ['GK', 'DEF', 'MID', 'FWD'];
+const quitBtn = () => `<button class="chip quit${S.armed === 'quit' ? ' warn' : ''}" data-act="quit">${S.armed === 'quit' ? (S.run && S.run.kept.length ? 'Tap again: dynasty ends' : 'Tap again to quit') : 'Quit run'}</button>`;
 const kit = p => { const n = natInfo(p.nat); return `--kit:${n[1]};--kit-ink:${n[2]}`; };
 const natTag = p => `<span class="kit" style="${kit(p)}"></span>${esc(natInfo(p.nat)[0])}`;
 function cardHTML(p){
@@ -722,7 +724,7 @@ function viewDraft(){
         ${gBadge(shown(p, 'att'), 'ATT')}${gBadge(shown(p, 'def'), 'DEF')}<span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   return `
-  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span></header>
+  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
   <div class="drafthead"><div><div class="eyebrow">Draft</div><h2>Pick ${r.picks.length + 1} of 11</h2></div><span class="muted" style="font-size:13px">${r.kept.length ? r.kept.length + ' kept from last run' : 'Fresh squad'}</span></div>
   <div class="pots" aria-label="Pots">${cells}</div>
   <div class="grid2" style="margin-top:16px">
@@ -743,7 +745,7 @@ function viewDraft(){
 function viewLineup(){
   const r = S.run;
   return `
-  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span></header>
+  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
   <div class="stack">
     <div><div class="eyebrow">Your XI</div><h2 style="font-size:30px;margin-top:4px">Pick your shape</h2>
     <p class="muted" style="margin:6px 0 0">Where a player stands decides how much he adds to the attack and defence drums.</p></div>
@@ -786,7 +788,7 @@ function viewCup(){
   const next = c.ev[c.shown];
   const label = !next ? '' : next.k === 'md' ? 'Play matchday ' + next.n : next.k === 'table' ? 'See the table' : next.k === 'end' ? 'Full time' : next.k === 'final' ? 'Play the final' : 'Play ' + next.round.toLowerCase() + ', leg ' + next.leg;
   return `
-  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span></header>
+  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
   <div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">Your XI · ${r.form}</div><h2>Champions League</h2></div>
     <span class="muted" style="font-size:13px">36 clubs · 8 matchdays</span></div>
   <div class="grid2">
@@ -827,7 +829,15 @@ function render(){
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
   const a = b.dataset.act;
-  if (a !== 'fresh') S.armed = null;
+  if (a !== 'fresh' && a !== 'quit') S.armed = null;
+  if (a === 'quit'){
+    if (S.armed === 'quit'){ S.armed = null; S.run = null; S.dyn = null; S.stats.runs++; S.stats.streak = 0; save(); render(); scrollTo(0, 0); toast('Run abandoned. It counts as a loss.'); }
+    else {   // update the button in place so the draft card does not replay its reveal
+      S.armed = 'quit'; b.outerHTML = quitBtn();
+      setTimeout(() => { if (S.armed === 'quit'){ S.armed = null; const q = document.querySelector('[data-act=quit]'); if (q) q.outerHTML = quitBtn(); } }, 4000);
+    }
+    return;
+  }
   if (a === 'start') newRun();
   else if (a === 'fresh'){ if (S.armed === 'fresh'){ S.dyn = null; S.armed = null; S.stats.streak = 0; save(); newRun(); } else { S.armed = 'fresh'; render(); } }
   else if (a === 'pick') choose(b.dataset.p);
