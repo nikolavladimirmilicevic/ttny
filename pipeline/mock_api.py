@@ -62,6 +62,12 @@ class H(BaseHTTPRequestHandler):
         q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
         path = u.path.strip('/')
         resp, paging = [], {'current': 1, 'total': 1}
+        if path == 'v2/coefficients':
+            members = [{'member': {'id': str(900 + int(c['rank'])), 'displayName': c['name'], 'countryCode': {'SLO': 'SVN'}.get(c['code'], c['code'])},
+                        'overallRanking': {'position': int(c['rank']), 'totalValue': 150 - int(c['rank'])}} for c in clubs]
+            body = json.dumps({'data': {'members': members}}).encode()
+            self.send_response(200); self.send_header('Content-Type', 'application/json'); self.end_headers(); self.wfile.write(body)
+            return
         if path == 'teams':
             s = q['search'].lower()
             resp = [{'team': t} for t in TEAMS.values() if s[:5] in t['name'].lower()]

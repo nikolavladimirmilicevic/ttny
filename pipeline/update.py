@@ -167,33 +167,165 @@ def slot_code(formation, grid, pos):
     return 'AM' if top else 'DM'
 
 
-# ---------------- steps ----------------
-def read_clubs():
+# ---------------- UEFA ranking ----------------
+UEFA_URL = os.environ.get('UEFA_URL', 'https://comp.uefa.com/v2/coefficients')
+UEFA_MAX_AGE = 7   # days; the ranking only moves on European match weeks
+# UEFA association code -> (game code, API-Football country name)
+UEFA_COUNTRY = {
+    'ENG': ('ENG', 'England'), 'ESP': ('ESP', 'Spain'), 'GER': ('GER', 'Germany'), 'ITA': ('ITA', 'Italy'),
+    'FRA': ('FRA', 'France'), 'POR': ('POR', 'Portugal'), 'NED': ('NED', 'Netherlands'), 'BEL': ('BEL', 'Belgium'),
+    'SCO': ('SCO', 'Scotland'), 'TUR': ('TUR', 'Turkey'), 'GRE': ('GRE', 'Greece'), 'CZE': ('CZE', 'Czech-Republic'),
+    'NOR': ('NOR', 'Norway'), 'DEN': ('DEN', 'Denmark'), 'SWE': ('SWE', 'Sweden'), 'UKR': ('UKR', 'Ukraine'),
+    'AUT': ('AUT', 'Austria'), 'SUI': ('SUI', 'Switzerland'), 'CRO': ('CRO', 'Croatia'), 'SRB': ('SRB', 'Serbia'),
+    'AZE': ('AZE', 'Azerbaijan'), 'HUN': ('HUN', 'Hungary'), 'POL': ('POL', 'Poland'), 'ROU': ('ROU', 'Romania'),
+    'SVN': ('SLO', 'Slovenia'), 'SVK': ('SVK', 'Slovakia'), 'BUL': ('BUL', 'Bulgaria'), 'CYP': ('CYP', 'Cyprus'),
+    'ISR': ('ISR', 'Israel'), 'KAZ': ('KAZ', 'Kazakhstan'), 'MDA': ('MDA', 'Moldova'), 'ARM': ('ARM', 'Armenia'),
+    'BLR': ('BLR', 'Belarus'), 'FIN': ('FIN', 'Finland'), 'ISL': ('ISL', 'Iceland'), 'IRL': ('IRL', 'Ireland'),
+    'WAL': ('WAL', 'Wales'), 'NIR': ('NIR', 'Northern-Ireland'), 'KVX': ('KOS', 'Kosovo'), 'BIH': ('BIH', 'Bosnia'),
+    'MNE': ('MNE', 'Montenegro'), 'ALB': ('ALB', 'Albania'), 'MKD': ('MKD', 'Macedonia'), 'GEO': ('GEO', 'Georgia'),
+    'LVA': ('LVA', 'Latvia'), 'LTU': ('LTU', 'Lithuania'), 'EST': ('EST', 'Estonia'), 'LUX': ('LUX', 'Luxembourg'),
+    'MLT': ('MLT', 'Malta'), 'GIB': ('GIB', 'Gibraltar'), 'FRO': ('FRO', 'Faroe-Islands'), 'AND': ('AND', 'Andorra'),
+    'SMR': ('SMR', 'San-Marino'), 'LIE': ('LIE', 'Liechtenstein'), 'RUS': ('RUS', 'Russia'),
+}
+
+
+def _get_json(url):
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (ttny data update)', 'Accept': 'application/json',
+                                               'Origin': 'https://www.uefa.com', 'Referer': 'https://www.uefa.com/'})
+    with urllib.request.urlopen(req, timeout=40) as r:
+        return json.load(r)
+
+
+def _find_rows(obj):
+    """Find the list of ranked clubs anywhere in UEFA's response."""
+    if isinstance(obj, list):
+        if obj and all(isinstance(x, dict) for x in obj) and any(('member' in x or 'team' in x) for x in obj):
+            return obj
+        for x in obj:
+            r = _find_rows(x)
+            if r:
+                return r
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            r = _find_rows(v)
+            if r:
+                return r
+    return None
+
+
+def _parse_row(x):
+    m = x.get('member') or x.get('team') or {}
+    pos = (x.get('overallRanking') or {}).get('position') or x.get('position') or x.get('rank')
+    name = m.get('displayName') or m.get('displayOfficialName') or m.get('internationalName') or m.get('name')
+    ctry = m.get('country') if isinstance(m.get('country'), dict) else {}
+    code = m.get('countryCode') or m.get('associationCode') or ctry.get('code')
+    if not (pos and name and code):
+        return None
+    game_code, api_country = UEFA_COUNTRY.get(code, (code, m.get('countryName') or code))
+    return {'rank': int(pos), 'name': name, 'code': game_code, 'country': api_country, 'uefa_id': str(m.get('id') or '')}
+
+
+def fetch_uefa_ranking(meta):
+    """Top 100 of the UEFA 5-year club ranking, refreshed weekly. Falls back to the last good list, then clubs.csv."""
+    cached = load('uefa_ranking', {})
+    if cached.get('clubs') and days_old(cached.get('fetched')) < UEFA_MAX_AGE:
+        return cached['clubs'], 'UEFA (cached ' + cached['fetched'] + ')'
+    season_year = TODAY.year + 1 if TODAY.month >= 7 else TODAY.year   # UEFA names a season by its end year
+    errors = []
+    for year in (season_year, season_year - 1):
+        url = f'{UEFA_URL}?' + urllib.parse.urlencode({'coefficientRange': 'OVERALL', 'coefficientType': 'MEN_CLUB',
+                                                       'language': 'EN', 'page': 1, 'pagesize': 200, 'seasonYear': year})
+        try:
+            rows = [r for r in (_parse_row(x) for x in (_find_rows(_get_json(url)) or [])) if r]
+        except Exception as e:
+            errors.append(f'{year}: {e}')
+            continue
+        rows.sort(key=lambda r: r['rank'])
+        top = [r for r in rows if r['rank'] <= 100][:100]
+        if len(top) >= 95:
+            save('uefa_ranking', {'fetched': TODAY.isoformat(), 'season': year, 'clubs': top})
+            return top, f'UEFA ranking {year - 1}/{str(year)[2:]}'
+        errors.append(f'{year}: only {len(top)} clubs parsed')
+    log('  WARNING: could not read the UEFA ranking (' + '; '.join(errors) + ')')
+    if cached.get('clubs'):
+        return cached['clubs'], 'UEFA (last good list from ' + cached['fetched'] + ')'
+    return None, None
+
+
+def read_clubs(meta):
+    clubs, source = fetch_uefa_ranking(meta)
+    if not clubs:
+        with open(os.path.join(ROOT, 'pipeline', 'clubs.csv'), encoding='utf-8') as f:
+            rows = [r for r in csv.DictReader(f) if r.get('rank', '').strip()]
+        rows.sort(key=lambda r: int(r['rank']))
+        clubs, source = rows[:100], 'pipeline/clubs.csv (fallback)'
+    log(f'  club list: {source}, {len(clubs)} clubs')
+    return clubs
+
+
+def manual_ids():
+    """pipeline/team_ids.csv: name,api_id. Fixes for clubs the search matches wrongly."""
+    out = {}
+    path = os.path.join(ROOT, 'pipeline', 'team_ids.csv')
+    if os.path.exists(path):
+        with open(path, encoding='utf-8') as f:
+            for r in csv.DictReader(f):
+                if r.get('name') and (r.get('api_id') or '').strip():
+                    out[norm(r['name'])] = int(r['api_id'])
     with open(os.path.join(ROOT, 'pipeline', 'clubs.csv'), encoding='utf-8') as f:
-        rows = [r for r in csv.DictReader(f) if r.get('rank', '').strip()]
-    rows.sort(key=lambda r: int(r['rank']))
-    return rows[:100]
+        for r in csv.DictReader(f):
+            if (r.get('api_id') or '').strip():
+                out.setdefault(norm(r['name']), int(r['api_id']))
+    return out
+
+
+def tkey(c):
+    return norm(c['name']) + '|' + c['code']
+
+
+def search_terms(c):
+    terms = []
+    if c.get('search'):
+        terms.append(c['search'])
+    plain = unicodedata.normalize('NFKD', c['name']).encode('ascii', 'ignore').decode()
+    plain = ''.join(ch if ch.isalnum() or ch == ' ' else ' ' for ch in plain)
+    words = [w for w in plain.split() if w.lower() not in ('fc', 'afc', 'cf', 'sc', 'fk', 'sk', 'ac', 'as', 'ssc', 'kv', 'club', 'de', 'cd', 'rc')]
+    if words:
+        terms.append(' '.join(words))
+        longest = max(words, key=len)
+        if len(longest) >= 4:
+            terms.append(longest)
+    seen, out = set(), []
+    for t in terms:
+        if len(t) >= 3 and t.lower() not in seen:
+            seen.add(t.lower())
+            out.append(t)
+    return out[:2]
 
 
 def resolve_teams(clubs, teams):
-    """Map every club in clubs.csv to an API team id (once; cached)."""
+    """Map every ranked club to an API team id (once per club; cached by name)."""
+    fixes = manual_ids()
     for c in clubs:
-        key = c['rank'] + ':' + c['name']
-        if c.get('api_id', '').strip():
-            teams[key] = {'id': int(c['api_id']), 'name': c['name'], 'how': 'csv'}
+        key = tkey(c)
+        if norm(c['name']) in fixes:
+            teams[key] = {'id': fixes[norm(c['name'])], 'name': c['name'], 'how': 'manual'}
             continue
-        if key in teams:
+        if key in teams and (teams[key].get('id') or days_old(teams[key].get('tried')) < 7):
             continue
-        term = (c.get('search') or c['name']).strip()
-        data = api('teams', search=term)
-        cands = [x['team'] for x in data.get('response', []) if not x['team'].get('national')]
-        same = [t for t in cands if norm(t.get('country')) == norm(c['country'])] or cands
-        if not same:
-            log(f"  could not find {c['name']} (searched '{term}'); add api_id in clubs.csv")
-            teams[key] = {'id': None, 'name': None, 'how': 'missing'}
+        best = None
+        for term in search_terms(c):
+            data = api('teams', search=term)
+            cands = [x['team'] for x in data.get('response', []) if not x['team'].get('national')]
+            same = [t for t in cands if norm(t.get('country')) == norm(c['country'])]
+            if same:
+                best = max(same, key=lambda t: difflib.SequenceMatcher(None, norm(t['name']), norm(c['name'])).ratio())
+                break
+        if not best:
+            log(f"  could not find {c['name']} ({c['country']}); add it to pipeline/team_ids.csv")
+            teams[key] = {'id': None, 'name': None, 'how': 'missing', 'tried': TODAY.isoformat()}
             continue
-        best = max(same, key=lambda t: difflib.SequenceMatcher(None, norm(t['name']), norm(c['name'])).ratio())
-        teams[key] = {'id': best['id'], 'name': best['name'], 'country': best.get('country'), 'how': 'search'}
+        teams[key] = {'id': best['id'], 'name': best['name'], 'country': best.get('country'), 'how': 'search', 'uefa': c['name']}
         log(f"  {c['rank']:>3} {c['name']} -> {best['name']} ({best.get('country')}) id {best['id']}")
 
 
@@ -325,7 +457,7 @@ def fetch_profiles(top_ids, squads, people, meta):
 def build_world(clubs, teams, fx, lu, squads, people):
     top = {}
     for c in clubs:
-        t = teams.get(c['rank'] + ':' + c['name'])
+        t = teams.get(tkey(c))
         if t and t.get('id'):
             top[t['id']] = c
     window = [(fid, f) for fid, f in fx.items()
@@ -381,22 +513,21 @@ def position_check(world):
 def main():
     if not KEY:
         sys.exit('Set API_FOOTBALL_KEY first.')
-    clubs = read_clubs()
+    meta = load('meta', {})
+    clubs = read_clubs(meta)
     teams = load('teams', {})
     fx = load('fixtures', {})
     lu = load('lineups', {})
     squads = load('squads', {})
     people = load('people', {})
-    meta = load('meta', {})
     stopped = None
     core_done = False
     top_ids = []
     try:
         log('1/6 Matching clubs to API teams')
         resolve_teams(clubs, teams)
-        top = {t['id'] for t in teams.values() if t.get('id')}
-        top_ids = [teams[c['rank'] + ':' + c['name']]['id'] for c in clubs
-                   if teams.get(c['rank'] + ':' + c['name'], {}).get('id')]
+        top = {teams[tkey(c)]['id'] for c in clubs if teams.get(tkey(c), {}).get('id')}
+        top_ids = [teams[tkey(c)]['id'] for c in clubs if teams.get(tkey(c), {}).get('id')]
         log('2/6 Season fixtures (first run only)')
         fetch_team_seasons(top_ids, fx, meta)
         log('3/6 Latest results')
