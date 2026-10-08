@@ -117,54 +117,73 @@ def days_old(stamp):
 
 # ---------------- positions ----------------
 def slot_code(formation, grid, pos):
-    """Turn formation + grid ('row:col') into one of the game's slot codes.
-    Row 1 is the goalkeeper. GRID_COL1_IS_RIGHT says whether column 1 is the right side
-    of the pitch (from the team's view). Check data/cache/position_check.txt after the
-    first run and flip the setting if left and right come out mirrored."""
-    fallback = {'G': 'GK', 'D': 'CB', 'M': 'CM', 'F': 'ST'}.get(pos)   # None: no position data, the start still counts
+    """PES 2021 position (GK CB LB RB DMF CMF LMF RMF AMF LWF RWF SS CF) from formation + grid ('row:col').
+    Row 1 is the goalkeeper. Returns None when the line-up came without formation data:
+    the start still counts for the ratings, it just adds no position."""
     try:
         lines = [int(x) for x in formation.split('-')]
         row, col = (int(x) for x in grid.split(':'))
     except Exception:
-        return fallback
+        return None
     if row == 1:
         return 'GK'
     li = row - 2
-    if li < 0 or li >= len(lines):
-        return fallback
+    if li < 0 or li >= len(lines) or len(lines) < 2:
+        return None
     n = lines[li]
     k = (n - col) if GRID_COL1_IS_RIGHT else (col - 1)   # 0 = leftmost
     k = max(0, min(n - 1, k))
+    left, right = k == 0, k == n - 1
     last = len(lines) - 1
-    if li == 0:  # back line
-        if n >= 5:
-            return 'LWB' if k == 0 else 'RWB' if k == n - 1 else 'CB'
-        if n == 4:
-            return 'LB' if k == 0 else 'RB' if k == 3 else 'CB'
+    if li == 0:                                   # back line
+        if n >= 4:
+            return 'LB' if left else 'RB' if right else 'CB'
         return 'CB'
-    if li == last:  # front line
+    if li == last:                                # front line
         if n >= 3:
-            return 'LW' if k == 0 else 'RW' if k == n - 1 else 'ST'
-        return 'ST'
-    mids = len(lines) - 2           # number of midfield lines
-    depth = li - 1                  # 0 = deepest midfield line
-    deep = mids >= 2 and depth == 0
-    top = mids >= 2 and depth == mids - 1
-    if n >= 5:
-        return 'LWB' if k == 0 else 'RWB' if k == n - 1 else ('DM' if deep else 'CM')
-    if n == 4:
-        if lines[0] == 3:
-            return 'LWB' if k == 0 else 'RWB' if k == 3 else ('DM' if deep else 'CM')
-        return 'LM' if k == 0 else 'RM' if k == 3 else ('DM' if deep else 'CM')
+            return 'LWF' if left else 'RWF' if right else 'CF'
+        return 'CF'
+    mids = last - 1                               # number of midfield lines
+    depth = li - 1                                # 0 = deepest midfield line
+    deep, top = depth == 0, depth == mids - 1
+    front = lines[last]
+    if n >= 5:                                    # 3-5-2, 4-5-1
+        centre = n // 2
+        return 'LMF' if left else 'RMF' if right else ('DMF' if k == centre else 'CMF')
+    if n == 4:                                    # 4-4-2, 3-4-3, 4-1-4-1, 3-2-4-1 ...
+        if left or right:
+            return 'LMF' if left else 'RMF'
+        return 'AMF' if (top and mids >= 2 and lines[li - 1] == 2) else 'CMF'   # 3-2-4-1 AMF; 4-1-4-1, 3-1-4-2 CMF
     if n == 3:
-        if top:
-            return 'LW' if k == 0 else 'RW' if k == 2 else 'AM'
-        if mids == 1 and lines[0] >= 4:
-            return 'DM' if k == 1 else 'CM'
-        return 'CM'
+        if mids == 1:                             # 4-3-3, 5-3-2
+            return 'DMF' if k == 1 else 'CMF'
+        if deep:                                  # 4-3-2-1, 4-3-1-2 / 3-3-2-2, 3-3-3-1
+            if lines[0] == 3:
+                return 'LMF' if left else 'RMF' if right else 'DMF'
+            return 'DMF' if k == 1 else 'CMF'
+        if top:                                   # 4-2-3-1, 3-2-3-2 / 4-1-3-2 / 3-3-3-1
+            if lines[li - 1] == 3:
+                return 'AMF'
+            return 'LMF' if left else 'RMF' if right else ('CMF' if lines[li - 1] == 1 else 'AMF')
+        return 'CMF'
     if n == 2:
-        return 'DM' if deep else 'AM' if top else 'CM'
-    return 'AM' if top else 'DM'
+        if deep and mids >= 2:                    # 4-2-3-1, 4-2-2-2, 3-2-x
+            return 'CMF' if lines[0] == 5 else 'DMF'
+        if top and mids >= 2:
+            if front == 1:                        # 4-3-2-1, 3-4-2-1, 5-2-2-1
+                return 'SS'
+            if front == 2 and lines[0] == 4:      # 4-2-2-2
+                return 'LMF' if left else 'RMF'
+            if lines[li - 1] == 1:                # 4-1-2-3
+                return 'CMF'
+            return 'AMF'                          # 3-3-2-2, 3-2-2-3
+        return 'CMF'
+    # n == 1
+    if deep and mids >= 2:
+        return 'DMF'
+    if top and mids >= 2:
+        return 'SS' if front == 1 else 'AMF'     # 4-4-1-1 / 4-3-1-2, 4-2-1-3, 3-4-1-2
+    return 'DMF' if mids == 1 else 'CMF'
 
 
 # ---------------- UEFA ranking ----------------
@@ -404,7 +423,7 @@ def fetch_lineups(top, fx, lu):
     need = [fid for fid, f in fx.items()
             if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat()
             and (f['h'] in top or f['a'] in top)
-            and (fid not in lu or (not lu[fid] and days_old(f['d']) <= 3))]
+            and (fid not in lu or (not lu[fid] and days_old(f['d']) <= 3) or any(isinstance(v, list) for v in lu[fid].values()))]
     need.sort(key=lambda fid: fx[fid]['d'], reverse=True)
     log(f'  {len(need)} fixtures need line-ups')
     for i in range(0, len(need), 20):
@@ -416,14 +435,13 @@ def fetch_lineups(top, fx, lu):
             add_fixture(fx, item)
             sides = {}
             for side in item.get('lineups') or []:
-                form = side.get('formation') or ''
                 xi = []
                 for e in side.get('startXI') or []:
                     p = e.get('player') or {}
                     if p.get('id'):
-                        xi.append([p['id'], slot_code(form, p.get('grid') or '', p.get('pos') or ''), p.get('name')])
-                if xi:
-                    sides[str(side['team']['id'])] = xi
+                        xi.append([p['id'], p.get('grid') or '', p.get('name')])
+                if xi:   # raw formation + grid, so the position model can change without refetching
+                    sides[str(side['team']['id'])] = {'f': side.get('formation') or '', 'xi': xi}
             lu[fid] = sides
             got.add(fid)
         for fid in batch:
@@ -504,14 +522,16 @@ def build_world(clubs, teams, fx, lu, squads, people):
         sides = lu.get(fid) or {}
         friendly = 'friendl' in (f.get('lg') or '').lower()
         for side, opp, sc, co in ((h, a, f['hg'], f['ag']), (a, h, f['ag'], f['hg'])):
-            xi = sides.get(str(side)) or []
+            lineup = sides.get(str(side))
+            lineup = lineup if isinstance(lineup, dict) else None
+            codes = [(e[0], slot_code(lineup['f'], e[1], '')) for e in lineup['xi']] if lineup else []
             # friendlies count only for a side whose line-up came with positions
-            if friendly and not (xi and all(e[1] for e in xi)):
+            if friendly and not (codes and all(c for _, c in codes)):
                 continue
             if side in top and opp in top:
                 club_res[side].append((f['d'], sc, co))
-            if opp in top and xi:
-                for pid, code, *_ in sides[str(side)]:
+            if opp in top and codes:
+                for pid, code in codes:
                     starts[pid].append((f['d'], sc, co, code))
     out_clubs = []
     for tid, c in top.items():
@@ -528,7 +548,7 @@ def build_world(clubs, teams, fx, lu, squads, people):
                 continue
             seen.add(pid)
             cnt = Counter(s[3] for s in st[:10] if s[3])   # positions from the same last 10 starts as the grades
-            pos = [k for k, _ in cnt.most_common()] or ['CM']
+            pos = [k for k, _ in cnt.most_common()] or ['CMF']
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': display_name(e, pid), 'nat': e.get('nat'), 'age': e.get('age'),
                                 'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st),
@@ -541,7 +561,7 @@ def position_check(world):
     lines = ['Check that full-backs and wingers sit on the right side.',
              f'GRID_COL1_IS_RIGHT={int(GRID_COL1_IS_RIGHT)}. If left and right are swapped, flip it.', '']
     for p in world['players']:
-        if p['prim'] in ('LB', 'RB', 'LW', 'RW', 'LWB', 'RWB'):
+        if p['prim'] in ('LB', 'RB', 'LWF', 'RWF', 'LMF', 'RMF'):
             lines.append(f"{p['prim']:<4} {p['name']} ({', '.join(p['pos'])})")
         if len(lines) > 60:
             break

@@ -175,7 +175,7 @@ const CFG = {
   KEEP: { league: 0, playoff: 1, r16: 2, qf: 3, sf: 4, final: 5, champion: 6 },
   WA: { GK: 1, DEF: 2, MID: 3, FWD: 4 },   // balls per result, goals scored drum
   WD: { GK: 4, DEF: 3, MID: 2, FWD: 1 },   // balls per result, goals conceded drum
-  STORE: 'ttny.v2'
+  STORE: 'ttny.v3'
 };
 const STAGE_NAME = { league: 'League phase', playoff: 'Knockout play-off', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', champion: 'Champions' };
 
@@ -259,22 +259,37 @@ Object.entries(EXTRA_KITS).forEach(([n, [b, f]]) => KIT_BY_NAME[n] = [n, b, f]);
 const natInfo = n => NAT[n] || KIT_BY_NAME[n] || KIT_BY_NAME[NAT_ALIAS[n]] || [n || 'Unknown', '#C9CED6', '#0B1626'];
 const NGROUP = { ENG:'en',SCO:'en',ESP:'es',GER:'de',AUT:'de',SUI:'de',ITA:'it',FRA:'fr',BEL:'fr',POR:'pt',NED:'nl',TUR:'tr',GRE:'gr',CYP:'gr',NOR:'nd',DEN:'nd',SWE:'nd',CZE:'sl',SRB:'sl',CRO:'sl',SVK:'sl',POL:'sl',SLO:'sl',UKR:'sl',BUL:'sl',ROU:'sl',AZE:'sl',HUN:'hu',ISR:'xx' };
 
-const LINE = { GK:'GK', CB:'DEF', LB:'DEF', RB:'DEF', LWB:'DEF', RWB:'DEF', DM:'MID', CM:'MID', AM:'MID', LM:'MID', RM:'MID', LW:'FWD', RW:'FWD', ST:'FWD' };
-const FORMS = {
-  '4-3-3':  [['GK',50,90],['LB',14,70],['CB',37,75],['CB',63,75],['RB',86,70],['DM',50,58],['CM',29,46],['CM',71,46],['LW',16,24],['ST',50,15],['RW',84,24]],
-  '4-2-3-1':[['GK',50,90],['LB',14,70],['CB',37,75],['CB',63,75],['RB',86,70],['DM',36,57],['DM',64,57],['LW',16,34],['AM',50,38],['RW',84,34],['ST',50,15]],
-  '4-4-2':  [['GK',50,90],['LB',14,70],['CB',37,75],['CB',63,75],['RB',86,70],['LM',14,44],['CM',37,50],['CM',63,50],['RM',86,44],['ST',36,17],['ST',64,17]],
-  '4-1-4-1':[['GK',50,90],['LB',14,70],['CB',37,75],['CB',63,75],['RB',86,70],['DM',50,60],['LM',14,38],['CM',36,44],['CM',64,44],['RM',86,38],['ST',50,15]],
-  '3-5-2':  [['GK',50,90],['CB',26,74],['CB',50,77],['CB',74,74],['LWB',11,50],['DM',50,58],['CM',30,44],['CM',70,44],['RWB',89,50],['ST',36,17],['ST',64,17]],
-  '3-4-3':  [['GK',50,90],['CB',26,74],['CB',50,77],['CB',74,74],['LWB',11,50],['CM',36,52],['CM',64,52],['RWB',89,50],['LW',18,23],['ST',50,15],['RW',82,23]],
-  '5-3-2':  [['GK',50,90],['LWB',10,62],['CB',29,75],['CB',50,78],['CB',71,75],['RWB',90,62],['CM',26,45],['CM',50,49],['CM',74,45],['ST',36,17],['ST',64,17]]
+/* PES 2021 positions and preset formations */
+const LINE = { GK:'GK', CB:'DEF', LB:'DEF', RB:'DEF', DMF:'MID', CMF:'MID', LMF:'MID', RMF:'MID', AMF:'MID', LWF:'FWD', RWF:'FWD', SS:'FWD', CF:'FWD' };
+const FORM_DEF = { // lines from the back, each left to right
+  '4-3-3':['LB CB CB RB','CMF DMF CMF','LWF CF RWF'], '4-2-3-1':['LB CB CB RB','DMF DMF','LMF AMF RMF','CF'], '4-4-2':['LB CB CB RB','LMF CMF CMF RMF','CF CF'],
+  '4-4-1-1':['LB CB CB RB','LMF CMF CMF RMF','SS','CF'], '4-3-2-1':['LB CB CB RB','CMF DMF CMF','SS SS','CF'], '4-3-1-2':['LB CB CB RB','CMF DMF CMF','AMF','CF CF'],
+  '4-2-2-2':['LB CB CB RB','DMF DMF','LMF RMF','CF CF'], '4-2-1-3':['LB CB CB RB','DMF DMF','AMF','LWF CF RWF'], '4-1-4-1':['LB CB CB RB','DMF','LMF CMF CMF RMF','CF'],
+  '4-1-3-2':['LB CB CB RB','DMF','LMF CMF RMF','CF CF'], '4-1-2-3':['LB CB CB RB','DMF','CMF CMF','LWF CF RWF'], '4-5-1':['LB CB CB RB','LMF CMF DMF CMF RMF','CF'],
+  '3-5-2':['CB CB CB','LMF CMF DMF CMF RMF','CF CF'], '3-4-3':['CB CB CB','LMF CMF CMF RMF','LWF CF RWF'], '3-4-1-2':['CB CB CB','LMF CMF CMF RMF','AMF','CF CF'],
+  '3-4-2-1':['CB CB CB','LMF CMF CMF RMF','SS SS','CF'], '3-3-3-1':['CB CB CB','LMF DMF RMF','AMF AMF AMF','CF'], '3-2-4-1':['CB CB CB','DMF DMF','LMF AMF AMF RMF','CF'],
+  '3-2-3-2':['CB CB CB','DMF DMF','LMF AMF RMF','CF CF'], '3-3-2-2':['CB CB CB','LMF DMF RMF','AMF AMF','CF CF'], '3-2-2-3':['CB CB CB','DMF DMF','AMF AMF','LWF CF RWF'],
+  '3-1-4-2':['CB CB CB','DMF','LMF CMF CMF RMF','CF CF'], '5-3-2':['LB CB CB CB RB','CMF DMF CMF','CF CF'], '5-4-1':['LB CB CB CB RB','LMF CMF CMF RMF','CF'],
+  '5-2-2-1':['LB CB CB CB RB','CMF CMF','SS SS','CF'], '5-2-1-2':['LB CB CB CB RB','CMF CMF','AMF','CF CF']
 };
+const XS = { 1:[50], 2:[36,64], 3:[22,50,78], 4:[13,37,63,87], 5:[10,30,50,70,90] };
+const YNUDGE = { DMF: 4, AMF: -3, SS: -2, LMF: -2, RMF: -2 };
+const FORMS = {};
+for (const [f, rows] of Object.entries(FORM_DEF)){
+  const out = [['GK', 50, 90]], L = rows.length;
+  rows.forEach((row, i) => {
+    const codes = row.split(' '), xs = codes.length === 3 && i === 0 ? [27, 50, 73] : XS[codes.length];
+    const y = 75 - i * (59 / Math.max(1, L - 1));
+    codes.forEach((c, j) => out.push([c, xs[j], Math.round(y + (YNUDGE[c] || 0))]));
+  });
+  FORMS[f] = out;
+}
 const FORM_ORDER = Object.keys(FORMS);
 
 function buildWorld(){
   const r = mulberry32(20261008);
   const C = {}, P = {};
-  const SQUAD = { GK:[1,.08,.03], CB:[1,1,.5,.2], LB:[1,.3], RB:[1,.3], DM:[1,.45], CM:[1,.9,.4], AM:[1,.35], LW:[1,.35], RW:[1,.35], ST:[1,.5] };
+  const SQUAD = { GK:[1,.08,.03], CB:[1,1,.5,.2], LB:[1,.3], RB:[1,.3], DMF:[1,.45], CMF:[1,.9,.4], AMF:[1,.35], LWF:[1,.35], RWF:[1,.35], CF:[1,.5] };
   let usedNames = new Set();   // unique within a club
   const foreign = Object.entries(FOREIGN);
   function nation(ctry){
@@ -294,22 +309,22 @@ function buildWorld(){
   function poses(p){
     const s = new Set([p]); const a = x => s.add(x);
     switch (p){
-      case 'CB': if (r() < .3) a('DM'); break;
-      case 'LB': a('LWB'); if (r() < .3) a('LM'); break;
-      case 'RB': a('RWB'); if (r() < .3) a('RM'); break;
-      case 'DM': a('CM'); if (r() < .25) a('CB'); break;
-      case 'CM': if (r() < .5) a('DM'); if (r() < .4) a('AM'); break;
-      case 'AM': a('CM'); if (r() < .3) a(r() < .5 ? 'LW' : 'RW'); break;
-      case 'LW': a('LM'); if (r() < .3) a('ST'); if (r() < .2) a('RW'); break;
-      case 'RW': a('RM'); if (r() < .3) a('ST'); if (r() < .2) a('LW'); break;
-      case 'ST': if (r() < .25) a(r() < .5 ? 'LW' : 'RW'); break;
+      case 'CB': if (r() < .25) a('DMF'); break;
+      case 'LB': if (r() < .35) a('LMF'); break;
+      case 'RB': if (r() < .35) a('RMF'); break;
+      case 'DMF': a('CMF'); if (r() < .25) a('CB'); break;
+      case 'CMF': if (r() < .5) a('DMF'); if (r() < .4) a('AMF'); break;
+      case 'AMF': a('CMF'); if (r() < .3) a('SS'); if (r() < .25) a(r() < .5 ? 'LMF' : 'RMF'); break;
+      case 'LWF': a('LMF'); if (r() < .3) a('CF'); if (r() < .2) a('RWF'); break;
+      case 'RWF': a('RMF'); if (r() < .3) a('CF'); if (r() < .2) a('LWF'); break;
+      case 'CF': if (r() < .35) a('SS'); break;
     }
     return [...s];
   }
   CLUBS.forEach(([nm, ctry], i) => {
     const id = 'c' + (i + 1);
     usedNames = new Set();
-    const club = { id, name: nm, ctry, rank: i + 1, form: pick(['4-3-3','4-2-3-1','4-4-2','3-5-2','3-4-3','4-3-3','4-2-3-1'], r), squad: [], res: [] };
+    const club = { id, name: nm, ctry, rank: i + 1, form: pick(['4-3-3','4-2-3-1','4-4-2','3-5-2','3-4-3','4-3-3','4-2-3-1','4-1-4-1','4-4-1-1'], r), squad: [], res: [] };
     for (const [pos, regs] of Object.entries(SQUAD)) regs.forEach((reg, k) => {
       const pid = id + 'p' + club.squad.length;
       const nat = nation(ctry);
@@ -435,6 +450,7 @@ function assign(pids, form){
   return bt(0) ? used.map(i => i < 0 ? null : pids[i]) : null;
 }
 const feasible = pids => FORM_ORDER.filter(f => assign(pids, f));
+const fits = pids => FORM_ORDER.some(f => assign(pids, f));
 
 /* ================= MATCH ENGINE ================= */
 function drums(pids, form){
@@ -559,7 +575,7 @@ function newRun(){
 }
 function pickable(cid){
   const r = S.run;
-  return W.C[cid].elig.filter(p => !r.picks.includes(p) && feasible([...r.picks, p]).length);
+  return W.C[cid].elig.filter(p => !r.picks.includes(p) && fits([...r.picks, p]));
 }
 function drawClub(){
   const r = S.run, pot = r.order[r.step];
@@ -655,6 +671,7 @@ function pitch(pids, form, kept){
 }
 function shapes(pids, active, clickable){
   const ok = feasible(pids);
+  if (!clickable) return `<div class="shapes"><span class="muted" style="font-size:13px">${ok.length === FORM_ORDER.length ? 'All ' + ok.length + ' PES formations still open' : ok.length + ' of ' + FORM_ORDER.length + ' formations still open'}${ok.length <= 8 ? ': ' + ok.join(' · ') : ''}</span></div>`;
   return `<div class="shapes">` + FORM_ORDER.map(f => {
     const on = f === active, can = ok.includes(f);
     if (clickable) return can ? `<button class="shape${on ? ' on' : ' ok'}" data-act="form" data-f="${f}" aria-pressed="${on}">${f}</button>` : '';
