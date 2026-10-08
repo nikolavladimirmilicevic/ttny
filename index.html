@@ -653,6 +653,7 @@ function tick(){
 const gBadge = (g, lbl) => `<span class="g g${g}" title="${lbl} ${g}"><small>${lbl}</small>${g}</span>`;
 function posText(p){ return `<b>${p.prim}</b>${p.pos.length > 1 ? ' · ' + p.pos.filter(x => x !== p.prim).join(' · ') : ''}`; }
 const LINES = ['GK', 'DEF', 'MID', 'FWD'];
+const POS_ORDER = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'SS', 'CF'];
 const quitBtn = () => `<button class="chip quit${S.armed === 'quit' ? ' warn' : ''}" data-act="quit">${S.armed === 'quit' ? (S.run && S.run.kept.length ? 'Tap again: dynasty ends' : 'Tap again to quit') : 'Quit run'}</button>`;
 const kit = p => { const n = natInfo(p.nat); return `--kit:${n[1]};--kit-ink:${n[2]}`; };
 const natTag = p => `<span class="kit" style="${kit(p)}"></span>${esc(natInfo(p.nat)[0])}`;
@@ -744,7 +745,7 @@ function viewDraft(){
   }).join('');
   const ok = new Set(pickable(r.club));
   const rows = club.elig.filter(p => !r.picks.includes(p)).map(pid => W.P[pid])
-    .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || LINES.indexOf(a.line) - LINES.indexOf(b.line))
+    .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || POS_ORDER.indexOf(a.prim) - POS_ORDER.indexOf(b.prim) || a.name.localeCompare(b.name))
     .map(p => `<button class="prow" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
         <span style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : ' · no slot left'}</div></span>
         ${gBadge(shown(p, 'att'), 'ATT')}${gBadge(shown(p, 'def'), 'DEF')}<span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
