@@ -121,7 +121,7 @@ def slot_code(formation, grid, pos):
     Row 1 is the goalkeeper. GRID_COL1_IS_RIGHT says whether column 1 is the right side
     of the pitch (from the team's view). Check data/cache/position_check.txt after the
     first run and flip the setting if left and right come out mirrored."""
-    fallback = {'G': 'GK', 'D': 'CB', 'M': 'CM', 'F': 'ST'}.get(pos, 'CM')
+    fallback = {'G': 'GK', 'D': 'CB', 'M': 'CM', 'F': 'ST'}.get(pos)   # None: no position data, the start still counts
     try:
         lines = [int(x) for x in formation.split('-')]
         row, col = (int(x) for x in grid.split(':'))
@@ -524,8 +524,8 @@ def build_world(clubs, teams, fx, lu, squads, people):
             if len(st) < 10:
                 continue
             seen.add(pid)
-            cnt = Counter(s[3] for s in st)
-            pos = [k for k, _ in cnt.most_common()]
+            cnt = Counter(s[3] for s in st if s[3])
+            pos = [k for k, _ in cnt.most_common()] or ['CM']
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': display_name(e, pid), 'nat': e.get('nat'), 'age': e.get('age'),
                                 'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st),
