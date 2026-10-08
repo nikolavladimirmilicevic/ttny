@@ -30,7 +30,7 @@ API = os.environ.get('API_BASE', 'https://v3.football.api-sports.io').rstrip('/'
 KEY = os.environ.get('API_FOOTBALL_KEY', '')
 BUDGET = int(os.environ.get('MAX_REQUESTS', '90'))
 SLEEP = float(os.environ.get('SLEEP', '6.5' if BUDGET <= 100 else '0.25'))
-GRID_COL1_IS_RIGHT = os.environ.get('GRID_COL1_IS_RIGHT', '1') == '1'
+GRID_COL1_IS_RIGHT = (os.environ.get('GRID_COL1_IS_RIGHT') or '0') == '1'   # checked on real data: column 1 is the left side
 TODAY = dt.date.fromisoformat(os.environ['TODAY']) if os.environ.get('TODAY') else dt.date.today()
 SINCE = TODAY - dt.timedelta(days=365)
 FINISHED = {'FT', 'AET', 'PEN'}
@@ -284,7 +284,7 @@ UEFA_ALIAS = {
     'man city': 'Manchester City', 'man utd': 'Manchester United', 'atleti': 'Atletico Madrid', 'b. dortmund': 'Borussia Dortmund',
     'paris': 'Paris Saint Germain', 'frankfurt': 'Eintracht Frankfurt', 'gnk dinamo': 'Dinamo Zagreb', 'olympiacos': 'Olympiakos Piraeus',
     'm. tel-aviv': 'Maccabi Tel Aviv', "nott'm forest": 'Nottingham Forest', 's. bratislava': 'Slovan Bratislava',
-    'union sg': 'Gilloise', 'rakow': 'Rakow', 'rapid': 'Rapid Vienna', 'bod/glimt': 'Bodo', 'salzburg': 'Red Bull Salzburg',
+    'union sg': 'Gilloise', 'rakow': 'Czestochowa', 'rapid': 'Rapid Vienna', 'bod/glimt': 'Bodo', 'salzburg': 'Red Bull Salzburg',
     'leipzig': 'RB Leipzig', 'leverkusen': 'Bayer Leverkusen', 'stuttgart': 'VfB Stuttgart', 'djurgarden': 'Djurgardens IF',
     'ferencvaros': 'Ferencvarosi TC', 'viktoria plzen': 'Plzen', 'psv': 'PSV Eindhoven', 'sporting cp': 'Sporting CP',
     'm. haifa': 'Maccabi Haifa', 'h. beer-sheva': 'Hapoel Beer Sheva', 'crvena zvezda': 'Crvena Zvezda', 'gladbach': 'Borussia Monchengladbach',
@@ -441,6 +441,7 @@ def fetch_squads(top_ids, squads, people):
         squads[str(tid)] = {'f': TODAY.isoformat(), 'p': [p['id'] for p in players]}
         for p in players:
             e = people.setdefault(str(p['id']), {})
+            e['sq'] = p.get('name')
             e['n'] = e.get('n') or p.get('name')
             if p.get('age'):
                 e['age'] = p['age']
@@ -457,9 +458,9 @@ def fetch_profiles(top_ids, squads, people, meta):
         sq = squads.get(str(tid))
         if not sq:
             continue
-        missing = [pid for pid in sq['p'] if 'nat' not in people.get(str(pid), {})]
+        missing = [pid for pid in sq['p'] if 'nat' not in people.get(str(pid), {}) or 'fn' not in people.get(str(pid), {})]
         age = days_old(done.get(str(tid)))
-        if age < PROFILE_MAX_AGE or (not missing and age < 180):
+        if (age < PROFILE_MAX_AGE and not any('fn' not in people.get(str(pid), {}) for pid in sq['p'])) or (not missing and age < 180):
             continue
         page, total = 1, 1
         while page <= total:
@@ -472,6 +473,7 @@ def fetch_profiles(top_ids, squads, people, meta):
                 last = p.get('lastname') or ''
                 e['n'] = f'{first} {last}'.strip() if first and last and len(first + last) < 26 else (p.get('name') or e.get('n'))
                 e['nat'] = p.get('nationality')
+                e['fn'] = p.get('firstname') or ''
                 if p.get('age'):
                     e['age'] = p['age']
             page += 1
@@ -479,6 +481,14 @@ def fetch_profiles(top_ids, squads, people, meta):
 
 
 # ---------------- build ----------------
+def display_name(e, pid):
+    """'L. Díaz' + first name 'Luis Fernando' -> 'Luis Díaz'; 'Brahim Díaz' and 'Endrick' stay as they are."""
+    sq, first = e.get('sq') or '', (e.get('fn') or '').split(' ')[0]
+    if re.match(r'^[A-ZÀ-Ý][a-z]?\. ', sq) and first:
+        return first + ' ' + sq.split('. ', 1)[1]
+    return sq or e.get('n') or str(pid)
+
+
 def build_world(clubs, teams, fx, lu, squads, people):
     top = {}
     for c in clubs:
@@ -516,7 +526,7 @@ def build_world(clubs, teams, fx, lu, squads, people):
             cnt = Counter(s[3] for s in st)
             pos = [k for k, _ in cnt.most_common()]
             e = people.get(str(pid), {})
-            out_players.append({'id': pid, 'name': e.get('n') or str(pid), 'nat': e.get('nat'), 'age': e.get('age'),
+            out_players.append({'id': pid, 'name': display_name(e, pid), 'nat': e.get('nat'), 'age': e.get('age'),
                                 'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st),
                                 'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]]})
     return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'clubs': out_clubs, 'players': out_players}

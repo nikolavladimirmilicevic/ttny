@@ -26,7 +26,7 @@ jobs:
         env:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           MAX_REQUESTS: ${{ vars.MAX_REQUESTS || '90' }}
-          GRID_COL1_IS_RIGHT: ${{ vars.GRID_COL1_IS_RIGHT || '1' }}
+          GRID_COL1_IS_RIGHT: ${{ vars.GRID_COL1_IS_RIGHT || '0' }}
       - name: Commit data
         run: |
           git config user.name "ttny-data-bot"

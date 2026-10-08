@@ -26,7 +26,7 @@ If no `world.json` exists, the game runs on generated demo data.
 ## After the first full run
 
 - Open `data/cache/teams.json` and check every club was matched to the right API team. Wrong or missing ones go into `pipeline/team_ids.csv`.
-- Open `data/cache/position_check.txt`. If left-backs show up as RB and right wingers as LW, set the Actions variable `GRID_COL1_IS_RIGHT` to `0`, delete `data/cache/lineups.json` and run again.
+- Open `data/cache/position_check.txt`. If left-backs show up as RB and right wingers as LW, set the Actions variable `GRID_COL1_IS_RIGHT` to `1`, delete `data/cache/lineups.json` and run again.
 
 ## Run locally
 
