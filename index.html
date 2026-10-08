@@ -118,6 +118,13 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .pcard .poss b,.pcard .poss i{font-style:normal;font-weight:500;font-size:11px;padding:0 5px;border-radius:4px;background:var(--panel)}
 .pcard .poss b{background:var(--gold);color:var(--gold-ink)}
 .pcard .gr{display:flex;gap:6px;margin-top:12px}
+.slot .rt{display:flex;gap:3px;font:600 11px/1 var(--display)}
+.slot .rt span{padding:2px 5px;border-radius:4px;background:var(--gold);color:var(--gold-ink)}
+.slot .rt span+span{background:#9DB8E0;color:#0B1626}
+.teamrt{display:flex;gap:10px;margin-bottom:12px}
+.teamrt div{flex:1;background:var(--panel);border-radius:12px;padding:10px 14px}
+.teamrt b{display:block;font:600 34px/1 var(--display)}
+.teamrt span{font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
 .slot .lbl{font-size:11px;line-height:1.15;text-align:center;background:rgba(11,22,38,.78);padding:2px 6px;border-radius:5px;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .shapes{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:12px}
 .shape{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 10px;font:500 14px var(--display);letter-spacing:.04em}
@@ -177,7 +184,7 @@ const CFG = {
   // MIDB/MIDF = back and front midfield line when a formation has two; MID = the only midfield line
   WD: { GK: 6, DEF: 5, MIDB: 4, MID: 3, MIDF: 2, FWD: 1 },
   WA: { GK: 1, DEF: 2, MIDB: 3, MID: 4, MIDF: 5, FWD: 6 },
-  STORE: 'ttny.v5'
+  STORE: 'ttny.v6'
 };
 const STAGE_NAME = { league: 'League phase', playoff: 'Knockout play-off', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', champion: 'Champions' };
 
@@ -420,7 +427,12 @@ function finalize(C, P, meta){
   const pots = []; let at = 0;
   for (let i = 0; i < 11; i++){ const n = base + (i >= 11 - extra ? 1 : 0); pots.push(draftable.slice(at, at + n)); at += n; }
   const oppPool = ids.filter(id => C[id].n >= 10);
-  return { C, P, pots, oppPool, draftable, eligCount: elig.length, meta };
+  // reference distributions for the 40-99 ratings
+  const asc = a => a.sort((x, y) => x - y);
+  const SS = asc(elig.map(p => p.avgS)), SC = asc(elig.map(p => p.avgC));
+  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const CS = asc(oppPool.map(id => avg(C[id].sc10))), CC = asc(oppPool.map(id => avg(C[id].co10)));
+  return { C, P, pots, oppPool, draftable, eligCount: elig.length, meta, SS, SC, CS, CC };
 }
 
 /* Live data produced by pipeline/update.py */
@@ -439,8 +451,23 @@ let W;
 
 /* ================= RATINGS DISPLAY ================= */
 const ORDER = 'ABCDE';
-const CAP = { GK: { att: 'C' }, DEF: { att: 'B' }, MID: { def: 'B' }, FWD: { def: 'C' } };
-function shown(p, k){ const cap = (CAP[p.line] || {})[k]; const g = p[k]; return cap && ORDER.indexOf(g) < ORDER.indexOf(cap) ? cap : g; }
+/* 40-99 ratings, shown only once the XI is locked.
+   Player: how good his last 10 results are among all rated players (percentile),
+   times the weight of the line he stands in (6 = full weight).
+   Team: the weighted average of its drum, ranked among the top-100 clubs' last 10 results. */
+function pctBelow(arr, v){ let lo = 0, eq = 0; for (const x of arr){ if (x < v) lo++; else if (x === v) eq++; } return (lo + eq / 2) / arr.length; }
+const R = x => Math.round(40 + 59 * Math.max(0, Math.min(1, x)));
+function playerRating(pid, role){
+  const p = W.P[pid];
+  return { off: R(pctBelow(W.SS, p.avgS) * CFG.WA[role] / 6), def: R((1 - pctBelow(W.SC, p.avgC)) * CFG.WD[role] / 6) };
+}
+function teamRating(picks, form){
+  const a = assign(picks, form); let sa = 0, wa = 0, sd = 0, wd = 0;
+  a.forEach((pid, j) => { const role = FORMS[form][j][3], p = W.P[pid]; sa += CFG.WA[role] * p.avgS; wa += CFG.WA[role]; sd += CFG.WD[role] * p.avgC; wd += CFG.WD[role]; });
+  return { off: R(pctBelow(W.CS, sa / wa)), def: R(1 - pctBelow(W.CC, sd / wd)) };
+}
+const locked = () => S.run && (S.run.phase === 'cup' || S.run.phase === 'done');
+function roleOf(pid){ const r = S.run, a = assign(r.picks, r.form); return FORMS[r.form][a.indexOf(pid)][3]; }
 
 /* ================= FORMATION FIT ================= */
 function assign(pids, form){
@@ -664,19 +691,20 @@ function cardHTML(p){
     <div class="r"><span>Club</span><span style="text-align:right">${esc(c.name)}</span></div>
     <div class="r"><span>Positions</span><span class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</span></div>
     <div class="r"><span>Starts vs top 100</span><span class="num">${p.starts}</span></div>
-    <div class="gr">${gBadge(shown(p, 'att'), 'ATT')}${gBadge(shown(p, 'def'), 'DEF')}</div>`;
+    ${locked() && S.run.picks.includes(p.id) ? (r => `<div class="r"><span>Attack / Defence</span><span class="num"><b>${r.off}</b> / <b>${r.def}</b></span></div>`)(playerRating(p.id, roleOf(p.id))) : ''}`;
 }
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
 
-function pitch(pids, form, kept){
+function pitch(pids, form, kept, rated){
   const f = form || feasible(pids)[0] || '4-3-3';
   const a = (pids.length ? assign(pids, f) : null) || Array(11).fill(null);
   return `<div class="pitch" role="img" aria-label="Formation ${f}">` + FORMS[f].map(([code, x, y], j) => {
     const pid = a[j];
     if (!pid) return `<div class="slot empty" style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
     const p = W.P[pid];
-    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}" data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}"><div class="dot">${code}</div><div class="lbl">${esc(short(p.name))}</div></div>`;
+    const rt = rated ? playerRating(pid, FORMS[f][j][3]) : null;
+    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}" data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}"><div class="dot">${code}</div><div class="lbl">${esc(short(p.name))}</div>${rt ? `<div class="rt num"><span>${rt.off}</span><span>${rt.def}</span></div>` : ''}</div>`;
   }).join('') + `</div>`;
 }
 function shapes(pids, active, clickable){
@@ -724,7 +752,7 @@ function viewHome(){
         <li>The world is the top 100 clubs of the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>Grades come from the goals his team scored and conceded in his last 10 of those starts, compared with every other player. Some grades are capped on screen by position. The match engine uses the real value.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player gets an attack and a defence rating from 40 to 99, from the goals his team scored and conceded in his last 10 of those starts, weighted by the line he plays in. Your team gets one too.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Matches are drawn from a drum of real scorelines. The line a player stands in decides how many balls he adds: from 6 to defence and 1 to attack for the goalkeeper, to 1 and 6 for the front line. The opponent's recent results decide which scorelines are possible.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
@@ -748,7 +776,7 @@ function viewDraft(){
     .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || POS_ORDER.indexOf(a.prim) - POS_ORDER.indexOf(b.prim) || a.name.localeCompare(b.name))
     .map(p => `<button class="prow" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
         <span style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : ' · no slot left'}</div></span>
-        ${gBadge(shown(p, 'att'), 'ATT')}${gBadge(shown(p, 'def'), 'DEF')}<span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
+        <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
@@ -809,6 +837,10 @@ function evHTML(e){
   if (e.k === 'end') return `<div class="ev" style="display:block"><div class="rd">Full time</div>${e.champ !== 'YOU' ? `<div>Won by <b>${esc(nm(e.champ))}</b>.</div>` : '<div>Lovely jubbly.</div>'}</div>`;
   return '';
 }
+function teamBox(r){
+  const t = teamRating(r.picks, r.form);
+  return `<div class="teamrt"><div><span>Team attack</span><b class="num" style="color:var(--gold)">${t.off}</b></div><div><span>Team defence</span><b class="num" style="color:#9DB8E0">${t.def}</b></div></div>`;
+}
 function viewCup(){
   const r = S.run, c = r.cup;
   const evs = c.ev.slice(0, c.shown);
@@ -820,7 +852,7 @@ function viewCup(){
     <span class="muted" style="font-size:13px">36 clubs · 8 matchdays</span></div>
   <div class="grid2">
     <div class="feed">${evs.map(evHTML).join('') || '<div class="card muted">35 opponents drawn. Biggest clubs had the most balls in the draw.</div>'}</div>
-    <section class="sticky">${pitch(r.picks, r.form, r.kept)}</section>
+    <section class="sticky">${teamBox(r)}${pitch(r.picks, r.form, r.kept, true)}</section>
   </div>
   <div class="dock"><div class="btnrow"><button class="btn primary" data-act="next">${label}</button><button class="btn ghost" data-act="all">Skip to the end</button></div></div>`;
 }
@@ -832,7 +864,7 @@ function viewDone(){
     const on = r.keepSel.includes(p.id);
     return `<button class="krow${on ? ' on' : ''}" data-act="keep" data-p="${p.id}" data-pid="${p.id}" aria-pressed="${on}" ${n ? '' : 'disabled'}>
       <span class="box">${on ? '✓' : ''}</span><span style="min-width:0"><div class="nm" style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${natTag(p)} · ${p.pos.join(' · ')} · ${esc(W.C[p.club].name)}</div></span>
-      ${gBadge(shown(p, 'att'), 'ATT')}${gBadge(shown(p, 'def'), 'DEF')}</button>`;
+      ${(rt => `<span class="num" style="font:600 18px var(--display);color:var(--gold)">${rt.off}</span><span class="num" style="font:600 18px var(--display);color:#9DB8E0">${rt.def}</span>`)(playerRating(p.id, roleOf(p.id)))}</button>`;
   }).join('');
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div>${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}</header>
@@ -842,6 +874,7 @@ function viewDone(){
       <h1 style="margin-top:8px">${head}</h1>
       <p class="muted" style="margin:10px 0 0">${n ? `You keep up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''}. Start the next run within <b class="num" style="color:var(--gold)" data-cd="${r.doneAt + CFG.TIMER_MS}">${fmt(r.doneAt + CFG.TIMER_MS - Date.now())}</b> or the dynasty ends.` : 'No players carry over. Next run starts from scratch.'}</p>
     </section>
+    ${teamBox(r)}
     ${n ? `<div><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div><div class="keep">${lst}</div></div>` : ''}
     <div class="feed">${r.cup.ev.filter(e => e.k !== 'table').slice(-3).map(evHTML).join('')}</div>
   </div>
