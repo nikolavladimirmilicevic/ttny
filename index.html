@@ -270,6 +270,32 @@ const EXTRA_KITS = { // nationality name: [kit, text]
   'Slovakia':['#FFFFFF','#0B4EA2'],'Estonia':['#0072CE','#FFFFFF'],'Latvia':['#9E3039','#FFFFFF'],'Belarus':['#C8313E','#FFFFFF'],'Moldova':['#0046AE','#FFD200'],
   'Cyprus':['#0055A4','#FFFFFF'],'Israel':['#FFFFFF','#0038B8'],'Costa Rica':['#CE1126','#FFFFFF'],'Honduras':['#FFFFFF','#0073CF'],'Panama':['#DA121A','#FFFFFF'],'Bolivia':['#007934','#FFFFFF'],'Sierra Leone':['#1EB53A','#FFFFFF'],'Mozambique':['#009A44','#FCE100'],'Comoros':['#3A75C4','#FFFFFF']
 };
+const CLUB_KITS = { // home colours: [shirt, text] by club name as UEFA writes it
+  'Bayern München':['#DC052D','#FFFFFF'],'Arsenal':['#EF0107','#FFFFFF'],'Real Madrid':['#FFFFFF','#1B2A6B'],'Paris':['#004170','#FFFFFF'],'Inter':['#0A3D91','#FFFFFF'],
+  'Man City':['#6CABDD','#1C2C5B'],'Barcelona':['#A50044','#EDBB00'],'Liverpool':['#C8102E','#FFFFFF'],'B. Dortmund':['#FDE100','#111111'],'Leverkusen':['#E32221','#111111'],
+  'Atleti':['#CB3524','#FFFFFF'],'Aston Villa':['#670E36','#95BFE5'],'Roma':['#8E1F2F','#F0BC42'],'Tottenham':['#FFFFFF','#132257'],'Porto':['#003893','#FFFFFF'],
+  'Fiorentina':['#5B2D82','#FFFFFF'],'Sporting CP':['#00805A','#FFFFFF'],'Club Brugge':['#0E2C6E','#FFFFFF'],'Chelsea':['#034694','#FFFFFF'],'Benfica':['#E20E0E','#FFFFFF'],
+  'Real Betis':['#00954C','#FFFFFF'],'PSV':['#ED1C24','#FFFFFF'],'Atalanta':['#1E5FAF','#FFFFFF'],'Man Utd':['#DA291C','#FBE122'],'Napoli':['#12A0D7','#FFFFFF'],
+  'Fenerbahçe':['#00205B','#FFED00'],'Milan':['#FB090B','#111111'],'Lille':['#E01E13','#FFFFFF'],'Shakhtar':['#F26522','#111111'],'Freiburg':['#E2001A','#FFFFFF'],
+  'Olympiacos':['#E2001A','#FFFFFF'],'Bodø/Glimt':['#FFD700','#111111'],'Frankfurt':['#111111','#E1000F'],'Juventus':['#111111','#FFFFFF'],'Feyenoord':['#D90A16','#FFFFFF'],
+  'Ferencváros':['#00843D','#FFFFFF'],'Leipzig':['#FFFFFF','#DD0741'],'Union SG':['#FFD200','#1B3F91'],'Lazio':['#87D8F7','#1B2A4E'],'AZ Alkmaar':['#DB0021','#FFFFFF'],
+  'Viktoria Plzeň':['#C8102E','#FFFFFF'],'Real Sociedad':['#0067B1','#FFFFFF'],'West Ham':['#7A263A','#1BB1E7'],'Braga':['#DC0000','#FFFFFF'],'Lyon':['#FFFFFF','#14387F'],
+  'Galatasaray':['#A90432','#FDB912'],'Rangers':['#1B458F','#FFFFFF'],'Copenhagen':['#FFFFFF','#1A2C69'],'Midtjylland':['#111111','#E2001A'],'Villarreal':['#FFE667','#005187'],
+  'Monaco':['#E7192D','#FFFFFF'],'Slavia Praha':['#E4002B','#FFFFFF'],'Athletic Club':['#EE2523','#FFFFFF'],'GNK Dinamo':['#0033A0','#FFFFFF'],'Marseille':['#FFFFFF','#2FAEE0'],
+  'Celtic':['#018749','#FFFFFF'],'PAOK':['#111111','#FFFFFF'],'Qarabağ':['#111111','#FFFFFF'],'Ajax':['#D2122E','#FFFFFF'],'S. Bratislava':['#6CADDF','#0B2C5F'],
+  'Stuttgart':['#FFFFFF','#E32219'],'Sparta Praha':['#8B1E2F','#FFFFFF'],'Djurgården':['#0A5BA8','#FFD100'],'Crvena Zvezda':['#E30613','#FFFFFF'],'Bologna':['#A21C26','#FFFFFF'],
+  'AEK Athens':['#FFD100','#111111'],'Salzburg':['#FFFFFF','#D00F3A'],'Newcastle':['#111111','#FFFFFF'],'Panathinaikos':['#007A33','#FFFFFF'],'Legia Warszawa':['#FFFFFF','#007A3D'],
+  'SK Rapid':['#007A3D','#FFFFFF'],'Anderlecht':['#4E2A84','#FFFFFF'],'Gent':['#0052A5','#FFFFFF'],'Ludogorets':['#00843D','#FFFFFF'],'Lech Poznań':['#1E4FA0','#FFFFFF'],
+  'Sevilla':['#FFFFFF','#D21F1B'],'M. Tel-Aviv':['#FFD200','#003C8F'],'Sturm Graz':['#111111','#FFFFFF'],'FCSB':['#E2001A','#FFFFFF'],'Genk':['#0055A4','#FFFFFF'],
+  'Pafos':['#1D428A','#FFFFFF'],'Crystal Palace':['#1B458F','#FFFFFF'],"Nott'm Forest":['#DD0000','#FFFFFF'],'Celje':['#FFD200','#003DA5'],'Basel':['#C8102E','#FFFFFF'],
+  'Raków':['#C8102E','#FFFFFF'],'Rennes':['#E13327','#FFFFFF'],'Rayo Vallecano':['#FFFFFF','#E53027'],'Jagiellonia':['#FFD200','#C8102E'],'AEK Larnaca':['#00703C','#FFD200'],
+  'Strasbourg':['#009FE3','#FFFFFF'],'Young Boys':['#FFD200','#111111'],'Lugano':['#111111','#FFFFFF'],'Başakşehir':['#F47920','#0F2042'],'Sunderland':['#EB172B','#FFFFFF'],
+  'Bournemouth':['#DA291C','#111111'],'Brighton':['#0057B8','#FFFFFF'],'Lens':['#FFD100','#C8102E'],'Nice':['#111111','#E2001A'],'Molde':['#0055A5','#FFFFFF']
+};
+const CLUB_ALIAS = { 'Paris Saint-Germain':'Paris','Manchester City':'Man City','Manchester United':'Man Utd','Borussia Dortmund':'B. Dortmund','Bayer Leverkusen':'Leverkusen',
+  'Atlético Madrid':'Atleti','Eintracht Frankfurt':'Frankfurt','RB Leipzig':'Leipzig','Union Saint-Gilloise':'Union SG','Dinamo Zagreb':'GNK Dinamo','Shakhtar Donetsk':'Shakhtar',
+  'Newcastle United':'Newcastle','Crvena zvezda':'Crvena Zvezda','Maccabi Tel Aviv':'M. Tel-Aviv','Slovan Bratislava':'S. Bratislava','Rapid Wien':'SK Rapid','Beşiktaş':'Başakşehir' };
+const clubKit = c => { const k = CLUB_KITS[c.name] || CLUB_KITS[CLUB_ALIAS[c.name]] || ['#1A2E4A', '#F3EFE6']; return `--kit:${k[0]};--kit-ink:${k[1]}`; };
 const NAT_ALIAS = { 'Turkey':'Türkiye', 'Czech Republic':'Czechia', 'Korea Republic':'South Korea', "Côte d'Ivoire":'Ivory Coast', "Cote D'Ivoire":'Ivory Coast', 'United States':'USA', 'Holland':'Netherlands', 'Cape Verde':'Cape Verde Islands', 'DR Congo':'Congo DR' };
 const KIT_BY_NAME = {};
 Object.values(NAT).forEach(v => KIT_BY_NAME[v[0]] = v);
@@ -804,8 +830,8 @@ function viewDraft(){
   const ok = new Set(pickable(r.club));
   const rows = club.elig.filter(p => !r.picks.includes(p)).map(pid => W.P[pid])
     .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || POS_ORDER.indexOf(a.prim) - POS_ORDER.indexOf(b.prim) || a.name.localeCompare(b.name))
-    .map(p => `<button class="prow kitcard" style="${kit(p)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
-        <span style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="pos">${esc(natInfo(p.nat)[0])} · ${posText(p)}${ok.has(p.id) ? '' : ' · no slot left'}</div></span>
+    .map(p => `<button class="prow kitcard" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
+        <span style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : ' · no slot left'}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   if (!shp.includes(r.form)) r.form = shp[0];
