@@ -548,7 +548,8 @@ def build_world(clubs, teams, fx, lu, squads, people):
                 continue
             seen.add(pid)
             cnt = Counter(s[3] for s in st[:10] if s[3])   # positions from the same last 10 starts as the grades
-            pos = [k for k, _ in cnt.most_common()] or ['CMF']
+            # a position counts only with 2+ starts on it in those 10; one-offs are mostly odd API line-ups
+            pos = [k for k, c in cnt.most_common() if c >= 2] or [k for k, _ in cnt.most_common(1)] or ['CMF']
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': display_name(e, pid), 'nat': e.get('nat'), 'age': e.get('age'),
                                 'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st),
