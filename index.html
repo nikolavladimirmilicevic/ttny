@@ -189,7 +189,7 @@ const CFG = {
   // MIDB/MIDF = back and front midfield line when a formation has two; MID = the only midfield line
   WD: { GK: 6, DEF: 5, MIDB: 4, MID: 3, MIDF: 2, FWD: 1 },
   WA: { GK: 1, DEF: 2, MIDB: 3, MID: 4, MIDF: 5, FWD: 6 },
-  STORE: 'ttny.v7'
+  STORE: 'ttny.v8'
 };
 const STAGE_NAME = { league: 'League phase', playoff: 'Knockout play-off', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', champion: 'Champions' };
 
@@ -275,16 +275,14 @@ const NGROUP = { ENG:'en',SCO:'en',ESP:'es',GER:'de',AUT:'de',SUI:'de',ITA:'it',
 
 /* PES 2021 positions and preset formations */
 const LINE = { GK:'GK', CB:'DEF', LB:'DEF', RB:'DEF', DMF:'MID', CMF:'MID', LMF:'MID', RMF:'MID', AMF:'MID', LWF:'FWD', RWF:'FWD', SS:'FWD', CF:'FWD' };
-const FORM_DEF = { // lines from the back, each left to right
-  '4-3-3':['LB CB CB RB','CMF DMF CMF','LWF CF RWF'], '4-2-3-1':['LB CB CB RB','DMF DMF','LMF AMF RMF','CF'], '4-4-2':['LB CB CB RB','LMF CMF CMF RMF','CF CF'],
-  '4-4-1-1':['LB CB CB RB','LMF CMF CMF RMF','SS','CF'], '4-3-2-1':['LB CB CB RB','CMF DMF CMF','SS SS','CF'], '4-3-1-2':['LB CB CB RB','CMF DMF CMF','AMF','CF CF'],
-  '4-2-2-2':['LB CB CB RB','DMF DMF','LMF RMF','CF CF'], '4-2-1-3':['LB CB CB RB','DMF DMF','AMF','LWF CF RWF'], '4-1-4-1':['LB CB CB RB','DMF','LMF CMF CMF RMF','CF'],
-  '4-1-3-2':['LB CB CB RB','DMF','LMF CMF RMF','CF CF'], '4-1-2-3':['LB CB CB RB','DMF','CMF CMF','LWF CF RWF'], '4-5-1':['LB CB CB RB','LMF CMF DMF CMF RMF','CF'],
-  '3-5-2':['CB CB CB','LMF CMF DMF CMF RMF','CF CF'], '3-4-3':['CB CB CB','LMF CMF CMF RMF','LWF CF RWF'], '3-4-1-2':['CB CB CB','LMF CMF CMF RMF','AMF','CF CF'],
-  '3-4-2-1':['CB CB CB','LMF CMF CMF RMF','SS SS','CF'], '3-3-3-1':['CB CB CB','LMF DMF RMF','AMF AMF AMF','CF'], '3-2-4-1':['CB CB CB','DMF DMF','LMF AMF AMF RMF','CF'],
-  '3-2-3-2':['CB CB CB','DMF DMF','LMF AMF RMF','CF CF'], '3-3-2-2':['CB CB CB','LMF DMF RMF','AMF AMF','CF CF'], '3-2-2-3':['CB CB CB','DMF DMF','AMF AMF','LWF CF RWF'],
-  '3-1-4-2':['CB CB CB','DMF','LMF CMF CMF RMF','CF CF'], '5-3-2':['LB CB CB CB RB','CMF DMF CMF','CF CF'], '5-4-1':['LB CB CB CB RB','LMF CMF CMF RMF','CF'],
-  '5-2-2-1':['LB CB CB CB RB','CMF CMF','SS SS','CF'], '5-2-1-2':['LB CB CB CB RB','CMF CMF','AMF','CF CF']
+const FORM_DEF = { // the 14 PES 2021 preset formations: lines from the back, each left to right
+  '4-2-3-1':['LB CB CB RB','DMF DMF','LMF AMF RMF','CF'], '4-1-4-1':['LB CB CB RB','DMF','LMF AMF AMF RMF','CF'],
+  '4-3-2-1':['LB CB CB RB','CMF DMF CMF','AMF AMF','CF'], '4-2-2-2':['LB CB CB RB','CMF CMF','LMF RMF','CF SS'],
+  '4-3-1-2':['LB CB CB RB','CMF DMF CMF','AMF','CF SS'], '4-2-1-3':['LB CB CB RB','DMF DMF','AMF','LWF CF RWF'],
+  '4-1-2-3':['LB CB CB RB','DMF','AMF AMF','LWF CF RWF'], '3-2-4-1':['CB CB CB','DMF DMF','LMF AMF AMF RMF','CF'],
+  '3-2-3-2':['CB CB CB','DMF DMF','LMF AMF RMF','CF SS'], '3-3-2-2':['CB CB CB','LMF DMF RMF','CMF CMF','CF SS'],
+  '3-2-2-3':['CB CB CB','CMF CMF','LMF RMF','LWF CF RWF'], '5-2-2-1':['LB CB CB CB RB','DMF DMF','LMF RMF','CF'],
+  '5-2-1-2':['LB CB CB CB RB','DMF DMF','AMF','CF SS'], '5-3-2':['LB CB CB CB RB','CMF DMF CMF','CF SS']
 };
 const XS = { 1:[50], 2:[36,64], 3:[22,50,78], 4:[13,37,63,87], 5:[10,30,50,70,90] };
 const YNUDGE = { DMF: 4, AMF: -3, SS: -2, LMF: -2, RMF: -2 };
@@ -345,7 +343,7 @@ function buildWorld(){
   CLUBS.forEach(([nm, ctry], i) => {
     const id = 'c' + (i + 1);
     usedNames = new Set();
-    const club = { id, name: nm, ctry, rank: i + 1, form: pick(['4-3-3','4-2-3-1','4-4-2','3-5-2','3-4-3','4-3-3','4-2-3-1','4-1-4-1','4-4-1-1'], r), squad: [], res: [] };
+    const club = { id, name: nm, ctry, rank: i + 1, form: pick(['4-2-3-1','4-1-2-3','4-2-1-3','4-1-4-1','3-2-3-2','4-3-1-2','5-3-2','4-2-3-1','4-1-2-3'], r), squad: [], res: [] };
     for (const [pos, regs] of Object.entries(SQUAD)) regs.forEach((reg, k) => {
       const pid = id + 'p' + club.squad.length;
       const nat = nation(ctry);

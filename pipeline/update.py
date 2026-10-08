@@ -116,10 +116,30 @@ def days_old(stamp):
 
 
 # ---------------- positions ----------------
+# The 14 preset formations of PES 2021 (lines from the back, each left to right).
+PES_FORMATIONS = {
+    '5-2-2-1': ['LB CB CB CB RB', 'DMF DMF', 'LMF RMF', 'CF'],
+    '4-2-3-1': ['LB CB CB RB', 'DMF DMF', 'LMF AMF RMF', 'CF'],
+    '4-1-4-1': ['LB CB CB RB', 'DMF', 'LMF AMF AMF RMF', 'CF'],
+    '4-3-2-1': ['LB CB CB RB', 'CMF DMF CMF', 'AMF AMF', 'CF'],
+    '4-2-2-2': ['LB CB CB RB', 'CMF CMF', 'LMF RMF', 'CF SS'],
+    '4-3-1-2': ['LB CB CB RB', 'CMF DMF CMF', 'AMF', 'CF SS'],
+    '4-2-1-3': ['LB CB CB RB', 'DMF DMF', 'AMF', 'LWF CF RWF'],
+    '4-1-2-3': ['LB CB CB RB', 'DMF', 'AMF AMF', 'LWF CF RWF'],
+    '3-2-4-1': ['CB CB CB', 'DMF DMF', 'LMF AMF AMF RMF', 'CF'],
+    '3-2-3-2': ['CB CB CB', 'DMF DMF', 'LMF AMF RMF', 'CF SS'],
+    '3-3-2-2': ['CB CB CB', 'LMF DMF RMF', 'CMF CMF', 'CF SS'],
+    '3-2-2-3': ['CB CB CB', 'CMF CMF', 'LMF RMF', 'LWF CF RWF'],
+    '5-2-1-2': ['LB CB CB CB RB', 'DMF DMF', 'AMF', 'CF SS'],
+    '5-3-2':   ['LB CB CB CB RB', 'CMF DMF CMF', 'CF SS'],
+}
+
+
 def slot_code(formation, grid, pos):
-    """PES 2021 position (GK CB LB RB DMF CMF LMF RMF AMF LWF RWF SS CF) from formation + grid ('row:col').
-    Row 1 is the goalkeeper. Returns None when the line-up came without formation data:
-    the start still counts for the ratings, it just adds no position."""
+    """PES 2021 position for one starter, from the API formation + grid ('row:col', row 1 = GK).
+    A formation that is one of the 14 PES presets maps exactly to its PES positions.
+    Any other real-world shape (4-3-3, 4-4-2, 3-4-2-1 ...) follows the same PES conventions.
+    Returns None when the line-up came without formation data (the start still counts)."""
     try:
         lines = [int(x) for x in formation.split('-')]
         row, col = (int(x) for x in grid.split(':'))
@@ -133,57 +153,55 @@ def slot_code(formation, grid, pos):
     n = lines[li]
     k = (n - col) if GRID_COL1_IS_RIGHT else (col - 1)   # 0 = leftmost
     k = max(0, min(n - 1, k))
+    if formation in PES_FORMATIONS:
+        return PES_FORMATIONS[formation][li].split()[k]
     left, right = k == 0, k == n - 1
-    last = len(lines) - 1
-    if li == 0:                                   # back line
-        if n >= 4:
-            return 'LB' if left else 'RB' if right else 'CB'
-        return 'CB'
-    if li == last:                                # front line
+    last, back = len(lines) - 1, lines[0]
+    wide = lambda centre: 'LMF' if left else 'RMF' if right else centre
+    if li == 0:                                           # back line
+        return ('LB' if left else 'RB' if right else 'CB') if n >= 4 else 'CB'
+    if li == last:                                        # front line
         if n >= 3:
             return 'LWF' if left else 'RWF' if right else 'CF'
+        if n == 2:
+            return 'CF' if left else 'SS'                 # PES pairs a CF with an SS
         return 'CF'
-    mids = last - 1                               # number of midfield lines
-    depth = li - 1                                # 0 = deepest midfield line
-    deep, top = depth == 0, depth == mids - 1
+    mids = last - 1
+    depth = li - 1                                        # 0 = deepest midfield line
     front = lines[last]
-    if n >= 5:                                    # 3-5-2, 4-5-1
-        centre = n // 2
-        return 'LMF' if left else 'RMF' if right else ('DMF' if k == centre else 'CMF')
-    if n == 4:                                    # 4-4-2, 3-4-3, 4-1-4-1, 3-2-4-1 ...
-        if left or right:
-            return 'LMF' if left else 'RMF'
-        return 'AMF' if (top and mids >= 2 and lines[li - 1] == 2) else 'CMF'   # 3-2-4-1 AMF; 4-1-4-1, 3-1-4-2 CMF
-    if n == 3:
-        if mids == 1:                             # 4-3-3, 5-3-2
+    if mids == 1:                                         # one midfield line: 4-3-3, 4-4-2, 3-5-2, 5-4-1 ...
+        if n >= 5:
+            return wide('DMF' if k == n // 2 else 'CMF')
+        if n == 4:
+            return wide('CMF')
+        if n == 3:
             return 'DMF' if k == 1 else 'CMF'
-        if deep:                                  # 4-3-2-1, 4-3-1-2 / 3-3-2-2, 3-3-3-1
-            if lines[0] == 3:
-                return 'LMF' if left else 'RMF' if right else 'DMF'
-            return 'DMF' if k == 1 else 'CMF'
-        if top:                                   # 4-2-3-1, 3-2-3-2 / 4-1-3-2 / 3-3-3-1
-            if lines[li - 1] == 3:
-                return 'AMF'
-            return 'LMF' if left else 'RMF' if right else ('CMF' if lines[li - 1] == 1 else 'AMF')
-        return 'CMF'
-    if n == 2:
-        if deep and mids >= 2:                    # 4-2-3-1, 4-2-2-2, 3-2-x
-            return 'CMF' if lines[0] == 5 else 'DMF'
-        if top and mids >= 2:
-            if front == 1:                        # 4-3-2-1, 3-4-2-1, 5-2-2-1
-                return 'SS'
-            if front == 2 and lines[0] == 4:      # 4-2-2-2
-                return 'LMF' if left else 'RMF'
-            if lines[li - 1] == 1:                # 4-1-2-3
-                return 'CMF'
-            return 'AMF'                          # 3-3-2-2, 3-2-2-3
-        return 'CMF'
-    # n == 1
-    if deep and mids >= 2:
-        return 'DMF'
-    if top and mids >= 2:
-        return 'SS' if front == 1 else 'AMF'     # 4-4-1-1 / 4-3-1-2, 4-2-1-3, 3-4-1-2
-    return 'DMF' if mids == 1 else 'CMF'
+        return 'CMF' if n == 2 else 'DMF'
+    nxt = lines[li + 1] if li + 1 < last else 0
+    if depth == 0:                                        # deepest of two or more midfield lines
+        if n == 1:
+            return 'DMF'
+        if n == 2:
+            return 'CMF' if (nxt == 2 and front >= 2) else 'DMF'
+        if n == 3:
+            return wide('DMF') if back == 3 else ('DMF' if k == 1 else 'CMF')
+        if n == 4:
+            return wide('CMF')
+        return wide('DMF' if k == n // 2 else 'CMF')
+    if depth == mids - 1:                                 # most advanced midfield line
+        prev = lines[li - 1]
+        if n == 1:
+            return 'SS' if (front == 1 and prev >= 4) else 'AMF'   # 4-4-1-1 / 4-2-1-3, 4-3-1-2
+        if n == 2:
+            if prev == 3 and back == 3:
+                return 'CMF'                              # 3-3-2-2
+            if (prev == 2 and front >= 2) or (front == 1 and back == 5):
+                return 'LMF' if left else 'RMF'           # 4-2-2-2, 3-2-2-3, 5-2-2-1
+            return 'AMF'                                  # 4-3-2-1, 3-4-2-1, 4-1-2-3
+        if n == 3:
+            return wide('AMF')                            # 4-2-3-1, 3-2-3-2
+        return wide('AMF')                                # 4-1-4-1, 3-2-4-1
+    return wide('CMF') if n >= 4 else 'CMF'               # a middle line in 4-1-2-1-2 style shapes
 
 
 # ---------------- UEFA ranking ----------------
