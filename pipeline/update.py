@@ -116,16 +116,29 @@ def days_old(stamp):
 
 
 # ---------------- positions ----------------
-def slot_code(formation, grid, pos):
+# The 14 preset formations of PES 2021 (lines from the back, each left to right).
+PES_FORMATIONS = {
+    '5-2-2-1': ['LB CB CB CB RB', 'DMF DMF', 'LMF RMF', 'CF'],
+    '4-2-3-1': ['LB CB CB RB', 'DMF DMF', 'LMF AMF RMF', 'CF'],
+    '4-1-4-1': ['LB CB CB RB', 'DMF', 'LMF AMF AMF RMF', 'CF'],
+    '4-3-2-1': ['LB CB CB RB', 'CMF DMF CMF', 'AMF AMF', 'CF'],
+    '4-2-2-2': ['LB CB CB RB', 'CMF CMF', 'LMF RMF', 'CF SS'],
+    '4-3-1-2': ['LB CB CB RB', 'CMF DMF CMF', 'AMF', 'CF SS'],
+    '4-2-1-3': ['LB CB CB RB', 'DMF DMF', 'AMF', 'LWF CF RWF'],
+    '4-1-2-3': ['LB CB CB RB', 'DMF', 'AMF AMF', 'LWF CF RWF'],
+    '3-2-4-1': ['CB CB CB', 'DMF DMF', 'LMF AMF AMF RMF', 'CF'],
+    '3-2-3-2': ['CB CB CB', 'DMF DMF', 'LMF AMF RMF', 'CF SS'],
+    '3-3-2-2': ['CB CB CB', 'LMF DMF RMF', 'CMF CMF', 'CF SS'],
+    '3-2-2-3': ['CB CB CB', 'CMF CMF', 'LMF RMF', 'LWF CF RWF'],
+    '5-2-1-2': ['LB CB CB CB RB', 'DMF DMF', 'AMF', 'CF SS'],
+    '5-3-2':   ['LB CB CB CB RB', 'CMF DMF CMF', 'CF SS'],
+}
+
+
+def _video_code(formation, grid, pos):
     """PES 2021 position for one starter, from the API formation + grid ('row:col', row 1 = GK).
-    Rule of thumb: nothing about width is guessed without a clear sign in the data.
-      - back four/five: the two outside players are LB/RB, the rest CB; back three are all CB
-      - front three: LWF, CF, RWF; one or two strikers are CF (no SS)
-      - a midfield line of 4 or 5: the outside players are LMF/RMF
-      - a midfield line of 3: all CMF (the API does not say who is deeper or wider);
-        all AMF when it is the most advanced of several midfield lines (4-2-3-1)
-      - a line of 1 or 2: DMF when it is the deepest of several midfield lines, AMF when it is the
-        most advanced, otherwise CMF
+    A formation that is one of the 14 PES presets maps exactly to its PES positions.
+    Any other real-world shape (4-3-3, 4-4-2, 3-4-2-1 ...) follows the same PES conventions.
     Returns None when the line-up came without formation data (the start still counts)."""
     try:
         lines = [int(x) for x in formation.split('-')]
@@ -140,21 +153,77 @@ def slot_code(formation, grid, pos):
     n = lines[li]
     k = (n - col) if GRID_COL1_IS_RIGHT else (col - 1)   # 0 = leftmost
     k = max(0, min(n - 1, k))
+    if formation in PES_FORMATIONS:
+        return PES_FORMATIONS[formation][li].split()[k]
     left, right = k == 0, k == n - 1
-    last = len(lines) - 1
+    last, back = len(lines) - 1, lines[0]
+    wide = lambda centre: 'LMF' if left else 'RMF' if right else centre
     if li == 0:                                           # back line
         return ('LB' if left else 'RB' if right else 'CB') if n >= 4 else 'CB'
     if li == last:                                        # front line
-        return ('LWF' if left else 'RWF' if right else 'CF') if n >= 3 else 'CF'
-    mids, depth = last - 1, li - 1
-    deep, top = mids >= 2 and depth == 0, mids >= 2 and depth == mids - 1
-    if n >= 4:
-        if left or right:
-            return 'LMF' if left else 'RMF'
-        return 'AMF' if top else 'CMF'
-    if n == 3:
-        return 'AMF' if top else 'CMF'                    # 4-2-3-1's attacking three: AMF; any other three: CMF
-    return 'DMF' if deep else 'AMF' if top else 'CMF'
+        if n >= 3:
+            return 'LWF' if left else 'RWF' if right else 'CF'
+        if n == 2:
+            return 'CF' if left else 'SS'                 # PES pairs a CF with an SS
+        return 'CF'
+    mids = last - 1
+    depth = li - 1                                        # 0 = deepest midfield line
+    front = lines[last]
+    if mids == 1:                                         # one midfield line: 4-3-3, 4-4-2, 3-5-2, 5-4-1 ...
+        if n >= 5:
+            return wide('DMF' if k == n // 2 else 'CMF')
+        if n == 4:
+            return wide('CMF')
+        if n == 3:
+            return 'DMF' if k == 1 else 'CMF'
+        return 'CMF' if n == 2 else 'DMF'
+    nxt = lines[li + 1] if li + 1 < last else 0
+    if depth == 0:                                        # deepest of two or more midfield lines
+        if n == 1:
+            return 'DMF'
+        if n == 2:
+            return 'CMF' if (nxt == 2 and front >= 2) else 'DMF'
+        if n == 3:
+            return wide('DMF') if back == 3 else ('DMF' if k == 1 else 'CMF')
+        if n == 4:
+            return wide('CMF')
+        return wide('DMF' if k == n // 2 else 'CMF')
+    if depth == mids - 1:                                 # most advanced midfield line
+        prev = lines[li - 1]
+        if n == 1:
+            return 'AMF'                                  # 4-4-1-1, 4-2-1-3, 4-3-1-2 (no SS)
+        if n == 2:
+            if prev == 3 and back == 3:
+                return 'CMF'                              # 3-3-2-2
+            if (prev == 2 and front >= 2) or (front == 1 and back == 5):
+                return 'LMF' if left else 'RMF'           # 4-2-2-2, 3-2-2-3, 5-2-2-1
+            return 'AMF'                                  # 4-3-2-1, 3-4-2-1, 4-1-2-3
+        if n == 3:
+            return wide('AMF')                            # 4-2-3-1, 3-2-3-2
+        return wide('AMF')                                # 4-1-4-1, 3-2-4-1
+    return wide('CMF') if n >= 4 else 'CMF'               # a middle line in 4-1-2-1-2 style shapes
+
+
+WIDE = {'LB', 'RB', 'LMF', 'RMF', 'LWF', 'RWF'}
+
+
+def slot_code(formation, grid, pos):
+    """PES 2021 position: the video-based mapping above, with two changes:
+    nothing is guessed across the width (all central players in one line share one position,
+    the most common one in that line, CMF breaking ties), and there is no SS (it becomes CF)."""
+    code = _video_code(formation, grid, pos)
+    if code is None or code in WIDE or code == 'GK':
+        return code
+    try:
+        lines = [int(x) for x in formation.split('-')]
+        row = int(grid.split(':')[0])
+        n = lines[row - 2]
+    except Exception:
+        return 'CF' if code == 'SS' else code
+    line = [_video_code(formation, f'{row}:{c}', pos) for c in range(1, n + 1)]
+    central = ['CF' if c == 'SS' else c for c in line if c and c not in WIDE]
+    best = max(set(central), key=lambda c: (central.count(c), c == 'CMF'))
+    return best
 
 
 # ---------------- UEFA ranking ----------------
