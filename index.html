@@ -1,0 +1,891 @@
+<title>This Time Next Year</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Rubik:wght@400;500;700&display=swap">
+<style>
+/* Layout: one centred column (max 980px), stadium-night look; draft splits into list | pitch on wide screens */
+:root{
+  --night:#0B1626; --panel:#13233A; --panel-2:#1A2E4A; --line:#294060;
+  --gold:#E3B341; --gold-ink:#1C1606; --text:#F3EFE6; --muted:#A3B1C4;
+  --win:#5CC08A; --loss:#E57A62; --draw:#C9CED6;
+  --grass:#103828; --grass-2:#13422F; --chalk:rgba(243,239,230,.28);
+  --gA:#E3B341; --gB:#9BD3A6; --gC:#C9CED6; --gD:#E7A86F; --gE:#E57A62;
+  --display:'Oswald','Arial Narrow',Arial,sans-serif;
+  --body:'Rubik','Segoe UI',Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--night);color:var(--text)}
+body{font:15px/1.5 var(--body);margin:0}
+.wrap{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:12px 120px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.1;text-wrap:balance;text-transform:uppercase;letter-spacing:.01em}
+.eyebrow{font:500 12px/1.2 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:6px 14px}
+.mark{font:700 16px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
+.mark span{color:var(--gold)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
+.chip.hot{border-color:var(--gold);color:var(--gold)}
+.chip.warn{border-color:var(--loss);color:var(--loss)}
+
+.btn{border:0;border-radius:10px;padding:13px 18px;font:600 16px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;background:var(--panel-2);color:var(--text)}
+.btn.primary{background:var(--gold);color:var(--gold-ink)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap}
+.btnrow .btn{flex:1 1 160px}
+
+.card{background:var(--panel);border-radius:14px;padding:18px}
+.stack{display:flex;flex-direction:column;gap:16px}
+
+/* home */
+.hero{padding:26px 20px 22px;border-radius:16px;background:
+  radial-gradient(120% 90% at 50% -10%,rgba(227,179,65,.22),transparent 60%),
+  repeating-linear-gradient(90deg,var(--grass) 0 40px,var(--grass-2) 40px 80px);
+  border:1px solid var(--line)}
+.hero h1{font-size:clamp(44px,12vw,88px);font-weight:700;line-height:.95}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero p{margin:12px 0 0;max-width:46ch;color:var(--text)}
+.quote{margin-top:14px;font-style:italic;color:var(--gold);font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat{background:var(--panel);border-radius:12px;padding:12px}
+.stat b{display:block;font:600 28px/1 var(--display)}
+.stat span{font-size:12px;color:var(--muted)}
+details.rules{background:var(--panel);border-radius:14px;padding:4px 18px}
+details.rules summary{padding:14px 0;font:600 16px var(--display);letter-spacing:.06em;text-transform:uppercase;list-style:none}
+details.rules summary::after{content:"+";float:right;color:var(--gold)}
+details.rules[open] summary::after{content:"−"}
+details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:column;gap:8px}
+.dyn{border:1px solid var(--gold);background:linear-gradient(180deg,rgba(227,179,65,.12),transparent)}
+.dyn h3{font-size:22px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pill{background:var(--panel-2);border-radius:999px;padding:4px 10px;font-size:13px}
+.foot{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* draft */
+.drafthead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.drafthead h2{font-size:28px}
+.pots{display:grid;grid-template-columns:repeat(11,1fr);gap:4px;margin-top:12px}
+.pot{height:34px;border-radius:6px;display:grid;place-items:center;font:600 13px var(--display);background:var(--panel);color:var(--muted);border:1px solid transparent}
+.pot.done{background:var(--gold);color:var(--gold-ink)}
+.pot.now{border-color:var(--gold);color:var(--gold);animation:pulse 1.6s ease-in-out infinite}
+.pot.off{opacity:.25;text-decoration:line-through}
+@keyframes pulse{50%{box-shadow:0 0 0 4px rgba(227,179,65,.18)}}
+.grid2{display:grid;gap:16px}
+@media(min-width:820px){.grid2{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}.sticky{position:sticky;top:12px}}
+.reveal{animation:flip .5s ease-out}
+@keyframes flip{from{transform:rotateX(70deg);opacity:0}to{transform:none;opacity:1}}
+.clubcard h2{font-size:clamp(30px,8vw,44px);font-weight:700}
+.clubcard .meta{margin-top:6px;color:var(--muted);font-size:14px}
+.note{margin-top:10px;font-size:13px;color:var(--gold)}
+.plist{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center;background:var(--panel-2);border-radius:10px;padding:8px 8px 8px 12px;border:1px solid transparent;text-align:left;width:100%}
+.prow:hover:not(:disabled){border-color:var(--gold)}
+.prow:disabled{opacity:.38;cursor:not-allowed}
+.prow .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .pos{font-size:12px;color:var(--muted);margin-top:1px}
+.prow .pos b{color:var(--text);font-weight:500}
+.prow .go{font:600 13px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--gold);padding:0 4px}
+.g{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;font:600 16px/1 var(--display);color:#14181F;position:relative}
+.g small{position:absolute;top:-8px;font:500 9px/1 var(--body);color:var(--muted);letter-spacing:.06em}
+.gA{background:var(--gA)}.gB{background:var(--gB)}.gC{background:var(--gC)}.gD{background:var(--gD)}.gE{background:var(--gE)}
+
+/* pitch */
+.pitch{position:relative;width:100%;max-width:520px;margin:0 auto;aspect-ratio:68/88;border-radius:14px;overflow:hidden;
+  background:repeating-linear-gradient(180deg,var(--grass) 0 11.1%,var(--grass-2) 11.1% 22.2%);border:2px solid var(--chalk)}
+.pitch::before{content:"";position:absolute;left:22%;right:22%;bottom:-2px;height:15%;border:2px solid var(--chalk);border-bottom:0}
+.pitch::after{content:"";position:absolute;left:30%;right:30%;top:-24%;height:34%;border:2px solid var(--chalk);border-radius:50%}
+.slot{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;width:84px;z-index:1}
+.dot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:600 12px var(--display);letter-spacing:.04em}
+.slot.empty .dot{border:2px dashed var(--chalk);color:var(--chalk)}
+.slot.full .dot{background:var(--gold);color:var(--gold-ink);box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.slot.full .dot{background:var(--kit);color:var(--kit-ink);border:2px solid rgba(11,22,38,.55)}
+.slot.kept .dot{box-shadow:0 0 0 3px var(--gold),0 4px 12px rgba(0,0,0,.4)}
+.slot[data-pid]{cursor:help}
+.kit{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--kit);border:2px solid var(--kit-ink);vertical-align:-1px;margin-right:5px;flex:none}
+.pcard{position:fixed;z-index:20;width:200px;background:var(--panel-2);border:1px solid var(--gold);border-radius:10px;padding:10px 12px;box-shadow:0 10px 28px rgba(0,0,0,.5);pointer-events:none;font-size:12px;line-height:1.35}
+.pcard h4{margin:0;font:600 16px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
+.pcard .r{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-top:1px solid var(--line)}
+.pcard .r span:first-child{color:var(--muted)}
+.pcard .poss{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+.pcard .poss b,.pcard .poss i{font-style:normal;font-weight:500;font-size:11px;padding:0 5px;border-radius:4px;background:var(--panel)}
+.pcard .poss b{background:var(--gold);color:var(--gold-ink)}
+.pcard .gr{display:flex;gap:6px;margin-top:12px}
+.slot .lbl{font-size:11px;line-height:1.15;text-align:center;background:rgba(11,22,38,.78);padding:2px 6px;border-radius:5px;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shapes{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+.shape{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 10px;font:500 14px var(--display);letter-spacing:.04em}
+.shape.on{border-color:var(--gold);background:var(--gold);color:var(--gold-ink)}
+.shape.ok{border-color:var(--gold);color:var(--gold)}
+
+/* cup */
+.feed{display:flex;flex-direction:column;gap:8px}
+.ev{background:var(--panel);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;animation:rise .35s ease-out}
+@keyframes rise{from{transform:translateY(8px);opacity:0}}
+.ev .rd{grid-column:1/-1;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.ev .opp{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev .opp small{color:var(--muted);font-weight:400}
+.score{font:600 24px/1 var(--display);display:flex;align-items:center;gap:8px}
+.res{font:600 11px/1 var(--body);padding:4px 7px;border-radius:5px;color:#14181F}
+.res.W{background:var(--win)}.res.D{background:var(--draw)}.res.L{background:var(--loss)}
+.ev .extra{grid-column:1/-1;font-size:13px;color:var(--muted)}
+.ev.big{border:1px solid var(--gold)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-weight:500;color:var(--muted);text-align:right;padding:6px 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.tbl th:nth-child(2),.tbl td:nth-child(2){text-align:left}
+.tbl td{padding:5px 6px;text-align:right;border-top:1px solid var(--line)}
+.tbl td:first-child{width:34px}
+.tbl tr.z1 td:first-child{box-shadow:inset 3px 0 var(--gold)}
+.tbl tr.z2 td:first-child{box-shadow:inset 3px 0 #6E8FC0}
+.tbl tr.me td{background:rgba(227,179,65,.16);font-weight:600}
+.tblwrap{overflow-x:auto}
+.dock{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,transparent,var(--night) 30%);z-index:5}
+.dock .btnrow{max-width:980px;margin:0 auto}
+
+/* result */
+.verdict{text-align:center;padding:30px 18px}
+.verdict h1{font-size:clamp(40px,11vw,76px);font-weight:700}
+.verdict.champ h1{color:var(--gold)}
+.keep{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.krow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;background:var(--panel-2);border-radius:10px;padding:8px 12px;border:1px solid transparent;text-align:left;width:100%}
+.krow.on{border-color:var(--gold)}
+.box{width:22px;height:22px;border-radius:6px;border:2px solid var(--line);display:grid;place-items:center;font-size:14px;color:var(--gold-ink)}
+.krow.on .box{background:var(--gold);border-color:var(--gold)}
+.toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:var(--gold);color:var(--gold-ink);padding:10px 16px;border-radius:10px;font-weight:500;z-index:9;max-width:calc(100% - 32px);text-align:center}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+@media(max-width:420px){.stats{grid-template-columns:repeat(2,1fr)}.slot{width:64px}.slot .lbl{max-width:64px;font-size:10px}.dot{width:34px;height:34px}}
+</style>
+
+<div class="wrap" id="app"></div>
+<div id="toast" class="toast" hidden></div>
+<div id="pcard" class="pcard" hidden></div>
+
+<script>
+"use strict";
+/* ================= CONFIG ================= */
+const CFG = {
+  SHOOTOUT_P: 0.686,          // World Cup shootout conversion, all tournaments (Opta / The Analyst)
+  TIMER_MS: 10 * 60 * 1000,   // 10 minutes to start the next run, 10 minutes to finish a started run
+  KEEP: { league: 0, playoff: 1, r16: 2, qf: 3, sf: 4, final: 5, champion: 6 },
+  WA: { GK: 1, DEF: 2, MID: 3, FWD: 4 },   // balls per result, goals scored drum
+  WD: { GK: 4, DEF: 3, MID: 2, FWD: 1 },   // balls per result, goals conceded drum
+  STORE: 'ttny.v2'
+};
+const STAGE_NAME = { league: 'League phase', playoff: 'Knockout play-off', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', champion: 'Champions' };
+
+/* ================= HELPERS ================= */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const MR = Math.random;
+const pick = (a, r = MR) => a[Math.floor(r() * a.length)];
+function shuffle(a, r = MR){ for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function poisson(l, r){ const L = Math.exp(-l); let k = 0, p = 1; do { k++; p *= r(); } while (p > L); return k - 1; }
+const rr = x => Number.isInteger(x) ? x : (MR() < .5 ? Math.floor(x) : Math.ceil(x));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const $ = s => document.querySelector(s);
+
+/* ================= DEMO WORLD ================= */
+// Approximate UEFA 5-year club ranking order. Players and results are invented.
+const CLUBS = [
+['Real Madrid','ESP'],['Manchester City','ENG'],['Bayern München','GER'],['Paris Saint-Germain','FRA'],['Liverpool','ENG'],['Inter','ITA'],['Chelsea','ENG'],['Borussia Dortmund','GER'],['Roma','ITA'],['Barcelona','ESP'],
+['Manchester United','ENG'],['Arsenal','ENG'],['Bayer Leverkusen','GER'],['Atlético Madrid','ESP'],['Benfica','POR'],['Atalanta','ITA'],['Villarreal','ESP'],['Porto','POR'],['Milan','ITA'],['RB Leipzig','GER'],
+['Lazio','ITA'],['Juventus','ITA'],['Eintracht Frankfurt','GER'],['Club Brugge','BEL'],['Rangers','SCO'],['Feyenoord','NED'],['Sporting CP','POR'],['Tottenham','ENG'],['PSV','NED'],['Ajax','NED'],
+['Fiorentina','ITA'],['West Ham','ENG'],['Napoli','ITA'],['Marseille','FRA'],['Olympiacos','GRE'],['Lille','FRA'],['Slavia Praha','CZE'],['Bodø/Glimt','NOR'],['Celtic','SCO'],['Lyon','FRA'],
+['Shakhtar Donetsk','UKR'],['Real Sociedad','ESP'],['Sevilla','ESP'],['Monaco','FRA'],['Real Betis','ESP'],['Union Saint-Gilloise','BEL'],['Galatasaray','TUR'],['Fenerbahçe','TUR'],['Braga','POR'],['Salzburg','AUT'],
+['Dinamo Zagreb','CRO'],['Freiburg','GER'],['Qarabağ','AZE'],['Crvena zvezda','SRB'],['PAOK','GRE'],['Viktoria Plzeň','CZE'],['Ferencváros','HUN'],['Young Boys','SUI'],['Sparta Praha','CZE'],['AZ Alkmaar','NED'],
+['Copenhagen','DEN'],['Twente','NED'],['Midtjylland','DEN'],['Stuttgart','GER'],['Rennes','FRA'],['Wolfsburg','GER'],['Bologna','ITA'],['Gent','BEL'],['Molde','NOR'],['Anderlecht','BEL'],
+['Union Berlin','GER'],['Lens','FRA'],['Nice','FRA'],['Sturm Graz','AUT'],['Ludogorets','BUL'],['Leicester City','ENG'],['Hoffenheim','GER'],['Basel','SUI'],['Maccabi Tel Aviv','ISR'],['Athletic Club','ESP'],
+['Aston Villa','ENG'],['Newcastle United','ENG'],['Girona','ESP'],['Cercle Brugge','BEL'],['Rapid Wien','AUT'],['Legia Warszawa','POL'],['Malmö','SWE'],['FCSB','ROU'],['Lugano','SUI'],['Servette','SUI'],
+['Brest','FRA'],['Celje','SLO'],['Jagiellonia','POL'],['Djurgården','SWE'],['Pafos','CYP'],['Utrecht','NED'],['Brann','NOR'],['Mainz','GER'],['Beşiktaş','TUR'],['Slovan Bratislava','SVK']
+];
+const COUNTRY = { ESP:'Spain',ENG:'England',GER:'Germany',FRA:'France',ITA:'Italy',POR:'Portugal',BEL:'Belgium',SCO:'Scotland',NED:'Netherlands',GRE:'Greece',CZE:'Czechia',NOR:'Norway',UKR:'Ukraine',TUR:'Türkiye',AUT:'Austria',CRO:'Croatia',AZE:'Azerbaijan',SRB:'Serbia',HUN:'Hungary',SUI:'Switzerland',DEN:'Denmark',BUL:'Bulgaria',ISR:'Israel',POL:'Poland',SWE:'Sweden',ROU:'Romania',SLO:'Slovenia',CYP:'Cyprus',SVK:'Slovakia' };
+const NAMES = {
+  en:['Jack Harry Callum Mason Oliver Reece Lewis Ethan Kieran Tom','Hughes Turner Carter Bennett Ward Price Shaw Brooks Fletcher Harper Lowe Marsh Barker Holt'],
+  es:['Pablo Álvaro Dani Pedro Mikel Rodrigo Iker Sergio Marcos Unai','García Navarro Ruiz Morales Herrera Romero Gil Ortega Castro Molina Delgado Vega Cano Prieto'],
+  de:['Florian Leon Niklas Jonas Felix Maximilian Lukas Tim Jan Moritz','Wagner Becker Hofmann Krämer Vogt Brandt Seidel Lang Keller Franke Lorenz Hahn'],
+  it:['Lorenzo Federico Davide Alessandro Matteo Giacomo Riccardo Andrea Marco Luca','Bianchi Ricci Esposito Romano Colombo Marchetti Greco Conti Galli Ferraro Rinaldi Fontana'],
+  fr:['Antoine Théo Lucas Hugo Jules Rayan Mathys Enzo Nathan Yanis','Dubois Lefèvre Moreau Girard Roux Fournier Mercier Blanc Garnier Faure Chevalier Diallo Camara Traoré'],
+  pt:['João Diogo Gonçalo Nuno Francisco Tiago Rafael Pedro Rui André','Santos Ferreira Costa Pereira Neves Dias Mendes Carvalho Lopes Pinto Ribeiro Sousa'],
+  nl:['Ryan Mats Teun Daan Jesse Bram Sem Luuk Thijs Stijn','Bakker Visser Smit Meijer Mulder Bos Vos Peters Hendriks Dekker de Groot van Leeuwen'],
+  tr:['Arda Kerem Emre Mert Burak Can Yusuf Eren Kaan Ozan','Yılmaz Kaya Demir Çelik Şahin Öztürk Aydın Arslan Doğan Kılıç Koç Kurt'],
+  gr:['Giorgos Kostas Dimitris Nikos Christos Vangelis Petros Andreas','Nikolaidis Georgiou Oikonomou Karagiannis Vlachos Antoniou Makris Dimitriou Stavrou Papadakis'],
+  nd:['Martin Kristoffer Mikkel Rasmus Viktor Jens Oscar Emil Elias Magnus','Hansen Nielsen Larsen Berg Johansen Lindqvist Andersson Pedersen Olsen Dahl Lund Strand'],
+  sl:['Luka Marko Filip Lovro Dušan Aleksandar Jakub Tomáš Stefan Andrei Mateusz Ivan','Petrović Jovanović Novak Horvat Ilić Kovač Marković Nowak Dvořák Popescu Ivanov Kostić Babić Kral'],
+  af:['Ibrahim Moussa Emmanuel Samuel Victor Ismaila Kwame Yaw Chidi Serge','Diop Ndiaye Mensah Okafor Traoré Keita Koné Boateng Adeyemi Sarr Eze Bamba'],
+  ma:['Youssef Achraf Hakim Sofiane Amine Ayoub Bilal Nayef','Idrissi Benali Haddad Amrani Ziani Bouzid Tahiri Alaoui'],
+  jp:['Kenji Takumi Daichi Ritsu Kaoru Wataru Ko Ayase','Tanaka Sato Suzuki Ito Watanabe Yamamoto Nakamura Kobayashi'],
+  kr:['Min-jae Kang-in Jae-sung Gue-sung Woo-yeong Seung-ho','Kim Lee Park Choi Jung Kang Cho Yoon'],
+  il:['Eran Omer Dor Liel Manor Itay','Cohen Levi Peretz Biton Dahan Avraham'],
+  hu:['Dániel Bence Márk Ádám Levente Balázs','Nagy Kovács Tóth Szabó Horváth Varga Kiss Molnár'],
+  xx:['Gabriel Lucas Mateo Samuel Mohamed Ibrahim Kenji Joon Diego Thiago Moussa Emmanuel','Oliveira Souza Fernández Álvarez Mensah Okafor Diop Tanaka Kim Mendoza Rojas Haddad Keita Sato']
+};
+const NAT = { // code: [name, kit colour, kit text colour, name pool]
+  ENG:['England','#FFFFFF','#1B2A55','en'], SCO:['Scotland','#1C2C5B','#FFFFFF','en'], ESP:['Spain','#C60B1E','#FFC400','es'], GER:['Germany','#FFFFFF','#111111','de'],
+  ITA:['Italy','#0A64C8','#FFFFFF','it'], FRA:['France','#1F2F6B','#FFFFFF','fr'], POR:['Portugal','#A6192E','#F7D417','pt'], NED:['Netherlands','#FF6A00','#1C2C5B','nl'],
+  BEL:['Belgium','#D90E1E','#FDDA24','fr'], TUR:['Türkiye','#E30A17','#FFFFFF','tr'], GRE:['Greece','#0D5EAF','#FFFFFF','gr'], CZE:['Czechia','#D7141A','#FFFFFF','sl'],
+  NOR:['Norway','#BA0C2F','#FFFFFF','nd'], DEN:['Denmark','#C8102E','#FFFFFF','nd'], SWE:['Sweden','#FECC02','#005B99','nd'], UKR:['Ukraine','#FFD500','#0057B7','sl'],
+  AUT:['Austria','#ED2939','#FFFFFF','de'], SUI:['Switzerland','#DA291C','#FFFFFF','de'], CRO:['Croatia','#FFFFFF','#E3001B','sl'], SRB:['Serbia','#C6363C','#FFFFFF','sl'],
+  AZE:['Azerbaijan','#00A3D9','#FFFFFF','sl'], HUN:['Hungary','#CE2939','#FFFFFF','hu'], POL:['Poland','#FFFFFF','#DC143C','sl'], ROU:['Romania','#FCD116','#002B7F','sl'],
+  SLO:['Slovenia','#FFFFFF','#007A3D','sl'], SVK:['Slovakia','#FFFFFF','#0B4EA2','sl'], BUL:['Bulgaria','#FFFFFF','#00966E','sl'], CYP:['Cyprus','#0055A4','#FFFFFF','gr'],
+  ISR:['Israel','#FFFFFF','#0038B8','il'], BRA:['Brazil','#FEDD00','#009C3B','pt'], ARG:['Argentina','#75AADB','#14213D','es'], URU:['Uruguay','#5CBFEB','#111111','es'],
+  COL:['Colombia','#FCD116','#003893','es'], SEN:['Senegal','#FFFFFF','#00853F','af'], NGA:['Nigeria','#008751','#FFFFFF','af'], GHA:['Ghana','#FFFFFF','#111111','af'],
+  CIV:['Ivory Coast','#F77F00','#FFFFFF','af'], CMR:['Cameroon','#007A5E','#FCD116','af'], MAR:['Morocco','#C1272D','#FFFFFF','ma'], JPN:['Japan','#0B2A6F','#FFFFFF','jp'],
+  KOR:['South Korea','#C8102E','#FFFFFF','kr'], USA:['USA','#FFFFFF','#0A3161','en']
+};
+const FOREIGN = { FRA:10,BRA:10,ESP:6,POR:6,ARG:6,NED:5,BEL:4,GER:4,ENG:4,ITA:3,SEN:4,NGA:3,GHA:3,CIV:3,MAR:4,CMR:2,CRO:3,SRB:3,DEN:3,NOR:2,SWE:2,URU:3,COL:3,JPN:3,KOR:2,USA:3,POL:2,SUI:2,AUT:2,TUR:2,UKR:2,CZE:2,SCO:1,GRE:1 };
+const EXTRA_KITS = { // nationality name: [kit, text]
+  'Algeria':['#FFFFFF','#006233'],'Mali':['#14B53A','#FCD116'],'Guinea':['#CE1126','#FCD116'],'Egypt':['#C8102E','#FFFFFF'],'Tunisia':['#E70013','#FFFFFF'],
+  'Ecuador':['#FFDD00','#034EA2'],'Paraguay':['#D52B1E','#FFFFFF'],'Chile':['#D52B1E','#FFFFFF'],'Mexico':['#006847','#FFFFFF'],'Canada':['#D80621','#FFFFFF'],
+  'Australia':['#FFCD00','#00843D'],'Wales':['#C8102E','#FFFFFF'],'Republic of Ireland':['#169B62','#FFFFFF'],'Ireland':['#169B62','#FFFFFF'],'Northern Ireland':['#00573F','#FFFFFF'],
+  'Georgia':['#FFFFFF','#E3001B'],'Albania':['#E41E20','#111111'],'Kosovo':['#244AA5','#D0A650'],'Bosnia and Herzegovina':['#002395','#FECB00'],'North Macedonia':['#D20000','#FFE600'],
+  'Montenegro':['#C40308','#D4AF37'],'Iceland':['#02529C','#FFFFFF'],'Finland':['#FFFFFF','#002F6C'],'Burkina Faso':['#009E49','#FCD116'],'Gabon':['#FCD116','#009E60'],
+  'Congo DR':['#007FFF','#F7D618'],'Angola':['#CC092F','#111111'],'Cape Verde Islands':['#003893','#FFFFFF'],'Jamaica':['#FED100','#009B3A'],'Venezuela':['#7B1E2B','#FFFFFF'],
+  'Peru':['#FFFFFF','#D91023'],'Iran':['#FFFFFF','#DA0000'],'Armenia':['#D90012','#FFFFFF'],'Russia':['#FFFFFF','#0039A6'],'Lithuania':['#FDB913','#006A44'],
+  'Luxembourg':['#EF3340','#FFFFFF'],'Zambia':['#198A00','#FFFFFF'],'Zimbabwe':['#FFD200','#006400'],'Gambia':['#CE1126','#FFFFFF'],'Togo':['#FFCE00','#006A4E'],
+  'Benin':['#FCD116','#008751'],'Equatorial Guinea':['#E32118','#FFFFFF'],'Suriname':['#377E3F','#FFFFFF'],'Curaçao':['#002B7F','#F9E814'],'Haiti':['#00209F','#FFFFFF'],
+  'China':['#DE2910','#FFDE00'],'Uzbekistan':['#FFFFFF','#0099B5'],'New Zealand':['#FFFFFF','#111111'],'South Africa':['#FFB81C','#007749'],'Kenya':['#BB0000','#FFFFFF'],
+  'Slovakia':['#FFFFFF','#0B4EA2'],'Estonia':['#0072CE','#FFFFFF'],'Latvia':['#9E3039','#FFFFFF'],'Belarus':['#C8313E','#FFFFFF'],'Moldova':['#0046AE','#FFD200'],
+  'Cyprus':['#0055A4','#FFFFFF'],'Israel':['#FFFFFF','#0038B8'],'Costa Rica':['#CE1126','#FFFFFF'],'Honduras':['#FFFFFF','#0073CF'],'Panama':['#DA121A','#FFFFFF'],'Bolivia':['#007934','#FFFFFF'],'Sierra Leone':['#1EB53A','#FFFFFF'],'Mozambique':['#009A44','#FCE100'],'Comoros':['#3A75C4','#FFFFFF']
+};
+const NAT_ALIAS = { 'Turkey':'Türkiye', 'Czech Republic':'Czechia', 'Korea Republic':'South Korea', "Côte d'Ivoire":'Ivory Coast', "Cote D'Ivoire":'Ivory Coast', 'United States':'USA', 'Holland':'Netherlands', 'Cape Verde':'Cape Verde Islands', 'DR Congo':'Congo DR' };
+const KIT_BY_NAME = {};
+Object.values(NAT).forEach(v => KIT_BY_NAME[v[0]] = v);
+Object.entries(EXTRA_KITS).forEach(([n, [b, f]]) => KIT_BY_NAME[n] = [n, b, f]);
+const natInfo = n => NAT[n] || KIT_BY_NAME[n] || KIT_BY_NAME[NAT_ALIAS[n]] || [n || 'Unknown', '#C9CED6', '#0B1626'];
+const NGROUP = { ENG:'en',SCO:'en',ESP:'es',GER:'de',AUT:'de',SUI:'de',ITA:'it',FRA:'fr',BEL:'fr',POR:'pt',NED:'nl',TUR:'tr',GRE:'gr',CYP:'gr',NOR:'nd',DEN:'nd',SWE:'nd',CZE:'sl',SRB:'sl',CRO:'sl',SVK:'sl',POL:'sl',SLO:'sl',UKR:'sl',BUL:'sl',ROU:'sl',AZE:'sl',HUN:'hu',ISR:'xx' };
+
+const LINE = { GK:'GK', CB:'DEF', LB:'DEF', RB:'DEF', LWB:'DEF', RWB:'DEF', DM:'MID', CM:'MID', AM:'MID', LM:'MID', RM:'MID', LW:'FWD', RW:'FWD', ST:'FWD' };
+const FORMS = {
+  '4-3-3':  [['GK',50,90],['LB',14,70],['CB',37,75],['CB',63,75],['RB',86,70],['DM',50,58],['CM',29,46],['CM',71,46],['LW',16,24],['ST',50,15],['RW',84,24]],
+  '4-2-3-1':[['GK',50,90],['LB',14,70],['CB',37,75],['CB',63,75],['RB',86,70],['DM',36,57],['DM',64,57],['LW',16,34],['AM',50,38],['RW',84,34],['ST',50,15]],
+  '4-4-2':  [['GK',50,90],['LB',14,70],['CB',37,75],['CB',63,75],['RB',86,70],['LM',14,44],['CM',37,50],['CM',63,50],['RM',86,44],['ST',36,17],['ST',64,17]],
+  '4-1-4-1':[['GK',50,90],['LB',14,70],['CB',37,75],['CB',63,75],['RB',86,70],['DM',50,60],['LM',14,38],['CM',36,44],['CM',64,44],['RM',86,38],['ST',50,15]],
+  '3-5-2':  [['GK',50,90],['CB',26,74],['CB',50,77],['CB',74,74],['LWB',11,50],['DM',50,58],['CM',30,44],['CM',70,44],['RWB',89,50],['ST',36,17],['ST',64,17]],
+  '3-4-3':  [['GK',50,90],['CB',26,74],['CB',50,77],['CB',74,74],['LWB',11,50],['CM',36,52],['CM',64,52],['RWB',89,50],['LW',18,23],['ST',50,15],['RW',82,23]],
+  '5-3-2':  [['GK',50,90],['LWB',10,62],['CB',29,75],['CB',50,78],['CB',71,75],['RWB',90,62],['CM',26,45],['CM',50,49],['CM',74,45],['ST',36,17],['ST',64,17]]
+};
+const FORM_ORDER = Object.keys(FORMS);
+
+function buildWorld(){
+  const r = mulberry32(20261008);
+  const C = {}, P = {};
+  const SQUAD = { GK:[1,.08,.03], CB:[1,1,.5,.2], LB:[1,.3], RB:[1,.3], DM:[1,.45], CM:[1,.9,.4], AM:[1,.35], LW:[1,.35], RW:[1,.35], ST:[1,.5] };
+  let usedNames = new Set();   // unique within a club
+  const foreign = Object.entries(FOREIGN);
+  function nation(ctry){
+    if (r() < .55) return ctry;
+    const pool = foreign.filter(([c]) => c !== ctry), tot = pool.reduce((a, x) => a + x[1], 0);
+    let x = r() * tot; for (const [c, w] of pool){ x -= w; if (x <= 0) return c; } return pool[0][0];
+  }
+  function name(nat){
+    for (let i = 0; i < 200; i++){
+      const g = NAMES[NAT[nat][3]];
+      const f = pick(g[0].split(' '), r), s = pick(g[1].replace('de Groot','de_Groot').replace('van Leeuwen','van_Leeuwen').split(' '), r).replace('_',' ');
+      const n = f + ' ' + s;
+      if (!usedNames.has(n)){ usedNames.add(n); return n; }
+    }
+    return 'Player ' + usedNames.size;
+  }
+  function poses(p){
+    const s = new Set([p]); const a = x => s.add(x);
+    switch (p){
+      case 'CB': if (r() < .3) a('DM'); break;
+      case 'LB': a('LWB'); if (r() < .3) a('LM'); break;
+      case 'RB': a('RWB'); if (r() < .3) a('RM'); break;
+      case 'DM': a('CM'); if (r() < .25) a('CB'); break;
+      case 'CM': if (r() < .5) a('DM'); if (r() < .4) a('AM'); break;
+      case 'AM': a('CM'); if (r() < .3) a(r() < .5 ? 'LW' : 'RW'); break;
+      case 'LW': a('LM'); if (r() < .3) a('ST'); if (r() < .2) a('RW'); break;
+      case 'RW': a('RM'); if (r() < .3) a('ST'); if (r() < .2) a('LW'); break;
+      case 'ST': if (r() < .25) a(r() < .5 ? 'LW' : 'RW'); break;
+    }
+    return [...s];
+  }
+  CLUBS.forEach(([nm, ctry], i) => {
+    const id = 'c' + (i + 1);
+    usedNames = new Set();
+    const club = { id, name: nm, ctry, rank: i + 1, form: pick(['4-3-3','4-2-3-1','4-4-2','3-5-2','3-4-3','4-3-3','4-2-3-1'], r), squad: [], res: [] };
+    for (const [pos, regs] of Object.entries(SQUAD)) regs.forEach((reg, k) => {
+      const pid = id + 'p' + club.squad.length;
+      const nat = nation(ctry);
+      P[pid] = { id: pid, name: name(nat), nat, age: 18 + Math.floor(r() * r() * 14 + r() * 6), club: id, prim: pos, pos: poses(pos), line: LINE[pos], reg: reg * (0.85 + r() * .3), apps: [] };
+      club.squad.push(pid);
+    });
+    C[id] = club;
+  });
+  const ids = Object.keys(C);
+  // fixtures within the last 365 days: domestic games between top-100 clubs + European games
+  const fx = [];
+  const byC = {};
+  ids.forEach(id => (byC[C[id].ctry] = byC[C[id].ctry] || []).push(id));
+  for (const g of Object.values(byC)) for (let i = 0; i < g.length; i++) for (let j = i + 1; j < g.length; j++){
+    const n = g.length <= 3 ? 4 : 2;
+    for (let k = 0; k < n; k++) fx.push([g[i], g[j]]);
+  }
+  let slots = [];
+  ids.forEach(id => { const n = Math.max(3, Math.min(14, Math.round(12 - .075 * C[id].rank + (r() * 4 - 2)))); for (let k = 0; k < n; k++) slots.push(id); });
+  shuffle(slots, r);
+  while (slots.length > 1){
+    const a = slots.shift();
+    const j = slots.findIndex(b => b !== a && C[b].ctry !== C[a].ctry);
+    if (j < 0) continue;
+    const b = slots.splice(j, 1)[0];
+    fx.push([a, b]);
+  }
+  const str = id => 1 - (C[id].rank - 1) / 99;
+  function lineup(cid){
+    const club = C[cid], used = new Set(), out = [];
+    for (const [slot] of FORMS[club.form]){
+      let cands = club.squad.filter(p => !used.has(p) && P[p].pos.includes(slot));
+      if (!cands.length) cands = club.squad.filter(p => !used.has(p) && P[p].prim !== 'GK');
+      let tot = cands.reduce((s, p) => s + P[p].reg, 0), x = r() * tot, ch = cands[cands.length - 1];
+      for (const p of cands){ x -= P[p].reg; if (x <= 0){ ch = p; break; } }
+      used.add(ch); out.push(ch);
+    }
+    return out;
+  }
+  for (const [a, b] of fx){
+    const d = str(a) - str(b);
+    const ga = poisson(1.4 * Math.exp(1.15 * d), r), gb = poisson(1.4 * Math.exp(-1.15 * d), r);
+    const t = r() * 365;
+    C[a].res.push({ t, s: ga, c: gb, opp: b });
+    C[b].res.push({ t, s: gb, c: ga, opp: a });
+    lineup(a).forEach(p => P[p].apps.push({ t, s: ga, c: gb }));
+    lineup(b).forEach(p => P[p].apps.push({ t, s: gb, c: ga }));
+  }
+  // last 10 for clubs and players
+  for (const id of ids){
+    const c = C[id]; c.res.sort((x, y) => x.t - y.t);
+    c.n = c.res.length; c.sc10 = c.res.slice(0, 10).map(x => x.s); c.co10 = c.res.slice(0, 10).map(x => x.c);
+  }
+  for (const p of Object.values(P)){
+    p.apps.sort((x, y) => x.t - y.t);
+    p.starts = p.apps.length;
+    if (p.starts >= 10){ const l = p.apps.slice(0, 10); p.sc = l.map(x => x.s); p.co = l.map(x => x.c); }
+    delete p.apps;
+  }
+  return finalize(C, P, { live: false });
+}
+
+/* Shared by demo and live data: eligibility, A-E grades, pots, opponent pool */
+function finalize(C, P, meta){
+  const ids = Object.keys(C);
+  const elig = [];
+  for (const p of Object.values(P)){
+    if (p.starts >= 10 && p.sc && p.sc.length === 10){
+      p.avgS = p.sc.reduce((a, b) => a + b, 0) / 10; p.avgC = p.co.reduce((a, b) => a + b, 0) / 10;
+      elig.push(p);
+    } else p.starts = Math.min(p.starts || 0, 9);
+  }
+  // relative grades: top 20% = A ... bottom 20% = E (ties share the better grade)
+  const grade = (arr, key, asc) => {
+    const s = [...arr].sort((x, y) => asc ? x[key] - y[key] : y[key] - x[key]);
+    let prevV = null, prevG = null;
+    s.forEach((p, i) => { const g = (prevV === p[key]) ? prevG : 'ABCDE'[Math.min(4, Math.floor(i / s.length * 5))]; p[asc ? 'def' : 'att'] = g; prevV = p[key]; prevG = g; });
+  };
+  grade(elig, 'avgS', false); grade(elig, 'avgC', true);
+  for (const id of ids){ C[id].elig = C[id].squad.filter(p => P[p].starts >= 10); }
+  const draftable = ids.filter(id => C[id].elig.length >= 11).sort((a, b) => C[a].rank - C[b].rank);
+  // 11 pots as even as possible; leftover clubs go to the lowest pots (100 clubs = 10 x 9 + 10)
+  const base = Math.floor(draftable.length / 11), extra = draftable.length % 11;
+  const pots = []; let at = 0;
+  for (let i = 0; i < 11; i++){ const n = base + (i >= 11 - extra ? 1 : 0); pots.push(draftable.slice(at, at + n)); at += n; }
+  const oppPool = ids.filter(id => C[id].n >= 10);
+  return { C, P, pots, oppPool, draftable, eligCount: elig.length, meta };
+}
+
+/* Live data produced by pipeline/update.py */
+function worldFromData(raw){
+  const C = {}, P = {};
+  for (const c of raw.clubs) C['t' + c.id] = { id: 't' + c.id, name: c.name, ctry: c.ctry, rank: c.rank, n: c.n, sc10: c.sc10, co10: c.co10, squad: [] };
+  for (const p of raw.players){
+    const club = C['t' + p.club]; if (!club) continue;
+    const prim = p.prim, pid = 'p' + p.id;
+    P[pid] = { id: pid, name: p.name, nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co };
+    club.squad.push(pid);
+  }
+  return finalize(C, P, { live: true, updated: raw.updated });
+}
+let W;
+
+/* ================= RATINGS DISPLAY ================= */
+const ORDER = 'ABCDE';
+const CAP = { GK: { att: 'C' }, DEF: { att: 'B' }, MID: { def: 'B' }, FWD: { def: 'C' } };
+function shown(p, k){ const cap = (CAP[p.line] || {})[k]; const g = p[k]; return cap && ORDER.indexOf(g) < ORDER.indexOf(cap) ? cap : g; }
+
+/* ================= FORMATION FIT ================= */
+function assign(pids, form){
+  const slots = FORMS[form], ps = pids.map(id => W.P[id]);
+  const opts = p => slots.filter(s => p.pos.includes(s[0])).length;
+  const order = ps.map((_, i) => i).sort((a, b) => opts(ps[a]) - opts(ps[b]));
+  const used = Array(11).fill(-1);
+  function bt(k){
+    if (k === order.length) return true;
+    const i = order[k], p = ps[i];
+    const c = slots.map((_, j) => j).filter(j => used[j] < 0 && p.pos.includes(slots[j][0]));
+    c.sort((a, b) => (slots[a][0] === p.prim ? 0 : 1) - (slots[b][0] === p.prim ? 0 : 1));
+    for (const j of c){ used[j] = i; if (bt(k + 1)) return true; used[j] = -1; }
+    return false;
+  }
+  return bt(0) ? used.map(i => i < 0 ? null : pids[i]) : null;
+}
+const feasible = pids => FORM_ORDER.filter(f => assign(pids, f));
+
+/* ================= MATCH ENGINE ================= */
+function drums(pids, form){
+  const a = assign(pids, form), sc = [], co = [];
+  a.forEach((pid, j) => {
+    const line = LINE[FORMS[form][j][0]], p = W.P[pid];
+    for (const v of p.sc) for (let k = 0; k < CFG.WA[line]; k++) sc.push(v);
+    for (const v of p.co) for (let k = 0; k < CFG.WD[line]; k++) co.push(v);
+  });
+  return { sc, co };
+}
+function drawGoals(drum, allowed){
+  const set = new Set(allowed);
+  const f = drum.filter(v => set.has(v));
+  if (f.length) return pick(f);
+  const b = pick(drum); let best = Infinity, near = [];
+  for (const v of set){ const d = Math.abs(v - b); if (d < best){ best = d; near = [v]; } else if (d === best) near.push(v); }
+  return rr((b + pick(near)) / 2);
+}
+function simMatch(a, b, T, et){
+  if (b === 'YOU'){ const x = simMatch(b, a, T, et); return [x[1], x[0]]; }
+  let ga, gb;
+  if (a === 'YOU'){ ga = drawGoals(T.sc, W.C[b].co10); gb = drawGoals(T.co, W.C[b].sc10); }
+  else { ga = drawGoals(W.C[a].sc10, W.C[b].co10); gb = drawGoals(W.C[b].sc10, W.C[a].co10); }
+  if (et){ ga = rr(ga / 3); gb = rr(gb / 3); }
+  return [ga, gb];
+}
+function shootout(){
+  const P = CFG.SHOOTOUT_P; let a = 0, b = 0, ka = 0, kb = 0; const kicks = [];
+  const over = () => a + (5 - ka) < b || b + (5 - kb) < a;
+  for (let i = 0; i < 5; i++){
+    let s = MR() < P; ka++; if (s) a++; kicks.push(s ? 1 : 0); if (over()) break;
+    s = MR() < P; kb++; if (s) b++; kicks.push(s ? 1 : 0); if (over()) break;
+  }
+  while (a === b){ const sa = MR() < P, sb = MR() < P; kicks.push(sa ? 1 : 0, sb ? 1 : 0); if (sa) a++; if (sb) b++; }
+  return { a, b, kicks };
+}
+function playTie(a, b, legs, T){
+  if (b === 'YOU'){ [a, b] = [b, a]; }
+  const t = { a, b, legs: [] };
+  for (let i = 0; i < legs; i++) t.legs.push(simMatch(a, b, T));
+  let ta = t.legs.reduce((s, l) => s + l[0], 0), tb = t.legs.reduce((s, l) => s + l[1], 0);
+  if (ta === tb){
+    t.et = simMatch(a, b, T, true); ta += t.et[0]; tb += t.et[1];
+    if (ta === tb){ t.pens = shootout(); }
+  }
+  t.agg = [ta, tb];
+  t.winner = ta > tb ? a : tb > ta ? b : (t.pens.a > t.pens.b ? a : b);
+  return t;
+}
+function drawOpponents(n){
+  const pool = [...W.oppPool], out = [];
+  while (out.length < n && pool.length){
+    const tot = pool.reduce((s, id) => s + (101 - W.C[id].rank), 0);
+    let x = MR() * tot, k = pool.length - 1;
+    for (let i = 0; i < pool.length; i++){ x -= 101 - W.C[pool[i]].rank; if (x <= 0){ k = i; break; } }
+    out.push(pool.splice(k, 1)[0]);
+  }
+  return out;
+}
+function buildCup(T){
+  const teams = shuffle(['YOU', ...drawOpponents(35)]);
+  const rows = {}; teams.forEach(t => rows[t] = { id: t, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, Pts: 0, tb: MR() });
+  const ours = [];
+  const rec = (x, gf, ga) => { const r = rows[x]; r.P++; r.GF += gf; r.GA += ga; if (gf > ga){ r.W++; r.Pts += 3; } else if (gf === ga){ r.D++; r.Pts++; } else r.L++; };
+  for (let i = 0; i < 36; i++) for (let k = 1; k <= 4; k++){
+    const a = teams[i], b = teams[(i + k) % 36];
+    const [ga, gb] = simMatch(a, b, T);
+    rec(a, ga, gb); rec(b, gb, ga);
+    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb] });
+    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga] });
+  }
+  shuffle(ours);
+  const table = Object.values(rows).sort((x, y) => y.Pts - x.Pts || (y.GF - y.GA) - (x.GF - x.GA) || y.GF - x.GF || x.tb - y.tb);
+  const seed = table.map(r => r.id);
+  const pos = seed.indexOf('YOU') + 1;
+  const ev = ours.map((m, i) => ({ k: 'md', n: i + 1, opp: m.opp, s: m.s }));
+  ev.push({ k: 'table', pos, table: table.map(r => [r.id, r.P, r.W, r.D, r.L, r.GF - r.GA, r.Pts]) });
+  let stage = 'league', alive = pos <= 24;
+  const run = (round, a, b, legs, key) => {
+    const t = playTie(a, b, legs, T);
+    if (t.a === 'YOU'){
+      if (legs === 2){
+        ev.push({ k: 'leg', round, leg: 1, opp: t.b, s: t.legs[0] });
+        ev.push({ k: 'leg', round, leg: 2, opp: t.b, s: t.legs[1], agg: t.agg, et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
+      } else ev.push({ k: 'final', round, opp: t.b, s: t.legs[0], et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
+      stage = t.winner === 'YOU' ? (key === 'final' ? 'champion' : stage) : key;
+    }
+    return t.winner;
+  };
+  // play-off: 9 v 24, 10 v 23 ... 16 v 17
+  if (pos > 24) stage = 'league';
+  const po = []; for (let i = 0; i < 8; i++) po.push(run(STAGE_NAME.playoff, seed[8 + i], seed[23 - i], 2, 'playoff'));
+  if (pos >= 9 && pos <= 24 && !po.includes('YOU')) alive = false;
+  // R16: seed k vs winner of the tie that holds seeds 17-k / 8+k (bracket order 1,8,4,5,2,7,3,6)
+  const r16pairs = [0, 7, 3, 4, 1, 6, 2, 5].map(k => [seed[k], po[7 - k]]);
+  const r16 = r16pairs.map(([a, b]) => run(STAGE_NAME.r16, a, b, 2, 'r16'));
+  const qf = [0, 2, 4, 6].map(i => run(STAGE_NAME.qf, r16[i], r16[i + 1], 2, 'qf'));
+  const sf = [0, 2].map(i => run(STAGE_NAME.sf, qf[i], qf[i + 1], 2, 'sf'));
+  const champ = run(STAGE_NAME.final, sf[0], sf[1], 1, 'final');
+  if (pos > 24) stage = 'league';
+  ev.push({ k: 'end', stage, champ });
+  return { ev, shown: 0, stage, champ, pos };
+}
+
+/* ================= STATE ================= */
+let S = { run: null, dyn: null, stats: { runs: 0, titles: 0, streak: 0, best: 0, bestStage: null }, armed: null };
+function load(){ try { const s = JSON.parse(localStorage.getItem(CFG.STORE) || 'null'); if (s && s.stats) S = Object.assign(S, s); } catch (e) {} }
+function save(){ try { localStorage.setItem(CFG.STORE, JSON.stringify({ run: S.run, dyn: S.dyn, stats: S.stats })); } catch (e) {} }
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 3200); }
+const fmt = ms => { ms = Math.max(0, ms); const m = Math.floor(ms / 60000), s = Math.floor(ms % 60000 / 1000); return m + ':' + String(s).padStart(2, '0'); };
+const nm = id => id === 'YOU' ? 'Your XI' : W.C[id].name;
+const STAGE_RANK = ['league', 'playoff', 'r16', 'qf', 'sf', 'final', 'champion'];
+
+function newRun(){
+  const kept = S.dyn && S.dyn.kept ? S.dyn.kept.filter(id => W.P[id] && W.P[id].starts >= 10) : [];
+  const potCount = 11 - kept.length;
+  S.run = { phase: 'draft', kept, picks: [...kept], order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: null, cup: null };
+  S.dyn = null;
+  drawClub();
+  save(); render(); scrollTo(0, 0);
+}
+function pickable(cid){
+  const r = S.run;
+  return W.C[cid].elig.filter(p => !r.picks.includes(p) && feasible([...r.picks, p]).length);
+}
+function drawClub(){
+  const r = S.run, pot = r.order[r.step];
+  const pickedClubs = new Set();
+  let cand = W.pots[pot].filter(c => !r.tried.includes(c) && !pickedClubs.has(c));
+  r.note = '';
+  while (true){
+    if (!cand.length){ // whole pot exhausted: fall back to any pot
+      cand = W.draftable.filter(c => !r.tried.includes(c));
+      if (!cand.length){ r.club = null; return; }
+      r.note = 'No club in pot ' + (pot + 1) + ' had a player who fits. Drawn from another pot.';
+    }
+    const c = pick(cand);
+    if (pickable(c).length){ r.club = c; break; }
+    r.tried.push(c); cand = cand.filter(x => x !== c);
+    r.note = r.note || (W.C[c].name + ' had nobody who fits your shape, so the pot was drawn again.');
+  }
+}
+function choose(pid){
+  const r = S.run; if (!r || r.phase !== 'draft' || !pickable(r.club).includes(pid)) return;
+  r.picks.push(pid); r.step++; r.tried = [];
+  if (r.picks.length === 11){ r.phase = 'lineup'; r.form = feasible(r.picks)[0]; }
+  else drawClub();
+  save(); render();
+}
+function kickoff(){
+  const r = S.run; const T = drums(r.picks, r.form);
+  r.cup = buildCup(T); r.phase = 'cup'; save(); render(); scrollTo(0, 0);
+}
+function step(all){
+  const c = S.run.cup;
+  c.shown = all ? c.ev.length : Math.min(c.ev.length, c.shown + 1);
+  if (c.shown >= c.ev.length) finish();
+  save(); render();
+  if (!all) requestAnimationFrame(() => { const l = document.querySelector('.feed > :last-child'); if (l) l.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+}
+function finish(){
+  const r = S.run; if (r.phase === 'done') return;
+  const st = r.cup.stage, st8 = S.stats;
+  r.phase = 'done'; r.keepN = CFG.KEEP[st]; r.keepSel = [];
+  st8.runs++;
+  if (!st8.bestStage || STAGE_RANK.indexOf(st) > STAGE_RANK.indexOf(st8.bestStage)) st8.bestStage = st;
+  if (st === 'champion'){ st8.titles++; st8.streak++; st8.best = Math.max(st8.best, st8.streak); } else st8.streak = 0;
+  r.doneAt = Date.now();
+}
+function continueDynasty(){
+  const r = S.run;
+  S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, streak: S.stats.streak } : null;
+  S.run = null; save();
+  newRun();
+}
+function tick(){
+  const now = Date.now();
+  if (S.run && S.run.phase !== 'done' && now > S.run.deadline){
+    S.run = null; S.dyn = null; S.stats.runs++; S.stats.streak = 0; save(); render();
+    toast('Time is up. The run counts as lost and the dynasty is over.');
+  }
+  if (S.run && S.run.phase === 'done' && S.run.keepN > 0 && now > S.run.doneAt + CFG.TIMER_MS){
+    S.run = null; S.stats.streak = 0; save(); render(); toast('Ten minutes passed. The dynasty is over.');
+  }
+  if (!S.run && S.dyn && now > S.dyn.deadline){ S.dyn = null; S.stats.streak = 0; save(); render(); toast('Ten minutes passed. The dynasty is over.'); }
+  document.querySelectorAll('[data-cd]').forEach(el => el.textContent = fmt(+el.dataset.cd - now));
+}
+
+/* ================= RENDER ================= */
+const gBadge = (g, lbl) => `<span class="g g${g}" title="${lbl} ${g}"><small>${lbl}</small>${g}</span>`;
+function posText(p){ return `<b>${p.prim}</b>${p.pos.length > 1 ? ' · ' + p.pos.filter(x => x !== p.prim).join(' · ') : ''}`; }
+const LINES = ['GK', 'DEF', 'MID', 'FWD'];
+const kit = p => { const n = natInfo(p.nat); return `--kit:${n[1]};--kit-ink:${n[2]}`; };
+const natTag = p => `<span class="kit" style="${kit(p)}"></span>${esc(natInfo(p.nat)[0])}`;
+function cardHTML(p){
+  const c = W.C[p.club];
+  return `<h4>${esc(p.name)}</h4>
+    <div class="muted" style="margin:3px 0 6px;display:flex;align-items:center">${natTag(p)} · ${p.age}</div>
+    <div class="r"><span>Club</span><span style="text-align:right">${esc(c.name)}</span></div>
+    <div class="r"><span>Positions</span><span class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</span></div>
+    <div class="r"><span>Starts vs top 100</span><span class="num">${p.starts}</span></div>
+    <div class="gr">${gBadge(shown(p, 'att'), 'ATT')}${gBadge(shown(p, 'def'), 'DEF')}</div>`;
+}
+const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
+function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
+
+function pitch(pids, form, kept){
+  const f = form || feasible(pids)[0] || '4-3-3';
+  const a = (pids.length ? assign(pids, f) : null) || Array(11).fill(null);
+  return `<div class="pitch" role="img" aria-label="Formation ${f}">` + FORMS[f].map(([code, x, y], j) => {
+    const pid = a[j];
+    if (!pid) return `<div class="slot empty" style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
+    const p = W.P[pid];
+    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}" data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}"><div class="dot">${code}</div><div class="lbl">${esc(short(p.name))}</div></div>`;
+  }).join('') + `</div>`;
+}
+function shapes(pids, active, clickable){
+  const ok = feasible(pids);
+  return `<div class="shapes">` + FORM_ORDER.map(f => {
+    const on = f === active, can = ok.includes(f);
+    if (clickable) return can ? `<button class="shape${on ? ' on' : ' ok'}" data-act="form" data-f="${f}" aria-pressed="${on}">${f}</button>` : '';
+    return `<span class="shape${can ? ' ok' : ''}" style="${can ? '' : 'opacity:.3;text-decoration:line-through'}">${f}</span>`;
+  }).join('') + `</div>`;
+}
+
+function viewHome(){
+  const st = S.stats, d = S.dyn;
+  const best = st.bestStage ? STAGE_NAME[st.bestStage] : 'None yet';
+  const dyn = d ? `<section class="card dyn">
+      <div class="eyebrow">Dynasty alive · ${d.kept.length} kept</div>
+      <h3 style="margin-top:6px">Start your next run within <span class="num" data-cd="${d.deadline}">${fmt(d.deadline - Date.now())}</span></h3>
+      <div class="pills">${d.kept.map(id => `<span class="pill" data-pid="${id}">${natTag(W.P[id])} · ${esc(W.P[id].name)} · ${W.P[id].prim}</span>`).join('') || '<span class="pill">No players kept</span>'}</div>
+      <p class="muted" style="margin:10px 0 0;font-size:13px">You draft ${11 - d.kept.length} new players from pots 1 to ${11 - d.kept.length}.</p>
+    </section>` : '';
+  const btns = d
+    ? `<button class="btn primary" data-act="start">Continue dynasty</button><button class="btn ghost" data-act="fresh">${S.armed === 'fresh' ? 'Tap again to drop it' : 'Start fresh'}</button>`
+    : `<button class="btn primary" data-act="start">Start a run</button>`;
+  return `
+  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><span class="chip">${W.meta.live ? 'Data ' + esc(W.meta.updated) : 'Demo data'}</span></header>
+  <div class="stack">
+    <section class="hero">
+      <div class="eyebrow">Champions League draft</div>
+      <h1 style="margin-top:10px">Eleven pots.<br><em>One trophy.</em></h1>
+      <p>Draft one player from each of 11 pots of real clubs, rated on how they played against Europe's top 100 in the last year. Then win the Champions League.</p>
+      <div class="quote">"This time next year, we'll be millionaires."</div>
+    </section>
+    ${dyn}
+    <div class="btnrow">${btns}</div>
+    <div class="stats">
+      <div class="stat"><b class="num">${st.runs}</b><span>Runs</span></div>
+      <div class="stat"><b class="num">${st.titles}</b><span>Titles</span></div>
+      <div class="stat"><b class="num">${st.best}</b><span>Best title streak</span></div>
+      <div class="stat"><b style="font-size:18px;line-height:1.55">${best}</b><span>Best finish</span></div>
+    </div>
+    <details class="rules">
+      <summary>How it works</summary>
+      <ol>
+        <li>The world is the top 100 clubs of the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
+        <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
+        <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
+        <li>Grades come from the goals his team scored and conceded in his last 10 of those starts, compared with every other player. Some grades are capped on screen by position. The match engine uses the real value.</li>
+        <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
+        <li>Matches are drawn from a drum of real scorelines. Where a player plays decides how many balls he adds. The opponent's recent results decide which scorelines are possible.</li>
+        <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
+        <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends.</li>
+      </ol>
+    </details>
+    <p class="foot">${W.meta.live ? 'Live data from API-Football, updated ' + esc(W.meta.updated) + '. In this world' : 'Prototype. Club names follow the approximate UEFA ranking; players, positions and results are invented. In this demo world'} ${W.draftable.length} of 100 clubs pass the 11-player rule and ${W.eligCount} players are rated. Shootout kicks go in ${Math.round(CFG.SHOOTOUT_P * 1000) / 10}% of the time, the all-time World Cup shootout rate.</p>
+  </div>`;
+}
+
+function viewDraft(){
+  const r = S.run;
+  if (!r.club) return `<div class="card stack"><h2>No club left that fits</h2><p class="muted">Your shape cannot be completed from the remaining pots.</p><button class="btn primary" data-act="fresh2">Start over</button></div>`;
+  const club = W.C[r.club], pot = r.order[r.step];
+  const cells = [...Array(11).keys()].map(i => {
+    const off = i >= 11 - r.kept.length, done = r.order.indexOf(i) > -1 && r.order.indexOf(i) < r.step, now = i === pot;
+    return `<div class="pot${off ? ' off' : done ? ' done' : now ? ' now' : ''}" title="Pot ${i + 1}">${i + 1}</div>`;
+  }).join('');
+  const ok = new Set(pickable(r.club));
+  const rows = club.elig.filter(p => !r.picks.includes(p)).map(pid => W.P[pid])
+    .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || LINES.indexOf(a.line) - LINES.indexOf(b.line))
+    .map(p => `<button class="prow" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
+        <span style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : ' · no slot left'}</div></span>
+        ${gBadge(shown(p, 'att'), 'ATT')}${gBadge(shown(p, 'def'), 'DEF')}<span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
+  const shp = feasible(r.picks);
+  return `
+  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span></header>
+  <div class="drafthead"><div><div class="eyebrow">Draft</div><h2>Pick ${r.picks.length + 1} of 11</h2></div><span class="muted" style="font-size:13px">${r.kept.length ? r.kept.length + ' kept from last run' : 'Fresh squad'}</span></div>
+  <div class="pots" aria-label="Pots">${cells}</div>
+  <div class="grid2" style="margin-top:16px">
+    <section class="card clubcard reveal" aria-live="polite">
+      <div class="eyebrow">Pot ${pot + 1}</div>
+      <h2 style="margin-top:6px">${esc(club.name)}</h2>
+      <div class="meta">${COUNTRY[club.ctry] || esc(club.ctry)} · UEFA rank ${club.rank} · ${club.elig.length} rated players</div>
+      ${r.note ? `<div class="note">${esc(r.note)}</div>` : ''}
+      <div class="plist">${rows}</div>
+    </section>
+    <section class="sticky">
+      ${pitch(r.picks, shp[0], r.kept)}
+      ${shapes(r.picks, shp[0], false)}
+    </section>
+  </div>`;
+}
+
+function viewLineup(){
+  const r = S.run;
+  return `
+  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span></header>
+  <div class="stack">
+    <div><div class="eyebrow">Your XI</div><h2 style="font-size:30px;margin-top:4px">Pick your shape</h2>
+    <p class="muted" style="margin:6px 0 0">Where a player stands decides how much he adds to the attack and defence drums.</p></div>
+    ${shapes(r.picks, r.form, true)}
+    ${pitch(r.picks, r.form, r.kept)}
+  </div>
+  <div class="dock"><div class="btnrow"><button class="btn primary" data-act="kickoff">Kick off the Champions League</button></div></div>`;
+}
+
+function evHTML(e){
+  const res = s => s[0] > s[1] ? 'W' : s[0] < s[1] ? 'L' : 'D';
+  const opp = id => `${esc(nm(id))} <small>· #${W.C[id].rank}</small>`;
+  const score = (s, r) => `<div class="score num">${s[0]}<span class="muted" style="font-size:16px">:</span>${s[1]}${r ? `<span class="res ${r}">${r}</span>` : ''}</div>`;
+  if (e.k === 'md') return `<div class="ev"><div class="rd">League phase · Matchday ${e.n}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, res(e.s))}</div>`;
+  if (e.k === 'table'){
+    const z = e.pos <= 8 ? 'Straight into the Round of 16.' : e.pos <= 24 ? 'Into the knockout play-off.' : 'Out in the league phase.';
+    return `<div class="ev big" style="display:block"><div class="rd">League phase final table</div>
+      <h3 style="font-size:26px;margin:4px 0 2px">You finished ${ord(e.pos)}</h3>
+      <div class="muted" style="font-size:13px;margin-bottom:8px">${z}</div>
+      <div class="tblwrap"><table class="tbl num"><thead><tr><th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>
+      ${e.table.map((t, i) => `<tr class="${i < 8 ? 'z1' : i < 24 ? 'z2' : ''}${t[0] === 'YOU' ? ' me' : ''}"><td>${i + 1}</td><td>${esc(nm(t[0]))}</td><td>${t[1]}</td><td>${t[2]}</td><td>${t[3]}</td><td>${t[4]}</td><td>${t[5] > 0 ? '+' : ''}${t[5]}</td><td>${t[6]}</td></tr>`).join('')}
+      </tbody></table></div></div>`;
+  }
+  const tail = e => {
+    const bits = [];
+    if (e.agg) bits.push(`Aggregate ${e.agg[0]}:${e.agg[1]}`);
+    if (e.et) bits.push(`Extra time ${e.et[0]}:${e.et[1]}`);
+    if (e.pens) bits.push(`Penalties ${e.pens.a}:${e.pens.b}`);
+    if (e.won !== undefined) bits.push(e.won ? '<b style="color:var(--win)">Through</b>' : '<b style="color:var(--loss)">Out</b>');
+    return bits.length ? `<div class="extra">${bits.join(' · ')}</div>` : '';
+  };
+  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}"><div class="rd">${e.round} · Leg ${e.leg}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${e.leg === 2 ? tail(e) : ''}</div>`;
+  if (e.k === 'final') return `<div class="ev big"><div class="rd">Final</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? 'Champions of Europe' : 'Runners-up'}</b></div></div>`;
+  if (e.k === 'end') return `<div class="ev" style="display:block"><div class="rd">Full time</div>${e.champ !== 'YOU' ? `<div>Won by <b>${esc(nm(e.champ))}</b>.</div>` : '<div>Lovely jubbly.</div>'}</div>`;
+  return '';
+}
+function viewCup(){
+  const r = S.run, c = r.cup;
+  const evs = c.ev.slice(0, c.shown);
+  const next = c.ev[c.shown];
+  const label = !next ? '' : next.k === 'md' ? 'Play matchday ' + next.n : next.k === 'table' ? 'See the table' : next.k === 'end' ? 'Full time' : next.k === 'final' ? 'Play the final' : 'Play ' + next.round.toLowerCase() + ', leg ' + next.leg;
+  return `
+  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span></header>
+  <div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">Your XI · ${r.form}</div><h2>Champions League</h2></div>
+    <span class="muted" style="font-size:13px">36 clubs · 8 matchdays</span></div>
+  <div class="grid2">
+    <div class="feed">${evs.map(evHTML).join('') || '<div class="card muted">35 opponents drawn. Biggest clubs had the most balls in the draw.</div>'}</div>
+    <section class="sticky">${pitch(r.picks, r.form, r.kept)}</section>
+  </div>
+  <div class="dock"><div class="btnrow"><button class="btn primary" data-act="next">${label}</button><button class="btn ghost" data-act="all">Skip to the end</button></div></div>`;
+}
+
+function viewDone(){
+  const r = S.run, st = r.cup.stage, n = r.keepN, champ = st === 'champion';
+  const head = champ ? 'Champions of Europe' : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase();
+  const lst = assign(r.picks, r.form).map(pid => W.P[pid]).map(p => {
+    const on = r.keepSel.includes(p.id);
+    return `<button class="krow${on ? ' on' : ''}" data-act="keep" data-p="${p.id}" data-pid="${p.id}" aria-pressed="${on}" ${n ? '' : 'disabled'}>
+      <span class="box">${on ? '✓' : ''}</span><span style="min-width:0"><div class="nm" style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${natTag(p)} · ${p.pos.join(' · ')} · ${esc(W.C[p.club].name)}</div></span>
+      ${gBadge(shown(p, 'att'), 'ATT')}${gBadge(shown(p, 'def'), 'DEF')}</button>`;
+  }).join('');
+  return `
+  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div>${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}</header>
+  <div class="stack">
+    <section class="card verdict${champ ? ' champ' : ''}">
+      <div class="eyebrow">${champ ? 'Lovely jubbly' : 'This time next year'}</div>
+      <h1 style="margin-top:8px">${head}</h1>
+      <p class="muted" style="margin:10px 0 0">${n ? `You keep up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''}. Start the next run within <b class="num" style="color:var(--gold)" data-cd="${r.doneAt + CFG.TIMER_MS}">${fmt(r.doneAt + CFG.TIMER_MS - Date.now())}</b> or the dynasty ends.` : 'No players carry over. Next run starts from scratch.'}</p>
+    </section>
+    ${n ? `<div><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div><div class="keep">${lst}</div></div>` : ''}
+    <div class="feed">${r.cup.ev.filter(e => e.k !== 'table').slice(-3).map(evHTML).join('')}</div>
+  </div>
+  <div class="dock"><div class="btnrow">${n ? `<button class="btn primary" data-act="cont">Next run with ${r.keepSel.length} kept</button>` : `<button class="btn primary" data-act="cont">New run</button>`}<button class="btn ghost" data-act="home">Home</button></div></div>`;
+}
+
+function render(){
+  const r = S.run; if (PC) PC.hidden = true;
+  $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const a = b.dataset.act;
+  if (a !== 'fresh') S.armed = null;
+  if (a === 'start') newRun();
+  else if (a === 'fresh'){ if (S.armed === 'fresh'){ S.dyn = null; S.armed = null; S.stats.streak = 0; save(); newRun(); } else { S.armed = 'fresh'; render(); } }
+  else if (a === 'pick') choose(b.dataset.p);
+  else if (a === 'form'){ S.run.form = b.dataset.f; save(); render(); }
+  else if (a === 'kickoff') kickoff();
+  else if (a === 'next') step(false);
+  else if (a === 'all') step(true);
+  else if (a === 'keep'){
+    const r = S.run, id = b.dataset.p, i = r.keepSel.indexOf(id);
+    if (i > -1) r.keepSel.splice(i, 1); else if (r.keepSel.length < r.keepN) r.keepSel.push(id); else toast('You can keep ' + r.keepN + '. Untick someone first.');
+    save(); render();
+  }
+  else if (a === 'cont') continueDynasty();
+  else if (a === 'fresh2'){ S.run = null; S.dyn = null; save(); newRun(); }
+  else if (a === 'home'){
+    const r = S.run;
+    if (r && r.phase === 'done'){ S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: r.doneAt + CFG.TIMER_MS } : null; S.run = null; }
+    save(); render(); scrollTo(0, 0);
+  }
+});
+
+/* player card: hover on desktop, tap on a pitch slot on touch */
+const PC = $('#pcard');
+function showCard(el, x, y){
+  const p = W.P[el.dataset.pid]; if (!p) return;
+  PC.innerHTML = cardHTML(p); PC.hidden = false;
+  const w = PC.offsetWidth, h = PC.offsetHeight, vw = innerWidth, vh = innerHeight;
+  let left = x + 16, top = y + 16;
+  if (left + w > vw - 8) left = Math.max(8, x - w - 16);
+  if (top + h > vh - 8) top = Math.max(8, vh - h - 8);
+  PC.style.left = left + 'px'; PC.style.top = top + 'px';
+}
+document.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse') return;
+  const el = e.target.closest('.slot[data-pid]');
+  if (el) showCard(el, e.clientX, e.clientY); else PC.hidden = true;
+});
+document.addEventListener('pointerleave', () => PC.hidden = true);
+document.addEventListener('pointerup', e => {
+  if (e.pointerType === 'mouse') return;
+  const el = e.target.closest('.slot[data-pid]');
+  if (el){ const r = el.getBoundingClientRect(); showCard(el, r.left, r.bottom); clearTimeout(showCard.t); showCard.t = setTimeout(() => PC.hidden = true, 4000); }
+  else PC.hidden = true;
+});
+document.addEventListener('scroll', () => { if (!PC.hidden && matchMedia('(pointer:coarse)').matches) PC.hidden = true; }, { passive: true });
+
+async function boot(){
+  let raw = null;
+  try { const r = await fetch('world.json', { cache: 'no-store' }); if (r.ok) raw = await r.json(); } catch (e) {}
+  W = null;
+  if (raw && raw.clubs){ const w = worldFromData(raw); if (w.draftable.length >= 11) W = w; }
+  if (!W) W = buildWorld();
+  if (W.meta.live) CFG.STORE += '.live';
+  window.__ttny = { W, CFG, feasible, assign, drums, simMatch, buildCup, drawGoals, shootout };
+  load();
+  const bad = id => !W.P[id] || !W.P[id].sc;
+  if (S.run && S.run.picks && S.run.picks.some(bad)) S.run = null;
+  if (S.dyn && S.dyn.kept) S.dyn.kept = S.dyn.kept.filter(id => !bad(id));
+  render();
+  setInterval(tick, 1000);
+}
+boot();
+</script>
