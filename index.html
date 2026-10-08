@@ -659,7 +659,7 @@ const STAGE_RANK = ['league', 'playoff', 'r16', 'qf', 'sf', 'final', 'champion']
 function newRun(){
   const kept = S.dyn && S.dyn.kept ? S.dyn.kept.filter(id => W.P[id] && W.P[id].starts >= 10) : [];
   const potCount = 11 - kept.length;
-  S.run = { phase: 'draft', kept, picks: [...kept], order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: null, cup: null };
+  S.run = { phase: 'draft', kept, picks: [...kept], order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null };
   S.dyn = null;
   drawClub();
   save(); render(); scrollTo(0, 0);
