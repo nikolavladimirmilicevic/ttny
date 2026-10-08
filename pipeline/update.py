@@ -282,9 +282,9 @@ def manual_ids():
 # UEFA short names -> what API-Football calls the club
 UEFA_ALIAS = {
     'man city': 'Manchester City', 'man utd': 'Manchester United', 'atleti': 'Atletico Madrid', 'b. dortmund': 'Borussia Dortmund',
-    'paris': 'Paris Saint Germain', 'frankfurt': 'Eintracht Frankfurt', 'gnk dinamo': 'Dinamo Zagreb', 'olympiacos': 'Olympiakos',
+    'paris': 'Paris Saint Germain', 'frankfurt': 'Eintracht Frankfurt', 'gnk dinamo': 'Dinamo Zagreb', 'olympiacos': 'Olympiakos Piraeus',
     'm. tel-aviv': 'Maccabi Tel Aviv', "nott'm forest": 'Nottingham Forest', 's. bratislava': 'Slovan Bratislava',
-    'union sg': 'Union St. Gilloise', 'rapid': 'Rapid Vienna', 'bod/glimt': 'Bodo', 'salzburg': 'Red Bull Salzburg',
+    'union sg': 'Gilloise', 'rakow': 'Rakow', 'rapid': 'Rapid Vienna', 'bod/glimt': 'Bodo', 'salzburg': 'Red Bull Salzburg',
     'leipzig': 'RB Leipzig', 'leverkusen': 'Bayer Leverkusen', 'stuttgart': 'VfB Stuttgart', 'djurgarden': 'Djurgardens IF',
     'ferencvaros': 'Ferencvarosi TC', 'viktoria plzen': 'Plzen', 'psv': 'PSV Eindhoven', 'sporting cp': 'Sporting CP',
     'm. haifa': 'Maccabi Haifa', 'h. beer-sheva': 'Hapoel Beer Sheva', 'crvena zvezda': 'Crvena Zvezda', 'gladbach': 'Borussia Monchengladbach',
