@@ -591,13 +591,8 @@ def build_world(clubs, teams, fx, lu, squads, people):
                 continue
             seen.add(pid)
             cnt = Counter(s[3] for s in st[:10] if s[3])   # positions from the same last 10 starts as the grades
-            # offered positions: most frequent first, stop once they cover more than half of those starts
-            # (6+ of 10); a position tied with the last one taken is taken too
-            known, pos, cum, last = sum(cnt.values()), [], 0, None
-            for k, c in sorted(cnt.items(), key=lambda kv: -kv[1]):
-                if cum * 2 > known and c != last:
-                    break
-                pos.append(k); cum += c; last = c
+            # offered positions: every position he started in during those last 10, most frequent first
+            pos = [k for k, _ in sorted(cnt.items(), key=lambda kv: -kv[1])]
             pos = pos or ['CMF']
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': display_name(e, pid), 'nat': e.get('nat'), 'age': e.get('age'),

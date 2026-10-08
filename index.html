@@ -751,7 +751,6 @@ function cardHTML(p){
     <div class="muted" style="margin:3px 0 6px;display:flex;align-items:center">${natTag(p)} · ${p.age}</div>
     <div class="r"><span>Club</span><span style="text-align:right">${esc(c.name)}</span></div>
     <div class="r"><span>Positions</span><span class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</span></div>
-    <div class="r"><span>Starts vs top 100</span><span class="num">${p.starts}</span></div>
     ${locked() && S.run.picks.includes(p.id) ? (r => `<div class="r"><span>Attack / Defence</span><span>${gTag(r.off)} ${gTag(r.def)}</span></div>`)(playerRating(p.id, roleOf(p.id))) : ''}`;
 }
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
@@ -815,7 +814,7 @@ function viewHome(){
         <li>The world is the top 100 clubs of the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player gets an attack and a defence rating from 40 to 99, from the goals his team scored and conceded in his last 10 of those starts, weighted by the line he plays in. Your team gets one too.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player gets an attack and a defence grade from A to E, from the goals his team scored and conceded in his last 10 of those starts, weighted by the line he plays in. Your team gets an attack and a defence rating from 40 to 99.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Matches are drawn from a drum of real scorelines. The line a player stands in decides how many balls he adds: from 6 to defence and 1 to attack for the goalkeeper, to 1 and 6 for the front line. The opponent's recent results decide which scorelines are possible.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
