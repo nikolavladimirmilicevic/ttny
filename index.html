@@ -303,7 +303,9 @@ for (const [f, rows] of Object.entries(FORM_DEF)){
   });
   FORMS[f] = out;
 }
-const FORM_ORDER = Object.keys(FORMS);
+// sorted by players per line, from the back: 3-2-2-3, 3-2-3-2 ... 5-3-2
+const FORM_ORDER = Object.keys(FORMS).sort((a, b) => { const x = a.split('-').map(Number), y = b.split('-').map(Number);
+  for (let i = 0; i < Math.max(x.length, y.length); i++){ const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; });
 
 function buildWorld(){
   const r = mulberry32(20261008);
