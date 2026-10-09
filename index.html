@@ -553,18 +553,17 @@ function drums(pids, form){
   });
   return { sc, co };
 }
-function drawGoals(drum, allowed){
-  const set = new Set(allowed);
-  const f = drum.filter(v => set.has(v));
-  if (f.length) return pick(f);
-  const b = pick(drum); let best = Infinity, near = [];
-  for (const v of set){ const d = Math.abs(v - b); if (d < best){ best = d; near = [v]; } else if (d === best) near.push(v); }
-  return rr((b + pick(near)) / 2);
+/* Goals for one side: our 10 values against the opponent's 10. Up to 10 times, take a random value
+   from each list; the first time they match, that is the score. No match in 10 tries: a random value from all 20. */
+function drawGoals(ours, theirs){
+  for (let k = 0; k < 10; k++){ const x = pick(ours); if (x === pick(theirs)) return x; }
+  return pick([...ours, ...theirs]);
 }
+const ten = drum => Array.from({ length: 10 }, () => pick(drum));   // 10 random balls from the whole drum, repeats allowed
 function simMatch(a, b, T, et){
   if (b === 'YOU'){ const x = simMatch(b, a, T, et); return [x[1], x[0]]; }
   let ga, gb;
-  if (a === 'YOU'){ ga = drawGoals(T.sc, W.C[b].co10); gb = drawGoals(T.co, W.C[b].sc10); }
+  if (a === 'YOU'){ ga = drawGoals(ten(T.sc), W.C[b].co10); gb = drawGoals(ten(T.co), W.C[b].sc10); }
   else { ga = drawGoals(W.C[a].sc10, W.C[b].co10); gb = drawGoals(W.C[b].sc10, W.C[a].co10); }
   if (et){ ga = rr(ga / 3); gb = rr(gb / 3); }
   return [ga, gb];
@@ -841,7 +840,7 @@ function viewHome(){
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player gets an attack and a defence grade from A to E, from the goals his team scored and conceded in his last 10 of those starts, weighted by the line he plays in. Your team gets an attack and a defence rating from 40 to 99.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
-        <li>Matches are drawn from a drum of real scorelines. The line a player stands in decides how many balls he adds: from 6 to defence and 1 to attack for the goalkeeper, to 1 and 6 for the front line. The opponent's recent results decide which scorelines are possible.</li>
+        <li>Matches are drawn from a drum of real scorelines. The line a player stands in decides how many balls he adds: from 6 to defence and 1 to attack for the goalkeeper, to 1 and 6 for the front line. Each match, 10 balls come out of your drum and face the opponent's last 10 results: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
         <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends.</li>
       </ol>
