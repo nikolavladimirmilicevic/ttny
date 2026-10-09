@@ -228,7 +228,8 @@ def slot_code(formation, grid, pos):
 
 # ---------------- UEFA ranking ----------------
 UEFA_URL = os.environ.get('UEFA_URL', 'https://comp.uefa.com/v2/coefficients')
-UEFA_MAX_AGE = 7   # days; the ranking only moves on European match weeks
+UEFA_MAX_AGE = 8   # days; safety net if a Friday run is missed
+UEFA_DAY = 4       # Friday: European matches are Tuesday to Thursday, so the ranking is fresh on Friday morning
 # UEFA association code -> (game code, API-Football country name)
 UEFA_COUNTRY = {
     'ENG': ('ENG', 'England'), 'ESP': ('ESP', 'Spain'), 'GER': ('GER', 'Germany'), 'ITA': ('ITA', 'Italy'),
@@ -285,9 +286,10 @@ def _parse_row(x):
 
 
 def fetch_uefa_ranking(meta):
-    """Top 100 of the UEFA 5-year club ranking, refreshed weekly. Falls back to the last good list, then clubs.csv."""
+    """Top 100 of the UEFA 5-year club ranking, refreshed every Friday. Falls back to the last good list, then clubs.csv."""
     cached = load('uefa_ranking', {})
-    if cached.get('clubs') and days_old(cached.get('fetched')) < UEFA_MAX_AGE:
+    fresh = cached.get('fetched') == TODAY.isoformat() or (TODAY.weekday() != UEFA_DAY and days_old(cached.get('fetched')) < UEFA_MAX_AGE)
+    if cached.get('clubs') and fresh:
         return cached['clubs'], 'UEFA (cached ' + cached['fetched'] + ')'
     season_year = TODAY.year + 1 if TODAY.month >= 7 else TODAY.year   # UEFA names a season by its end year
     errors = []
