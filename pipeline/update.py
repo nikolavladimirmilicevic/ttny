@@ -20,7 +20,7 @@ Environment:
   TODAY                YYYY-MM-DD override, for testing
   API_BASE             override the API host, for testing
 """
-import csv, datetime as dt, difflib, json, os, re, sys, time, unicodedata, urllib.parse, urllib.request
+import csv, datetime as dt, difflib, json, os, random, re, sys, time, unicodedata, urllib.parse, urllib.request
 from collections import Counter, defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -552,6 +552,17 @@ def display_name(e, pid):
     return sq or e.get('n') or str(pid)
 
 
+# Opponent strength: goals count more against stronger clubs. By UEFA rank, scored goals are multiplied by
+# 1.3 against no. 1 down to 0.7 against no. 100, conceded goals the other way round (0.7 up to 1.3).
+# The result is rounded at random in proportion (2.6 -> 3 six times in ten), seeded by match so it never changes.
+OPP_MAX = 0.3
+def opp_factor(rank):
+    return 1 + OPP_MAX - 2 * OPP_MAX * (min(max(int(rank), 1), 100) - 1) / 99
+
+def weigh(goals, factor, seed):
+    x = goals * factor
+    return int(x) + (random.Random(seed).random() < x - int(x))
+
 def build_world(clubs, teams, fx, lu, squads, people):
     top = {}
     for c in clubs:
@@ -566,7 +577,12 @@ def build_world(clubs, teams, fx, lu, squads, people):
         h, a = f['h'], f['a']
         sides = lu.get(fid) or {}
         friendly = 'friendl' in (f.get('lg') or '').lower()
-        for side, opp, sc, co in ((h, a, f['hg'], f['ag']), (a, h, f['ag'], f['hg'])):
+        for side, opp, sc0, co0 in ((h, a, f['hg'], f['ag']), (a, h, f['ag'], f['hg'])):
+            if opp in top:
+                k = opp_factor(top[opp]['rank'])
+                sc, co = weigh(sc0, k, f'{fid}-{side}-s'), weigh(co0, 2 - k, f'{fid}-{side}-c')
+            else:
+                sc, co = sc0, co0
             lineup = sides.get(str(side))
             lineup = lineup if isinstance(lineup, dict) else None
             codes = [(e[0], slot_code(lineup['f'], e[1], '')) for e in lineup['xi']] if lineup else []
