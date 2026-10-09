@@ -9,7 +9,6 @@ A static web game (one `index.html`) served by GitHub Pages, with data refreshed
 
 - **Clubs:** the top 100 of the UEFA 5-year club ranking, read once a week from the data service behind uefa.com. If that fails, the script keeps the last good list; with no list at all it falls back to `pipeline/clubs.csv`. New clubs are matched to API-Football by name. If one is matched wrongly or not found, add `name,api_id` to `pipeline/team_ids.csv` (the name as UEFA writes it).
 - **Players:** everyone on a top-100 roster with **10+ starts against top-100 clubs in the last 365 days**. A player's last 10 of those starts give his scored and conceded lists. His positions are the slots he started in, read from the line-up grid.
-- **Opponent strength:** goals are weighted by the opponent's UEFA rank. Scored goals count 1.3x against no. 1 down to 0.7x against no. 100, conceded goals the other way round, rounded at random in proportion (seeded by match). The same weighted lists drive club results, player ratings and the drums.
 - **Opponents:** each club's last 10 results against other top-100 clubs.
 
 Everything fetched is cached in `data/cache/`, so each run only asks for what is new.
