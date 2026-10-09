@@ -602,23 +602,48 @@ function drawOpponents(n){
   }
   return out;
 }
+const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+// one overall number on the team-rating scale, for clubs from their last 10 results
+const clubOverall = id => (R(pctBelow(W.CS, mean(W.C[id].sc10))) + R(1 - pctBelow(W.CC, mean(W.C[id].co10)))) / 2;
+/* League phase like the real one: 36 clubs in 4 pots of 9, everyone plays 2 clubs from each pot.
+   Opponents sit in pots by UEFA rank; your XI goes where its team rating ranks among them. */
+function leagueSchedule(teams){
+  const pots = [0, 1, 2, 3].map(k => shuffle(teams.slice(k * 9, k * 9 + 9))), games = [];
+  for (let a = 0; a < 4; a++) for (let b = a; b < 4; b++){
+    const A = pots[a], B = a === b ? A : shuffle([...pots[b]]);
+    for (let i = 0; i < 9; i++){
+      if (a === b) games.push([A[i], A[(i + 1) % 9]]);                    // a 9-cycle: 2 opponents inside the pot
+      else games.push([A[i], B[i]], [A[i], B[(i + 1) % 9]]);             // 2 opponents from the other pot, and they get 2 back
+    }
+  }
+  return { pots, games: shuffle(games).map(g => MR() < .5 ? g : [g[1], g[0]]) };
+}
+function drawCard(c){
+  if (!c.myPot) return '<div class="card muted">35 opponents drawn. Biggest clubs had the most balls in the draw.</div>';
+  const by = [1, 2, 3, 4].map(k => c.ev.filter(e => e.k === 'md' && e.pot === k).map(e => esc(nm(e.opp))).join(', '));
+  return `<div class="card muted">35 opponents drawn, biggest clubs with the most balls. Your XI is in <b style="color:var(--text)">pot ${c.myPot}</b> by team rating. You play two clubs from each pot:<br>${by.map((x, i) => `<b style="color:var(--text)">Pot ${i + 1}</b> ${x}`).join('<br>')}</div>`;
+}
 function buildCup(T){
-  const teams = shuffle(['YOU', ...drawOpponents(35)]);
+  const opps = drawOpponents(35).sort((a, b) => W.C[a].rank - W.C[b].rank);
+  const tr = teamRating(S.run.picks, S.run.form), mine = (tr.off + tr.def) / 2, at = opps.filter(id => clubOverall(id) > mine).length;
+  const teams = [...opps.slice(0, at), 'YOU', ...opps.slice(at)];
+  const myPot = Math.floor(at / 9) + 1;
+  const sch = leagueSchedule(teams);
   const rows = {}; teams.forEach(t => rows[t] = { id: t, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, Pts: 0, tb: MR() });
   const ours = [];
   const rec = (x, gf, ga) => { const r = rows[x]; r.P++; r.GF += gf; r.GA += ga; if (gf > ga){ r.W++; r.Pts += 3; } else if (gf === ga){ r.D++; r.Pts++; } else r.L++; };
-  for (let i = 0; i < 36; i++) for (let k = 1; k <= 4; k++){
-    const a = teams[i], b = teams[(i + k) % 36];
+  const potOf = id => sch.pots.findIndex(p => p.includes(id)) + 1;
+  for (const [a, b] of sch.games){
     const [ga, gb] = simMatch(a, b, T);
     rec(a, ga, gb); rec(b, gb, ga);
-    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb] });
-    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga] });
+    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b) });
+    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a) });
   }
   shuffle(ours);
   const table = Object.values(rows).sort((x, y) => y.Pts - x.Pts || (y.GF - y.GA) - (x.GF - x.GA) || y.GF - x.GF || x.tb - y.tb);
   const seed = table.map(r => r.id);
   const pos = seed.indexOf('YOU') + 1;
-  const ev = ours.map((m, i) => ({ k: 'md', n: i + 1, opp: m.opp, s: m.s }));
+  const ev = ours.map((m, i) => ({ k: 'md', n: i + 1, opp: m.opp, s: m.s, pot: m.pot }));
   ev.push({ k: 'table', pos, table: table.map(r => [r.id, r.P, r.W, r.D, r.L, r.GF - r.GA, r.Pts]) });
   let stage = 'league', alive = pos <= 24;
   const run = (round, a, b, legs, key) => {
@@ -644,7 +669,7 @@ function buildCup(T){
   const champ = run(STAGE_NAME.final, sf[0], sf[1], 1, 'final');
   if (pos > 24) stage = 'league';
   ev.push({ k: 'end', stage, champ });
-  return { ev, shown: 0, stage, champ, pos };
+  return { ev, shown: 0, stage, champ, pos, myPot };
 }
 
 /* ================= STATE ================= */
@@ -880,7 +905,7 @@ function evHTML(e){
   const res = s => s[0] > s[1] ? 'W' : s[0] < s[1] ? 'L' : 'D';
   const opp = id => `${esc(nm(id))} <small>· #${W.C[id].rank}</small>`;
   const score = (s, r) => `<div class="score num">${s[0]}<span class="muted" style="font-size:16px">:</span>${s[1]}${r ? `<span class="res ${r}">${r}</span>` : ''}</div>`;
-  if (e.k === 'md') return `<div class="ev"><div class="rd">League phase · Matchday ${e.n}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, res(e.s))}</div>`;
+  if (e.k === 'md') return `<div class="ev"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, res(e.s))}</div>`;
   if (e.k === 'table'){
     const z = e.pos <= 8 ? 'Straight into the Round of 16.' : e.pos <= 24 ? 'Into the knockout play-off.' : 'Out in the league phase.';
     return `<div class="ev big" style="display:block"><div class="rd">League phase final table</div>
@@ -917,7 +942,7 @@ function viewCup(){
   <div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">Your XI · ${r.form}</div><h2>Champions League</h2></div>
     <span class="muted" style="font-size:13px">36 clubs · 8 matchdays</span></div>
   <div class="grid2">
-    <div class="feed">${evs.map(evHTML).join('') || '<div class="card muted">35 opponents drawn. Biggest clubs had the most balls in the draw.</div>'}</div>
+    <div class="feed">${evs.map(evHTML).join('') || drawCard(r.cup)}</div>
     <section class="sticky">${teamBox(r)}${pitch(r.picks, r.form, r.kept, true)}</section>
   </div>
   <div class="dock"><div class="btnrow"><button class="btn primary" data-act="next">${label}</button><button class="btn ghost" data-act="all">Skip to the end</button></div></div>`;
