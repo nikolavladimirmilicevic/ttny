@@ -50,6 +50,12 @@ def fx_item(f, with_lineups=False):
                     xi.append({'player': {'id': p['id'], 'name': p['name'], 'pos': FORMS[form][k], 'grid': f'{row}:{col}'}})
                     k += 1
             it['lineups'].append({'team': {'id': tid}, 'formation': form, 'startXI': xi})
+        it['events'] = []
+        for tid, n in ((f['h'], f['hg']), (f['a'], f['ag'])):
+            for k in range(n):
+                sq = PL[tid][:11]
+                it['events'].append({'type': 'Goal', 'detail': 'Normal Goal', 'time': {'elapsed': 10 + 8 * k}, 'team': {'id': tid},
+                                     'player': {'id': sq[(f['id'] + k) % 11]['id']}, 'assist': {'id': sq[(f['id'] + k + 3) % 11]['id'] if k % 2 == 0 else None}})
     return it
 
 

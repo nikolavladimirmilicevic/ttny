@@ -150,6 +150,8 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .score{font:600 24px/1 var(--display);display:flex;align-items:center;gap:8px}
 .res{font:600 11px/1 var(--body);padding:4px 7px;border-radius:5px;color:#14181F}
 .res.W{background:var(--win)}.res.D{background:var(--draw)}.res.L{background:var(--loss)}
+.ev .gls{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:2px 12px;font-size:12.5px;color:var(--text)}
+.ev .gls small{color:var(--muted);font-size:12px}
 .ev .extra{grid-column:1/-1;font-size:13px;color:var(--muted)}
 .ev.big{border:1px solid var(--gold)}
 .tbl{width:100%;border-collapse:collapse;font-size:13px}
@@ -438,13 +440,19 @@ function buildWorld(){
   return finalize(C, P, { live: false });
 }
 
+/* Goals + assists add to a player's scored list: for G+A = n, add the values at ranks
+   1, 1,2, 1,2,3, 1,2,3,4 ... (first n of that run) of his 10 team-scored values, highest first.
+   4 goals + 2 assists = 6 -> ranks 1,1,2,1,2,3; team scored 2,3,0,5,0,1,4,2,0,1 -> adds 5,5,4,5,4,3. */
+function gaRanks(n){ const r = []; for (let k = 1; r.length < n; k++) for (let i = 1; i <= k && r.length < n; i++) r.push(Math.min(i, 10)); return r; }
+function withGA(sc, n){ const d = [...sc].sort((x, y) => y - x); return sc.concat(gaRanks(n).map(k => d[k - 1])); }
 /* Shared by demo and live data: eligibility, A-E grades, pots, opponent pool */
 function finalize(C, P, meta){
   const ids = Object.keys(C);
   const elig = [];
   for (const p of Object.values(P)){
     if (p.starts >= 10 && p.sc && p.sc.length === 10){
-      p.avgS = p.sc.reduce((a, b) => a + b, 0) / 10; p.avgC = p.co.reduce((a, b) => a + b, 0) / 10;
+      p.scX = withGA(p.sc, (p.g || 0) + (p.a || 0));
+      p.avgS = p.scX.reduce((a, b) => a + b, 0) / p.scX.length; p.avgC = p.co.reduce((a, b) => a + b, 0) / 10;
       elig.push(p);
     } else p.starts = Math.min(p.starts || 0, 9);
   }
@@ -477,7 +485,7 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: p.name, nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co };
+    P[pid] = { id: pid, name: p.name, nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, g: p.g || 0, a: p.a || 0 };
     club.squad.push(pid);
   }
   return finalize(C, P, { live: true, updated: raw.updated });
@@ -548,7 +556,7 @@ function drums(pids, form){
   const a = arrangement(pids, form), sc = [], co = [];
   a.forEach((pid, j) => {
     const line = FORMS[form][j][3], p = W.P[pid];
-    for (const v of p.sc) for (let k = 0; k < CFG.WA[line]; k++) sc.push(v);
+    for (const v of p.scX || p.sc) for (let k = 0; k < CFG.WA[line]; k++) sc.push(v);
     for (const v of p.co) for (let k = 0; k < CFG.WD[line]; k++) co.push(v);
   });
   return { sc, co };
@@ -567,6 +575,17 @@ function simMatch(a, b, T, et){
   else { ga = drawGoals(W.C[a].sc10, W.C[b].co10); gb = drawGoals(W.C[b].sc10, W.C[a].co10); }
   if (et){ ga = rr(ga / 3); gb = rr(gb / 3); }
   return [ga, gb];
+}
+/* Who scored our goals: weighted by goals in his last 10 (assists by assists), everyone keeps a small chance. */
+function ourGoals(n, lo, hi){
+  const ps = S.run.picks.map(id => W.P[id]), out = [];
+  const w = (p, k) => (p[k] || 0) + (p.prim === 'GK' ? 0.01 : 0.15);
+  const draw = (list, k) => { let x = MR() * list.reduce((t, p) => t + w(p, k), 0); for (const p of list){ x -= w(p, k); if (x <= 0) return p; } return list[list.length - 1]; };
+  for (let i = 0; i < n; i++){
+    const sc = draw(ps, 'g'), as = MR() < 0.7 ? draw(ps.filter(p => p !== sc), 'a') : null;
+    out.push([sc.id, as ? as.id : null, lo + Math.floor(MR() * (hi - lo + 1))]);
+  }
+  return out.sort((x, y) => x[2] - y[2]);
 }
 function shootout(){
   const P = CFG.SHOOTOUT_P; let a = 0, b = 0, ka = 0, kb = 0; const kicks = [];
@@ -635,23 +654,23 @@ function buildCup(T){
   for (const [a, b] of sch.games){
     const [ga, gb] = simMatch(a, b, T);
     rec(a, ga, gb); rec(b, gb, ga);
-    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b) });
-    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a) });
+    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b), gl: ourGoals(ga, 1, 90) });
+    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a), gl: ourGoals(gb, 1, 90) });
   }
   shuffle(ours);
   const table = Object.values(rows).sort((x, y) => y.Pts - x.Pts || (y.GF - y.GA) - (x.GF - x.GA) || y.GF - x.GF || x.tb - y.tb);
   const seed = table.map(r => r.id);
   const pos = seed.indexOf('YOU') + 1;
-  const ev = ours.map((m, i) => ({ k: 'md', n: i + 1, opp: m.opp, s: m.s, pot: m.pot }));
+  const ev = ours.map((m, i) => ({ k: 'md', n: i + 1, opp: m.opp, s: m.s, pot: m.pot, gl: m.gl }));
   ev.push({ k: 'table', pos, table: table.map(r => [r.id, r.P, r.W, r.D, r.L, r.GF - r.GA, r.Pts]) });
   let stage = 'league', alive = pos <= 24;
   const run = (round, a, b, legs, key) => {
     const t = playTie(a, b, legs, T);
     if (t.a === 'YOU'){
       if (legs === 2){
-        ev.push({ k: 'leg', round, leg: 1, opp: t.b, s: t.legs[0] });
-        ev.push({ k: 'leg', round, leg: 2, opp: t.b, s: t.legs[1], agg: t.agg, et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
-      } else ev.push({ k: 'final', round, opp: t.b, s: t.legs[0], et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
+        ev.push({ k: 'leg', round, leg: 1, opp: t.b, s: t.legs[0], gl: ourGoals(t.legs[0][0], 1, 90) });
+        ev.push({ k: 'leg', round, leg: 2, opp: t.b, s: t.legs[1], gl: ourGoals(t.legs[1][0], 1, 90).concat(t.et ? ourGoals(t.et[0], 91, 120) : []), agg: t.agg, et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
+      } else ev.push({ k: 'final', round, opp: t.b, s: t.legs[0], gl: ourGoals(t.legs[0][0], 1, 90).concat(t.et ? ourGoals(t.et[0], 91, 120) : []), et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
       stage = t.winner === 'YOU' ? (key === 'final' ? 'champion' : stage) : key;
     }
     return t.winner;
@@ -838,7 +857,7 @@ function viewHome(){
         <li>The world is the top 100 clubs of the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player gets an attack and a defence grade from A to E, from the goals his team scored and conceded in his last 10 of those starts, weighted by the line he plays in. Your team gets an attack and a defence rating from 40 to 99.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player gets an attack and a defence grade from A to E, from the goals his team scored and conceded in his last 10 of those starts, weighted by the line he plays in. His own goals and assists in those 10 add extra attacking balls, taken from his team's best scoring results. Your team gets an attack and a defence rating from 40 to 99.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Matches are drawn from a drum of real scorelines. The line a player stands in decides how many balls he adds: from 6 to defence and 1 to attack for the goalkeeper, to 1 and 6 for the front line. Each match, 10 balls come out of your drum and face the opponent's last 10 results: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
@@ -903,8 +922,9 @@ function viewLineup(){
 function evHTML(e){
   const res = s => s[0] > s[1] ? 'W' : s[0] < s[1] ? 'L' : 'D';
   const opp = id => `${esc(nm(id))} <small>· #${W.C[id].rank}</small>`;
+  const gls = e => e.gl && e.gl.length ? `<div class="gls">${e.gl.map(([sc, as, m]) => `<span>⚽ ${esc(short(W.P[sc].name))} ${m}'${as ? ` <small>(${esc(short(W.P[as].name))})</small>` : ''}</span>`).join('')}</div>` : '';
   const score = (s, r) => `<div class="score num">${s[0]}<span class="muted" style="font-size:16px">:</span>${s[1]}${r ? `<span class="res ${r}">${r}</span>` : ''}</div>`;
-  if (e.k === 'md') return `<div class="ev"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, res(e.s))}</div>`;
+  if (e.k === 'md') return `<div class="ev"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}</div>`;
   if (e.k === 'table'){
     const z = e.pos <= 8 ? 'Straight into the Round of 16.' : e.pos <= 24 ? 'Into the knockout play-off.' : 'Out in the league phase.';
     return `<div class="ev big" style="display:block"><div class="rd">League phase final table</div>
@@ -922,8 +942,8 @@ function evHTML(e){
     if (e.won !== undefined) bits.push(e.won ? '<b style="color:var(--win)">Through</b>' : '<b style="color:var(--loss)">Out</b>');
     return bits.length ? `<div class="extra">${bits.join(' · ')}</div>` : '';
   };
-  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}"><div class="rd">${e.round} · Leg ${e.leg}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${e.leg === 2 ? tail(e) : ''}</div>`;
-  if (e.k === 'final') return `<div class="ev big"><div class="rd">Final</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? 'Champions of Europe' : 'Runners-up'}</b></div></div>`;
+  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}"><div class="rd">${e.round} · Leg ${e.leg}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? tail(e) : ''}</div>`;
+  if (e.k === 'final') return `<div class="ev big"><div class="rd">Final</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? 'Champions of Europe' : 'Runners-up'}</b></div></div>`;
   if (e.k === 'end') return `<div class="ev" style="display:block"><div class="rd">Full time</div>${e.champ !== 'YOU' ? `<div>Won by <b>${esc(nm(e.champ))}</b>.</div>` : '<div><b>You</b> are champions of Europe.</div>'}</div>`;
   return '';
 }

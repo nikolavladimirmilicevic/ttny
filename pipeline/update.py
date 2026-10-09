@@ -460,12 +460,13 @@ def fetch_recent_days(top, fx, meta):
         log(f'  {d}: {n} fixtures with a top-100 club')
 
 
-def fetch_lineups(top, fx, lu):
-    """Starting XIs for every finished fixture in the window that involves a top-100 club."""
+def fetch_lineups(top, fx, lu, evs):
+    """Starting XIs and goals (scorer, assist) for every finished fixture in the window that involves a top-100 club."""
     need = [fid for fid, f in fx.items()
             if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat()
             and (f['h'] in top or f['a'] in top)
-            and (fid not in lu or (not lu[fid] and days_old(f['d']) <= 3) or any(isinstance(v, list) for v in lu[fid].values()))]
+            and (fid not in lu or (not lu[fid] and days_old(f['d']) <= 3) or any(isinstance(v, list) for v in lu[fid].values())
+                 or (lu[fid] and fid not in evs))]   # older fixtures fetched before goals were kept
     need.sort(key=lambda fid: fx[fid]['d'], reverse=True)
     log(f'  {len(need)} fixtures need line-ups')
     for i in range(0, len(need), 20):
@@ -485,6 +486,14 @@ def fetch_lineups(top, fx, lu):
                 if xi:   # raw formation + grid, so the position model can change without refetching
                     sides[str(side['team']['id'])] = {'f': side.get('formation') or '', 'xi': xi}
             lu[fid] = sides
+            goals = []
+            for e in item.get('events') or []:
+                if (e.get('type') or '').lower() != 'goal' or 'missed' in (e.get('detail') or '').lower():
+                    continue
+                kind = 'o' if 'own' in (e.get('detail') or '').lower() else 'p' if 'penalty' in (e.get('detail') or '').lower() else 'n'
+                goals.append([(e.get('team') or {}).get('id'), (e.get('player') or {}).get('id'), (e.get('assist') or {}).get('id'),
+                              kind, (e.get('time') or {}).get('elapsed')])
+            evs[fid] = goals
             got.add(fid)
         for fid in batch:
             lu.setdefault(fid, {})
@@ -552,7 +561,8 @@ def display_name(e, pid):
     return sq or e.get('n') or str(pid)
 
 
-def build_world(clubs, teams, fx, lu, squads, people):
+def build_world(clubs, teams, fx, lu, squads, people, evs=None):
+    evs = evs or {}
     top = {}
     for c in clubs:
         t = teams.get(tkey(c))
@@ -577,7 +587,7 @@ def build_world(clubs, teams, fx, lu, squads, people):
                 club_res[side].append((f['d'], sc, co))
             if opp in top and codes:
                 for pid, code in codes:
-                    starts[pid].append((f['d'], sc, co, code))
+                    starts[pid].append((f['d'], sc, co, code, fid))
     out_clubs = []
     for tid, c in top.items():
         res = sorted(club_res[tid], reverse=True)
@@ -596,9 +606,15 @@ def build_world(clubs, teams, fx, lu, squads, people):
             # offered positions: every position he started in during those last 10, most frequent first
             pos = [k for k, _ in sorted(cnt.items(), key=lambda kv: -kv[1])]
             pos = pos or ['CMF']
+            # goals and assists in the same last 10 starts (own goals and missed penalties do not count)
+            g = a = 0
+            for s in st[:10]:
+                for ev in evs.get(s[4]) or []:
+                    if ev[3] != 'o' and ev[1] == pid: g += 1
+                    if ev[3] != 'o' and ev[2] == pid: a += 1
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': display_name(e, pid), 'nat': e.get('nat'), 'age': e.get('age'),
-                                'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st),
+                                'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st), 'g': g, 'a': a,
                                 'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]]})
     return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'clubs': out_clubs, 'players': out_players}
 
@@ -624,6 +640,7 @@ def main():
     teams = load('teams', {})
     fx = load('fixtures', {})
     lu = load('lineups', {})
+    evs = load('events', {})
     squads = load('squads', {})
     people = load('people', {})
     stopped = None
@@ -639,7 +656,7 @@ def main():
         log('3/6 Latest results')
         fetch_recent_days(top, fx, meta)
         log('4/6 Line-ups')
-        fetch_lineups(top, fx, lu)
+        fetch_lineups(top, fx, lu, evs)
         core_done = True
         log('5/6 Rosters')
         fetch_squads(top_ids, squads, people)
@@ -653,9 +670,10 @@ def main():
         for fid in [k for k, f in fx.items() if f['d'] < cutoff]:
             fx.pop(fid, None)
             lu.pop(fid, None)
-        for name, obj in (('teams', teams), ('fixtures', fx), ('lineups', lu), ('squads', squads), ('people', people), ('meta', meta)):
+            evs.pop(fid, None)
+        for name, obj in (('teams', teams), ('fixtures', fx), ('lineups', lu), ('events', evs), ('squads', squads), ('people', people), ('meta', meta)):
             save(name, obj)
-    world = build_world(clubs, teams, fx, lu, squads, people)
+    world = build_world(clubs, teams, fx, lu, squads, people, evs)
     world['complete'] = stopped is None
     # the game reads world.json: publish only once results, line-ups and every roster are in
     have_rosters = all(str(t) in squads for t in top_ids)
