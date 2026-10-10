@@ -488,8 +488,7 @@ const ORDER = 'ABCDE';
    Player: the mean of a team part and an individual part.
      Team part: how good his last 10 results are among all rated players (percentile).
      Individual attack: his goals + assists in those 10, as a percentile among all rated players.
-     Individual defence: clean sheets in those 10, as a percentile among all rated players, for a goalkeeper, defender or back midfielder
-       (by where he stands in your XI); the lowest rating for central and front midfielders and forwards.
+     Individual defence: clean sheets in those 10, as a percentile among all rated players, in any position.
    Team: the average of its drum, ranked among the top-100 clubs' last 10 results. */
 function pctBelow(arr, v){ let lo = 0, eq = 0; for (const x of arr){ if (x < v) lo++; else if (x === v) eq++; } return (lo + eq / 2) / arr.length; }
 const R = x => Math.round(40 + 59 * Math.max(0, Math.min(1, x)));
@@ -499,7 +498,7 @@ const gTag = n => `<span class="gt g${grade(n)}">${grade(n)}</span>`;
 function playerRating(pid, role){
   const p = W.P[pid];
   const ga = R(pctBelow(W.GA, (p.g || 0) + (p.a || 0)));
-  const cs = ['GK', 'DEF', 'MIDB'].includes(role) ? R(pctBelow(W.CSH, p.co.filter(v => v === 0).length)) : R(0);
+  const cs = R(pctBelow(W.CSH, p.co.filter(v => v === 0).length));
   return { off: Math.round((R(pctBelow(W.SS, p.avgS)) + ga) / 2), def: Math.round((R(1 - pctBelow(W.SC, p.avgC)) + cs) / 2) };
 }
 function teamRating(picks, form){
@@ -857,7 +856,7 @@ function viewHome(){
         <li>The world is the top 100 clubs of the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player gets an attack and a defence grade from A to E. Half comes from the goals his team scored and conceded in his last 10 of those starts, half from himself: goals plus assists in those 10 for attack, and clean sheets in those 10 (as a percentile among all players) for defence if he plays in goal, in defence or in the back midfield line (central and front midfielders and forwards get the lowest score there). Your team gets an attack and a defence rating from 40 to 99.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player gets an attack and a defence grade from A to E. Half comes from the goals his team scored and conceded in his last 10 of those starts, half from himself: goals plus assists in those 10 for attack, and clean sheets in those 10 for defence, both as a percentile among all players. Your team gets an attack and a defence rating from 40 to 99.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Matches are drawn from a drum of real scorelines. Every player adds his last 10 results, one ball each, and his grade adds more: an A repeats his 2 best results, B his best, C nothing, D his worst, E his 2 worst (most scored for attack, fewest conceded for defence). Your team rating is read from this drum. Each match, 10 balls come out of your drum and face the opponent's last 10 results: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
