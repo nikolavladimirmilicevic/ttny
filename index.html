@@ -127,9 +127,8 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .slot.target .dot{outline:3px dashed var(--gold);outline-offset:3px;animation:pulse 1.2s ease-in-out infinite}
 .slot.empty.target .dot{border-color:var(--gold);color:var(--gold)}
 .hint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
-.ovdot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;font:600 18px/1 var(--display);color:#14181F;border:2px solid rgba(11,22,38,.55);box-shadow:0 4px 12px rgba(0,0,0,.35)}
-.slot .ovdot{border:3px solid var(--kit)}
-.ovdot.big{width:84px;height:84px;font-size:36px}
+.ovdot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;font:600 18px/1 var(--display);background:var(--kit);color:var(--kit-ink);border:2px solid rgba(11,22,38,.55);box-shadow:0 4px 12px rgba(0,0,0,.35)}
+.ovdot.big{width:84px;height:84px;font-size:36px;background:var(--gold);color:var(--gold-ink)}
 .trows{flex:1;min-width:0}.trows .r{display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 .trows .r:first-child{border-top:0}.trows .r b{color:var(--text);font:600 16px var(--display)}
 .teambox{background:var(--panel);border-radius:12px;padding:12px 14px;margin-bottom:12px}
@@ -518,7 +517,8 @@ function teamRating(picks, form){
   return parts(m('ta'), m('ia'), m('td'), m('id'));
 }
 /* overall in a circle; the four parts row by row (letters for players, 40-99 for the team) */
-const ovDot = (r, nums) => `<div class="ovdot${nums ? ' big' : ''}" style="background:var(--g${grade(r.ov)})">${nums ? r.ov : grade(r.ov)}</div>`;
+// players: kit colours of his nationality; the team: gold
+const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${grade(r.ov)}</div>` : `<div class="ovdot big">${r.ov}</div>`;
 const partRows = (r, nums) => [['Team attack', r.ta], ['Own attack', r.ia], ['Team defence', r.td], ['Own defence', r.id]]
   .map(([k, v]) => `<div class="r"><span>${k}</span>${nums ? `<b class="num">${v}</b>` : gTag(v)}</div>`).join('');
 const locked = () => S.run && (S.run.phase === 'cup' || S.run.phase === 'done');
@@ -824,7 +824,7 @@ function pitch(pids, form, kept, rated, editable){
     if (!pid) return `<div class="slot empty${cls(j)}"${act(j)} style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
     const p = W.P[pid];
     const rt = rated ? playerRating(pid) : null;
-    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${rt ? ovDot(rt) : `<div class="dot">${code}</div>`}<div class="lbl">${esc(short(p.name))}</div></div>`;
+    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${rt ? ovDot(rt, p) : `<div class="dot">${code}</div>`}<div class="lbl">${esc(short(p.name))}</div></div>`;
   }).join('') + `</div>`;
 }
 function shapes(pids, active, clickable){
@@ -963,7 +963,7 @@ function evHTML(e){
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
-  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t, true)}<div class="trows">${partRows(t, true)}</div></div></section>`;
+  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t, true)}</div></div></section>`;
 }
 function viewCup(){
   const r = S.run, c = r.cup;
@@ -988,7 +988,7 @@ function viewDone(){
     const on = r.keepSel.includes(p.id);
     return `<button class="krow${on ? ' on' : ''}" data-act="keep" data-p="${p.id}" data-pid="${p.id}" aria-pressed="${on}" ${n ? '' : 'disabled'}>
       <span class="box">${on ? '✓' : ''}</span><span style="min-width:0"><div class="nm" style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${natTag(p)} · ${p.pos.join(' · ')} · ${esc(W.C[p.club].name)}</div></span>
-      ${ovDot(playerRating(p.id))}</button>`;
+      ${ovDot(playerRating(p.id), p)}</button>`;
   }).join('');
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div>${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}</header>
