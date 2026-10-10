@@ -550,6 +550,16 @@ def fetch_profiles(top_ids, squads, people, meta):
 
 
 # ---------------- build ----------------
+def fix_text(t):
+    """Repair names that arrive double-encoded from the API ('CvetkoviÄ\x87' -> 'Cvetković')."""
+    if t and re.search('[ÃÄÅ][\x80-\xbf]', t):
+        try:
+            return t.encode('latin-1').decode('utf-8')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
+    return t
+
+
 def display_name(e, pid):
     """'L. Díaz' + first name 'Luis Fernando' -> 'Luis Díaz'; 'Brahim Díaz' and 'Endrick' stay as they are."""
     sq, firsts = e.get('sq') or '', (e.get('fn') or '').split()
@@ -618,7 +628,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
             # clean sheets that count for him: only matches he started in a defensive position
             cs = sum(1 for s in st[:10] if s[2] == 0 and s[3] in DEF_POS)
             e = people.get(str(pid), {})
-            out_players.append({'id': pid, 'name': display_name(e, pid), 'nat': e.get('nat'), 'age': e.get('age'),
+            out_players.append({'id': pid, 'name': fix_text(display_name(e, pid)), 'nat': e.get('nat'), 'age': e.get('age'),
                                 'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st), 'g': g, 'a': a, 'cs': cs,
                                 'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]]})
     return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'clubs': out_clubs, 'players': out_players}

@@ -1024,14 +1024,18 @@ function seasonBox(r){
   const arr = arrangement(r.picks, r.form), code = pid => FORMS[r.form][arr.indexOf(pid)][0];
   const rows = arr.map(pid => W.P[pid]).sort((x, y) => ((g[y.id] || 0) + (a[y.id] || 0)) - ((g[x.id] || 0) + (a[x.id] || 0)) || (g[y.id] || 0) - (g[x.id] || 0) || POS_ORDER.indexOf(code(x.id)) - POS_ORDER.indexOf(code(y.id)));
   const tile = (k, v) => `<div class="stat"><span>${k}</span><b class="num">${v}</b></div>`;
-  const list = (title, L) => `<div class="card"><div class="eyebrow" style="margin-bottom:8px">${title}</div><div class="tblwrap"><table class="tbl num toplist"><tbody>
-    ${L.length ? L.map(([pid, n], i) => `<tr class="${r.picks.includes(pid) ? 'me' : ''}"><td>${i + 1}</td><td>${esc(W.P[pid].name)}<small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small></td><td>${n}</td></tr>`).join('') : '<tr><td>No goals</td></tr>'}</tbody></table></div></div>`;
   return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your campaign</div>
     <div class="stats s3">${tile('Played', ms.length)}${tile('W-D-L', `${W_}-${D}-${L}`)}${tile('Goals', `${GF}:${GA}`)}${tile('Clean sheets', CS)}${tile('League phase', ord(c.pos))}${tile('Biggest win', big ? `${big.f}:${big.ag}` : '-')}</div>
     ${big ? `<div class="muted" style="font-size:12px;margin-top:6px">Biggest win against ${esc(nm(big.opp))}.</div>` : ''}
     <div class="tblwrap" style="margin-top:12px"><table class="tbl num"><thead><tr><th style="text-align:left">Player</th><th>Pos</th><th>G</th><th>A</th><th>Ovr</th></tr></thead><tbody>
     ${rows.map(p => `<tr><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td>${code(p.id)}</td><td>${g[p.id] || 0}</td><td>${a[p.id] || 0}</td><td>${ovGrade(playerRating(p.id).ov)}</td></tr>`).join('')}</tbody></table></div></section>
-    ${c.top ? `<div class="toplists">${list('Top scorers', c.top.g)}${list('Top assists', c.top.a)}</div>` : ''}`;
+`;
+}
+function topBox(r){
+  const c = r.cup; if (!c.top) return '';
+  const list = (title, L) => `<div class="card"><div class="eyebrow" style="margin-bottom:8px">${title}</div><div class="tblwrap"><table class="tbl num toplist"><tbody>
+    ${L.length ? L.map(([pid, n], i) => `<tr class="${r.picks.includes(pid) ? 'me' : ''}"><td>${i + 1}</td><td>${esc(W.P[pid].name)}<small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small></td><td>${n}</td></tr>`).join('') : '<tr><td>No goals</td></tr>'}</tbody></table></div></div>`;
+  return `<div class="toplists">${list('Top scorers', c.top.g)}${list('Top assists', c.top.a)}</div>`;
 }
 function koBox(c){
   if (!c.ko) return '';
@@ -1060,14 +1064,16 @@ function viewDone(){
     <section class="card verdict${champ ? ' champ' : ''}">
       <div class="eyebrow">${champ ? 'Champions' : 'Season over'}</div>
       <h1 style="margin-top:8px">${head}</h1>
+      ${champ ? '' : `<p style="margin:8px 0 0">Won by <b>${esc(nm(r.cup.champ))}</b>.</p>`}
       <p class="muted" style="margin:10px 0 0">${n ? `You keep up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''}. Start the next run within <b class="num" style="color:var(--gold)" data-cd="${r.doneAt + CFG.TIMER_MS}">${fmt(r.doneAt + CFG.TIMER_MS - Date.now())}</b> or the dynasty ends.` : 'No players carry over. Next run starts from scratch.'}</p>
     </section>
-    ${teamBox(r)}
     ${n ? `<div><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div><div class="keep">${lst}</div></div>` : ''}
+    ${teamBox(r)}
     ${seasonBox(r)}
-    ${r.cup.ev.filter(e => e.k === 'table').map(evHTML).join('')}
+    ${(ms => ms.length ? `<div><div class="eyebrow" style="margin-bottom:8px">How it ended</div><div class="feed">${ms.map(evHTML).join('')}</div></div>` : '')(r.cup.ev.filter(e => e.k === 'md' || e.k === 'leg' || e.k === 'final').slice(st === 'league' ? -1 : -2).filter((e, i, a) => st === 'league' || e.k !== 'md' || i === a.length - 1))}
+    ${topBox(r)}
     ${koBox(r.cup)}
-    <div class="feed">${r.cup.ev.filter(e => e.k !== 'table').slice(-3).map(evHTML).join('')}</div>
+    ${r.cup.ev.filter(e => e.k === 'table').map(evHTML).join('')}
   </div>
   <div class="dock"><div class="btnrow">${n ? `<button class="btn primary" data-act="cont">Next run with ${r.keepSel.length} kept</button>` : `<button class="btn primary" data-act="cont">New run</button>`}<button class="btn ghost" data-act="home">Home</button></div></div>`;
 }
