@@ -128,6 +128,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .slot.empty.target .dot{border-color:var(--gold);color:var(--gold)}
 .hint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
 .ovdot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;font:600 18px/1 var(--display);background:var(--kit);color:var(--kit-ink);border:2px solid rgba(11,22,38,.55);box-shadow:0 4px 12px rgba(0,0,0,.35)}
+.krow .ovdot{cursor:help}
 .ovdot.big{width:84px;height:84px;font-size:36px;background:var(--gold);color:var(--gold-ink)}
 .trows{flex:1;min-width:0}.trows .r{display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 .trows .r:first-child{border-top:0}.trows .r b{color:var(--text);font:600 16px var(--display)}
@@ -1120,6 +1121,8 @@ document.addEventListener('click', e => {
 
 /* player card: hover on desktop, tap on a pitch slot on touch */
 const PC = $('#pcard');
+// hover targets: players on the pitch, and the rating circle on the end-of-run list
+const cardTarget = t => t.closest('.slot[data-pid]') || (t.closest('.krow .ovdot') && t.closest('.krow[data-pid]'));
 function showCard(el, x, y){
   const p = W.P[el.dataset.pid]; if (!p) return;
   PC.innerHTML = cardHTML(p); PC.hidden = false;
@@ -1131,13 +1134,13 @@ function showCard(el, x, y){
 }
 document.addEventListener('pointermove', e => {
   if (e.pointerType !== 'mouse') return;
-  const el = e.target.closest('.slot[data-pid]');
+  const el = cardTarget(e.target);
   if (el) showCard(el, e.clientX, e.clientY); else PC.hidden = true;
 });
 document.addEventListener('pointerleave', () => PC.hidden = true);
 document.addEventListener('pointerup', e => {
   if (e.pointerType === 'mouse') return;
-  const el = e.target.closest('.slot[data-pid]');
+  const el = cardTarget(e.target);
   if (el){ const r = el.getBoundingClientRect(); showCard(el, r.left, r.bottom); clearTimeout(showCard.t); showCard.t = setTimeout(() => PC.hidden = true, 4000); }
   else PC.hidden = true;
 });
