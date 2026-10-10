@@ -129,6 +129,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .pc-h{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:2px}
 .pc-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 0}
 .pc-row small,.pc-two small{display:block;color:var(--muted);font-size:10px;line-height:1.2}
+.pc-ped{display:flex;justify-content:space-between;align-items:center;gap:8px}.pc-ped>span{font-weight:500}.pc-ped small{display:block;color:var(--muted);font-size:10px;font-weight:400}.pc-ped .gt{font-size:14px;padding:4px 8px}
 .pc-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pc-two>div{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
 .pc-two .gt{margin-top:2px}
@@ -142,7 +143,8 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .hint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
 .ovdot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;font:600 18px/1 var(--display);background:var(--kit);color:var(--kit-ink);border:2px solid rgba(11,22,38,.55);box-shadow:0 4px 12px rgba(0,0,0,.35)}
 .krow .ovdot{cursor:help}
-.ovdot.big{width:84px;height:84px;font-size:36px;background:var(--gold);color:var(--gold-ink)}
+.ovdot.big{width:84px;height:84px;font-size:36px;color:#0B1626}.ovdot.big.gA,.ovdot.big.gE{color:#fff}.ovdot.big.gA{background:var(--gA)}.ovdot.big.gB{background:var(--gB)}.ovdot.big.gC{background:var(--gC)}.ovdot.big.gD{background:var(--gD)}.ovdot.big.gE{background:var(--gE)}
+.trows .r b.tnum{background:none!important;min-width:34px;text-align:right}.tnum.gA{color:var(--gA)!important}.tnum.gB{color:var(--gB)!important}.tnum.gC{color:var(--gC)!important}.tnum.gD{color:var(--gD)!important}.tnum.gE{color:var(--gE)!important}
 .trows{flex:1;min-width:0}.trows .r{display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 .trows .r:first-child{border-top:0}.trows .r b{color:var(--text);font:600 16px var(--display)}
 .stats.s3{grid-template-columns:repeat(3,1fr)}.card .stat{background:var(--panel-2)}.card .stat b{font-size:22px}
@@ -600,9 +602,11 @@ function ovGrade(ov){
 }
 /* overall in a circle; the four parts row by row (letters for players, 40-99 for the team) */
 // players: kit colours of his nationality; the team: gold
-const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${ovGrade(r.ov)}</div>` : `<div class="ovdot big">${r.ov}</div>`;
-const partRows = (r, nums, from = 0, to = 6) => [['Team goals', 'ta'], ['Goals + assists', 'ia'], ['Goals against', 'td'], ['Clean sheets', 'id'], ['Form (last 5)', 'fo'], ['Pedigree', 'pe']].slice(from, to)
-  .map(([k, f]) => `<div class="r"><span>${k}</span>${nums ? `<b class="num">${r[f]}</b>` : `<span class="gt g${qGrade(r.q[f])}">${qGrade(r.q[f])}</span>`}</div>`).join('');
+const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${ovGrade(r.ov)}</div>` : `<div class="ovdot big g${numGrade(r.ov)}">${r.ov}</div>`;
+const partRows = (r, nums, from = 0, to = 6) => [['Pedigree', 'pe'], ['Team goals', 'ta'], ['Goals + assists', 'ia'], ['Goals against', 'td'], ['Clean sheets', 'id'], ['Form (last 5)', 'fo']].slice(from, to)
+  .map(([k, f]) => `<div class="r"><span>${k}</span>${nums ? `<b class="num tnum g${numGrade(r[f])}">${r[f]}</b>` : `<span class="gt g${qGrade(r.q[f])}">${qGrade(r.q[f])}</span>`}</div>`).join('');
+// a 40-99 number gets the colour of the percentile it stands for (40 + 59 x percentile)
+const numGrade = v => qGrade((v - 40) / 59);
 const locked = () => S.run && (S.run.phase === 'cup' || S.run.phase === 'done');
 function roleOf(pid){ const r = S.run, a = arrangement(r.picks, r.form); return FORMS[r.form][a.indexOf(pid)][3]; }
 
@@ -892,9 +896,10 @@ function cardHTML(p){
       ${r ? `<div class="pc-ov g${ovGrade(r.ov)}"><b>${ovGrade(r.ov)}</b><small>Overall</small></div>` : ''}</div>
     <div class="pc-club">${esc(c.name)}</div>
     <div class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</div>
-    ${r ? `<div class="pc-sec"><div class="pc-h">Attack</div>${row('Team goals', 'scored per game', qGrade(r.q.ta))}${row('Goals + assists', 'his own, per game', qGrade(r.q.ia))}</div>
+    ${r ? `<div class="pc-sec pc-ped"><span>Pedigree<small>his club's UEFA 5-year points</small></span>${badge(qGrade(r.q.pe))}</div>
+    <div class="pc-sec"><div class="pc-h">Attack</div>${row('Team goals', 'scored per game', qGrade(r.q.ta))}${row('Goals + assists', 'his own, per game', qGrade(r.q.ia))}</div>
     <div class="pc-sec"><div class="pc-h">Defence</div>${row('Goals against', 'conceded per game', qGrade(r.q.td))}${row('Clean sheets', 'in a defensive role', qGrade(r.q.id))}</div>
-    <div class="pc-sec pc-two"><div><span>Form</span><small>last 5 games</small>${badge(qGrade(r.q.fo), true)}</div><div><span>Pedigree</span><small>club's UEFA points</small>${badge(qGrade(r.q.pe))}</div></div>` : ''}`;
+    <div class="pc-sec">${row('Form', 'points in his last 5 games', qGrade(r.q.fo), true)}</div>` : ''}`;
 }
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
