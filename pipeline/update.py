@@ -634,7 +634,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
             if friendly and not (codes and all(c for _, c in codes)):
                 continue
             if side in top and opp in top:
-                club_res[side].append((f['d'], sc, co))
+                club_res[side].append((f['d'], sc, co, int(top[opp]['rank'])))
             if opp in top and codes:
                 for pid, code in codes:
                     starts[pid].append((f['d'], sc, co, code, fid, int(top[opp]['rank'])))
@@ -642,7 +642,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
     for tid, c in top.items():
         res = sorted(club_res[tid], reverse=True)
         out_clubs.append({'id': tid, 'name': c['name'], 'ctry': c['code'], 'rank': int(c['rank']), 'n': len(res),
-                          'sc10': [r[1] for r in res[:10]], 'co10': [r[2] for r in res[:10]]})
+                          'sc10': [r[1] for r in res[:10]], 'co10': [r[2] for r in res[:10]], 'or': [r[3] for r in res[:10]]})
     out_players, seen = [], set()
     for tid, c in sorted(top.items(), key=lambda x: int(x[1]['rank'])):
         for pid in (squads.get(str(tid)) or {}).get('p', []):
