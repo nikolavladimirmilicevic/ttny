@@ -20,7 +20,7 @@ Environment:
   TODAY                YYYY-MM-DD override, for testing
   API_BASE             override the API host, for testing
 """
-import csv, datetime as dt, difflib, json, math, os, re, sys, time, unicodedata, urllib.parse, urllib.request
+import csv, datetime as dt, difflib, html, json, math, os, re, sys, time, unicodedata, urllib.parse, urllib.request
 from collections import Counter, defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -597,6 +597,7 @@ def read_players(tid, season, people):
 # ---------------- build ----------------
 def fix_text(t):
     """Repair names that arrive double-encoded from the API ('CvetkoviÄ\x87' -> 'Cvetković')."""
+    t = html.unescape(t) if t else t   # 'O&apos;Reilly' -> "O'Reilly"
     if t and re.search('[ÃÄÅ][\x80-\xbf]', t):
         try:
             return t.encode('latin-1').decode('utf-8')

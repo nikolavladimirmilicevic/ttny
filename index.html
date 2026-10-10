@@ -190,7 +190,12 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .res{font:600 11px/1 var(--body);padding:4px 7px;border-radius:5px;color:#14181F}
 .res.W{background:var(--win)}.res.D{background:var(--draw)}.res.L{background:var(--loss)}
 .ev .gls{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:2px 12px;font-size:12.5px;color:var(--text)}
-.ev .gls small{color:var(--muted);font-size:12px}
+.ev .gls small,.ev .gls2 small{color:var(--muted);font-size:12px}
+.ev .gls2{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12.5px}
+.ev .gls2>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ev .gls2 .them{text-align:right;color:var(--muted)}
+.ev.pend{background:transparent;border:1px dashed rgba(255,255,255,.14);animation:none}
+.ev.pend .score{color:var(--muted)}
 .ev .extra{grid-column:1/-1;font-size:13px;color:var(--muted)}
 .ev.big{border:1px solid var(--gold)}
 .tbl{width:100%;border-collapse:collapse;font-size:13px}
@@ -511,12 +516,13 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: p.name, nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs };
+    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs };
     club.squad.push(pid);
   }
   return finalize(C, P, { live: true, updated: raw.updated, ranked: raw.ranked || Math.max(...raw.clubs.map(c => c.rank)), model: raw.model || null });
 }
 let W;
+function unent(t){ return String(t || '').replace(/&apos;|&#0?39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&'); }
 
 /* ================= RATINGS DISPLAY ================= */
 const ORDER = 'ABCDE';
@@ -765,14 +771,14 @@ function buildCup(T){
     const [ga, gb] = simMatch(a, b, T, false, a);   // first-named side is at home
     rec(a, ga, gb); rec(b, gb, ga);
     const la = goals(a, ga, 1, 90), lb = goals(b, gb, 1, 90);
-    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b), gl: la, h: 1 });
-    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a), gl: lb, h: 0 });
+    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b), gl: la, og: lb, h: 1 });
+    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a), gl: lb, og: la, h: 0 });
   }
   shuffle(ours);
   const table = Object.values(rows).sort((x, y) => y.Pts - x.Pts || (y.GF - y.GA) - (x.GF - x.GA) || y.GF - x.GF || x.tb - y.tb);
   const seed = table.map(r => r.id);
   const pos = seed.indexOf('YOU') + 1;
-  const ev = ours.map((m, i) => ({ k: 'md', n: i + 1, opp: m.opp, s: m.s, pot: m.pot, gl: m.gl, h: m.h }));
+  const ev = ours.map((m, i) => ({ k: 'md', n: i + 1, opp: m.opp, s: m.s, pot: m.pot, gl: m.gl, og: m.og, h: m.h }));
   ev.push({ k: 'table', pos, table: table.map(r => [r.id, r.P, r.W, r.D, r.L, r.GF - r.GA, r.Pts]) });
   let stage = 'league', alive = pos <= 24;
   const ko = [];   // every knockout tie, for the end screen
@@ -781,12 +787,12 @@ function buildCup(T){
     ko.push({ k: key, a: t.a, b: t.b, legs: t.legs, agg: t.agg, et: t.et || null, pens: t.pens ? [t.pens.a, t.pens.b] : null, w: t.winner });
     const gA = t.legs.map(l => goals(t.a, l[0], 1, 90)), gB = t.legs.map(l => goals(t.b, l[1], 1, 90));
     const eA = t.et ? goals(t.a, t.et[0], 91, 120) : [];
-    if (t.et) goals(t.b, t.et[1], 91, 120);
+    const eB = t.et ? goals(t.b, t.et[1], 91, 120) : [];
     if (t.a === 'YOU'){
       if (legs === 2){
-        ev.push({ k: 'leg', round, leg: 1, opp: t.b, s: t.legs[0], gl: gA[0], h: t.home[0] === 'YOU' ? 1 : 0 });
-        ev.push({ k: 'leg', round, leg: 2, opp: t.b, s: t.legs[1], gl: gA[1].concat(eA), h: t.home[1] === 'YOU' ? 1 : 0, agg: t.agg, et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
-      } else ev.push({ k: 'final', round, opp: t.b, s: t.legs[0], gl: gA[0].concat(eA), et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
+        ev.push({ k: 'leg', round, leg: 1, opp: t.b, s: t.legs[0], gl: gA[0], og: gB[0], h: t.home[0] === 'YOU' ? 1 : 0 });
+        ev.push({ k: 'leg', round, leg: 2, opp: t.b, s: t.legs[1], gl: gA[1].concat(eA), og: gB[1].concat(eB), h: t.home[1] === 'YOU' ? 1 : 0, agg: t.agg, et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
+      } else ev.push({ k: 'final', round, opp: t.b, s: t.legs[0], gl: gA[0].concat(eA), og: gB[0].concat(eB), et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
       stage = t.winner === 'YOU' ? (key === 'final' ? 'champion' : stage) : key;
     }
     return t.winner;
@@ -903,7 +909,7 @@ function step(all){
   c.shown = all ? c.ev.length : Math.min(c.ev.length, c.shown + 1);
   if (c.shown >= c.ev.length) finish();
   save(); render();
-  if (!all) requestAnimationFrame(() => { const l = document.querySelector('.feed > :last-child'); if (l) l.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+  if (!all) requestAnimationFrame(() => { const l = [...document.querySelectorAll('.feed > .ev:not(.pend)')].pop(); if (l) l.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
 }
 function finish(){
   const r = S.run; if (r.phase === 'done') return;
@@ -1090,7 +1096,9 @@ function viewLineup(){
 function evHTML(e){
   const res = s => s[0] > s[1] ? 'W' : s[0] < s[1] ? 'L' : 'D';
   const opp = id => `${esc(nm(id))} <small>· #${W.C[id].rank}</small>`;
-  const gls = e => e.gl && e.gl.length ? `<div class="gls">${e.gl.map(([sc, as, m]) => `<span>⚽ ${esc(short(W.P[sc].name))} ${m}'${as ? ` <small>(${esc(short(W.P[as].name))})</small>` : ''}</span>`).join('')}</div>` : '';
+  const one = ([sc, as, m]) => `<span>⚽ ${m}' ${esc(short(W.P[sc].name))}${as ? ` <small>(${esc(short(W.P[as].name))})</small>` : ''}</span>`;
+  const col = l => (l || []).slice().sort((x, y) => x[2] - y[2]).map(one).join('');
+  const gls = e => (e.gl && e.gl.length) || (e.og && e.og.length) ? `<div class="gls2"><div>${col(e.gl)}</div><div class="them">${col(e.og)}</div></div>` : '';
   const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
   const score = (s, r) => `<div class="score num">${s[0]}<span class="muted" style="font-size:16px">:</span>${s[1]}${r ? `<span class="res ${r}">${r}</span>` : ''}</div>`;
   if (e.k === 'md') return `<div class="ev"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}${hv(e)}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}</div>`;
@@ -1116,6 +1124,20 @@ function evHTML(e){
   if (e.k === 'end') return `<div class="ev" style="display:block"><div class="rd">Full time</div>${e.champ !== 'YOU' ? `<div>Won by <b>${esc(nm(e.champ))}</b>.</div>` : '<div><b>You</b> are champions of Europe.</div>'}</div>`;
   return '';
 }
+/* fixtures that are certain but not played yet: the remaining matchdays, and the next knockout tie once it is set */
+function pendingHTML(c){
+  const nx = c.ev[c.shown]; if (!nx) return '';
+  const rest = c.ev.slice(c.shown);
+  const list = nx.k === 'md' ? rest.filter(e => e.k === 'md') : nx.k === 'leg' ? rest.filter(e => e.k === 'leg' && e.round === nx.round) : nx.k === 'final' ? [nx] : [];
+  // straight into the Round of 16: the opponent comes out of the play-offs, so he is not known yet
+  const tbd = e => e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg');
+  const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
+  return list.map(e => {
+    const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}${hv(e)}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}${hv(e)}` : 'Final';
+    const who = tbd(e) ? '<span class="muted">Play-off winner</span>' : `${esc(nm(e.opp))} <small>· #${W.C[e.opp].rank}</small>`;
+    return `<div class="ev pend"><div class="rd">${rd}</div><div class="opp">vs ${who}</div><div class="score num">–<span style="font-size:16px">:</span>–</div></div>`;
+  }).join('');
+}
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
   return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t, true)}</div></div></section>`;
@@ -1130,7 +1152,7 @@ function viewCup(){
   <div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">Your XI · ${r.form}</div><h2>Euro Cup</h2></div>
     <span class="muted" style="font-size:13px">36 clubs · 8 matchdays</span></div>
   <div class="grid2">
-    <div class="feed">${evs.map(evHTML).join('') || drawCard(r.cup)}</div>
+    <div class="feed">${evs.map(evHTML).join('') || drawCard(r.cup)}${pendingHTML(c)}</div>
     <section class="sticky">${teamBox(r)}${pitch(r.picks, r.form, r.kept, true)}</section>
   </div>
   <div class="dock"><div class="btnrow"><button class="btn primary" data-act="next">${label}</button><button class="btn ghost" data-act="all">Skip to the end</button></div></div>`;
