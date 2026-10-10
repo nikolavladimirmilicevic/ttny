@@ -201,7 +201,6 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 /* ================= CONFIG ================= */
 const CFG = {
   SHOOTOUT_P: 0.686,          // World Cup shootout conversion, all tournaments (Opta / The Analyst)
-  DRAW_POWER: 1,   // opponents are drawn in proportion to UEFA points (to this power)
   TIMER_MS: 10 * 60 * 1000,   // 10 minutes to start the next run, 10 minutes to finish a started run
   KEEP: { league: 0, playoff: 1, r16: 2, qf: 3, sf: 4, final: 5, champion: 6 },
   STORE: 'ttny.v9'
@@ -678,16 +677,19 @@ function playTie(a, b, legs, T){
   t.winner = ta > tb ? a : tb > ta ? b : (t.pens.a > t.pens.b ? a : b);
   return t;
 }
+/* The chance that a club is among the n opponents is exactly proportional to its UEFA points:
+   pi = n x points / (sum of points), capped at 1 (any capped club is always in, the rest share what is left).
+   Systematic sampling over a shuffled list gives every club exactly that chance. */
 function drawOpponents(n){
-  const pool = [...W.oppPool], out = [];
-  while (out.length < n && pool.length){
-    // weight = UEFA points: per draw Bayern (129.5) is 129.5 times as likely as a 1-point club
-    const wt = id => Math.pow(W.ptsOf(W.C[id].rank), CFG.DRAW_POWER);
-    const tot = pool.reduce((s, id) => s + wt(id), 0);
-    let x = MR() * tot, k = pool.length - 1;
-    for (let i = 0; i < pool.length; i++){ x -= wt(pool[i]); if (x <= 0){ k = i; break; } }
-    out.push(pool.splice(k, 1)[0]);
+  const pool = shuffle([...W.oppPool]), w = id => W.ptsOf(W.C[id].rank);
+  const pi = new Map(), sure = new Set();
+  for (let changed = true; changed;){
+    changed = false;
+    const rest = pool.filter(id => !sure.has(id)), tot = rest.reduce((t, id) => t + w(id), 0), left = n - sure.size;
+    for (const id of rest){ const p = left * w(id) / tot; if (p >= 1){ sure.add(id); changed = true; } else pi.set(id, p); }
   }
+  const out = [...sure], u = MR(); let cum = 0, next = u;
+  for (const id of pool){ if (sure.has(id)) continue; cum += pi.get(id); while (cum > next && out.length < n){ out.push(id); next += 1; } }
   return out;
 }
 const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
