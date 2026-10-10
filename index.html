@@ -127,7 +127,15 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .slot.target .dot{outline:3px dashed var(--gold);outline-offset:3px;animation:pulse 1.2s ease-in-out infinite}
 .slot.empty.target .dot{border-color:var(--gold);color:var(--gold)}
 .hint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
-.slot .rt{display:flex;gap:3px;font:600 11px/1 var(--display)}
+.quad{position:relative;width:var(--s);height:var(--s);border-radius:50%;flex:none;border:2px solid rgba(11,22,38,.6);box-shadow:0 4px 12px rgba(0,0,0,.35);font:600 calc(var(--s) * .2)/1 var(--display);color:#14181F}
+.slot .quad{--s:56px;border-color:var(--kit)}
+.quad i{position:absolute;font-style:normal;transform:translate(-50%,-50%)}
+.quad .qt{left:50%;top:17%}.quad .qb{left:50%;top:83%}.quad .ql{left:17%;top:50%}.quad .qr{left:83%;top:50%}
+.quad b{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:38%;height:38%;border-radius:50%;display:grid;place-items:center;background:#0B1626;color:var(--text);font-size:calc(var(--s) * .22)}
+.quad.nums{font-size:calc(var(--s) * .15)}.quad.nums b{font-size:calc(var(--s) * .17);width:40%;height:40%}
+.qkey{font-size:11px;line-height:1.45;color:var(--muted)}
+.teambox{background:var(--panel);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.tq{display:flex;align-items:center;gap:16px}
 .gt{display:inline-grid;place-items:center;min-width:17px;padding:2px 4px;border-radius:4px;font:600 11px/1 var(--display);color:#14181F}
 .gpair{display:flex;gap:4px;flex:none}.gpair .gt{min-width:24px;padding:5px 6px;font-size:15px}
 .teamrt{display:flex;gap:10px;margin-bottom:12px}
@@ -177,7 +185,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .krow.on .box{background:var(--gold);border-color:var(--gold)}
 .toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:var(--gold);color:var(--gold-ink);padding:10px 16px;border-radius:10px;font-weight:500;z-index:9;max-width:calc(100% - 32px);text-align:center}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
-@media(max-width:420px){.stats{grid-template-columns:repeat(2,1fr)}.slot{width:64px}.slot .lbl{max-width:64px;font-size:10px}.dot{width:34px;height:34px}}
+@media(max-width:420px){.slot .quad{--s:46px}.stats{grid-template-columns:repeat(2,1fr)}.slot{width:64px}.slot .lbl{max-width:64px;font-size:10px}.dot{width:34px;height:34px}}
 </style>
 
 <div class="wrap" id="app"></div>
@@ -495,16 +503,28 @@ const R = x => Math.round(40 + 59 * Math.max(0, Math.min(1, x)));
 // player grades: the 40-99 scale cut into five equal bands (A 88+, B 76-87, C 64-75, D 52-63, E up to 51)
 const grade = n => n >= 88 ? 'A' : n >= 76 ? 'B' : n >= 64 ? 'C' : n >= 52 ? 'D' : 'E';
 const gTag = n => `<span class="gt g${grade(n)}">${grade(n)}</span>`;
-function playerRating(pid, role){
+// four parts: team attack (ta), own attack (ia), team defence (td), own defence (id); overall = their mean
+function playerRating(pid){
   const p = W.P[pid];
-  const ga = R(pctBelow(W.GA, (p.g || 0) + (p.a || 0)));
-  const cs = R(pctBelow(W.CSH, p.co.filter(v => v === 0).length));
-  return { off: Math.round((R(pctBelow(W.SS, p.avgS)) + ga) / 2), def: Math.round((R(1 - pctBelow(W.SC, p.avgC)) + cs) / 2) };
+  const ta = R(pctBelow(W.SS, p.avgS)), ia = R(pctBelow(W.GA, (p.g || 0) + (p.a || 0)));
+  const td = R(1 - pctBelow(W.SC, p.avgC)), id = R(pctBelow(W.CSH, p.co.filter(v => v === 0).length));
+  return parts(ta, ia, td, id);
 }
+const parts = (ta, ia, td, id) => ({ ta, ia, td, id, off: Math.round((ta + ia) / 2), def: Math.round((td + id) / 2), ov: Math.round((ta + ia + td + id) / 4) });
+// for the team and the simulation only: own defence counts just for goalkeepers, defenders and back midfielders
+const BACK = ['GK', 'DEF', 'MIDB'];
+function playRating(pid, role){ const r = playerRating(pid); return BACK.includes(role) ? r : parts(r.ta, r.ia, r.td, R(0)); }
 function teamRating(picks, form){
-  const a = arrangement(picks, form); let sa = 0, wa = 0, sd = 0, wd = 0;
-  const d = drums(picks, form), m = x => x.reduce((t, v) => t + v, 0) / x.length;
-  return { off: R(pctBelow(W.CS, m(d.sc))), def: R(1 - pctBelow(W.CC, m(d.co))) };
+  const rs = arrangement(picks, form).map((pid, j) => playRating(pid, FORMS[form][j][3]));
+  const m = k => Math.round(rs.reduce((t, r) => t + r[k], 0) / rs.length);
+  return parts(m('ta'), m('ia'), m('td'), m('id'));
+}
+/* the four parts as a circle cut in quarters: top team defence, bottom own defence, left team attack, right own attack,
+   overall in the middle; letters for players, 40-99 numbers for the team */
+function quad(r, size, nums){
+  const t = v => nums ? v : grade(v), c = v => `var(--g${grade(v)})`;
+  return `<div class="quad${nums ? ' nums' : ''}" style="${size ? `--s:${size}px;` : ''}background:conic-gradient(from -45deg,${c(r.td)} 0 90deg,${c(r.ia)} 90deg 180deg,${c(r.id)} 180deg 270deg,${c(r.ta)} 270deg 360deg)">
+    <i class="qt">${t(r.td)}</i><i class="qr">${t(r.ia)}</i><i class="qb">${t(r.id)}</i><i class="ql">${t(r.ta)}</i><b>${t(r.ov)}</b></div>`;
 }
 const locked = () => S.run && (S.run.phase === 'cup' || S.run.phase === 'done');
 function roleOf(pid){ const r = S.run, a = arrangement(r.picks, r.form); return FORMS[r.form][a.indexOf(pid)][3]; }
@@ -553,7 +573,7 @@ function drums(pids, form){
     sc.push(...p.sc); co.push(...p.co);   // his 10 results, one ball each
     // grade balls: A repeats his 2 best results, B his best, C nothing, D his worst, E his 2 worst
     // (attack: best = most scored; defence: best = fewest conceded)
-    const r = playerRating(pid, line), n = { A: 2, B: 1, C: 0, D: -1, E: -2 };
+    const r = playRating(pid, line), n = { A: 2, B: 1, C: 0, D: -1, E: -2 };
     const add = (list, g, bestFirst) => { const s = [...list].sort(bestFirst), k = n[grade(g)]; return k >= 0 ? s.slice(0, k) : s.slice(k); };
     sc.push(...add(p.sc, r.off, (x, y) => y - x));
     co.push(...add(p.co, r.def, (x, y) => x - y));
@@ -642,7 +662,7 @@ function drawCard(c){
 }
 function buildCup(T){
   const opps = drawOpponents(35).sort((a, b) => W.C[a].rank - W.C[b].rank);
-  const tr = teamRating(S.run.picks, S.run.form), mine = (tr.off + tr.def) / 2, at = opps.filter(id => clubOverall(id) > mine).length;
+  const tr = teamRating(S.run.picks, S.run.form), mine = tr.ov, at = opps.filter(id => clubOverall(id) > mine).length;
   const teams = [...opps.slice(0, at), 'YOU', ...opps.slice(at)];
   const myPot = Math.floor(at / 9) + 1;
   const sch = leagueSchedule(teams);
@@ -793,7 +813,7 @@ function cardHTML(p){
     <div class="muted" style="margin:3px 0 6px;display:flex;align-items:center">${natTag(p)} · ${p.age}</div>
     <div class="r"><span>Club</span><span style="text-align:right">${esc(c.name)}</span></div>
     <div class="r"><span>Positions</span><span class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</span></div>
-    ${locked() && S.run.picks.includes(p.id) ? (r => `<div class="r"><span>Attack / Defence</span><span>${gTag(r.off)} ${gTag(r.def)}</span></div>`)(playerRating(p.id, roleOf(p.id))) : ''}`;
+    ${locked() && S.run.picks.includes(p.id) ? `<div class="r" style="align-items:center"><span class="qkey">Top: team defence<br>Bottom: own defence<br>Left: team attack<br>Right: own attack<br>Middle: overall</span>${quad(playerRating(p.id), 64)}</div>` : ''}`;
 }
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
@@ -808,8 +828,8 @@ function pitch(pids, form, kept, rated, editable){
     const pid = a[j];
     if (!pid) return `<div class="slot empty${cls(j)}"${act(j)} style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
     const p = W.P[pid];
-    const rt = rated ? playerRating(pid, FORMS[f][j][3]) : null;
-    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}"><div class="dot">${code}</div><div class="lbl">${esc(short(p.name))}</div>${rt ? `<div class="rt">${gTag(rt.off)}${gTag(rt.def)}</div>` : ''}</div>`;
+    const rt = rated ? playerRating(pid) : null;
+    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${rt ? quad(rt) : `<div class="dot">${code}</div>`}<div class="lbl">${esc(short(p.name))}</div></div>`;
   }).join('') + `</div>`;
 }
 function shapes(pids, active, clickable){
@@ -856,7 +876,7 @@ function viewHome(){
         <li>The world is the top 100 clubs of the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player gets an attack and a defence grade from A to E. Half comes from the goals his team scored and conceded in his last 10 of those starts, half from himself: goals plus assists in those 10 for attack, and clean sheets in those 10 for defence, both as a percentile among all players. Your team gets an attack and a defence rating from 40 to 99.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player gets four grades from A to E in a circle (team attack, own attack, team defence, own defence) and an overall in the middle. Team parts come from the goals his team scored and conceded in his last 10 of those starts; own parts from his goals plus assists and his clean sheets in those 10. All are percentiles among all players. Your team gets the same circle in numbers from 40 to 99, the average of your players, where own defence only counts for goalkeepers, defenders and back midfielders (everyone else counts as 40 there).</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Matches are drawn from a drum of real scorelines. Every player adds his last 10 results, one ball each, and his grade adds more: an A repeats his 2 best results, B his best, C nothing, D his worst, E his 2 worst (most scored for attack, fewest conceded for defence). Your team rating is read from this drum. Each match, 10 balls come out of your drum and face the opponent's last 10 results: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
@@ -948,7 +968,7 @@ function evHTML(e){
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
-  return `<div class="teamrt"><div><span>Team attack</span><b class="num" style="color:var(--gold)">${t.off}</b></div><div><span>Team defence</span><b class="num" style="color:#9DB8E0">${t.def}</b></div></div>`;
+  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${quad(t, 108, true)}<span class="qkey">Top: team defence<br>Bottom: own defence<br>Left: team attack<br>Right: own attack<br>Middle: overall</span></div></section>`;
 }
 function viewCup(){
   const r = S.run, c = r.cup;
@@ -973,7 +993,7 @@ function viewDone(){
     const on = r.keepSel.includes(p.id);
     return `<button class="krow${on ? ' on' : ''}" data-act="keep" data-p="${p.id}" data-pid="${p.id}" aria-pressed="${on}" ${n ? '' : 'disabled'}>
       <span class="box">${on ? '✓' : ''}</span><span style="min-width:0"><div class="nm" style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${natTag(p)} · ${p.pos.join(' · ')} · ${esc(W.C[p.club].name)}</div></span>
-      ${(rt => `<span class="gpair" title="Attack / Defence">${gTag(rt.off)}${gTag(rt.def)}</span>`)(playerRating(p.id, roleOf(p.id)))}</button>`;
+      ${quad(playerRating(p.id), 40)}</button>`;
   }).join('');
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div>${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}</header>
