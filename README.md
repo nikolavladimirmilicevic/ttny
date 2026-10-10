@@ -1,15 +1,16 @@
 # This Time Next Year
 
-Draft one player from each of 11 pots of Europe's top-100 clubs, then win the Euro Cup.
+Draft one player from each of 11 pots of clubs on the UEFA 5-year ranking, then win the Euro Cup.
 A static web game (one `index.html`) served by GitHub Pages, with data refreshed daily by a GitHub Action.
 
 ## How the data works
 
 `pipeline/update.py` calls [API-Football](https://www.api-football.com) and writes `world.json`:
 
-- **Clubs:** the top 100 of the UEFA 5-year club ranking, read once a week from the data service behind uefa.com. If that fails, the script keeps the last good list; with no list at all it falls back to `pipeline/clubs.csv`. New clubs are matched to API-Football by name. If one is matched wrongly or not found, add `name,api_id` to `pipeline/team_ids.csv` (the name as UEFA writes it).
-- **Players:** everyone on a top-100 roster with **10+ starts against top-100 clubs in the last 365 days**. A player's last 10 of those starts give his scored and conceded lists. His positions are the slots he started in, read from the line-up grid.
-- **Opponents:** each club's last 10 results against other top-100 clubs.
+- **Clubs:** every club on the UEFA 5-year club ranking, with its points, read once a week from the data service behind uefa.com. If that fails, the script keeps the last good list; with no list at all it falls back to `pipeline/clubs.csv`. Clubs are matched to API-Football by name. If one is matched wrongly or not found, add `name,api_id` to `pipeline/team_ids.csv` (the name as UEFA writes it).
+- **Players:** everyone on a ranked club's roster with **10+ starts against ranked clubs in the last 365 days** (friendlies count, matches without line-up positions do not) and a known nationality. Every such start is kept with the opponent, venue, score, his goals and assists, his position and the club he played for.
+- **Clubs' results:** every match against another ranked club in the same window, under the same positions rule.
+- **Match model:** the base home/draw/away rates, the real scorelines behind each result and the fitted tilt `k`, all from matches between ranked clubs.
 
 Everything fetched is cached in `data/cache/`, so each run only asks for what is new.
 If no `world.json` exists, the game runs on generated demo data.
