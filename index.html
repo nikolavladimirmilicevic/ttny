@@ -201,7 +201,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 /* ================= CONFIG ================= */
 const CFG = {
   SHOOTOUT_P: 0.686,          // World Cup shootout conversion, all tournaments (Opta / The Analyst)
-  DRAW_POWER: 2,   // opponents are drawn in proportion to UEFA points to this power
+  DRAW_POWER: 1,   // opponents are drawn in proportion to UEFA points (to this power)
   TIMER_MS: 10 * 60 * 1000,   // 10 minutes to start the next run, 10 minutes to finish a started run
   KEEP: { league: 0, playoff: 1, r16: 2, qf: 3, sf: 4, final: 5, champion: 6 },
   STORE: 'ttny.v9'
@@ -681,7 +681,7 @@ function playTie(a, b, legs, T){
 function drawOpponents(n){
   const pool = [...W.oppPool], out = [];
   while (out.length < n && pool.length){
-    // weight = UEFA points squared: Bayern (129.5) is about 17 times as likely as Crvena Zvezda (31.5) per draw
+    // weight = UEFA points: per draw Bayern (129.5) is 129.5 times as likely as a 1-point club
     const wt = id => Math.pow(W.ptsOf(W.C[id].rank), CFG.DRAW_POWER);
     const tot = pool.reduce((s, id) => s + wt(id), 0);
     let x = MR() * tot, k = pool.length - 1;
