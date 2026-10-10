@@ -374,12 +374,12 @@ UEFA_ALIAS = {
     'm. haifa': 'Maccabi Haifa', 'h. beer-sheva': 'Hapoel Beer Sheva', 'crvena zvezda': 'Crvena Zvezda', 'gladbach': 'Borussia Monchengladbach',
     'wolves': 'Wolverhampton', 'spurs': 'Tottenham', 'inter': 'Inter', 'milan': 'AC Milan', 'roma': 'AS Roma',
     # beyond the top 100
-    'sint-truidense': 'Sint-Truiden', 'n.e.c.': 'NEC Nijmegen', 'ofi crete': 'OFI', 'nordsjaelland': 'Nordsjaelland',
+    'sint-truidense': 'St. Truiden', 'n.e.c.': 'NEC Nijmegen', 'ofi crete': 'OFI', 'nordsjaelland': 'Nordsjaelland',
     'zire': 'Zira', 'dac 1904': 'Dunajska Streda', 'h. boltfelag': 'HB Torshavn', 'diddeleng': 'Dudelange', 'paksi': 'Paks',
-    'puskas akademia': 'Puskas', 'polissya': 'Polissya', 'olexandriya': 'Oleksandria', 'araz-naxcivan': 'Araz',
-    'gabala': 'Qabala', 'kr': 'KR Reykjavik', 'elimai': 'Elimai', 'fcsg': 'Sfintul Gheorghe', 'brera strumica': 'Brera',
+    'puskas akademia': 'Puskas', 'polissya': 'Zhytomyr', 'olexandriya': 'Oleksandria', 'araz-naxcivan': 'Araz',
+    'gabala': 'Qabala', 'kr': 'KR Reykjavik', 'elimai': 'Semey', 'fcsg': 'Sfintul Gheorghe', 'brera strumica': 'Pandev',
     'pusk akademia': 'Puskas', 'd 1904': 'Dunajska Streda',   # keys as norm() leaves them
-    'dynamo brest': 'Dinamo Brest', 'breidablik': 'Breidablik', 'lillestrom': 'Lillestrom', 'brondby': 'Brondby', 'sumqayit': 'Sumqayit',
+    'dynamo brest': 'Dinamo Brest', 'breidablik': 'Breidablik', 'lillestrom': 'Lillestrom', 'brondby': 'Brondby', 'sumqayit': 'Sumgayit',
 }
 NOT_FIRST_TEAM = re.compile(r'(\bW\b|\bU1\d\b|\bU2\d\b|\bII\b|\bB\b|women|youth|reserves|femenino|feminin|\bF\b)\s*$', re.I)
 
