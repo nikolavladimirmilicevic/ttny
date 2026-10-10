@@ -898,7 +898,7 @@ function cardHTML(p){
       ${r ? `<div class="pc-ov g${ovGrade(r.ov)}"><b>${ovGrade(r.ov)}</b><small>Overall</small></div>` : ''}</div>
     <div class="pc-club">${esc(c.name)}</div>
     <div class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</div>
-    ${r ? `<div class="pc-sec pc-ped"><span>Pedigree<small>the stature of the clubs he has played for</small></span>${badge(qGrade(r.q.pe))}</div>
+    ${r ? `<div class="pc-sec pc-ped"><span>Pedigree<small>the stature of his clubs this year</small></span>${badge(qGrade(r.q.pe))}</div>
     <div class="pc-sec"><div class="pc-h">Attack</div>${row('Collective', 'the threat of the side around him', qGrade(r.q.ta))}${row('Individual', 'his own end product', qGrade(r.q.ia))}</div>
     <div class="pc-sec"><div class="pc-h">Defence</div>${row('Collective', 'how hard his side is to break down', qGrade(r.q.td))}${row('Individual', 'what he shuts out himself', qGrade(r.q.id))}</div>
     <div class="pc-sec">${row('Form', 'points in his last 5 games', qGrade(r.q.fo), true)}</div>` : ''}`;
