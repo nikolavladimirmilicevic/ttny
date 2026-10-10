@@ -605,7 +605,7 @@ function ovGrade(ov){
 /* overall in a circle; the four parts row by row (letters for players, 40-99 for the team) */
 // players: kit colours of his nationality; the team: gold
 const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${ovGrade(r.ov)}</div>` : `<div class="ovdot big g${numGrade(r.ov)}">${r.ov}</div>`;
-const partRows = (r, nums, from = 0, to = 6) => [['Pedigree', 'pe'], ['Collective attack', 'ta'], ['Individual attack', 'ia'], ['Collective defence', 'td'], ['Individual defence', 'id'], ['Form', 'fo']].slice(from, to)
+const partRows = (r, nums, from = 0, to = 6) => [['Reputation', 'pe'], ['Collective attack', 'ta'], ['Individual attack', 'ia'], ['Collective defence', 'td'], ['Individual defence', 'id'], ['Form', 'fo']].slice(from, to)
   .map(([k, f]) => `<div class="r"><span>${k}</span>${nums ? `<b class="num tnum g${numGrade(r[f])}">${r[f]}</b>` : `<span class="gt g${qGrade(r.q[f])}">${qGrade(r.q[f])}</span>`}</div>`).join('');
 // a 40-99 number gets the colour of the percentile it stands for (40 + 59 x percentile)
 const numGrade = v => qGrade((v - 40) / 59);
@@ -898,7 +898,7 @@ function cardHTML(p){
       ${r ? `<div class="pc-ov g${ovGrade(r.ov)}"><b>${ovGrade(r.ov)}</b><small>Overall</small></div>` : ''}</div>
     <div class="pc-club">${esc(c.name)}</div>
     <div class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</div>
-    ${r ? `<div class="pc-sec pc-ped"><span>Pedigree</span>${badge(qGrade(r.q.pe))}</div>
+    ${r ? `<div class="pc-sec pc-ped"><span>Reputation</span>${badge(qGrade(r.q.pe))}</div>
     <div class="pc-sec"><div class="pc-h">Attack</div>${row('Collective', '', qGrade(r.q.ta))}${row('Individual', '', qGrade(r.q.ia))}</div>
     <div class="pc-sec"><div class="pc-h">Defence</div>${row('Collective', '', qGrade(r.q.td))}${row('Individual', '', qGrade(r.q.id))}</div>
     <div class="pc-sec">${row('Form', '', qGrade(r.q.fo), true)}</div>` : ''}`;
@@ -964,7 +964,7 @@ function viewHome(){
         <li>The world is every club on the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E; hover him for pedigree, collective and individual attack and defence, and form. Your team shows the averages of your players from 40 to 99.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E; hover him for reputation, collective and individual attack and defence, and form. Your team shows the averages of your players from 40 to 99.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Matches start from real football: how often the home side wins, draws and loses across every match between ranked clubs in the last year. Each side then tilts those odds by its strength. A club's strength is half its UEFA points percentile and half the average of five more: points per game, points per game in the last 5, points per game at home or away, goals scored and goals conceded per game. Your XI's strength is the same from your players' averages, with goals plus assists and clean sheets (in defensive positions, per game played) added to the second half. Every one except UEFA points counts each match by the opponent's UEFA points. The two tilted odds are combined, the result is drawn, and the score is a real scoreline with that result.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
