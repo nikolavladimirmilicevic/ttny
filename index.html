@@ -131,6 +131,9 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .ovdot.big{width:84px;height:84px;font-size:36px;background:var(--gold);color:var(--gold-ink)}
 .trows{flex:1;min-width:0}.trows .r{display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 .trows .r:first-child{border-top:0}.trows .r b{color:var(--text);font:600 16px var(--display)}
+.stats.s3{grid-template-columns:repeat(3,1fr)}.card .stat{background:var(--panel-2)}.card .stat b{font-size:22px}
+.toplists{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.toplists{grid-template-columns:1fr}}
+.toplist td:nth-child(2){text-align:left}.toplist td small{display:block;color:var(--muted);font-size:11px;font-weight:400}
 .teambox{background:var(--panel);border-radius:12px;padding:12px 14px;margin-bottom:12px}
 .tq{display:flex;align-items:center;gap:16px}
 .gt{display:inline-grid;place-items:center;min-width:17px;padding:2px 4px;border-radius:4px;font:600 11px/1 var(--display);color:#14181F}
@@ -597,12 +600,15 @@ function simMatch(a, b, T, et){
   return [ga, gb];
 }
 /* Who scored our goals: weighted by goals in his last 10 (assists by assists), everyone keeps a small chance. */
-function ourGoals(n, lo, hi){
-  const ps = S.run.picks.map(id => W.P[id]), out = [];
+const ourGoals = (n, lo, hi) => teamGoals('YOU', n, lo, hi);
+/* scorers for any side: your XI, or a club's rated players (minus anyone in your XI) */
+function teamGoals(team, n, lo, hi){
+  const ps = team === 'YOU' ? S.run.picks.map(id => W.P[id]) : W.C[team].squad.filter(id => !S.run.picks.includes(id)).map(id => W.P[id]), out = [];
+  if (!ps.length) return [];
   const w = (p, k) => (p[k] || 0) + (p.prim === 'GK' ? 0.01 : 0.15);
   const draw = (list, k) => { let x = MR() * list.reduce((t, p) => t + w(p, k), 0); for (const p of list){ x -= w(p, k); if (x <= 0) return p; } return list[list.length - 1]; };
   for (let i = 0; i < n; i++){
-    const sc = draw(ps, 'g'), as = MR() < 0.7 ? draw(ps.filter(p => p !== sc), 'a') : null;
+    const sc = draw(ps, 'g'), rest = ps.filter(p => p !== sc), as = rest.length && MR() < 0.7 ? draw(rest, 'a') : null;
     out.push([sc.id, as ? as.id : null, lo + Math.floor(MR() * (hi - lo + 1))]);
   }
   return out.sort((x, y) => x[2] - y[2]);
@@ -671,11 +677,15 @@ function buildCup(T){
   const ours = [];
   const rec = (x, gf, ga) => { const r = rows[x]; r.P++; r.GF += gf; r.GA += ga; if (gf > ga){ r.W++; r.Pts += 3; } else if (gf === ga){ r.D++; r.Pts++; } else r.L++; };
   const potOf = id => sch.pots.findIndex(p => p.includes(id)) + 1;
+  // competition scorers and assists, every match
+  const G = {}, A = {}, tally = gl => { for (const [sc, as] of gl){ G[sc] = (G[sc] || 0) + 1; if (as) A[as] = (A[as] || 0) + 1; } return gl; };
+  const goals = (team, n, lo, hi) => tally(teamGoals(team, n, lo, hi));
   for (const [a, b] of sch.games){
     const [ga, gb] = simMatch(a, b, T);
     rec(a, ga, gb); rec(b, gb, ga);
-    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b), gl: ourGoals(ga, 1, 90) });
-    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a), gl: ourGoals(gb, 1, 90) });
+    const la = goals(a, ga, 1, 90), lb = goals(b, gb, 1, 90);
+    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b), gl: la });
+    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a), gl: lb });
   }
   shuffle(ours);
   const table = Object.values(rows).sort((x, y) => y.Pts - x.Pts || (y.GF - y.GA) - (x.GF - x.GA) || y.GF - x.GF || x.tb - y.tb);
@@ -686,11 +696,14 @@ function buildCup(T){
   let stage = 'league', alive = pos <= 24;
   const run = (round, a, b, legs, key) => {
     const t = playTie(a, b, legs, T);
+    const gA = t.legs.map(l => goals(t.a, l[0], 1, 90)), gB = t.legs.map(l => goals(t.b, l[1], 1, 90));
+    const eA = t.et ? goals(t.a, t.et[0], 91, 120) : [];
+    if (t.et) goals(t.b, t.et[1], 91, 120);
     if (t.a === 'YOU'){
       if (legs === 2){
-        ev.push({ k: 'leg', round, leg: 1, opp: t.b, s: t.legs[0], gl: ourGoals(t.legs[0][0], 1, 90) });
-        ev.push({ k: 'leg', round, leg: 2, opp: t.b, s: t.legs[1], gl: ourGoals(t.legs[1][0], 1, 90).concat(t.et ? ourGoals(t.et[0], 91, 120) : []), agg: t.agg, et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
-      } else ev.push({ k: 'final', round, opp: t.b, s: t.legs[0], gl: ourGoals(t.legs[0][0], 1, 90).concat(t.et ? ourGoals(t.et[0], 91, 120) : []), et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
+        ev.push({ k: 'leg', round, leg: 1, opp: t.b, s: t.legs[0], gl: gA[0] });
+        ev.push({ k: 'leg', round, leg: 2, opp: t.b, s: t.legs[1], gl: gA[1].concat(eA), agg: t.agg, et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
+      } else ev.push({ k: 'final', round, opp: t.b, s: t.legs[0], gl: gA[0].concat(eA), et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
       stage = t.winner === 'YOU' ? (key === 'final' ? 'champion' : stage) : key;
     }
     return t.winner;
@@ -707,7 +720,8 @@ function buildCup(T){
   const champ = run(STAGE_NAME.final, sf[0], sf[1], 1, 'final');
   if (pos > 24) stage = 'league';
   ev.push({ k: 'end', stage, champ });
-  return { ev, shown: 0, stage, champ, pos, myPot };
+  const top = M => Object.entries(M).sort((x, y) => y[1] - x[1] || W.P[x[0]].name.localeCompare(W.P[y[0]].name)).slice(0, 10);
+  return { ev, shown: 0, stage, champ, pos, myPot, top: { g: top(G), a: top(A) } };
 }
 
 /* ================= STATE ================= */
@@ -987,6 +1001,30 @@ function viewCup(){
   <div class="dock"><div class="btnrow"><button class="btn primary" data-act="next">${label}</button><button class="btn ghost" data-act="all">Skip to the end</button></div></div>`;
 }
 
+/* end of a run: your campaign, your players, and the competition's top scorers and assists */
+function seasonBox(r){
+  const c = r.cup, ms = c.ev.filter(e => e.k === 'md' || e.k === 'leg' || e.k === 'final');
+  let W_ = 0, D = 0, L = 0, GF = 0, GA = 0, CS = 0, big = null;
+  const g = {}, a = {};
+  for (const m of ms){
+    const f = m.s[0] + (m.et ? m.et[0] : 0), ag = m.s[1] + (m.et ? m.et[1] : 0);
+    GF += f; GA += ag; if (ag === 0) CS++;
+    if (f > ag) W_++; else if (f < ag) L++; else D++;
+    if (f > ag && (!big || f - ag > big.d || (f - ag === big.d && f > big.f))) big = { d: f - ag, f, ag, opp: m.opp };
+    for (const [sc, as] of m.gl || []){ g[sc] = (g[sc] || 0) + 1; if (as) a[as] = (a[as] || 0) + 1; }
+  }
+  const arr = arrangement(r.picks, r.form), code = pid => FORMS[r.form][arr.indexOf(pid)][0];
+  const rows = arr.map(pid => W.P[pid]).sort((x, y) => ((g[y.id] || 0) + (a[y.id] || 0)) - ((g[x.id] || 0) + (a[x.id] || 0)) || (g[y.id] || 0) - (g[x.id] || 0) || POS_ORDER.indexOf(code(x.id)) - POS_ORDER.indexOf(code(y.id)));
+  const tile = (k, v) => `<div class="stat"><span>${k}</span><b class="num">${v}</b></div>`;
+  const list = (title, L) => `<div class="card"><div class="eyebrow" style="margin-bottom:8px">${title}</div><div class="tblwrap"><table class="tbl num toplist"><tbody>
+    ${L.length ? L.map(([pid, n], i) => `<tr class="${r.picks.includes(pid) ? 'me' : ''}"><td>${i + 1}</td><td>${esc(W.P[pid].name)}<small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small></td><td>${n}</td></tr>`).join('') : '<tr><td>No goals</td></tr>'}</tbody></table></div></div>`;
+  return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your campaign</div>
+    <div class="stats s3">${tile('Played', ms.length)}${tile('W-D-L', `${W_}-${D}-${L}`)}${tile('Goals', `${GF}:${GA}`)}${tile('Clean sheets', CS)}${tile('League phase', ord(c.pos))}${tile('Biggest win', big ? `${big.f}:${big.ag}` : '-')}</div>
+    ${big ? `<div class="muted" style="font-size:12px;margin-top:6px">Biggest win against ${esc(nm(big.opp))}.</div>` : ''}
+    <div class="tblwrap" style="margin-top:12px"><table class="tbl num"><thead><tr><th style="text-align:left">Player</th><th>Pos</th><th>G</th><th>A</th><th>Ovr</th></tr></thead><tbody>
+    ${rows.map(p => `<tr><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td>${code(p.id)}</td><td>${g[p.id] || 0}</td><td>${a[p.id] || 0}</td><td>${ovGrade(playerRating(p.id).ov)}</td></tr>`).join('')}</tbody></table></div></section>
+    ${c.top ? `<div class="toplists">${list('Top scorers', c.top.g)}${list('Top assists', c.top.a)}</div>` : ''}`;
+}
 function viewDone(){
   const r = S.run, st = r.cup.stage, n = r.keepN, champ = st === 'champion';
   const head = champ ? 'Champions of Europe' : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase();
@@ -1006,6 +1044,7 @@ function viewDone(){
     </section>
     ${teamBox(r)}
     ${n ? `<div><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div><div class="keep">${lst}</div></div>` : ''}
+    ${seasonBox(r)}
     <div class="feed">${r.cup.ev.filter(e => e.k !== 'table').slice(-3).map(evHTML).join('')}</div>
   </div>
   <div class="dock"><div class="btnrow">${n ? `<button class="btn primary" data-act="cont">Next run with ${r.keepSel.length} kept</button>` : `<button class="btn primary" data-act="cont">New run</button>`}<button class="btn ghost" data-act="home">Home</button></div></div>`;
