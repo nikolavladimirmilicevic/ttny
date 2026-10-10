@@ -104,8 +104,16 @@ def save(name, obj):
     os.replace(tmp, cpath(name))
 
 
+TRANSLIT = str.maketrans({'ø': 'o', 'Ø': 'O', 'æ': 'ae', 'Æ': 'Ae', 'ð': 'd', 'Ð': 'D', 'þ': 'th', 'Þ': 'Th', 'ł': 'l', 'Ł': 'L',
+                          'đ': 'd', 'Đ': 'D', 'ı': 'i', 'ß': 'ss', 'ə': 'a', 'Ə': 'A'})
+
+
+def ascii_name(s):
+    return unicodedata.normalize('NFKD', (s or '').translate(TRANSLIT)).encode('ascii', 'ignore').decode()
+
+
 def norm(s):
-    s = unicodedata.normalize('NFKD', s or '').encode('ascii', 'ignore').decode().lower()
+    s = ascii_name(s).lower()
     for w in ('fc ', ' fc', 'cf ', 'afc ', 'sc ', ' sk', 'fk ', 'sk ', 'ac ', 'as ', 'ssc ', 'rcd ', 'kv'):
         s = s.replace(w, ' ')
     return ' '.join(s.split())
@@ -365,6 +373,13 @@ UEFA_ALIAS = {
     'ferencvaros': 'Ferencvarosi TC', 'viktoria plzen': 'Plzen', 'psv': 'PSV Eindhoven', 'sporting cp': 'Sporting CP',
     'm. haifa': 'Maccabi Haifa', 'h. beer-sheva': 'Hapoel Beer Sheva', 'crvena zvezda': 'Crvena Zvezda', 'gladbach': 'Borussia Monchengladbach',
     'wolves': 'Wolverhampton', 'spurs': 'Tottenham', 'inter': 'Inter', 'milan': 'AC Milan', 'roma': 'AS Roma',
+    # beyond the top 100
+    'sint-truidense': 'Sint-Truiden', 'n.e.c.': 'NEC Nijmegen', 'ofi crete': 'OFI', 'nordsjaelland': 'Nordsjaelland',
+    'zire': 'Zira', 'dac 1904': 'Dunajska Streda', 'h. boltfelag': 'HB Torshavn', 'diddeleng': 'Dudelange', 'paksi': 'Paks',
+    'puskas akademia': 'Puskas', 'polissya': 'Polissya', 'olexandriya': 'Oleksandria', 'araz-naxcivan': 'Araz',
+    'gabala': 'Qabala', 'kr': 'KR Reykjavik', 'elimai': 'Elimai', 'fcsg': 'Sfintul Gheorghe', 'brera strumica': 'Brera',
+    'pusk akademia': 'Puskas', 'd 1904': 'Dunajska Streda',   # keys as norm() leaves them
+    'dynamo brest': 'Dinamo Brest', 'breidablik': 'Breidablik', 'lillestrom': 'Lillestrom', 'brondby': 'Brondby', 'sumqayit': 'Sumqayit',
 }
 NOT_FIRST_TEAM = re.compile(r'(\bW\b|\bU1\d\b|\bU2\d\b|\bII\b|\bB\b|women|youth|reserves|femenino|feminin|\bF\b)\s*$', re.I)
 
@@ -384,7 +399,7 @@ def search_terms(c):
         terms.append(alias)
     if c.get('search'):
         terms.append(c['search'])
-    plain = unicodedata.normalize('NFKD', c['name']).encode('ascii', 'ignore').decode()
+    plain = ascii_name(c['name'])
     plain = ''.join(ch if ch.isalnum() or ch == ' ' else ' ' for ch in plain)
     words = [w for w in plain.split() if w.lower() not in ('fc', 'afc', 'cf', 'sc', 'fk', 'sk', 'ac', 'as', 'ssc', 'kv', 'club', 'de', 'cd', 'rc')]
     if words:
