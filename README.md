@@ -1,6 +1,6 @@
 # This Time Next Year
 
-Draft one player from each of 11 pots of Europe's top-100 clubs, then win the Champions League.
+Draft one player from each of 11 pots of Europe's top-100 clubs, then win the Euro Cup.
 A static web game (one `index.html`) served by GitHub Pages, with data refreshed daily by a GitHub Action.
 
 ## How the data works
