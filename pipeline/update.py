@@ -290,6 +290,8 @@ def fetch_uefa_ranking(meta):
     """The UEFA 5-year club ranking (all of it, or the first CLUB_LIMIT), refreshed every Friday. Falls back to the last good list, then clubs.csv."""
     cached = load('uefa_ranking', {})
     fresh = cached.get('fetched') == TODAY.isoformat() or (TODAY.weekday() != UEFA_DAY and days_old(cached.get('fetched')) < UEFA_MAX_AGE)
+    # a cached list cut shorter than wanted (the old top-100 cache) is refetched
+    fresh = fresh and len(cached.get('clubs') or []) >= (CLUB_LIMIT or cached.get('total', 101))
     if cached.get('clubs') and fresh:
         return cached['clubs'], 'UEFA (cached ' + cached['fetched'] + ')'
     season_year = TODAY.year + 1 if TODAY.month >= 7 else TODAY.year   # UEFA names a season by its end year
@@ -317,7 +319,7 @@ def fetch_uefa_ranking(meta):
         rows.sort(key=lambda r: r['rank'])
         top = rows[:CLUB_LIMIT] if CLUB_LIMIT else rows
         if len(top) >= 95:
-            save('uefa_ranking', {'fetched': TODAY.isoformat(), 'season': year, 'clubs': top})
+            save('uefa_ranking', {'fetched': TODAY.isoformat(), 'season': year, 'total': len(rows), 'clubs': top})
             return top, f'UEFA ranking {year - 1}/{str(year)[2:]}'
         errors.append(f'{year}: only {len(top)} clubs parsed')
     log('  WARNING: could not read the UEFA ranking (' + '; '.join(errors) + ')')
