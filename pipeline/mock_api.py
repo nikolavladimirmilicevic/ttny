@@ -71,6 +71,10 @@ class H(BaseHTTPRequestHandler):
         if path == 'v2/coefficients':
             members = [{'member': {'id': str(900 + int(c['rank'])), 'displayName': c['name'], 'countryCode': {'SLO': 'SVN'}.get(c['code'], c['code'])},
                         'overallRanking': {'position': int(c['rank']), 'totalValue': 150 - int(c['rank'])}} for c in clubs]
+            members += [{'member': {'id': str(2000 + k), 'displayName': f'Small Club {k}', 'countryCode': 'SRB'},
+                         'overallRanking': {'position': 100 + k, 'totalValue': 10}} for k in range(1, 231)]
+            pg, size = int(q.get('page', 1)), int(q.get('pagesize', 200))
+            members = members[(pg - 1) * size: pg * size]
             body = json.dumps({'data': {'members': members}}).encode()
             self.send_response(200); self.send_header('Content-Type', 'application/json'); self.end_headers(); self.wfile.write(body)
             return

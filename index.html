@@ -501,7 +501,7 @@ const ORDER = 'ABCDE';
      Team part: how good his last 10 results are among all rated players (percentile).
      Individual attack: his goals + assists in those 10, as a percentile among all rated players.
      Individual defence: clean sheets in those 10 started in a defensive position (GK, CB, LB, RB, DMF), percentile; none = 40.
-   Team: the average of its drum, ranked among the top-100 clubs' last 10 results. */
+   Team: the average of its drum, ranked among the ranked clubs' last 10 results. */
 function pctBelow(arr, v){ let lo = 0, eq = 0; for (const x of arr){ if (x < v) lo++; else if (x === v) eq++; } return (lo + eq / 2) / arr.length; }
 const R = x => Math.round(40 + 59 * Math.max(0, Math.min(1, x)));
 // player grades: the 40-99 scale cut into five equal bands (A 88+, B 76-87, C 64-75, D 52-63, E up to 51)
@@ -656,9 +656,11 @@ function playTie(a, b, legs, T){
 function drawOpponents(n){
   const pool = [...W.oppPool], out = [];
   while (out.length < n && pool.length){
-    const tot = pool.reduce((s, id) => s + (101 - W.C[id].rank), 0);
+    // weight by UEFA rank: no. 1 has as many balls as there are ranked clubs, the last one has one
+    const top = Math.max(...Object.values(W.C).map(c => c.rank)) + 1;
+    const tot = pool.reduce((s, id) => s + (top - W.C[id].rank), 0);
     let x = MR() * tot, k = pool.length - 1;
-    for (let i = 0; i < pool.length; i++){ x -= 101 - W.C[pool[i]].rank; if (x <= 0){ k = i; break; } }
+    for (let i = 0; i < pool.length; i++){ x -= top - W.C[pool[i]].rank; if (x <= 0){ k = i; break; } }
     out.push(pool.splice(k, 1)[0]);
   }
   return out;
@@ -894,7 +896,7 @@ function viewHome(){
     <section class="hero">
       <div class="eyebrow">Champions League draft</div>
       <h1 style="margin-top:10px">Eleven pots.<br><em>One trophy.</em></h1>
-      <p>Draft one player from each of 11 pots of real clubs, rated on how they played against Europe's top 100 in the last year. Then win the Champions League.</p>
+      <p>Draft one player from each of 11 pots of real clubs, rated on how they played against the clubs of the UEFA ranking in the last year. Then win the Champions League.</p>
     </section>
     ${dyn}
     <div class="btnrow">${btns}</div>
@@ -907,7 +909,7 @@ function viewHome(){
     <details class="rules">
       <summary>How it works</summary>
       <ol>
-        <li>The world is the top 100 clubs of the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
+        <li>The world is every club on the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E (the average of his four parts, ranked among all players: top 20% are A, the next 20% B, and so on); hover him to see the four parts (team attack, own attack, team defence, own defence). Team parts come from the goals his team scored and conceded in his last 10 of those starts; own parts from his goals plus assists in those 10, and his clean sheets in those 10 counting only the matches he started in a defensive position (goalkeeper, centre-back, full-back, defensive midfielder); no such clean sheet means the lowest score. All are percentiles among all players. Your team gets the same in numbers from 40 to 99, the average of your players.</li>

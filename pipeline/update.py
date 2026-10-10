@@ -3,9 +3,9 @@
 This Time Next Year: daily data update from API-Football (v3).
 
 Builds world.json for the game:
-  - the top-100 clubs (pipeline/clubs.csv, UEFA 5-year ranking order)
-  - every club's last 10 results against other top-100 clubs
-  - every rostered player with 10+ starts against top-100 clubs in the last 365 days,
+  - every club on the UEFA 5-year ranking (CLUB_LIMIT caps it; pipeline/clubs.csv is the fallback)
+  - every club's last 10 results against other ranked clubs
+  - every rostered player with 10+ starts against ranked clubs in the last 365 days,
     his last 10 such scorelines, the positions he started in, nationality and age
 
 The script is resumable. It spends at most MAX_REQUESTS calls per run, keeps everything
@@ -228,6 +228,7 @@ def slot_code(formation, grid, pos):
 
 # ---------------- UEFA ranking ----------------
 UEFA_URL = os.environ.get('UEFA_URL', 'https://comp.uefa.com/v2/coefficients')
+CLUB_LIMIT = int(os.environ.get('CLUB_LIMIT') or 0)   # 0 = the whole UEFA list
 UEFA_MAX_AGE = 8   # days; safety net if a Friday run is missed
 UEFA_DAY = 4       # Friday: European matches are Tuesday to Thursday, so the ranking is fresh on Friday morning
 # UEFA association code -> (game code, API-Football country name)
@@ -286,7 +287,7 @@ def _parse_row(x):
 
 
 def fetch_uefa_ranking(meta):
-    """Top 100 of the UEFA 5-year club ranking, refreshed every Friday. Falls back to the last good list, then clubs.csv."""
+    """The UEFA 5-year club ranking (all of it, or the first CLUB_LIMIT), refreshed every Friday. Falls back to the last good list, then clubs.csv."""
     cached = load('uefa_ranking', {})
     fresh = cached.get('fetched') == TODAY.isoformat() or (TODAY.weekday() != UEFA_DAY and days_old(cached.get('fetched')) < UEFA_MAX_AGE)
     if cached.get('clubs') and fresh:
@@ -294,15 +295,27 @@ def fetch_uefa_ranking(meta):
     season_year = TODAY.year + 1 if TODAY.month >= 7 else TODAY.year   # UEFA names a season by its end year
     errors = []
     for year in (season_year, season_year - 1):
-        url = f'{UEFA_URL}?' + urllib.parse.urlencode({'coefficientRange': 'OVERALL', 'coefficientType': 'MEN_CLUB',
-                                                       'language': 'EN', 'page': 1, 'pagesize': 200, 'seasonYear': year})
-        try:
-            rows = [r for r in (_parse_row(x) for x in (_find_rows(_get_json(url)) or [])) if r]
-        except Exception as e:
-            errors.append(f'{year}: {e}')
+        rows, seen, failed = [], set(), None
+        for page in range(1, 11):   # 200 a page; the list has a few hundred clubs
+            url = f'{UEFA_URL}?' + urllib.parse.urlencode({'coefficientRange': 'OVERALL', 'coefficientType': 'MEN_CLUB',
+                                                           'language': 'EN', 'page': page, 'pagesize': 200, 'seasonYear': year})
+            try:
+                got = [r for r in (_parse_row(x) for x in (_find_rows(_get_json(url)) or [])) if r]
+            except Exception as e:
+                failed = e
+                break
+            new = [r for r in got if (r['uefa_id'] or r['name']) not in seen]
+            if not new:
+                break
+            seen.update(r['uefa_id'] or r['name'] for r in new)
+            rows += new
+            if len(got) < 200:
+                break
+        if failed and not rows:
+            errors.append(f'{year}: {failed}')
             continue
         rows.sort(key=lambda r: r['rank'])
-        top = [r for r in rows if r['rank'] <= 100][:100]
+        top = rows[:CLUB_LIMIT] if CLUB_LIMIT else rows
         if len(top) >= 95:
             save('uefa_ranking', {'fetched': TODAY.isoformat(), 'season': year, 'clubs': top})
             return top, f'UEFA ranking {year - 1}/{str(year)[2:]}'
@@ -319,7 +332,7 @@ def read_clubs(meta):
         with open(os.path.join(ROOT, 'pipeline', 'clubs.csv'), encoding='utf-8') as f:
             rows = [r for r in csv.DictReader(f) if r.get('rank', '').strip()]
         rows.sort(key=lambda r: int(r['rank']))
-        clubs, source = rows[:100], 'pipeline/clubs.csv (fallback)'
+        clubs, source = (rows[:CLUB_LIMIT] if CLUB_LIMIT else rows), 'pipeline/clubs.csv (fallback)'
     log(f'  club list: {source}, {len(clubs)} clubs')
     return clubs
 
@@ -430,7 +443,7 @@ def season_list():
 
 
 def fetch_team_seasons(top_ids, fx, meta):
-    """Initial load: every fixture of every top-100 club for the seasons that touch the last 365 days."""
+    """Initial load: every fixture of every ranked club for the seasons that touch the last 365 days."""
     done = meta.setdefault('team_seasons', {})
     for tid in top_ids:
         for season in season_list():
@@ -457,11 +470,11 @@ def fetch_recent_days(top, fx, meta):
                 add_fixture(fx, item)
                 n += 1
         seen[d] = TODAY.isoformat()
-        log(f'  {d}: {n} fixtures with a top-100 club')
+        log(f'  {d}: {n} fixtures with a ranked club')
 
 
 def fetch_lineups(top, fx, lu, evs):
-    """Starting XIs and goals (scorer, assist) for every finished fixture in the window that involves a top-100 club."""
+    """Starting XIs and goals (scorer, assist) for every finished fixture in the window that involves a ranked club."""
     need = [fid for fid, f in fx.items()
             if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat()
             and (f['h'] in top or f['a'] in top)
