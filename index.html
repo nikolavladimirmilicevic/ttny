@@ -84,6 +84,17 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .clubcard h2{font-size:clamp(30px,8vw,44px);font-weight:700}
 .clubcard .meta{margin-top:6px;color:var(--muted);font-size:14px}
 .note{margin-top:10px;font-size:13px;color:var(--gold)}
+.helps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.help{display:flex;gap:8px;align-items:flex-start;text-align:left;background:var(--panel-2);border:1px solid rgba(232,184,64,.45);border-radius:10px;padding:8px 10px;color:var(--text);cursor:pointer;font:inherit}
+.help:hover:not(:disabled){border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.help b{display:block;font:600 13px var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--gold)}
+.help small{display:block;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
+.help .hn{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:#0B1626;font:600 12px var(--display)}
+.help:disabled{opacity:.4;cursor:not-allowed;border-color:transparent}
+.help.used .hn{background:var(--muted)}
+.prow.tipped{box-shadow:0 0 0 2px var(--gold)}
+.tiptag{font:600 11px var(--display);letter-spacing:.05em;text-transform:uppercase;color:var(--gold);background:#0B1626;display:inline-block;padding:1px 6px;border-radius:4px;margin-bottom:3px}
+@media(max-width:520px){.helps{grid-template-columns:1fr}.help small{display:inline;margin-left:6px}.help b{display:inline}}
 .plist{display:flex;flex-direction:column;gap:6px;margin-top:14px}
 .prow{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center;background:var(--panel-2);border-radius:10px;padding:8px 8px 8px 12px;border:1px solid transparent;text-align:left;width:100%}
 .prow:hover:not(:disabled){border-color:var(--gold)}
@@ -821,7 +832,7 @@ function drawClub(){
   const r = S.run, pot = r.order[r.step];
   const pickedClubs = new Set();
   let cand = W.pots[pot].filter(c => !r.tried.includes(c) && !pickedClubs.has(c));
-  r.note = '';
+  r.note = ''; r.cut = []; r.tip = null;
   while (true){
     if (!cand.length){ // whole pot exhausted: fall back to any pot
       cand = W.draftable.filter(c => !r.tried.includes(c));
@@ -836,11 +847,52 @@ function drawClub(){
 }
 function choose(pid){
   const r = S.run; if (!r || r.phase !== 'draft' || !pickable(r.club).includes(pid)) return;
-  r.picks.push(pid); r.step++; r.tried = [];
+  r.picks.push(pid); r.step++; r.tried = []; r.cut = []; r.tip = null;
   r.sel = null;
   if (r.picks.length === 11){ r.phase = 'lineup'; const ok = feasible(r.picks); if (!ok.includes(r.form)) r.form = ok[0]; }
   else drawClub();
   save(); render();
+}
+/* ================= HELP (three lifelines, each once per run) =================
+   1 Redraw: swap the club for another from the same pot.
+   2 Fifty-fifty: drop the weaker half of the players you can pick (by overall); with an odd count the bigger half stays.
+   3 Scout's tip: mark one player you can pick, chosen at random among his club's top scorer, top assister,
+     most clean sheets (in a defensive position) and most starts in the last year. */
+const HELP = [
+  { k: 'swap', name: 'Redraw', desc: 'Swap this club for another from the same pot' },
+  { k: 'half', name: 'Fifty-fifty', desc: 'Drop the weaker half of the players you can pick' },
+  { k: 'tip', name: "Scout's tip", desc: 'Mark one standout player at this club' }
+];
+const TIP = { g: 'Top scorer', a: 'Top assister', cs: 'Most clean sheets', st: 'Most starts' };
+const csOf = p => p.m.reduce((t, r) => t + (r[5] && r[3] === 0 ? 1 : 0), 0);
+const helpUsed = k => !!(S.run.help && S.run.help[k]);
+const visible = r => pickable(r.club).filter(id => !(r.cut || []).includes(id));
+function swapOk(r){ const pot = r.order[r.step]; return W.pots[pot].some(c => c !== r.club && !r.tried.includes(c) && pickable(c).length); }
+function useHelp(k){
+  const r = S.run; if (!r || r.phase !== 'draft' || !r.club || helpUsed(k)) return;
+  if (k === 'swap'){
+    if (!swapOk(r)) return;
+    r.tried.push(r.club); drawClub();
+  } else if (k === 'half'){
+    const ids = visible(r); if (ids.length < 2) return;
+    const byOv = ids.map(id => [id, playerRating(id).st]).sort((x, y) => x[1] - y[1]);
+    r.cut = (r.cut || []).concat(byOv.slice(0, Math.floor(ids.length / 2)).map(x => x[0]));
+  } else if (k === 'tip'){
+    const ids = visible(r); if (!ids.length) return;
+    const val = { g: p => p.g, a: p => p.a, cs: csOf, st: p => p.starts };
+    const kinds = shuffle(Object.keys(val)).filter(t => ids.some(id => val[t](W.P[id]) > 0));
+    if (!kinds.length) return;
+    const t = kinds[0], best = ids.map(id => W.P[id]).sort((x, y) => val[t](y) - val[t](x) || y.starts - x.starts)[0];
+    r.tip = { pid: best.id, kind: t, n: val[t](best) };
+  }
+  r.help = Object.assign({}, r.help, { [k]: true });
+  save(); render();
+}
+function helpBar(r){
+  return `<div class="helps">${HELP.map((h, i) => {
+    const used = helpUsed(h.k), off = used || (h.k === 'swap' && !swapOk(r)) || (h.k === 'half' && visible(r).length < 2);
+    return `<button class="help${used ? ' used' : ''}" data-act="help" data-k="${h.k}" ${off ? 'disabled' : ''} title="${h.desc}">
+      <span class="hn">${i + 1}</span><span><b>${h.name}</b><small>${used ? 'Used' : h.desc}</small></span></button>`; }).join('')}</div>`;
 }
 function kickoff(){
   const r = S.run; const T = null;
@@ -969,6 +1021,7 @@ function viewHome(){
         <li>The world is every club on the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
+        <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> drops the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E; hover him for reputation, collective and individual attack and defence, and form. Your team shows the averages of your players from 40 to 99.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Matches start from real football: how often the home side wins, draws and loses across every match between ranked clubs in the last year. Each side then tilts those odds by its strength. A club's strength is half its UEFA points percentile and half the average of five more: points per game, points per game in the last 5, points per game at home or away, goals scored and goals conceded per game. Your XI's strength is the same from your players' averages, with goals plus assists and clean sheets (in defensive positions, per game played) added to the second half. Every one except UEFA points counts each match by the opponent's UEFA points. The two tilted odds are combined, the result is drawn, and the score is a real scoreline with that result.</li>
@@ -989,10 +1042,11 @@ function viewDraft(){
     return `<div class="pot${off ? ' off' : done ? ' done' : now ? ' now' : ''}" title="Pot ${i + 1}">${i + 1}</div>`;
   }).join('');
   const ok = new Set(pickable(r.club));
-  const rows = club.elig.filter(p => !r.picks.includes(p)).map(pid => W.P[pid])
+  const rows = club.elig.filter(p => !r.picks.includes(p) && !(r.cut || []).includes(p)).map(pid => W.P[pid])
     .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || POS_ORDER.indexOf(a.prim) - POS_ORDER.indexOf(b.prim) || a.name.localeCompare(b.name))
-    .map(p => `<button class="prow kitcard" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
-        <span style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : ' · no slot left'}</div></span>
+    .sort((a, b) => (r.tip && b.id === r.tip.pid) - (r.tip && a.id === r.tip.pid))
+    .map(p => `<button class="prow kitcard${r.tip && r.tip.pid === p.id ? ' tipped' : ''}" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
+        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${TIP[r.tip.kind]} · ${r.tip.n}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : ' · no slot left'}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   if (!shp.includes(r.form)) r.form = shp[0];
@@ -1007,6 +1061,8 @@ function viewDraft(){
       <h2 style="margin-top:6px">${esc(club.name)}</h2>
       <div class="meta">${COUNTRY[club.ctry] || esc(club.ctry)} · UEFA rank ${club.rank} · ${club.elig.length} rated players</div>
       ${r.note ? `<div class="note">${esc(r.note)}</div>` : ''}
+      ${(r.cut || []).length ? `<div class="note">Fifty-fifty: ${r.cut.length} weaker player${r.cut.length > 1 ? 's' : ''} removed.</div>` : ''}
+      ${helpBar(r)}
       <div class="plist">${rows}</div>
     </section>
     <section class="sticky">
@@ -1169,6 +1225,7 @@ document.addEventListener('click', e => {
   if (a === 'start') newRun();
   else if (a === 'fresh'){ if (S.armed === 'fresh'){ S.dyn = null; S.armed = null; S.stats.streak = 0; save(); newRun(); } else { S.armed = 'fresh'; render(); } }
   else if (a === 'pick') choose(b.dataset.p);
+  else if (a === 'help') useHelp(b.dataset.k);
   else if (a === 'form'){ S.run.form = b.dataset.f; S.run.sel = null; save(); render(); }
   else if (a === 'slot'){
     const r = S.run; if (!r || locked()) return;
