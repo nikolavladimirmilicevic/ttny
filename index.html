@@ -134,6 +134,9 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .stats.s3{grid-template-columns:repeat(3,1fr)}.card .stat{background:var(--panel-2)}.card .stat b{font-size:22px}
 .toplists{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.toplists{grid-template-columns:1fr}}
 .toplist td:nth-child(2){text-align:left}.toplist td small{display:block;color:var(--muted);font-size:11px;font-weight:400}
+.round h4{margin:10px 0 4px;font:600 13px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tie{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+.tie .w{font-weight:600;color:var(--text)}.tie .me{color:var(--gold)}.tie.mine{background:rgba(227,179,65,.08)}
 .teambox{background:var(--panel);border-radius:12px;padding:12px 14px;margin-bottom:12px}
 .tq{display:flex;align-items:center;gap:16px}
 .gt{display:inline-grid;place-items:center;min-width:17px;padding:2px 4px;border-radius:4px;font:600 11px/1 var(--display);color:#14181F}
@@ -696,8 +699,10 @@ function buildCup(T){
   const ev = ours.map((m, i) => ({ k: 'md', n: i + 1, opp: m.opp, s: m.s, pot: m.pot, gl: m.gl }));
   ev.push({ k: 'table', pos, table: table.map(r => [r.id, r.P, r.W, r.D, r.L, r.GF - r.GA, r.Pts]) });
   let stage = 'league', alive = pos <= 24;
+  const ko = [];   // every knockout tie, for the end screen
   const run = (round, a, b, legs, key) => {
     const t = playTie(a, b, legs, T);
+    ko.push({ k: key, a: t.a, b: t.b, legs: t.legs, agg: t.agg, et: t.et || null, pens: t.pens ? [t.pens.a, t.pens.b] : null, w: t.winner });
     const gA = t.legs.map(l => goals(t.a, l[0], 1, 90)), gB = t.legs.map(l => goals(t.b, l[1], 1, 90));
     const eA = t.et ? goals(t.a, t.et[0], 91, 120) : [];
     if (t.et) goals(t.b, t.et[1], 91, 120);
@@ -723,7 +728,7 @@ function buildCup(T){
   if (pos > 24) stage = 'league';
   ev.push({ k: 'end', stage, champ });
   const top = M => Object.entries(M).sort((x, y) => y[1] - x[1] || W.P[x[0]].name.localeCompare(W.P[y[0]].name)).slice(0, 10);
-  return { ev, shown: 0, stage, champ, pos, myPot, top: { g: top(G), a: top(A) } };
+  return { ev, shown: 0, stage, champ, pos, myPot, top: { g: top(G), a: top(A) }, ko };
 }
 
 /* ================= STATE ================= */
@@ -1027,6 +1032,18 @@ function seasonBox(r){
     ${rows.map(p => `<tr><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td>${code(p.id)}</td><td>${g[p.id] || 0}</td><td>${a[p.id] || 0}</td><td>${ovGrade(playerRating(p.id).ov)}</td></tr>`).join('')}</tbody></table></div></section>
     ${c.top ? `<div class="toplists">${list('Top scorers', c.top.g)}${list('Top assists', c.top.a)}</div>` : ''}`;
 }
+function koBox(c){
+  if (!c.ko) return '';
+  const rounds = [['playoff', 'Knockout play-off'], ['r16', 'Round of 16'], ['qf', 'Quarter-finals'], ['sf', 'Semi-finals'], ['final', 'Final']];
+  const side = (id, t) => `<span class="${id === t.w ? 'w' : ''}${id === 'YOU' ? ' me' : ''}">${esc(nm(id))}</span>`;
+  const tie = t => {
+    const legs = t.legs.map((l, i) => `${l[0]}:${l[1]}`).join(', ');
+    const extra = [t.legs.length > 1 ? `agg ${t.agg[0]}:${t.agg[1]}` : '', t.et ? `aet ${t.et[0]}:${t.et[1]}` : '', t.pens ? `pens ${t.pens[0]}:${t.pens[1]}` : ''].filter(Boolean).join(' · ');
+    return `<div class="tie${t.a === 'YOU' || t.b === 'YOU' ? ' mine' : ''}"><div>${side(t.a, t)} <span class="muted">v</span> ${side(t.b, t)}</div><div class="num muted">${legs}${extra ? ' · ' + extra : ''}</div></div>`;
+  };
+  return `<section class="card"><div class="eyebrow" style="margin-bottom:8px">Knockout stage</div>${rounds.map(([k, n]) => {
+    const ts = c.ko.filter(t => t.k === k); return ts.length ? `<div class="round"><h4>${n}</h4>${ts.map(tie).join('')}</div>` : ''; }).join('')}</section>`;
+}
 function viewDone(){
   const r = S.run, st = r.cup.stage, n = r.keepN, champ = st === 'champion';
   const head = champ ? 'Champions of Europe' : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase();
@@ -1047,6 +1064,8 @@ function viewDone(){
     ${teamBox(r)}
     ${n ? `<div><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div><div class="keep">${lst}</div></div>` : ''}
     ${seasonBox(r)}
+    ${r.cup.ev.filter(e => e.k === 'table').map(evHTML).join('')}
+    ${koBox(r.cup)}
     <div class="feed">${r.cup.ev.filter(e => e.k !== 'table').slice(-3).map(evHTML).join('')}</div>
   </div>
   <div class="dock"><div class="btnrow">${n ? `<button class="btn primary" data-act="cont">Next run with ${r.keepSel.length} kept</button>` : `<button class="btn primary" data-act="cont">New run</button>`}<button class="btn ghost" data-act="home">Home</button></div></div>`;
