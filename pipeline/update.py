@@ -799,9 +799,9 @@ def match_model(world, fx, top):
            'ga': [-wavg(c['m'], lambda r: r[3]) for c in pool]}   # fewer conceded = better
     P = {k: pct_rank(v) for k, v in raw.items()}
     for i, c in enumerate(pool):
-        common = P['uefa'][i] + P['ppg'][i] + P['ppg5'][i] + P['gf'][i] + P['ga'][i]
-        c['S'] = {'h': round((common + P['ppgH'][i]) / 6, 4), 'a': round((common + P['ppgA'][i]) / 6, 4),
-                  'n': round((common + (P['ppgH'][i] + P['ppgA'][i]) / 2) / 6, 4)}
+        rest = P['ppg'][i] + P['ppg5'][i] + P['gf'][i] + P['ga'][i]   # UEFA points half, the other five the other half
+        mix = lambda v: round(0.5 * P['uefa'][i] + 0.5 * (rest + v) / 5, 4)
+        c['S'] = {'h': mix(P['ppgH'][i]), 'a': mix(P['ppgA'][i]), 'n': mix((P['ppgH'][i] + P['ppgA'][i]) / 2)}
     # fit the tilt k: the value that makes the strengths explain the real results best
     S = {c['id']: c['S'] for c in pool}
     fit = [(S[f['h']]['h'], S[f['a']]['a'], res(f['hg'], f['ag'])) for f in ms if f['h'] in S and f['a'] in S]
