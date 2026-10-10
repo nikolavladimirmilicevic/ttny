@@ -597,11 +597,19 @@ function drawGoals(ours, theirs){
   return pick([...ours, ...theirs]);
 }
 const ten = drum => Array.from({ length: 10 }, () => pick(drum));   // 10 random balls from the whole drum, repeats allowed
-function simMatch(a, b, T, et){
-  if (b === 'YOU'){ const x = simMatch(b, a, T, et); return [x[1], x[0]]; }
-  let ga, gb;
-  if (a === 'YOU'){ ga = drawGoals(ten(T.sc), W.C[b].co10); gb = drawGoals(ten(T.co), W.C[b].sc10); }
-  else { ga = drawGoals(W.C[a].sc10, W.C[b].co10); gb = drawGoals(W.C[b].sc10, W.C[a].co10); }
+/* Before each match both sides get extra values on their 10:
+   home side: its highest scored and its lowest conceded; away side: its lowest scored and its highest conceded;
+   the side higher in the UEFA order the same as home, the lower one the same as away (your XI sits where its pot placed it). */
+let ORDERPOS = {};
+const urank = id => ORDERPOS[id] != null ? ORDERPOS[id] : id === 'YOU' ? 999 : W.C[id].rank;
+function edge(l, good){ const sc = l.sc, co = l.co, mx = a => Math.max(...a), mn = a => Math.min(...a);
+  return good ? { sc: sc.concat(mx(sc)), co: co.concat(mn(co)) } : { sc: sc.concat(mn(sc)), co: co.concat(mx(co)) }; }
+function simMatch(a, b, T, et, home){
+  if (b === 'YOU'){ const x = simMatch(b, a, T, et, home); return [x[1], x[0]]; }
+  let A = a === 'YOU' ? { sc: ten(T.sc), co: ten(T.co) } : { sc: W.C[a].sc10, co: W.C[a].co10 }, B = { sc: W.C[b].sc10, co: W.C[b].co10 };
+  if (home === a || home === b){ A = edge(A, home === a); B = edge(B, home === b); }
+  const aUp = urank(a) < urank(b); A = edge(A, aUp); B = edge(B, !aUp);
+  let ga = drawGoals(A.sc, B.co), gb = drawGoals(B.sc, A.co);
   if (et){ ga = rr(ga / 3); gb = rr(gb / 3); }
   return [ga, gb];
 }
@@ -630,12 +638,14 @@ function shootout(){
   return { a, b, kicks };
 }
 function playTie(a, b, legs, T){
+  // two legs: the first-named (better seeded) side plays the second leg, and any extra time, at home; the final is neutral
+  const home = legs === 2 ? [b, a] : [null];
   if (b === 'YOU'){ [a, b] = [b, a]; }
-  const t = { a, b, legs: [] };
-  for (let i = 0; i < legs; i++) t.legs.push(simMatch(a, b, T));
+  const t = { a, b, legs: [], home };
+  for (let i = 0; i < legs; i++) t.legs.push(simMatch(a, b, T, false, home[i]));
   let ta = t.legs.reduce((s, l) => s + l[0], 0), tb = t.legs.reduce((s, l) => s + l[1], 0);
   if (ta === tb){
-    t.et = simMatch(a, b, T, true); ta += t.et[0]; tb += t.et[1];
+    t.et = simMatch(a, b, T, true, home[home.length - 1]); ta += t.et[0]; tb += t.et[1];
     if (ta === tb){ t.pens = shootout(); }
   }
   t.agg = [ta, tb];
@@ -663,10 +673,10 @@ function leagueSchedule(teams){
     const A = pots[a], B = a === b ? A : shuffle([...pots[b]]);
     for (let i = 0; i < 9; i++){
       if (a === b) games.push([A[i], A[(i + 1) % 9]]);                    // a 9-cycle: 2 opponents inside the pot
-      else games.push([A[i], B[i]], [A[i], B[(i + 1) % 9]]);             // 2 opponents from the other pot, and they get 2 back
+      else games.push([A[i], B[i]], [B[(i + 1) % 9], A[i]]);             // 2 opponents from the other pot (one home, one away)
     }
   }
-  return { pots, games: shuffle(games).map(g => MR() < .5 ? g : [g[1], g[0]]) };
+  return { pots, games: shuffle(games) };   // [home, away]: everyone gets 4 home and 4 away games
 }
 function drawCard(c){
   if (!c.myPot) return '<div class="card muted">35 opponents drawn. Biggest clubs had the most balls in the draw.</div>';
@@ -679,6 +689,7 @@ function buildCup(T){
   const teams = [...opps.slice(0, at), 'YOU', ...opps.slice(at)];
   const myPot = Math.floor(at / 9) + 1;
   const sch = leagueSchedule(teams);
+  ORDERPOS = {}; teams.forEach((t, i) => ORDERPOS[t] = i);
   const rows = {}; teams.forEach(t => rows[t] = { id: t, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, Pts: 0, tb: MR() });
   const ours = [];
   const rec = (x, gf, ga) => { const r = rows[x]; r.P++; r.GF += gf; r.GA += ga; if (gf > ga){ r.W++; r.Pts += 3; } else if (gf === ga){ r.D++; r.Pts++; } else r.L++; };
@@ -687,17 +698,17 @@ function buildCup(T){
   const G = {}, A = {}, tally = gl => { for (const [sc, as] of gl){ G[sc] = (G[sc] || 0) + 1; if (as) A[as] = (A[as] || 0) + 1; } return gl; };
   const goals = (team, n, lo, hi) => tally(teamGoals(team, n, lo, hi));
   for (const [a, b] of sch.games){
-    const [ga, gb] = simMatch(a, b, T);
+    const [ga, gb] = simMatch(a, b, T, false, a);   // first-named side is at home
     rec(a, ga, gb); rec(b, gb, ga);
     const la = goals(a, ga, 1, 90), lb = goals(b, gb, 1, 90);
-    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b), gl: la });
-    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a), gl: lb });
+    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b), gl: la, h: 1 });
+    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a), gl: lb, h: 0 });
   }
   shuffle(ours);
   const table = Object.values(rows).sort((x, y) => y.Pts - x.Pts || (y.GF - y.GA) - (x.GF - x.GA) || y.GF - x.GF || x.tb - y.tb);
   const seed = table.map(r => r.id);
   const pos = seed.indexOf('YOU') + 1;
-  const ev = ours.map((m, i) => ({ k: 'md', n: i + 1, opp: m.opp, s: m.s, pot: m.pot, gl: m.gl }));
+  const ev = ours.map((m, i) => ({ k: 'md', n: i + 1, opp: m.opp, s: m.s, pot: m.pot, gl: m.gl, h: m.h }));
   ev.push({ k: 'table', pos, table: table.map(r => [r.id, r.P, r.W, r.D, r.L, r.GF - r.GA, r.Pts]) });
   let stage = 'league', alive = pos <= 24;
   const ko = [];   // every knockout tie, for the end screen
@@ -709,8 +720,8 @@ function buildCup(T){
     if (t.et) goals(t.b, t.et[1], 91, 120);
     if (t.a === 'YOU'){
       if (legs === 2){
-        ev.push({ k: 'leg', round, leg: 1, opp: t.b, s: t.legs[0], gl: gA[0] });
-        ev.push({ k: 'leg', round, leg: 2, opp: t.b, s: t.legs[1], gl: gA[1].concat(eA), agg: t.agg, et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
+        ev.push({ k: 'leg', round, leg: 1, opp: t.b, s: t.legs[0], gl: gA[0], h: t.home[0] === 'YOU' ? 1 : 0 });
+        ev.push({ k: 'leg', round, leg: 2, opp: t.b, s: t.legs[1], gl: gA[1].concat(eA), h: t.home[1] === 'YOU' ? 1 : 0, agg: t.agg, et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
       } else ev.push({ k: 'final', round, opp: t.b, s: t.legs[0], gl: gA[0].concat(eA), et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
       stage = t.winner === 'YOU' ? (key === 'final' ? 'champion' : stage) : key;
     }
@@ -901,7 +912,7 @@ function viewHome(){
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E (the average of his four parts, ranked among all players: top 20% are A, the next 20% B, and so on); hover him to see the four parts (team attack, own attack, team defence, own defence). Team parts come from the goals his team scored and conceded in his last 10 of those starts; own parts from his goals plus assists in those 10, and his clean sheets in those 10 counting only the matches he started in a defensive position (goalkeeper, centre-back, full-back, defensive midfielder); no such clean sheet means the lowest score. All are percentiles among all players. Your team gets the same in numbers from 40 to 99, the average of your players.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
-        <li>Matches are drawn from a drum of real scorelines. Every player adds his last 10 results, one ball each, and his own grades add more: his own attack grade (goals plus assists) adds to the scored drum and his own defence grade (clean sheets) to the conceded drum. An A repeats his 2 best results, B his best, C nothing, D his worst, E his 2 worst. Your team rating is read from this drum. Each match, 10 balls come out of your drum and face the opponent's last 10 results: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
+        <li>Matches are drawn from a drum of real scorelines. Every player adds his last 10 results, one ball each, and his own grades add more: his own attack grade (goals plus assists) adds to the scored drum and his own defence grade (clean sheets) to the conceded drum. An A repeats his 2 best results, B his best, C nothing, D his worst, E his 2 worst. Your team rating is read from this drum. Before each match the home side adds its best scored and fewest conceded result, the away side its worst; the side higher in the UEFA order (your XI sits where its pot placed it) gets the same edge over the lower one. Each match, 10 balls come out of your drum and face the opponent's last 10 results: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
         <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends.</li>
       </ol>
@@ -965,8 +976,9 @@ function evHTML(e){
   const res = s => s[0] > s[1] ? 'W' : s[0] < s[1] ? 'L' : 'D';
   const opp = id => `${esc(nm(id))} <small>· #${W.C[id].rank}</small>`;
   const gls = e => e.gl && e.gl.length ? `<div class="gls">${e.gl.map(([sc, as, m]) => `<span>⚽ ${esc(short(W.P[sc].name))} ${m}'${as ? ` <small>(${esc(short(W.P[as].name))})</small>` : ''}</span>`).join('')}</div>` : '';
+  const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
   const score = (s, r) => `<div class="score num">${s[0]}<span class="muted" style="font-size:16px">:</span>${s[1]}${r ? `<span class="res ${r}">${r}</span>` : ''}</div>`;
-  if (e.k === 'md') return `<div class="ev"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}</div>`;
+  if (e.k === 'md') return `<div class="ev"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}${hv(e)}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}</div>`;
   if (e.k === 'table'){
     const z = e.pos <= 8 ? 'Straight into the Round of 16.' : e.pos <= 24 ? 'Into the knockout play-off.' : 'Out in the league phase.';
     return `<div class="ev big" style="display:block"><div class="rd">League phase final table</div>
@@ -984,7 +996,7 @@ function evHTML(e){
     if (e.won !== undefined) bits.push(e.won ? '<b style="color:var(--win)">Through</b>' : '<b style="color:var(--loss)">Out</b>');
     return bits.length ? `<div class="extra">${bits.join(' · ')}</div>` : '';
   };
-  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}"><div class="rd">${e.round} · Leg ${e.leg}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? tail(e) : ''}</div>`;
+  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}"><div class="rd">${e.round} · Leg ${e.leg}${hv(e)}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? tail(e) : ''}</div>`;
   if (e.k === 'final') return `<div class="ev big"><div class="rd">Final</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? 'Champions of Europe' : 'Runners-up'}</b></div></div>`;
   if (e.k === 'end') return `<div class="ev" style="display:block"><div class="rd">Full time</div>${e.champ !== 'YOU' ? `<div>Won by <b>${esc(nm(e.champ))}</b>.</div>` : '<div><b>You</b> are champions of Europe.</div>'}</div>`;
   return '';
