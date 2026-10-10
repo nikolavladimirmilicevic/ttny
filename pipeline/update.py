@@ -4,9 +4,9 @@ This Time Next Year: daily data update from API-Football (v3).
 
 Builds world.json for the game:
   - the top-100 clubs (pipeline/clubs.csv, UEFA 5-year ranking order)
-  - every club's results against other top-100 clubs in the last 365 days
-  - every rostered player with at least one start against top-100 clubs in the last 365 days,
-    all those scorelines, the positions he started in, goals, assists, nationality and age
+  - every club's last 10 results against other top-100 clubs
+  - every rostered player with 10+ starts against top-100 clubs in the last 365 days,
+    his last 10 such scorelines, the positions he started in, nationality and age
 
 The script is resumable. It spends at most MAX_REQUESTS calls per run, keeps everything
 it has learned in data/cache/, and picks up where it stopped on the next run.
@@ -605,32 +605,32 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
     for tid, c in top.items():
         res = sorted(club_res[tid], reverse=True)
         out_clubs.append({'id': tid, 'name': c['name'], 'ctry': c['code'], 'rank': int(c['rank']), 'n': len(res),
-                          'sc': [r[1] for r in res], 'co': [r[2] for r in res]})
+                          'sc10': [r[1] for r in res[:10]], 'co10': [r[2] for r in res[:10]]})
     out_players, seen = [], set()
     for tid, c in sorted(top.items(), key=lambda x: int(x[1]['rank'])):
         for pid in (squads.get(str(tid)) or {}).get('p', []):
             if pid in seen:
                 continue
             st = sorted(starts.get(pid, []), reverse=True)
-            if not st:
+            if len(st) < 10:
                 continue
             seen.add(pid)
-            cnt = Counter(s[3] for s in st if s[3])   # positions from all those starts
-            # offered positions: every position he started in, most frequent first
+            cnt = Counter(s[3] for s in st[:10] if s[3])   # positions from the same last 10 starts as the grades
+            # offered positions: every position he started in during those last 10, most frequent first
             pos = [k for k, _ in sorted(cnt.items(), key=lambda kv: -kv[1])]
             pos = pos or ['CMF']
-            # goals and assists in those starts (own goals and missed penalties do not count)
+            # goals and assists in the same last 10 starts (own goals and missed penalties do not count)
             g = a = 0
-            for s in st:
+            for s in st[:10]:
                 for ev in evs.get(s[4]) or []:
                     if ev[3] != 'o' and ev[1] == pid: g += 1
                     if ev[3] != 'o' and ev[2] == pid: a += 1
             # clean sheets that count for him: only matches he started in a defensive position
-            cs = sum(1 for s in st if s[2] == 0 and s[3] in DEF_POS)
+            cs = sum(1 for s in st[:10] if s[2] == 0 and s[3] in DEF_POS)
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': fix_text(display_name(e, pid)), 'nat': e.get('nat'), 'age': e.get('age'),
                                 'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st), 'g': g, 'a': a, 'cs': cs,
-                                'sc': [s[1] for s in st], 'co': [s[2] for s in st]})
+                                'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]]})
     return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'clubs': out_clubs, 'players': out_players}
 
 
