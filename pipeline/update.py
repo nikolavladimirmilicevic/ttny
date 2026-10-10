@@ -637,7 +637,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
                 club_res[side].append((f['d'], sc, co))
             if opp in top and codes:
                 for pid, code in codes:
-                    starts[pid].append((f['d'], sc, co, code, fid))
+                    starts[pid].append((f['d'], sc, co, code, fid, int(top[opp]['rank'])))
     out_clubs = []
     for tid, c in top.items():
         res = sorted(club_res[tid], reverse=True)
@@ -667,8 +667,9 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': fix_text(display_name(e, pid)), 'nat': e.get('nat'), 'age': e.get('age'),
                                 'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st), 'g': g, 'a': a, 'cs': cs,
-                                'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]]})
-    return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'clubs': out_clubs, 'players': out_players}
+                                'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]],
+                                'or': [s[5] for s in st[:10]]})   # opponent UEFA rank of each of those matches
+    return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'ranked': len(clubs), 'clubs': out_clubs, 'players': out_players}
 
 
 def position_check(world):
