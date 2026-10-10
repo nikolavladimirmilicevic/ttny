@@ -692,10 +692,10 @@ def rank_model(clubs, teams, fx, force=False):
           if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat() and f['hg'] is not None
           and f['h'] in rank and f['a'] in rank and 'friendl' not in (f.get('lg') or '').lower()]
 
-    def table(edges, key):
+    def table(edges, key, pool=None):
         out = []
         for lo, hi in zip(edges, edges[1:]):
-            b = [m for m in ms if lo <= key(m) < hi]
+            b = [m for m in (ms if pool is None else pool) if lo <= key(m) < hi]
             if not b:
                 continue
             w = sum(1 for h, a, x, y in b if x != y and (x > y) == (h < a))
@@ -713,6 +713,9 @@ def rank_model(clubs, teams, fx, force=False):
     model = {'computed': TODAY.isoformat(), 'matches': len(ms),
              'by_ratio': table(RATIO_EDGES, lambda m: max(m[0], m[1]) / min(m[0], m[1])),
              'by_difference': table(DIFF_EDGES, lambda m: abs(m[0] - m[1])),
+             # the same by ratio, split by whether the better side was at home or away (used by the game)
+             'by_ratio_home': table(RATIO_EDGES, lambda m: m[1] / m[0], [m for m in ms if m[0] < m[1]]),
+             'by_ratio_away': table(RATIO_EDGES, lambda m: m[0] / m[1], [m for m in ms if m[0] > m[1]]),
              'better_at_home': split(True), 'better_away': split(False)}
     save('rank_model', model)
     lines = [f"Better-ranked side: wins / draws / losses, {len(ms)} matches between ranked clubs, computed {TODAY}", '']

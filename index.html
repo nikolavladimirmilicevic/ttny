@@ -494,7 +494,7 @@ function worldFromData(raw){
     P[pid] = { id: pid, name: p.name, nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, or: p.or, g: p.g || 0, a: p.a || 0, cs: p.cs };
     club.squad.push(pid);
   }
-  return finalize(C, P, { live: true, updated: raw.updated, ranked: raw.ranked || Math.max(...raw.clubs.map(c => c.rank)) });
+  return finalize(C, P, { live: true, updated: raw.updated, ranked: raw.ranked || Math.max(...raw.clubs.map(c => c.rank)), rankModel: raw.rank_model || null });
 }
 let W;
 
@@ -615,15 +615,34 @@ function edge(l, good, k = 1){
   return good ? { sc: l.sc.concat(hi.slice(0, k)), co: l.co.concat(lo.slice(0, k)) }
               : { sc: l.sc.concat(hi.slice(-k)), co: l.co.concat(lo.slice(-k)) };
 }
-function simMatch(a, b, T, et, home){
-  if (b === 'YOU'){ const x = simMatch(b, a, T, et, home); return [x[1], x[0]]; }
-  // both sides draw 10 balls from their weighted drum, then home/away edges, then the matching
+/* The result (who wins) comes from real football: the weekly rank model says how often the better-ranked side wins,
+   draws or loses for this rank ratio, with the better side at home, away or (final) on neutral ground.
+   The score is then drawn from the drums until it fits that result. Your XI's rank: the average UEFA rank of the two
+   clubs around the spot its pot placed it in. */
+let YOURANK = 100;
+const urank = id => id === 'YOU' ? YOURANK : W.C[id].rank;
+function outcome(a, b, home){
+  const M = W.meta.rankModel; if (!M) return null;
+  const ra = urank(a), rb = urank(b), better = ra <= rb ? a : b, ratio = Math.max(ra, rb) / Math.max(1, Math.min(ra, rb));
+  const rows = home === better ? M.by_ratio_home : home ? M.by_ratio_away : M.by_ratio;
+  const row = rows.find(r => ratio >= r.from && (r.to == null || ratio < r.to)) || rows[rows.length - 1];
+  const u = MR(), win = u < row.better ? better : u < row.better + row.draw ? null : (better === a ? b : a);
+  return win === null ? 'D' : win === a ? 'A' : 'B';
+}
+function drumScore(a, b, T, home){
   const side = id => id === 'YOU' ? { sc: ten(T.sc), co: ten(T.co) } : { sc: ten(W.C[id].scW), co: ten(W.C[id].coW) };
   let A = side(a), B = side(b);
   if (home === a || home === b){ A = edge(A, home === a); B = edge(B, home === b); }
-  let ga = drawGoals(A.sc, B.co), gb = drawGoals(B.sc, A.co);
-  if (et){ ga = rr(ga / 3); gb = rr(gb / 3); }
-  return [ga, gb];
+  return [drawGoals(A.sc, B.co), drawGoals(B.sc, A.co)];
+}
+function simMatch(a, b, T, et, home){
+  if (b === 'YOU'){ const x = simMatch(b, a, T, et, home); return [x[1], x[0]]; }
+  if (et){ const [ga, gb] = drumScore(a, b, T, home); return [rr(ga / 3), rr(gb / 3)]; }   // extra time stays as it was
+  const want = outcome(a, b, home);
+  if (!want) return drumScore(a, b, T, home);
+  const fits = ([x, y]) => want === 'D' ? x === y : want === 'A' ? x > y : x < y;
+  for (let k = 0; k < 40; k++){ const s = drumScore(a, b, T, home); if (fits(s)) return s; }
+  return want === 'D' ? [1, 1] : want === 'A' ? [1, 0] : [0, 1];
 }
 /* Who scored our goals: weighted by goals in his last 10 (assists by assists), everyone keeps a small chance. */
 const ourGoals = (n, lo, hi) => teamGoals('YOU', n, lo, hi);
@@ -702,6 +721,8 @@ function buildCup(T){
   const teams = [...opps.slice(0, at), 'YOU', ...opps.slice(at)];
   const myPot = Math.floor(at / 9) + 1;
   const sch = leagueSchedule(teams);
+  { const up = teams[at - 1], dn = teams[at + 1];   // your XI's stand-in UEFA rank
+    YOURANK = up && dn ? (W.C[up].rank + W.C[dn].rank) / 2 : up ? W.C[up].rank + 1 : Math.max(1, W.C[dn].rank - 1); }
   const rows = {}; teams.forEach(t => rows[t] = { id: t, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, Pts: 0, tb: MR() });
   const ours = [];
   const rec = (x, gf, ga) => { const r = rows[x]; r.P++; r.GF += gf; r.GA += ga; if (gf > ga){ r.W++; r.Pts += 3; } else if (gf === ga){ r.D++; r.Pts++; } else r.L++; };
@@ -924,7 +945,7 @@ function viewHome(){
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E (the average of his four parts, ranked among all players: top 20% are A, the next 20% B, and so on); hover him to see the four parts (team attack, own attack, team defence, own defence). Team parts come from the goals his team scored and conceded in his last 10 of those starts; own parts from his goals plus assists in those 10, and his clean sheets in those 10 counting only the matches he started in a defensive position (goalkeeper, centre-back, full-back, defensive midfielder); no such clean sheet means the lowest score. All are percentiles among all players. Your team gets the same in numbers from 40 to 99, the average of your players.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
-        <li>Matches are drawn from a drum of real scorelines. Every player adds his last 10 results, each one as many times as the opponent was worth (with 415 ranked clubs, 415 times against no. 1 down to once against no. 415), and his own grades add more: his own attack grade (goals plus assists) adds to the scored drum and his own defence grade (clean sheets) to the conceded drum. An A repeats his 2 best results, B his best, C nothing, D his worst, E his 2 worst. Your team rating is read from this drum. Before each match the home side adds its best scored and fewest conceded result, the away side its worst;. Clubs build their drums the same way from their own last 10 results. Each match, 10 balls come out of each drum: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
+        <li>Who wins comes from real football: every week we count how often the better-ranked club wins, draws or loses against a lower-ranked one (by how many times better its UEFA rank is, home or away), and each match is decided by those odds. Your XI takes the rank of the spot its team rating earned in the pots. The score itself is drawn from a drum of real scorelines until it fits that result. Every player adds his last 10 results, each one as many times as the opponent was worth (with 415 ranked clubs, 415 times against no. 1 down to once against no. 415), and his own grades add more: his own attack grade (goals plus assists) adds to the scored drum and his own defence grade (clean sheets) to the conceded drum. An A repeats his 2 best results, B his best, C nothing, D his worst, E his 2 worst. Your team rating is read from this drum. Before each match the home side adds its best scored and fewest conceded result, the away side its worst;. Clubs build their drums the same way from their own last 10 results. Each match, 10 balls come out of each drum: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
         <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends.</li>
       </ol>
