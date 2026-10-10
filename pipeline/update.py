@@ -672,6 +672,65 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
     return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'ranked': len(clubs), 'clubs': out_clubs, 'players': out_players}
 
 
+RATIO_EDGES = [1, 1.25, 1.5, 2, 3, 5, 10, 10 ** 6]
+DIFF_EDGES = [0, 10, 20, 30, 50, 75, 100, 150, 200, 300, 10 ** 6]
+
+
+def rank_model(clubs, teams, fx, force=False):
+    """Weekly, with the UEFA ranking: how often the better-ranked side wins, draws and loses, by how far apart the two
+    are (rank ratio and rank difference), from every competitive match between ranked clubs in the last 365 days."""
+    cached = load('rank_model', {})
+    if not force and cached.get('computed') and (TODAY.weekday() != UEFA_DAY or cached['computed'] == TODAY.isoformat()) \
+            and days_old(cached['computed']) < UEFA_MAX_AGE:
+        return cached
+    rank = {}
+    for c in clubs:
+        t = teams.get(tkey(c))
+        if t and t.get('id'):
+            rank[t['id']] = int(c['rank'])
+    ms = [(rank[f['h']], rank[f['a']], f['hg'], f['ag']) for f in fx.values()
+          if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat() and f['hg'] is not None
+          and f['h'] in rank and f['a'] in rank and 'friendl' not in (f.get('lg') or '').lower()]
+
+    def table(edges, key):
+        out = []
+        for lo, hi in zip(edges, edges[1:]):
+            b = [m for m in ms if lo <= key(m) < hi]
+            if not b:
+                continue
+            w = sum(1 for h, a, x, y in b if x != y and (x > y) == (h < a))
+            d = sum(1 for m in b if m[2] == m[3])
+            out.append({'from': lo, 'to': hi if hi < 10 ** 6 else None, 'n': len(b),
+                        'better': round(w / len(b), 3), 'draw': round(d / len(b), 3), 'worse': round((len(b) - w - d) / len(b), 3)})
+        return out
+
+    def split(home_better):
+        b = [m for m in ms if (m[0] < m[1]) == home_better and m[0] != m[1]]
+        w = sum(1 for h, a, x, y in b if (x > y if home_better else y > x))
+        d = sum(1 for m in b if m[2] == m[3])
+        return {'n': len(b), 'better': round(w / len(b), 3), 'draw': round(d / len(b), 3), 'worse': round((len(b) - w - d) / len(b), 3)} if b else {}
+
+    model = {'computed': TODAY.isoformat(), 'matches': len(ms),
+             'by_ratio': table(RATIO_EDGES, lambda m: max(m[0], m[1]) / min(m[0], m[1])),
+             'by_difference': table(DIFF_EDGES, lambda m: abs(m[0] - m[1])),
+             'better_at_home': split(True), 'better_away': split(False)}
+    save('rank_model', model)
+    lines = [f"Better-ranked side: wins / draws / losses, {len(ms)} matches between ranked clubs, computed {TODAY}", '']
+    for name, rows in (('rank ratio (worse rank / better rank)', model['by_ratio']), ('rank difference', model['by_difference'])):
+        lines.append('By ' + name)
+        for r in rows:
+            lines.append(f"  {r['from']}-{r['to'] or 'max'}: {r['n']:5d} matches  {r['better']:.0%} / {r['draw']:.0%} / {r['worse']:.0%}")
+        lines.append('')
+    for k in ('better_at_home', 'better_away'):
+        r = model[k]
+        if r:
+            lines.append(f"{k.replace('_', ' ')}: {r['n']} matches  {r['better']:.0%} / {r['draw']:.0%} / {r['worse']:.0%}")
+    with open(os.path.join(CACHE_DIR, 'rank_model.txt'), 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines) + '\n')
+    log('  rank model: ' + str(len(ms)) + ' matches')
+    return model
+
+
 def position_check(world):
     """A few players per club with their positions, to confirm left and right are not mirrored."""
     lines = ['Check that full-backs and wingers sit on the right side.',
@@ -728,6 +787,7 @@ def main():
             save(name, obj)
     world = build_world(clubs, teams, fx, lu, squads, people, evs)
     world['complete'] = stopped is None
+    world['rank_model'] = rank_model(clubs, teams, fx)
     # the game reads world.json: publish only once results, line-ups and every roster are in
     have_rosters = all(str(t) in squads for t in top_ids)
     ready = core_done and have_rosters and world['players']
