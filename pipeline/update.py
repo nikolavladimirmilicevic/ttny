@@ -20,7 +20,7 @@ Environment:
   TODAY                YYYY-MM-DD override, for testing
   API_BASE             override the API host, for testing
 """
-import csv, datetime as dt, difflib, json, os, re, sys, time, unicodedata, urllib.parse, urllib.request
+import csv, datetime as dt, difflib, json, math, os, re, sys, time, unicodedata, urllib.parse, urllib.request
 from collections import Counter, defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -291,7 +291,12 @@ def _parse_row(x):
     if not (pos and name and code):
         return None
     game_code, api_country = UEFA_COUNTRY.get(code, (code, m.get('countryName') or code))
-    return {'rank': int(pos), 'name': name, 'code': game_code, 'country': api_country, 'uefa_id': str(m.get('id') or '')}
+    ov = x.get('overallRanking') or {}
+    pts = next((v for v in (ov.get('totalValue'), ov.get('totalPoints'), ov.get('points'), ov.get('value'), x.get('totalValue'),
+                            x.get('points'), (x.get('coefficient') or {}).get('value') if isinstance(x.get('coefficient'), dict) else x.get('coefficient'))
+                if isinstance(v, (int, float)) or (isinstance(v, str) and v.replace('.', '', 1).isdigit())), None)
+    return {'rank': int(pos), 'name': name, 'code': game_code, 'country': api_country, 'uefa_id': str(m.get('id') or ''),
+            'points': float(pts) if pts is not None else None}
 
 
 def fetch_uefa_ranking(meta):
@@ -299,7 +304,8 @@ def fetch_uefa_ranking(meta):
     cached = load('uefa_ranking', {})
     fresh = cached.get('fetched') == TODAY.isoformat() or (TODAY.weekday() != UEFA_DAY and days_old(cached.get('fetched')) < UEFA_MAX_AGE)
     # a cached list cut shorter than wanted (the old top-100 cache) is refetched
-    fresh = fresh and len(cached.get('clubs') or []) >= (CLUB_LIMIT or cached.get('total', 101))
+    fresh = fresh and len(cached.get('clubs') or []) >= (CLUB_LIMIT or cached.get('total', 101)) \
+        and any(c.get('points') for c in cached.get('clubs') or [])   # the points are needed for the match model
     if cached.get('clubs') and fresh:
         return cached['clubs'], 'UEFA (cached ' + cached['fetched'] + ')'
     season_year = TODAY.year + 1 if TODAY.month >= 7 else TODAY.year   # UEFA names a season by its end year
@@ -341,6 +347,8 @@ def read_clubs(meta):
     if not clubs:
         with open(os.path.join(ROOT, 'pipeline', 'clubs.csv'), encoding='utf-8') as f:
             rows = [r for r in csv.DictReader(f) if r.get('rank', '').strip()]
+        for r in rows:
+            r.setdefault('points', None)
         rows.sort(key=lambda r: int(r['rank']))
         clubs, source = (rows[:CLUB_LIMIT] if CLUB_LIMIT else rows), 'pipeline/clubs.csv (fallback)'
     log(f'  club list: {source}, {len(clubs)} clubs')
@@ -633,15 +641,18 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
             if not (codes and all(c for _, c in codes)):
                 continue
             if side in top and opp in top:
-                club_res[side].append((f['d'], sc, co, int(top[opp]['rank'])))
+                club_res[side].append((f['d'], sc, co, int(top[opp]['rank']), side == h))
             if opp in top and codes:
                 for pid, code in codes:
-                    starts[pid].append((f['d'], sc, co, code, fid, int(top[opp]['rank'])))
+                    starts[pid].append((f['d'], sc, co, code, fid, int(top[opp]['rank']), side == h))
     out_clubs = []
     for tid, c in top.items():
         res = sorted(club_res[tid], reverse=True)
         out_clubs.append({'id': tid, 'name': c['name'], 'ctry': c['code'], 'rank': int(c['rank']), 'n': len(res),
-                          'sc10': [r[1] for r in res[:10]], 'co10': [r[2] for r in res[:10]], 'or': [r[3] for r in res[:10]]})
+                          'sc10': [r[1] for r in res[:10]], 'co10': [r[2] for r in res[:10]], 'or': [r[3] for r in res[:10]],
+                          'pts': c.get('points'),
+                          # every relevant match in 365 days, newest first: [opponent rank, at home, scored, conceded]
+                          'm': [[r[3], int(r[4]), r[1], r[2]] for r in res]})
     out_players, seen = [], set()
     for tid, c in sorted(top.items(), key=lambda x: int(x[1]['rank'])):
         for pid in (squads.get(str(tid)) or {}).get('p', []):
@@ -655,19 +666,22 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
             # offered positions: every position he started in during those last 10, most frequent first
             pos = [k for k, _ in sorted(cnt.items(), key=lambda kv: -kv[1])]
             pos = pos or ['CMF']
-            # goals and assists in the same last 10 starts (own goals and missed penalties do not count)
+            # goals and assists per start (own goals and missed penalties do not count)
             g = a = 0
-            for s in st[:10]:
-                for ev in evs.get(s[4]) or []:
-                    if ev[3] != 'o' and ev[1] == pid: g += 1
-                    if ev[3] != 'o' and ev[2] == pid: a += 1
+            m = []
+            for s in st:
+                gs = sum(1 for ev in evs.get(s[4]) or [] if ev[3] != 'o' and ev[1] == pid)
+                as_ = sum(1 for ev in evs.get(s[4]) or [] if ev[3] != 'o' and ev[2] == pid)
+                g += gs; a += as_
+                # [opponent rank, at home, scored, conceded, his goals + assists, started in a defensive position]
+                m.append([s[5], int(s[6]), s[1], s[2], gs + as_, int(s[3] in DEF_POS)])
             # clean sheets that count for him: only matches he started in a defensive position
             cs = sum(1 for s in st[:10] if s[2] == 0 and s[3] in DEF_POS)
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': fix_text(display_name(e, pid)), 'nat': e.get('nat'), 'age': e.get('age'),
                                 'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st), 'g': g, 'a': a, 'cs': cs,
                                 'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]],
-                                'or': [s[5] for s in st[:10]]})   # opponent UEFA rank of each of those matches
+                                'or': [s[5] for s in st[:10]], 'm': m})
     return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'ranked': len(clubs), 'clubs': out_clubs, 'players': out_players}
 
 
@@ -733,6 +747,77 @@ def rank_model(clubs, teams, fx, force=False):
     return model
 
 
+# ---------------- match model ----------------
+def pct_rank(values):
+    """Mid-rank percentile (0-1) of every value among all of them."""
+    srt = sorted(values)
+    from bisect import bisect_left, bisect_right
+    n = len(srt)
+    return [(bisect_left(srt, v) + (bisect_right(srt, v) - bisect_left(srt, v)) / 2) / n for v in values]
+
+
+def probs(sh, sa, base, k):
+    """1X2 for a home side of strength sh against an away side of strength sa (both 0-1 percentiles).
+    Each side gets its own 1X2 by tilting the base rates by its strength; the two are then crossed (log5 style)."""
+    H, D, A = base
+    xh, xa = k * (2 * sh - 1), k * (2 * sa - 1)
+    h1, hx, h2 = H * (1 + xh), D, A * (1 - xh)
+    a1, ax, a2 = H * (1 - xa), D, A * (1 + xa)
+    th, ta = h1 + hx + h2, a1 + ax + a2
+    q1, qx, q2 = (h1 / th) * (a1 / ta) / H, (hx / th) * (ax / ta) / D, (h2 / th) * (a2 / ta) / A
+    t = q1 + qx + q2
+    return q1 / t, qx / t, q2 / t
+
+
+def match_model(world, fx, top):
+    """1X2 base rates and scorelines from every match between ranked clubs in the last 365 days (unweighted),
+    each club's strength from six equal parameters (percentiles), and the tilt k fitted to those same matches."""
+    pts_of_rank = {c['rank']: (c.get('pts') or (len(top) + 1 - c['rank'])) for c in world['clubs']}
+    ms = [f for f in fx.values() if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat()
+          and f['hg'] is not None and f['h'] in top and f['a'] in top]
+    res = lambda x, y: '1' if x > y else 'X' if x == y else '2'
+    cnt = Counter(res(f['hg'], f['ag']) for f in ms)
+    n = len(ms) or 1
+    base = (cnt['1'] / n, cnt['X'] / n, cnt['2'] / n)
+    scores = {r: Counter() for r in '1X2'}
+    for f in ms:
+        scores[res(f['hg'], f['ag'])][f"{f['hg']}:{f['ag']}"] += 1
+
+    # club parameters, every one but the first weighted by the opponent's UEFA points
+    pool = [c for c in world['clubs'] if c['n'] >= 10]
+
+    def wavg(rows, val):
+        w = sum(pts_of_rank.get(r[0], 1) for r in rows)
+        return sum(pts_of_rank.get(r[0], 1) * val(r) for r in rows) / w if w else 0
+    ppg = lambda r: 3 if r[2] > r[3] else 1 if r[2] == r[3] else 0
+    raw = {'uefa': [c.get('pts') or pts_of_rank[c['rank']] for c in pool],
+           'ppg': [wavg(c['m'], ppg) for c in pool],
+           'ppg5': [wavg(c['m'][:5], ppg) for c in pool],
+           'ppgH': [wavg([r for r in c['m'] if r[1]], ppg) for c in pool],
+           'ppgA': [wavg([r for r in c['m'] if not r[1]], ppg) for c in pool],
+           'gf': [wavg(c['m'], lambda r: r[2]) for c in pool],
+           'ga': [-wavg(c['m'], lambda r: r[3]) for c in pool]}   # fewer conceded = better
+    P = {k: pct_rank(v) for k, v in raw.items()}
+    for i, c in enumerate(pool):
+        common = P['uefa'][i] + P['ppg'][i] + P['ppg5'][i] + P['gf'][i] + P['ga'][i]
+        c['S'] = {'h': round((common + P['ppgH'][i]) / 6, 4), 'a': round((common + P['ppgA'][i]) / 6, 4),
+                  'n': round((common + (P['ppgH'][i] + P['ppgA'][i]) / 2) / 6, 4)}
+    # fit the tilt k: the value that makes the strengths explain the real results best
+    S = {c['id']: c['S'] for c in pool}
+    fit = [(S[f['h']]['h'], S[f['a']]['a'], res(f['hg'], f['ag'])) for f in ms if f['h'] in S and f['a'] in S]
+    best = (None, 0)
+    for k in [i / 50 for i in range(0, 50)]:
+        ll = 0
+        for sh, sa, r in fit:
+            p = probs(sh, sa, base, k)
+            ll += math.log(max(1e-9, p['1X2'.index(r)]))
+        if best[0] is None or ll > best[0]:
+            best = (ll, k)
+    world['model'] = {'base': [round(x, 4) for x in base], 'k': best[1], 'matches': len(ms), 'fitted_on': len(fit),
+                      'scores': {r: dict(scores[r].most_common()) for r in '1X2'}}
+    log(f"  match model: {len(ms)} matches, 1X2 {base[0]:.3f}/{base[1]:.3f}/{base[2]:.3f}, k={best[1]}")
+
+
 def position_check(world):
     """A few players per club with their positions, to confirm left and right are not mirrored."""
     lines = ['Check that full-backs and wingers sit on the right side.',
@@ -790,6 +875,7 @@ def main():
     world = build_world(clubs, teams, fx, lu, squads, people, evs)
     world['complete'] = stopped is None
     world['rank_model'] = rank_model(clubs, teams, fx)
+    match_model(world, fx, {t['id']: c for c in clubs for t in [teams.get(tkey(c)) or {}] if t.get('id')})
     # the game reads world.json: publish only once results, line-ups and every roster are in
     have_rosters = all(str(t) in squads for t in top_ids)
     ready = core_done and have_rosters and world['players']

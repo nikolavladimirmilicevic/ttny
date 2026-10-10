@@ -472,29 +472,22 @@ function finalize(C, P, meta){
   const pots = []; let at = 0;
   for (let i = 0; i < 11; i++){ const n = base + (i >= 11 - extra ? 1 : 0); pots.push(draftable.slice(at, at + n)); at += n; }
   const oppPool = ids.filter(id => C[id].n >= 10);
-  // clubs' drums: each of their 10 results repeated by the opponent's worth, exactly like your XI's drum
-  const N = meta.ranked || 100;
-  for (const id of oppPool){ const c = C[id], w = i => c.or ? Math.max(1, N + 1 - c.or[i]) : 1;
-    c.scW = []; c.coW = []; c.sc10.forEach((v, i) => { for (let k = w(i); k > 0; k--){ c.scW.push(v); c.coW.push(c.co10[i]); } }); }
-  // reference distributions for the 40-99 ratings
-  const asc = a => a.sort((x, y) => x - y);
-  const SS = asc(elig.map(p => p.avgS)), SC = asc(elig.map(p => p.avgC)), GA = asc(elig.map(p => (p.g || 0) + (p.a || 0))), CSH = asc(elig.map(csOf));
-  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
-  const CS = asc(oppPool.map(id => avg(C[id].sc10))), CC = asc(oppPool.map(id => avg(C[id].co10)));
-  return { C, P, pots, oppPool, draftable, eligCount: elig.length, meta, SS, SC, GA, CSH, CS, CC };
+  const w = { C, P, pots, oppPool, draftable, eligCount: elig.length, meta };
+  buildModel(w, elig);
+  return w;
 }
 
 /* Live data produced by pipeline/update.py */
 function worldFromData(raw){
   const C = {}, P = {};
-  for (const c of raw.clubs) C['t' + c.id] = { id: 't' + c.id, name: c.name, ctry: c.ctry, rank: c.rank, n: c.n, sc10: c.sc10, co10: c.co10, or: c.or, squad: [] };
+  for (const c of raw.clubs) C['t' + c.id] = { id: 't' + c.id, name: c.name, ctry: c.ctry, rank: c.rank, n: c.n, sc10: c.sc10, co10: c.co10, pts: c.pts, m: c.m, squad: [] };
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: p.name, nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, or: p.or, g: p.g || 0, a: p.a || 0, cs: p.cs };
+    P[pid] = { id: pid, name: p.name, nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs };
     club.squad.push(pid);
   }
-  return finalize(C, P, { live: true, updated: raw.updated, ranked: raw.ranked || Math.max(...raw.clubs.map(c => c.rank)), rankModel: raw.rank_model || null });
+  return finalize(C, P, { live: true, updated: raw.updated, ranked: raw.ranked || Math.max(...raw.clubs.map(c => c.rank)), model: raw.model || null });
 }
 let W;
 
@@ -505,31 +498,84 @@ const ORDER = 'ABCDE';
      Team part: how good his last 10 results are among all rated players (percentile).
      Individual attack: his goals + assists in those 10, as a percentile among all rated players.
      Individual defence: clean sheets in those 10 started in a defensive position (GK, CB, LB, RB, DMF), percentile; none = 40.
-   Team: the average of its drum, ranked among the ranked clubs' last 10 results. */
+   Team: the average of its players. */
 function pctBelow(arr, v){ let lo = 0, eq = 0; for (const x of arr){ if (x < v) lo++; else if (x === v) eq++; } return (lo + eq / 2) / arr.length; }
 const R = x => Math.round(40 + 59 * Math.max(0, Math.min(1, x)));
 // player grades: the 40-99 scale cut into five equal bands (A 88+, B 76-87, C 64-75, D 52-63, E up to 51)
 const grade = n => n >= 88 ? 'A' : n >= 76 ? 'B' : n >= 64 ? 'C' : n >= 52 ? 'D' : 'E';
 const gTag = n => `<span class="gt g${grade(n)}">${grade(n)}</span>`;
 // four parts: team attack (ta), own attack (ia), team defence (td), own defence (id); overall = their mean
-function playerRating(pid){
-  const p = W.P[pid];
-  const c = csOf(p), q = { ta: pctBelow(W.SS, p.avgS), ia: pctBelow(W.GA, (p.g || 0) + (p.a || 0)),
-    td: 1 - pctBelow(W.SC, p.avgC), id: c ? pctBelow(W.CSH, c) : 0 };   // percentiles among all rated players
-  return Object.assign(parts(R(q.ta), R(q.ia), R(q.td), R(q.id)), { q });
+/* ================= MATCH MODEL =================
+   Base: how often the home side wins, draws and loses (1X2) across every match between ranked clubs in the last year.
+   Each side gets a strength (0-1): the average of its parameter percentiles, every parameter but UEFA points weighted
+   by the UEFA points of the opponent in each match. The base is tilted by each side's strength, the two tilted 1X2s are
+   crossed, and the result is drawn; the score is then drawn from real scorelines with that result.
+   Clubs (6 parameters): UEFA points, points per game, points per game in the last 5, points per game at home (as home
+   side) or away (as away side), goals scored per game, goals conceded per game.
+   Your XI (8, each the average of your 11 players' percentiles): the same six from each player's own starts, plus his
+   goals + assists per game and his clean sheets per game in defensive positions (GK, CB, LB, RB, DMF). */
+const PPG = r => r[2] > r[3] ? 3 : r[2] === r[3] ? 1 : 0;
+function wavg(rows, ptsOf, val){ let s = 0, t = 0; for (const r of rows){ const w = ptsOf(r[0]); s += w * val(r); t += w; } return t ? s / t : 0; }
+const asc = a => a.sort((x, y) => x - y);
+function buildModel(w, elig){
+  const C = w.C, N = w.meta.ranked || 100, byRank = {};
+  for (const c of Object.values(C)) byRank[c.rank] = c.pts || (N + 1 - c.rank);
+  const ptsOf = r => byRank[r] || 1; w.ptsOf = ptsOf;
+  // demo world: build match lists from the last 10
+  for (const c of Object.values(C)) if (!c.m) c.m = (c.sc10 || []).map((v, i) => [50, i % 2, v, c.co10[i]]);
+  for (const p of elig) if (!p.m) p.m = p.sc.map((v, i) => [50, i % 2, v, p.co[i], 0, +['GK', 'CB', 'LB', 'RB', 'DMF'].includes(p.prim)]);
+  // club parameters (percentiles among the clubs that can be drawn)
+  const cv = id => { const c = C[id], m = c.m; return { uefa: byRank[c.rank], ppg: wavg(m, ptsOf, PPG), ppg5: wavg(m.slice(0, 5), ptsOf, PPG),
+    ppgH: wavg(m.filter(r => r[1]), ptsOf, PPG), ppgA: wavg(m.filter(r => !r[1]), ptsOf, PPG), gf: wavg(m, ptsOf, r => r[2]), ga: -wavg(m, ptsOf, r => r[3]) }; };
+  const cvals = {}; w.oppPool.forEach(id => cvals[id] = cv(id));
+  const cd = {}; for (const k of ['uefa', 'ppg', 'ppg5', 'ppgH', 'ppgA', 'gf', 'ga']) cd[k] = asc(w.oppPool.map(id => cvals[id][k]));
+  for (const id of w.oppPool){ const v = cvals[id], q = {}; for (const k in cd) q[k] = pctBelow(cd[k], v[k]);
+    const common = q.uefa + q.ppg + q.ppg5 + q.gf + q.ga;
+    C[id].S = { h: (common + q.ppgH) / 6, a: (common + q.ppgA) / 6, n: (common + (q.ppgH + q.ppgA) / 2) / 6 }; }
+  // player parameters (percentiles among all rated players)
+  const pv = p => { const m = p.m; return { uefa: byRank[C[p.club].rank], ppg: wavg(m, ptsOf, PPG), ppg5: wavg(m.slice(0, 5), ptsOf, PPG),
+    ppgH: wavg(m.filter(r => r[1]), ptsOf, PPG), ppgA: wavg(m.filter(r => !r[1]), ptsOf, PPG), gf: wavg(m, ptsOf, r => r[2]), ga: -wavg(m, ptsOf, r => r[3]),
+    gapm: wavg(m, ptsOf, r => r[4]), cs: wavg(m, ptsOf, r => r[5] && r[3] === 0 ? 1 : 0) }; };
+  const pvals = new Map(elig.map(p => [p.id, pv(p)]));
+  const pd = {}; for (const k of ['uefa', 'ppg', 'ppg5', 'ppgH', 'ppgA', 'gf', 'ga', 'gapm', 'cs']) pd[k] = asc(elig.map(p => pvals.get(p.id)[k]));
+  for (const p of elig){ const v = pvals.get(p.id), q = {}; for (const k in pd) q[k] = pctBelow(pd[k], v[k]);
+    if (v.cs === 0) q.cs = 0;   // no clean sheet in a defensive position: the lowest rating
+    p.v = v; p.q = q; }
+  const M = w.meta.model || {};
+  w.base = M.base || [0.45, 0.24, 0.31]; w.k = M.k != null ? M.k : 0.8;
+  w.scores = M.scores || { '1': { '1:0': 3, '2:1': 3, '2:0': 2, '3:1': 1 }, 'X': { '1:1': 3, '0:0': 2, '2:2': 1 }, '2': { '0:1': 3, '1:2': 3, '0:2': 2, '1:3': 1 } };
 }
-// clean sheets that count: only matches he started in a defensive position (GK, CB, LB, RB, DMF); none = lowest rating
-const csOf = p => p.cs != null ? p.cs : p.co.filter(v => v === 0).length;
+function playerRating(pid){
+  const q = W.P[pid].q;   // the four parts shown: team attack = goals scored, own attack = G+A, team defence = goals conceded, own defence = clean sheets
+  return Object.assign(parts(R(q.gf), R(q.gapm), R(q.ga), R(q.cs)), { q: { ta: q.gf, ia: q.gapm, td: q.ga, id: q.cs } });
+}
 // letters for the parts by percentile: top 20% A, next 20% B ... bottom 20% E
 const qGrade = q => q >= .8 ? 'A' : q >= .6 ? 'B' : q >= .4 ? 'C' : q >= .2 ? 'D' : 'E';
 const parts = (ta, ia, td, id) => ({ ta, ia, td, id, off: Math.round((ta + ia) / 2), def: Math.round((td + id) / 2), ov: Math.round((ta + ia + td + id) / 4) });
-function playRating(pid){ return playerRating(pid); }
 function teamRating(picks, form){
-  const rs = arrangement(picks, form).map((pid, j) => playRating(pid, FORMS[form][j][3]));
+  const rs = picks.map(pid => playerRating(pid));
   const m = k => Math.round(rs.reduce((t, r) => t + r[k], 0) / rs.length);
   return parts(m('ta'), m('ia'), m('td'), m('id'));
 }
-/* overall letter: the mean of the four 40-99 parts, ranked among all rated players: top 20% A, next 20% B ... bottom 20% E */
+// your XI's strength: 8 parameters, each the average of the 11 players' percentiles; venue 'h', 'a' or 'n'
+function youStrength(venue){
+  const ps = S.run.picks.map(id => W.P[id].q), avg = k => ps.reduce((t, q) => t + q[k], 0) / ps.length;
+  const ven = venue === 'h' ? avg('ppgH') : venue === 'a' ? avg('ppgA') : (avg('ppgH') + avg('ppgA')) / 2;
+  return (avg('uefa') + avg('ppg') + avg('ppg5') + ven + avg('gf') + avg('ga') + avg('gapm') + avg('cs')) / 8;
+}
+const strength = (id, venue) => id === 'YOU' ? youStrength(venue) : W.C[id].S[venue];
+function probs1x2(sh, sa, base, k){
+  const [H, D, A] = base, xh = k * (2 * sh - 1), xa = k * (2 * sa - 1);
+  const h = [H * (1 + xh), D, A * (1 - xh)], a = [H * (1 - xa), D, A * (1 + xa)];
+  const th = h[0] + h[1] + h[2], ta = a[0] + a[1] + a[2];
+  const q = [h[0] / th * a[0] / ta / H, h[1] / th * a[1] / ta / D, h[2] / th * a[2] / ta / A], t = q[0] + q[1] + q[2];
+  return q.map(x => x / t);
+}
+function drawScore(res){
+  const tab = W.scores[res], tot = Object.values(tab).reduce((a, b) => a + b, 0); let x = MR() * tot;
+  for (const [k, n] of Object.entries(tab)){ x -= n; if (x <= 0) return k.split(':').map(Number); }
+  return Object.keys(tab)[0].split(':').map(Number);
+}
 let OVS = null;
 function ovGrade(ov){
   if (!OVS || OVS.w !== W) OVS = { w: W, a: Object.values(W.P).filter(p => p.avgS != null).map(p => playerRating(p.id).ov).sort((x, y) => x - y) };
@@ -580,69 +626,15 @@ const canMove = (a, form, from, to) => { const slots = FORMS[form], p = W.P[a[fr
   return from !== to && p.pos.includes(slots[to][0]) && (!q || q.pos.includes(slots[from][0])); };
 
 /* ================= MATCH ENGINE ================= */
-function drums(pids, form){
-  // every result goes in as many times as its opponent is worth: (number of ranked clubs + 1 - opponent's UEFA rank),
-  // so a result against no. 1 of 415 counts 415 times and one against no. 415 once
-  const a = arrangement(pids, form), sc = [], co = [], N = W.meta.ranked || 100;
-  const wOf = (p, i) => p.or ? Math.max(1, N + 1 - p.or[i]) : 1;
-  const put = (drum, p, list, idx) => idx.forEach(i => { for (let k = wOf(p, i); k > 0; k--) drum.push(list[i]); });
-  a.forEach((pid, j) => {
-    const p = W.P[pid], all = p.sc.map((_, i) => i);
-    put(sc, p, p.sc, all); put(co, p, p.co, all);
-    // own-part letters add balls: A his 2 best results, B his best, C nothing, D his worst, E his 2 worst
-    // own attack (G+A) -> scored drum, best = most scored; own defence (clean sheets) -> conceded drum, best = fewest conceded
-    const q = playerRating(pid).q, n = { A: 2, B: 1, C: 0, D: -1, E: -2 };
-    // the extra results keep their own opponent weight
-    const add = (list, g, bestFirst) => { const s = list.map((v, i) => i).sort((x, y) => bestFirst(list[x], list[y])), k = n[g]; return k >= 0 ? s.slice(0, k) : s.slice(k); };
-    put(sc, p, p.sc, add(p.sc, qGrade(q.ia), (x, y) => y - x));
-    put(co, p, p.co, add(p.co, qGrade(q.id), (x, y) => x - y));
-  });
-  return { sc, co };
-}
-/* Goals for one side: our 10 values against the opponent's 10. Up to 10 times, take a random value
-   from each list; the first time they match, that is the score. No match in 10 tries: a random value from all 20. */
-function drawGoals(ours, theirs){
-  for (let k = 0; k < 10; k++){ const x = pick(ours); if (x === pick(theirs)) return x; }
-  return pick([...ours, ...theirs]);
-}
-const ten = drum => Array.from({ length: 10 }, () => pick(drum));   // 10 random balls from the whole drum, repeats allowed
-/* Before each match both sides get extra values on their 10:
-   home side: its best scored and best (fewest) conceded result; away side: its worst of each;
- */
-function edge(l, good, k = 1){
-  if (k <= 0) return l;
-  const hi = [...l.sc].sort((x, y) => y - x), lo = [...l.co].sort((x, y) => x - y);
-  return good ? { sc: l.sc.concat(hi.slice(0, k)), co: l.co.concat(lo.slice(0, k)) }
-              : { sc: l.sc.concat(hi.slice(-k)), co: l.co.concat(lo.slice(-k)) };
-}
-/* The result (who wins) comes from real football: the weekly rank model says how often the better-ranked side wins,
-   draws or loses for this rank ratio, with the better side at home, away or (final) on neutral ground.
-   The score is then drawn from the drums until it fits that result. Your XI's rank: the average UEFA rank of the two
-   clubs around the spot its pot placed it in. */
-let YOURANK = 100;
-const urank = id => id === 'YOU' ? YOURANK : W.C[id].rank;
-function outcome(a, b, home){
-  const M = W.meta.rankModel; if (!M) return null;
-  const ra = urank(a), rb = urank(b), better = ra <= rb ? a : b, ratio = Math.max(ra, rb) / Math.max(1, Math.min(ra, rb));
-  const rows = home === better ? M.by_ratio_home : home ? M.by_ratio_away : M.by_ratio;
-  const row = rows.find(r => ratio >= r.from && (r.to == null || ratio < r.to)) || rows[rows.length - 1];
-  const u = MR(), win = u < row.better ? better : u < row.better + row.draw ? null : (better === a ? b : a);
-  return win === null ? 'D' : win === a ? 'A' : 'B';
-}
-function drumScore(a, b, T, home){
-  const side = id => id === 'YOU' ? { sc: ten(T.sc), co: ten(T.co) } : { sc: ten(W.C[id].scW), co: ten(W.C[id].coW) };
-  let A = side(a), B = side(b);
-  if (home === a || home === b){ A = edge(A, home === a); B = edge(B, home === b); }
-  return [drawGoals(A.sc, B.co), drawGoals(B.sc, A.co)];
-}
+/* One match: a is listed first. home = a, b or null (neutral). */
 function simMatch(a, b, T, et, home){
-  if (b === 'YOU'){ const x = simMatch(b, a, T, et, home); return [x[1], x[0]]; }
-  if (et){ const [ga, gb] = drumScore(a, b, T, home); return [rr(ga / 3), rr(gb / 3)]; }   // extra time stays as it was
-  const want = outcome(a, b, home);
-  if (!want) return drumScore(a, b, T, home);
-  const fits = ([x, y]) => want === 'D' ? x === y : want === 'A' ? x > y : x < y;
-  for (let k = 0; k < 40; k++){ const s = drumScore(a, b, T, home); if (fits(s)) return s; }
-  return want === 'D' ? [1, 1] : want === 'A' ? [1, 0] : [0, 1];
+  const neutral = home !== a && home !== b, H = neutral ? a : home, A_ = H === a ? b : a;
+  const base = neutral ? [(W.base[0] + W.base[2]) / 2, W.base[1], (W.base[0] + W.base[2]) / 2] : W.base;
+  const p = probs1x2(strength(H, neutral ? 'n' : 'h'), strength(A_, neutral ? 'n' : 'a'), base, W.k);
+  const u = MR(), res = u < p[0] ? '1' : u < p[0] + p[1] ? 'X' : '2';
+  let [gh, ga] = drawScore(res);
+  if (et){ const thin = n => { let k = 0; for (let i = 0; i < n; i++) if (MR() < 1 / 3) k++; return k; }; gh = thin(gh); ga = thin(ga); }   // extra time: a third of a match
+  return H === a ? [gh, ga] : [ga, gh];
 }
 /* Who scored our goals: weighted by goals in his last 10 (assists by assists), everyone keeps a small chance. */
 const ourGoals = (n, lo, hi) => teamGoals('YOU', n, lo, hi);
@@ -695,8 +687,6 @@ function drawOpponents(n){
   return out;
 }
 const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
-// one overall number on the team-rating scale, for clubs from their last 10 results
-const clubOverall = id => (R(pctBelow(W.CS, mean(W.C[id].sc10))) + R(1 - pctBelow(W.CC, mean(W.C[id].co10)))) / 2;
 /* League phase like the real one: 36 clubs in 4 pots of 9, everyone plays 2 clubs from each pot.
    Opponents sit in pots by UEFA rank; your XI goes where its team rating ranks among them. */
 function leagueSchedule(teams){
@@ -713,16 +703,14 @@ function leagueSchedule(teams){
 function drawCard(c){
   if (!c.myPot) return '<div class="card muted">35 opponents drawn. Biggest clubs had the most balls in the draw.</div>';
   const by = [1, 2, 3, 4].map(k => c.ev.filter(e => e.k === 'md' && e.pot === k).map(e => esc(nm(e.opp))).join(', '));
-  return `<div class="card muted">35 opponents drawn, biggest clubs with the most balls. Your XI is in <b style="color:var(--text)">pot ${c.myPot}</b> by team rating. You play two clubs from each pot:<br>${by.map((x, i) => `<b style="color:var(--text)">Pot ${i + 1}</b> ${x}`).join('<br>')}</div>`;
+  return `<div class="card muted">35 opponents drawn, biggest clubs with the most balls. Your XI is in <b style="color:var(--text)">pot ${c.myPot}</b> by strength. You play two clubs from each pot:<br>${by.map((x, i) => `<b style="color:var(--text)">Pot ${i + 1}</b> ${x}`).join('<br>')}</div>`;
 }
 function buildCup(T){
   const opps = drawOpponents(35).sort((a, b) => W.C[a].rank - W.C[b].rank);
-  const tr = teamRating(S.run.picks, S.run.form), mine = tr.ov, at = opps.filter(id => clubOverall(id) > mine).length;
+  const mine = youStrength('n'), at = opps.filter(id => W.C[id].S.n > mine).length;
   const teams = [...opps.slice(0, at), 'YOU', ...opps.slice(at)];
   const myPot = Math.floor(at / 9) + 1;
   const sch = leagueSchedule(teams);
-  { const up = teams[at - 1], dn = teams[at + 1];   // your XI's stand-in UEFA rank
-    YOURANK = up && dn ? (W.C[up].rank + W.C[dn].rank) / 2 : up ? W.C[up].rank + 1 : Math.max(1, W.C[dn].rank - 1); }
   const rows = {}; teams.forEach(t => rows[t] = { id: t, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, Pts: 0, tb: MR() });
   const ours = [];
   const rec = (x, gf, ga) => { const r = rows[x]; r.P++; r.GF += gf; r.GA += ga; if (gf > ga){ r.W++; r.Pts += 3; } else if (gf === ga){ r.D++; r.Pts++; } else r.L++; };
@@ -823,7 +811,7 @@ function choose(pid){
   save(); render();
 }
 function kickoff(){
-  const r = S.run; const T = drums(r.picks, r.form);
+  const r = S.run; const T = null;
   r.cup = buildCup(T); r.phase = 'cup'; save(); render(); scrollTo(0, 0);
 }
 function step(all){
@@ -943,9 +931,9 @@ function viewHome(){
         <li>The world is every club on the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E (the average of his four parts, ranked among all players: top 20% are A, the next 20% B, and so on); hover him to see the four parts (team attack, own attack, team defence, own defence). Team parts come from the goals his team scored and conceded in his last 10 of those starts; own parts from his goals plus assists in those 10, and his clean sheets in those 10 counting only the matches he started in a defensive position (goalkeeper, centre-back, full-back, defensive midfielder); no such clean sheet means the lowest score. All are percentiles among all players. Your team gets the same in numbers from 40 to 99, the average of your players.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E (ranked among all players: top 20% A, next 20% B, and so on); hover him for the four parts: team attack (goals his team scored per game), own attack (his goals plus assists per game), team defence (goals conceded per game) and own defence (clean sheets per game in a defensive position). Every match counts by the UEFA points of the opponent. Your team shows the averages of your players from 40 to 99.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
-        <li>Who wins comes from real football: every week we count how often the better-ranked club wins, draws or loses against a lower-ranked one (by how many times better its UEFA rank is, home or away), and each match is decided by those odds. Your XI takes the rank of the spot its team rating earned in the pots. The score itself is drawn from a drum of real scorelines until it fits that result. Every player adds his last 10 results, each one as many times as the opponent was worth (with 415 ranked clubs, 415 times against no. 1 down to once against no. 415), and his own grades add more: his own attack grade (goals plus assists) adds to the scored drum and his own defence grade (clean sheets) to the conceded drum. An A repeats his 2 best results, B his best, C nothing, D his worst, E his 2 worst. Your team rating is read from this drum. Before each match the home side adds its best scored and fewest conceded result, the away side its worst;. Clubs build their drums the same way from their own last 10 results. Each match, 10 balls come out of each drum: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
+        <li>Matches start from real football: how often the home side wins, draws and loses across every match between ranked clubs in the last year. Each side then tilts those odds by its strength. A club's strength is the average of six percentiles: UEFA points, points per game, points per game in the last 5, points per game at home or away, goals scored and goals conceded per game. Your XI's strength is the average of your players on the same six plus goals and assists and clean sheets. Every one except UEFA points counts each match by the opponent's UEFA points. The two tilted odds are combined, the result is drawn, and the score is a real scoreline with that result.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
         <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends.</li>
       </ol>
@@ -997,7 +985,7 @@ function viewLineup(){
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot">Run ends in <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
   <div class="stack">
     <div><div class="eyebrow">Your XI</div><h2 style="font-size:30px;margin-top:4px">Pick your shape</h2>
-    <p class="muted" style="margin:6px 0 0">Where a player stands decides how much he adds to the attack and defence drums.</p></div>
+    </div>
     ${shapes(r.picks, r.form, true)}
     ${pitch(r.picks, r.form, r.kept, false, true)}
     <div class="hint">Tap a player, then a highlighted spot, to move him.</div>
@@ -1204,7 +1192,7 @@ async function boot(){
   if (raw && raw.clubs){ const w = worldFromData(raw); if (w.draftable.length >= 11) W = w; }
   if (!W) W = buildWorld();
   if (W.meta.live) CFG.STORE += '.live';
-  window.__ttny = { W, CFG, feasible, assign, drums, simMatch, buildCup, drawGoals, shootout };
+  window.__ttny = { W, CFG, feasible, assign, simMatch, buildCup, shootout };
   load();
   const bad = id => !W.P[id] || !W.P[id].sc;
   if (S.run && S.run.picks && S.run.picks.some(bad)) S.run = null;
