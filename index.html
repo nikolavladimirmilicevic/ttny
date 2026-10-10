@@ -680,10 +680,11 @@ function playTie(a, b, legs, T){
 function drawOpponents(n){
   const pool = [...W.oppPool], out = [];
   while (out.length < n && pool.length){
-    // weight 1 / UEFA rank: no. 1 is twice as likely as no. 2, ten times as likely as no. 10 ...
-    const tot = pool.reduce((s, id) => s + 1 / W.C[id].rank, 0);
+    // weight = UEFA points: Bayern (129.5) is about four times as likely as Crvena Zvezda (31.5)
+    const wt = id => W.ptsOf(W.C[id].rank);
+    const tot = pool.reduce((s, id) => s + wt(id), 0);
     let x = MR() * tot, k = pool.length - 1;
-    for (let i = 0; i < pool.length; i++){ x -= 1 / W.C[pool[i]].rank; if (x <= 0){ k = i; break; } }
+    for (let i = 0; i < pool.length; i++){ x -= wt(pool[i]); if (x <= 0){ k = i; break; } }
     out.push(pool.splice(k, 1)[0]);
   }
   return out;
