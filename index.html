@@ -603,7 +603,7 @@ function ovGrade(ov){
 /* overall in a circle; the four parts row by row (letters for players, 40-99 for the team) */
 // players: kit colours of his nationality; the team: gold
 const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${ovGrade(r.ov)}</div>` : `<div class="ovdot big g${numGrade(r.ov)}">${r.ov}</div>`;
-const partRows = (r, nums, from = 0, to = 6) => [['Pedigree', 'pe'], ['Team goals', 'ta'], ['Goals + assists', 'ia'], ['Goals against', 'td'], ['Clean sheets', 'id'], ['Form (last 5)', 'fo']].slice(from, to)
+const partRows = (r, nums, from = 0, to = 6) => [['Pedigree', 'pe'], ['Collective attack', 'ta'], ['Individual attack', 'ia'], ['Collective defence', 'td'], ['Individual defence', 'id'], ['Form (last 5)', 'fo']].slice(from, to)
   .map(([k, f]) => `<div class="r"><span>${k}</span>${nums ? `<b class="num tnum g${numGrade(r[f])}">${r[f]}</b>` : `<span class="gt g${qGrade(r.q[f])}">${qGrade(r.q[f])}</span>`}</div>`).join('');
 // a 40-99 number gets the colour of the percentile it stands for (40 + 59 x percentile)
 const numGrade = v => qGrade((v - 40) / 59);
@@ -897,8 +897,8 @@ function cardHTML(p){
     <div class="pc-club">${esc(c.name)}</div>
     <div class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</div>
     ${r ? `<div class="pc-sec pc-ped"><span>Pedigree<small>his club's UEFA 5-year points</small></span>${badge(qGrade(r.q.pe))}</div>
-    <div class="pc-sec"><div class="pc-h">Attack</div>${row('Team goals', 'scored per game', qGrade(r.q.ta))}${row('Goals + assists', 'his own, per game', qGrade(r.q.ia))}</div>
-    <div class="pc-sec"><div class="pc-h">Defence</div>${row('Goals against', 'conceded per game', qGrade(r.q.td))}${row('Clean sheets', 'in a defensive role', qGrade(r.q.id))}</div>
+    <div class="pc-sec"><div class="pc-h">Attack</div>${row('Collective', 'the threat of the side around him', qGrade(r.q.ta))}${row('Individual', 'his own end product', qGrade(r.q.ia))}</div>
+    <div class="pc-sec"><div class="pc-h">Defence</div>${row('Collective', 'how hard his side is to break down', qGrade(r.q.td))}${row('Individual', 'what he shuts out himself', qGrade(r.q.id))}</div>
     <div class="pc-sec">${row('Form', 'points in his last 5 games', qGrade(r.q.fo), true)}</div>` : ''}`;
 }
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
