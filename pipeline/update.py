@@ -376,7 +376,7 @@ UEFA_ALIAS = {
     # beyond the top 100
     'sint-truidense': 'St. Truiden', 'n.e.c.': 'NEC Nijmegen', 'ofi crete': 'OFI', 'nordsjaelland': 'Nordsjaelland',
     'zire': 'Zira', 'dac 1904': 'Dunajska Streda', 'h. boltfelag': 'HB Torshavn', 'diddeleng': 'Dudelange', 'paksi': 'Paks',
-    'puskas akademia': 'Puskas', 'polissya': 'Zhytomyr', 'olexandriya': 'Oleksandria', 'araz-naxcivan': 'Araz',
+    'puskas akademia': 'Puskas', 'polissya': 'Polissya', 'olexandriya': 'Oleksandria', 'araz-naxcivan': 'Araz',
     'gabala': 'Qabala', 'kr': 'KR Reykjavik', 'elimai': 'Semey', 'fcsg': 'Sfintul Gheorghe', 'brera strumica': 'Pandev',
     'pusk akademia': 'Puskas', 'd 1904': 'Dunajska Streda',   # keys as norm() leaves them
     'dynamo brest': 'Dinamo Brest', 'breidablik': 'Breidablik', 'lillestrom': 'Lillestrom', 'brondby': 'Brondby', 'sumqayit': 'Sumgayit',
@@ -561,9 +561,17 @@ def fetch_profiles(top_ids, squads, people, meta):
         age = days_old(done.get(str(tid)))
         if (age < PROFILE_MAX_AGE and not any('fn' not in people.get(str(pid), {}) for pid in sq['p'])) or (not missing and age < 180):
             continue
+        for season in (current_season(), current_season() - 1):   # smaller leagues often lack the current season
+            if season != current_season() and not [pid for pid in sq['p'] if 'nat' not in people.get(str(pid), {})]:
+                break
+            read_players(tid, season, people)
+        done[str(tid)] = TODAY.isoformat()
+
+
+def read_players(tid, season, people):
         page, total = 1, 1
         while page <= total:
-            data = api('players', team=tid, season=current_season(), page=page)
+            data = api('players', team=tid, season=season, page=page)
             total = (data.get('paging') or {}).get('total', 1)
             for x in data.get('response', []):
                 p = x['player']
@@ -576,7 +584,6 @@ def fetch_profiles(top_ids, squads, people, meta):
                 if p.get('age'):
                     e['age'] = p['age']
             page += 1
-        done[str(tid)] = TODAY.isoformat()
 
 
 # ---------------- build ----------------
