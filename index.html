@@ -11,7 +11,7 @@
   --gold:#E3B341; --gold-ink:#1C1606; --text:#F3EFE6; --muted:#A3B1C4;
   --win:#5CC08A; --loss:#E57A62; --draw:#C9CED6;
   --grass:#103828; --grass-2:#13422F; --chalk:rgba(243,239,230,.28);
-  --gA:#E3B341; --gB:#9BD3A6; --gC:#C9CED6; --gD:#E7A86F; --gE:#E57A62;
+  --gA:#2F8CFF; --gB:#35C46A; --gC:#F2D33D; --gD:#F28A2E; --gE:#E8443A;   /* PES condition colours: blue, green, yellow, orange, red */
   --display:'Oswald','Arial Narrow',Arial,sans-serif;
   --body:'Rubik','Segoe UI',Arial,sans-serif;
   color-scheme:dark;
@@ -114,11 +114,24 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .slot[data-pid]{cursor:help}
 .flag{font-family:'Noto Color Emoji',sans-serif;font-size:14px;line-height:1;margin-right:5px;flex:none;vertical-align:-1px}
 .kit{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--kit);border:2px solid var(--kit-ink);vertical-align:-1px;margin-right:5px;flex:none}
-.pcard{position:fixed;z-index:20;width:200px;background:var(--panel-2);border:1px solid var(--gold);border-radius:10px;padding:10px 12px;box-shadow:0 10px 28px rgba(0,0,0,.5);pointer-events:none;font-size:12px;line-height:1.35}
+.pcard{position:fixed;z-index:20;width:232px;background:var(--panel-2);border:1px solid var(--gold);border-radius:10px;padding:10px 12px;box-shadow:0 10px 28px rgba(0,0,0,.5);pointer-events:none;font-size:12px;line-height:1.35}
 .pcard h4{margin:0;font:600 16px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
 .pcard .r{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-top:1px solid var(--line)}
 .pcard .r span:first-child{color:var(--muted)}
-.pcard .poss{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+.pcard .poss{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 2px}
+.pc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.pc-sub{color:var(--muted);margin-top:3px;display:flex;align-items:center}
+.pc-club{margin-top:6px;font-weight:500}
+.pc-ov{flex:none;width:44px;height:44px;border-radius:10px;display:grid;place-items:center;align-content:center;color:#0B1626}
+.pc-ov.gA,.pc-ov.gE{color:#fff}
+.pc-ov b{font:600 22px/1 var(--display)}.pc-ov small{font-size:8px;letter-spacing:.08em;text-transform:uppercase;opacity:.8}
+.pc-sec{margin-top:8px;padding-top:6px;border-top:1px solid var(--line)}
+.pc-h{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:2px}
+.pc-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 0}
+.pc-row small,.pc-two small{display:block;color:var(--muted);font-size:10px;line-height:1.2}
+.pc-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pc-two>div{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+.pc-two .gt{margin-top:2px}
 .pcard .poss b,.pcard .poss i{font-style:normal;font-weight:500;font-size:11px;padding:0 5px;border-radius:4px;background:var(--panel)}
 .pcard .poss b{background:var(--gold);color:var(--gold-ink)}
 .pcard .gr{display:flex;gap:6px;margin-top:12px}
@@ -140,7 +153,8 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .tie .w{font-weight:600;color:var(--text)}.tie .me{color:var(--gold)}.tie.mine{background:rgba(227,179,65,.08)}
 .teambox{background:var(--panel);border-radius:12px;padding:12px 14px;margin-bottom:12px}
 .tq{display:flex;align-items:center;gap:16px}
-.gt{display:inline-grid;place-items:center;min-width:17px;padding:2px 4px;border-radius:4px;font:600 11px/1 var(--display);color:#14181F}
+.gt{display:inline-grid;place-items:center;min-width:17px;padding:2px 4px;border-radius:4px;font:600 11px/1 var(--display);color:#0B1626}
+.gt.gA,.gt.gE{color:#fff}
 .gpair{display:flex;gap:4px;flex:none}.gpair .gt{min-width:24px;padding:5px 6px;font-size:15px}
 .teamrt{display:flex;gap:10px;margin-bottom:12px}
 .teamrt div{flex:1;background:var(--panel);border-radius:12px;padding:10px 14px}
@@ -587,7 +601,7 @@ function ovGrade(ov){
 /* overall in a circle; the four parts row by row (letters for players, 40-99 for the team) */
 // players: kit colours of his nationality; the team: gold
 const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${ovGrade(r.ov)}</div>` : `<div class="ovdot big">${r.ov}</div>`;
-const partRows = (r, nums, from = 0, to = 6) => [['Team attack', 'ta'], ['Own attack', 'ia'], ['Team defence', 'td'], ['Own defence', 'id'], ['Form', 'fo'], ['Pedigree', 'pe']].slice(from, to)
+const partRows = (r, nums, from = 0, to = 6) => [['Team goals', 'ta'], ['Goals + assists', 'ia'], ['Goals against', 'td'], ['Clean sheets', 'id'], ['Form (last 5)', 'fo'], ['Pedigree', 'pe']].slice(from, to)
   .map(([k, f]) => `<div class="r"><span>${k}</span>${nums ? `<b class="num">${r[f]}</b>` : `<span class="gt g${qGrade(r.q[f])}">${qGrade(r.q[f])}</span>`}</div>`).join('');
 const locked = () => S.run && (S.run.phase === 'cup' || S.run.phase === 'done');
 function roleOf(pid){ const r = S.run, a = arrangement(r.picks, r.form); return FORMS[r.form][a.indexOf(pid)][3]; }
@@ -869,13 +883,18 @@ const flagOf = name => { const c = ISO[name]; if (!c) return '';
   return [...c].map(ch => String.fromCodePoint(0x1F1E6 + ch.charCodeAt(0) - 65)).join(''); };
 const natTag = p => { const n = natInfo(p.nat)[0], f = flagOf(n);
   return (f ? `<span class="flag">${f}</span>` : `<span class="kit" style="${kit(p)}"></span>`) + esc(n); };
+const ARROW = { A: '↑', B: '↗', C: '→', D: '↘', E: '↓' };   // PES condition arrows, used for form
+const badge = (g, arrow) => `<span class="gt g${g}">${arrow ? ARROW[g] + ' ' : ''}${g}</span>`;
 function cardHTML(p){
-  const c = W.C[p.club];
-  return `<h4>${esc(p.name)}</h4>
-    <div class="muted" style="margin:3px 0 6px;display:flex;align-items:center">${natTag(p)} · ${p.age}</div>
-    <div class="r"><span>Club</span><span style="text-align:right">${esc(c.name)}</span></div>
-    <div class="r"><span>Positions</span><span class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</span></div>
-    ${locked() && S.run.picks.includes(p.id) ? (r => partRows(r, false, 0, 4) + `<div class="r"><span>Overall</span><span class="gt g${ovGrade(r.ov)}">${ovGrade(r.ov)}</span></div>` + partRows(r, false, 4, 6))(playerRating(p.id)) : ''}`;
+  const c = W.C[p.club], rated = locked() && S.run.picks.includes(p.id), r = rated ? playerRating(p.id) : null;
+  const row = (label, hint, g, arrow) => `<div class="pc-row"><span>${label}${hint ? `<small>${hint}</small>` : ''}</span>${badge(g, arrow)}</div>`;
+  return `<div class="pc-head"><div style="min-width:0"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age}</div></div>
+      ${r ? `<div class="pc-ov g${ovGrade(r.ov)}"><b>${ovGrade(r.ov)}</b><small>Overall</small></div>` : ''}</div>
+    <div class="pc-club">${esc(c.name)}</div>
+    <div class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</div>
+    ${r ? `<div class="pc-sec"><div class="pc-h">Attack</div>${row('Team goals', 'scored per game', qGrade(r.q.ta))}${row('Goals + assists', 'his own, per game', qGrade(r.q.ia))}</div>
+    <div class="pc-sec"><div class="pc-h">Defence</div>${row('Goals against', 'conceded per game', qGrade(r.q.td))}${row('Clean sheets', 'in a defensive role', qGrade(r.q.id))}</div>
+    <div class="pc-sec pc-two"><div><span>Form</span><small>last 5 games</small>${badge(qGrade(r.q.fo), true)}</div><div><span>Pedigree</span><small>club's UEFA points</small>${badge(qGrade(r.q.pe))}</div></div>` : ''}`;
 }
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
