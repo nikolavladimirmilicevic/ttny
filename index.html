@@ -550,7 +550,9 @@ function buildModel(w, elig){
     const rest = q.ppg + q.ppg5 + q.gf + q.ga, mix = v => 0.5 * q.uefa + 0.5 * (rest + v) / 5;
     C[id].S = { h: mix(q.ppgH), a: mix(q.ppgA), n: mix((q.ppgH + q.ppgA) / 2) }; }
   // player parameters (percentiles among all rated players)
-  const pv = p => { const m = p.m; return { uefa: byRank[C[p.club].rank], ppg: wavg(m, ptsOf, PPG), ppg5: wavg(m.slice(0, 5), ptsOf, PPG),
+  // pedigree: UEFA points of every club he started for in the window, in proportion to his starts for each (off the list = 0)
+  const ped = p => { const own = byRank[C[p.club].rank], m = p.m; return m.length && m[0].length > 6 ? m.reduce((t, r) => t + (r[6] ? byRank[r[6]] || 0 : 0), 0) / m.length : own; };
+  const pv = p => { const m = p.m; return { uefa: ped(p), ppg: wavg(m, ptsOf, PPG), ppg5: wavg(m.slice(0, 5), ptsOf, PPG),
     ppgH: wavg(m.filter(r => r[1]), ptsOf, PPG), ppgA: wavg(m.filter(r => !r[1]), ptsOf, PPG), gf: wavg(m, ptsOf, r => r[2]), ga: -wavg(m, ptsOf, r => r[3]),
     gapm: wavg(m, ptsOf, r => r[4]), cs: wavg(m, ptsOf, r => r[5] && r[3] === 0 ? 1 : 0) }; };
   const pvals = new Map(elig.map(p => [p.id, pv(p)]));
@@ -564,7 +566,7 @@ function buildModel(w, elig){
 }
 function playerRating(pid){
   const q = W.P[pid].q;   // the four parts shown: team attack = goals scored, own attack = G+A, team defence = goals conceded, own defence = clean sheets
-  // plus two more shown on the card: form (points per game in his last 5) and pedigree (his club's UEFA 5-year points)
+  // plus two more shown on the card: form (points per game in his last 5) and pedigree (UEFA points of every club he started for in 365 days, by starts)
   return Object.assign(parts(R(q.gf), R(q.gapm), R(q.ga), R(q.cs)), { fo: R(q.ppg5), pe: R(q.uefa), q: { ta: q.gf, ia: q.gapm, td: q.ga, id: q.cs, fo: q.ppg5, pe: q.uefa } });
 }
 // letters for the parts by percentile: top 20% A, next 20% B ... bottom 20% E
@@ -896,7 +898,7 @@ function cardHTML(p){
       ${r ? `<div class="pc-ov g${ovGrade(r.ov)}"><b>${ovGrade(r.ov)}</b><small>Overall</small></div>` : ''}</div>
     <div class="pc-club">${esc(c.name)}</div>
     <div class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</div>
-    ${r ? `<div class="pc-sec pc-ped"><span>Pedigree<small>his club's UEFA 5-year points</small></span>${badge(qGrade(r.q.pe))}</div>
+    ${r ? `<div class="pc-sec pc-ped"><span>Pedigree<small>the stature of the clubs he has played for</small></span>${badge(qGrade(r.q.pe))}</div>
     <div class="pc-sec"><div class="pc-h">Attack</div>${row('Collective', 'the threat of the side around him', qGrade(r.q.ta))}${row('Individual', 'his own end product', qGrade(r.q.ia))}</div>
     <div class="pc-sec"><div class="pc-h">Defence</div>${row('Collective', 'how hard his side is to break down', qGrade(r.q.td))}${row('Individual', 'what he shuts out himself', qGrade(r.q.id))}</div>
     <div class="pc-sec">${row('Form', 'points in his last 5 games', qGrade(r.q.fo), true)}</div>` : ''}`;
@@ -962,7 +964,7 @@ function viewHome(){
         <li>The world is every club on the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E (ranked among all players: top 20% A, next 20% B, and so on); hover him for the parts behind it, plus his form (points per game in his last 5) and pedigree (his club's UEFA 5-year points). The four parts are: team attack (goals his team scored per game), own attack (his goals plus assists per game), team defence (goals conceded per game) and own defence (clean sheets per game in a defensive position). Every match counts by the UEFA points of the opponent. Your team shows the averages of your players from 40 to 99.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E (ranked among all players: top 20% A, next 20% B, and so on); hover him for the parts behind it, plus his form (points per game in his last 5) and pedigree (the stature of the clubs he has played for this year). The four parts are: team attack (goals his team scored per game), own attack (his goals plus assists per game), team defence (goals conceded per game) and own defence (clean sheets per game in a defensive position). Every match counts by the UEFA points of the opponent. Your team shows the averages of your players from 40 to 99.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Matches start from real football: how often the home side wins, draws and loses across every match between ranked clubs in the last year. Each side then tilts those odds by its strength. A club's strength is half its UEFA points percentile and half the average of five more: points per game, points per game in the last 5, points per game at home or away, goals scored and goals conceded per game. Your XI's strength is the same from your players' averages, with goals plus assists and clean sheets (in defensive positions, per game played) added to the second half. Every one except UEFA points counts each match by the opponent's UEFA points. The two tilted odds are combined, the result is drawn, and the score is a real scoreline with that result.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>

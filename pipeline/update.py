@@ -644,7 +644,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
                 club_res[side].append((f['d'], sc, co, int(top[opp]['rank']), side == h))
             if opp in top and codes:
                 for pid, code in codes:
-                    starts[pid].append((f['d'], sc, co, code, fid, int(top[opp]['rank']), side == h))
+                    starts[pid].append((f['d'], sc, co, code, fid, int(top[opp]['rank']), side == h, int(top[side]['rank']) if side in top else 0))
     out_clubs = []
     for tid, c in top.items():
         res = sorted(club_res[tid], reverse=True)
@@ -673,8 +673,9 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
                 gs = sum(1 for ev in evs.get(s[4]) or [] if ev[3] != 'o' and ev[1] == pid)
                 as_ = sum(1 for ev in evs.get(s[4]) or [] if ev[3] != 'o' and ev[2] == pid)
                 g += gs; a += as_
-                # [opponent rank, at home, scored, conceded, his goals + assists, started in a defensive position]
-                m.append([s[5], int(s[6]), s[1], s[2], gs + as_, int(s[3] in DEF_POS)])
+                # [opponent rank, at home, scored, conceded, his goals + assists, started in a defensive position,
+                #  rank of the club he played for (0 = not on the UEFA list)]
+                m.append([s[5], int(s[6]), s[1], s[2], gs + as_, int(s[3] in DEF_POS), s[7]])
             # clean sheets that count for him: only matches he started in a defensive position
             cs = sum(1 for s in st[:10] if s[2] == 0 and s[3] in DEF_POS)
             e = people.get(str(pid), {})
