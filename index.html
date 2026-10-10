@@ -467,7 +467,7 @@ function finalize(C, P, meta){
   const oppPool = ids.filter(id => C[id].n >= 10);
   // reference distributions for the 40-99 ratings
   const asc = a => a.sort((x, y) => x - y);
-  const SS = asc(elig.map(p => p.avgS)), SC = asc(elig.map(p => p.avgC)), GA = asc(elig.map(p => (p.g || 0) + (p.a || 0))), CSH = asc(elig.map(p => p.co.filter(v => v === 0).length));
+  const SS = asc(elig.map(p => p.avgS)), SC = asc(elig.map(p => p.avgC)), GA = asc(elig.map(p => (p.g || 0) + (p.a || 0))), CSH = asc(elig.map(csOf));
   const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
   const CS = asc(oppPool.map(id => avg(C[id].sc10))), CC = asc(oppPool.map(id => avg(C[id].co10)));
   return { C, P, pots, oppPool, draftable, eligCount: elig.length, meta, SS, SC, GA, CSH, CS, CC };
@@ -480,7 +480,7 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: p.name, nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, g: p.g || 0, a: p.a || 0 };
+    P[pid] = { id: pid, name: p.name, nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, g: p.g || 0, a: p.a || 0, cs: p.cs };
     club.squad.push(pid);
   }
   return finalize(C, P, { live: true, updated: raw.updated });
@@ -493,7 +493,7 @@ const ORDER = 'ABCDE';
    Player: the mean of a team part and an individual part.
      Team part: how good his last 10 results are among all rated players (percentile).
      Individual attack: his goals + assists in those 10, as a percentile among all rated players.
-     Individual defence: clean sheets in those 10, as a percentile among all rated players, in any position.
+     Individual defence: clean sheets in those 10 started in a defensive position (GK, CB, LB, RB, DMF), percentile; none = 40.
    Team: the average of its drum, ranked among the top-100 clubs' last 10 results. */
 function pctBelow(arr, v){ let lo = 0, eq = 0; for (const x of arr){ if (x < v) lo++; else if (x === v) eq++; } return (lo + eq / 2) / arr.length; }
 const R = x => Math.round(40 + 59 * Math.max(0, Math.min(1, x)));
@@ -504,13 +504,13 @@ const gTag = n => `<span class="gt g${grade(n)}">${grade(n)}</span>`;
 function playerRating(pid){
   const p = W.P[pid];
   const ta = R(pctBelow(W.SS, p.avgS)), ia = R(pctBelow(W.GA, (p.g || 0) + (p.a || 0)));
-  const td = R(1 - pctBelow(W.SC, p.avgC)), id = R(pctBelow(W.CSH, p.co.filter(v => v === 0).length));
+  const td = R(1 - pctBelow(W.SC, p.avgC)), c = csOf(p), id = c ? R(pctBelow(W.CSH, c)) : R(0);
   return parts(ta, ia, td, id);
 }
+// clean sheets that count: only matches he started in a defensive position (GK, CB, LB, RB, DMF); none = lowest rating
+const csOf = p => p.cs != null ? p.cs : p.co.filter(v => v === 0).length;
 const parts = (ta, ia, td, id) => ({ ta, ia, td, id, off: Math.round((ta + ia) / 2), def: Math.round((td + id) / 2), ov: Math.round((ta + ia + td + id) / 4) });
-// for the team and the simulation only: own defence counts just for goalkeepers, defenders and back midfielders
-const BACK = ['GK', 'DEF', 'MIDB'];
-function playRating(pid, role){ const r = playerRating(pid); return BACK.includes(role) ? r : parts(r.ta, r.ia, r.td, R(0)); }
+function playRating(pid){ return playerRating(pid); }
 function teamRating(picks, form){
   const rs = arrangement(picks, form).map((pid, j) => playRating(pid, FORMS[form][j][3]));
   const m = k => Math.round(rs.reduce((t, r) => t + r[k], 0) / rs.length);
@@ -871,7 +871,7 @@ function viewHome(){
         <li>The world is the top 100 clubs of the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E; hover him to see its four parts (team attack, own attack, team defence, own defence). Team parts come from the goals his team scored and conceded in his last 10 of those starts; own parts from his goals plus assists and his clean sheets in those 10. All are percentiles among all players. Your team gets the same in numbers from 40 to 99, the average of your players, where own defence only counts for goalkeepers, defenders and back midfielders (everyone else counts as 40 there).</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E; hover him to see its four parts (team attack, own attack, team defence, own defence). Team parts come from the goals his team scored and conceded in his last 10 of those starts; own parts from his goals plus assists in those 10, and his clean sheets in those 10 counting only the matches he started in a defensive position (goalkeeper, centre-back, full-back, defensive midfielder); no such clean sheet means the lowest score. All are percentiles among all players. Your team gets the same in numbers from 40 to 99, the average of your players.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Matches are drawn from a drum of real scorelines. Every player adds his last 10 results, one ball each, and his grade adds more: an A repeats his 2 best results, B his best, C nothing, D his worst, E his 2 worst (most scored for attack, fewest conceded for defence). Your team rating is read from this drum. Each match, 10 balls come out of your drum and face the opponent's last 10 results: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>

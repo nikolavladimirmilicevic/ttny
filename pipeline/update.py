@@ -561,6 +561,9 @@ def display_name(e, pid):
     return sq or e.get('n') or str(pid)
 
 
+DEF_POS = {'GK', 'CB', 'LB', 'RB', 'DMF'}
+
+
 def build_world(clubs, teams, fx, lu, squads, people, evs=None):
     evs = evs or {}
     top = {}
@@ -612,9 +615,11 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
                 for ev in evs.get(s[4]) or []:
                     if ev[3] != 'o' and ev[1] == pid: g += 1
                     if ev[3] != 'o' and ev[2] == pid: a += 1
+            # clean sheets that count for him: only matches he started in a defensive position
+            cs = sum(1 for s in st[:10] if s[2] == 0 and s[3] in DEF_POS)
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': display_name(e, pid), 'nat': e.get('nat'), 'age': e.get('age'),
-                                'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st), 'g': g, 'a': a,
+                                'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st), 'g': g, 'a': a, 'cs': cs,
                                 'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]]})
     return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'clubs': out_clubs, 'players': out_players}
 
