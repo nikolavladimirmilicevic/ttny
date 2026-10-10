@@ -825,15 +825,18 @@ const STAGE_RANK = ['league', 'playoff', 'r16', 'qf', 'sf', 'final', 'champion']
 function newRun(){
   const kept = S.dyn && S.dyn.kept ? S.dyn.kept.filter(id => W.P[id] && W.P[id].starts >= 10) : [];
   const potCount = 11 - kept.length;
-  S.run = { phase: 'draft', kept, picks: [...kept], order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null };
+  // a dynasty remembers everyone who has played in it: whoever was let go cannot come back
+  const ever = S.dyn && S.dyn.ever ? S.dyn.ever : [], gone = ever.filter(id => !kept.includes(id));
+  S.run = { phase: 'draft', kept, picks: [...kept], order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null };
   S.dyn = null;
   drawClub();
   save(); render(); scrollTo(0, 0);
 }
 function pickable(cid){
-  const r = S.run;
-  return W.C[cid].elig.filter(p => !r.picks.includes(p) && fits([...r.picks, p]));
+  const r = S.run, gone = r.gone || [];
+  return W.C[cid].elig.filter(p => !r.picks.includes(p) && !gone.includes(p) && fits([...r.picks, p]));
 }
+const everOf = r => [...new Set([...(r.ever || []), ...r.picks])];
 function drawClub(){
   const r = S.run, pot = r.order[r.step];
   const pickedClubs = new Set();
@@ -852,7 +855,7 @@ function drawClub(){
   }
 }
 function choose(pid){
-  const r = S.run; if (!r || r.phase !== 'draft' || !pickable(r.club).includes(pid)) return;
+  const r = S.run; if (!r || r.phase !== 'draft' || !visible(r).includes(pid)) return;
   r.picks.push(pid); r.step++; r.tried = []; r.cut = []; r.tip = null;
   r.sel = null;
   if (r.picks.length === 11){ r.phase = 'lineup'; const ok = feasible(r.picks); if (!ok.includes(r.form)) r.form = ok[0]; }
@@ -866,7 +869,7 @@ function choose(pid){
      most clean sheets (in a defensive position) and most starts in the last year. */
 const HELP = [
   { k: 'swap', name: 'Redraw', desc: 'Swap this club for another from the same pot' },
-  { k: 'half', name: 'Fifty-fifty', desc: 'Drop the weaker half of the players you can pick' },
+  { k: 'half', name: 'Fifty-fifty', desc: 'Rule out the weaker half of the players you can pick' },
   { k: 'tip', name: "Scout's tip", desc: 'Mark one standout player at this club' }
 ];
 const TIP = { g: 'Top scorer', a: 'Top assister', cs: 'Most clean sheets', st: 'Most starts' };
@@ -922,7 +925,7 @@ function finish(){
 }
 function continueDynasty(){
   const r = S.run;
-  S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, streak: S.stats.streak } : null;
+  S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, streak: S.stats.streak, ever: everOf(r) } : null;
   S.run = null; save();
   newRun();
 }
@@ -1027,11 +1030,12 @@ function viewHome(){
         <li>The world is every club on the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> drops the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
+        <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E; hover him for reputation, collective and individual attack and defence, and form. Your team shows the averages of your players from 40 to 99.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Matches start from real football: how often the home side wins, draws and loses across every match between ranked clubs in the last year. Each side then tilts those odds by its strength. A club's strength is half its UEFA points percentile and half the average of five more: points per game, points per game in the last 5, points per game at home or away, goals scored and goals conceded per game. Your XI's strength is the same from your players' averages, with goals plus assists and clean sheets (in defensive positions, per game played) added to the second half. Every one except UEFA points counts each match by the opponent's UEFA points. The two tilted odds are combined, the result is drawn, and the score is a real scoreline with that result.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
+        <li>A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
         <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends. Missing the top 24 of the league phase ends it too.</li>
       </ol>
     </details>
@@ -1047,12 +1051,13 @@ function viewDraft(){
     const off = i >= 11 - r.kept.length, done = r.order.indexOf(i) > -1 && r.order.indexOf(i) < r.step, now = i === pot;
     return `<div class="pot${off ? ' off' : done ? ' done' : now ? ' now' : ''}" title="Pot ${i + 1}">${i + 1}</div>`;
   }).join('');
-  const ok = new Set(pickable(r.club));
-  const rows = club.elig.filter(p => !r.picks.includes(p) && !(r.cut || []).includes(p)).map(pid => W.P[pid])
+  const ok = new Set(visible(r)), cut = new Set(r.cut || []), gone = new Set(r.gone || []);
+  const why = id => gone.has(id) ? ' · left your dynasty' : cut.has(id) ? ' · fifty-fifty' : ' · no slot left';
+  const rows = club.elig.filter(p => !r.picks.includes(p)).map(pid => W.P[pid])
     .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || POS_ORDER.indexOf(a.prim) - POS_ORDER.indexOf(b.prim) || a.name.localeCompare(b.name))
     .sort((a, b) => (r.tip && b.id === r.tip.pid) - (r.tip && a.id === r.tip.pid))
     .map(p => `<button class="prow kitcard${r.tip && r.tip.pid === p.id ? ' tipped' : ''}" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
-        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${TIP[r.tip.kind]} · ${r.tip.n}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : ' · no slot left'}</div></span>
+        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${TIP[r.tip.kind]} · ${r.tip.n}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   if (!shp.includes(r.form)) r.form = shp[0];
@@ -1067,7 +1072,7 @@ function viewDraft(){
       <h2 style="margin-top:6px">${esc(club.name)}</h2>
       <div class="meta">${COUNTRY[club.ctry] || esc(club.ctry)} · UEFA rank ${club.rank} · ${club.elig.length} rated players</div>
       ${r.note ? `<div class="note">${esc(r.note)}</div>` : ''}
-      ${(r.cut || []).length ? `<div class="note">Fifty-fifty: ${r.cut.length} weaker player${r.cut.length > 1 ? 's' : ''} removed.</div>` : ''}
+      ${(r.cut || []).length ? `<div class="note">Fifty-fifty: ${r.cut.length} weaker player${r.cut.length > 1 ? 's' : ''} ruled out.</div>` : ''}
       ${helpBar(r)}
       <div class="plist">${rows}</div>
     </section>
@@ -1270,7 +1275,7 @@ document.addEventListener('click', e => {
   else if (a === 'fresh2'){ S.run = null; S.dyn = null; save(); newRun(); }
   else if (a === 'home'){
     const r = S.run;
-    if (r && r.phase === 'done'){ S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: r.doneAt + CFG.TIMER_MS } : null; S.run = null; }
+    if (r && r.phase === 'done'){ S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: r.doneAt + CFG.TIMER_MS, ever: everOf(r) } : null; S.run = null; }
     save(); render(); scrollTo(0, 0);
   }
 });
