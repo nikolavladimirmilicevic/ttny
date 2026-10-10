@@ -552,10 +552,12 @@ function drums(pids, form){
   a.forEach((pid, j) => {
     const line = FORMS[form][j][3], p = W.P[pid];
     sc.push(...p.sc); co.push(...p.co);   // his 10 results, one ball each
-    // grade bonus: A repeats his 4 best results, B 3, C 2, D 1, E none (attack: most scored; defence: fewest conceded)
-    const r = playerRating(pid, line), extra = g => ({ A: 4, B: 3, C: 2, D: 1 }[grade(g)] || 0);
-    sc.push(...[...p.sc].sort((x, y) => y - x).slice(0, extra(r.off)));
-    co.push(...[...p.co].sort((x, y) => x - y).slice(0, extra(r.def)));
+    // grade balls: A repeats his 2 best results, B his best, C nothing, D his worst, E his 2 worst
+    // (attack: best = most scored; defence: best = fewest conceded)
+    const r = playerRating(pid, line), n = { A: 2, B: 1, C: 0, D: -1, E: -2 };
+    const add = (list, g, bestFirst) => { const s = [...list].sort(bestFirst), k = n[grade(g)]; return k >= 0 ? s.slice(0, k) : s.slice(k); };
+    sc.push(...add(p.sc, r.off, (x, y) => y - x));
+    co.push(...add(p.co, r.def, (x, y) => x - y));
   });
   return { sc, co };
 }
@@ -857,7 +859,7 @@ function viewHome(){
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player gets an attack and a defence grade from A to E. Half comes from the goals his team scored and conceded in his last 10 of those starts, half from himself: goals plus assists in those 10 for attack, and clean sheets in those 10 (as a percentile among all players) for defence if he plays in goal, in defence or in the back midfield line (central and front midfielders and forwards get the lowest score there). Your team gets an attack and a defence rating from 40 to 99.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
-        <li>Matches are drawn from a drum of real scorelines. Every player adds his last 10 results, one ball each, and his grade adds more: an A in attack repeats his 4 highest scoring results, B 3, C 2, D 1; in defence the same with his fewest goals conceded. Your team rating is read from this drum. Each match, 10 balls come out of your drum and face the opponent's last 10 results: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
+        <li>Matches are drawn from a drum of real scorelines. Every player adds his last 10 results, one ball each, and his grade adds more: an A repeats his 2 best results, B his best, C nothing, D his worst, E his 2 worst (most scored for attack, fewest conceded for defence). Your team rating is read from this drum. Each match, 10 balls come out of your drum and face the opponent's last 10 results: one value from each side is drawn, up to 10 times, until the two match. If they never do, the goals are a random value from all 20.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
         <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends.</li>
       </ol>
