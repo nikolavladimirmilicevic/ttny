@@ -567,22 +567,27 @@ function buildModel(w, elig){
 function playerRating(pid){
   const q = W.P[pid].q;   // the four parts shown: team attack = goals scored, own attack = G+A, team defence = goals conceded, own defence = clean sheets
   // plus two more shown on the card: form (points per game in his last 5) and pedigree (UEFA points of every club he started for in 365 days, by starts)
-  return Object.assign(parts(R(q.gf), R(q.gapm), R(q.ga), R(q.cs)), { fo: R(q.ppg5), pe: R(q.uefa), q: { ta: q.gf, ia: q.gapm, td: q.ga, id: q.cs, fo: q.ppg5, pe: q.uefa } });
+  // overall = his strength in the simulation (neutral venue), on the 40-99 scale
+  const st = simStrength(q);
+  return Object.assign(parts(R(q.gf), R(q.gapm), R(q.ga), R(q.cs)), { st, ov: R(st), fo: R(q.ppg5), pe: R(q.uefa), q: { ta: q.gf, ia: q.gapm, td: q.ga, id: q.cs, fo: q.ppg5, pe: q.uefa } });
 }
+// one player's share of the simulation strength: UEFA points (reputation) half, the other seven parameters the other half
+const simStrength = (q, ven = (q.ppgH + q.ppgA) / 2) => 0.5 * q.uefa + 0.5 * (q.ppg + q.ppg5 + ven + q.gf + q.ga + q.gapm + q.cs) / 7;
 // letters for the parts by percentile: top 20% A, next 20% B ... bottom 20% E
 const qGrade = q => q >= .8 ? 'A' : q >= .6 ? 'B' : q >= .4 ? 'C' : q >= .2 ? 'D' : 'E';
 const parts = (ta, ia, td, id) => ({ ta, ia, td, id, off: Math.round((ta + ia) / 2), def: Math.round((td + id) / 2), ov: Math.round((ta + ia + td + id) / 4) });
 function teamRating(picks, form){
   const rs = picks.map(pid => playerRating(pid));
   const m = k => Math.round(rs.reduce((t, r) => t + r[k], 0) / rs.length);
-  return Object.assign(parts(m('ta'), m('ia'), m('td'), m('id')), { fo: m('fo'), pe: m('pe') });
+  // overall = the XI's strength in the simulation (the average of its players'), on the 40-99 scale
+  const st = rs.reduce((t, r) => t + r.st, 0) / rs.length;
+  return Object.assign(parts(m('ta'), m('ia'), m('td'), m('id')), { st, ov: R(st), fo: m('fo'), pe: m('pe') });
 }
 // your XI's strength: 8 parameters, each the average of the 11 players' percentiles; venue 'h', 'a' or 'n'
 function youStrength(venue){
-  const ps = S.run.picks.map(id => W.P[id].q), avg = k => ps.reduce((t, q) => t + q[k], 0) / ps.length;
-  const ven = venue === 'h' ? avg('ppgH') : venue === 'a' ? avg('ppgA') : (avg('ppgH') + avg('ppgA')) / 2;
-  // UEFA points count half; the other seven share the other half
-  return 0.5 * avg('uefa') + 0.5 * (avg('ppg') + avg('ppg5') + ven + avg('gf') + avg('ga') + avg('gapm') + avg('cs')) / 7;
+  // the same formula as each player's overall: the average of the 11 players' simulation strengths at this venue
+  const ps = S.run.picks.map(id => W.P[id].q);
+  return ps.reduce((t, q) => t + simStrength(q, venue === 'h' ? q.ppgH : venue === 'a' ? q.ppgA : undefined), 0) / ps.length;
 }
 const strength = (id, venue) => id === 'YOU' ? youStrength(venue) : W.C[id].S[venue];
 function probs1x2(sh, sa, base, k){
