@@ -625,13 +625,12 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
     for fid, f in window:
         h, a = f['h'], f['a']
         sides = lu.get(fid) or {}
-        friendly = 'friendl' in (f.get('lg') or '').lower()
         for side, opp, sc, co in ((h, a, f['hg'], f['ag']), (a, h, f['ag'], f['hg'])):
             lineup = sides.get(str(side))
             lineup = lineup if isinstance(lineup, dict) else None
             codes = [(e[0], slot_code(lineup['f'], e[1], '')) for e in lineup['xi']] if lineup else []
-            # friendlies count only for a side whose line-up came with positions
-            if friendly and not (codes and all(c for _, c in codes)):
+            # every match counts, friendlies included, but only for a side whose line-up came with all positions
+            if not (codes and all(c for _, c in codes)):
                 continue
             if side in top and opp in top:
                 club_res[side].append((f['d'], sc, co, int(top[opp]['rank'])))
@@ -649,7 +648,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
             if pid in seen:
                 continue
             st = sorted(starts.get(pid, []), reverse=True)
-            if len(st) < 10:
+            if len(st) < 10 or not (people.get(str(pid)) or {}).get('nat'):   # 10+ starts, and a known nationality
                 continue
             seen.add(pid)
             cnt = Counter(s[3] for s in st[:10] if s[3])   # positions from the same last 10 starts as the grades
