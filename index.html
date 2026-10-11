@@ -276,6 +276,7 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .odds span{display:flex;flex-direction:column;align-items:center;min-width:46px;padding:4px 6px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);font-size:14px;font-weight:600;line-height:1.15}
 .odds small{font-size:10px;font-weight:500;opacity:.75}
 .odds .ow{color:#5CC08A;border-color:rgba(92,192,138,.55)}.odds .od{color:#F2C14E;border-color:rgba(242,193,78,.55)}.odds .ol{color:#E8604C;border-color:rgba(232,96,76,.55)}
+.ven{display:inline-block;width:1.4em;margin-right:4px;text-align:center;font-size:15px}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
@@ -1229,6 +1230,8 @@ function viewLineup(){
   <div class="dock"><div class="btnrow"><button class="btn primary" data-act="kickoff">Kick off the ${compOf(r).short}</button></div></div>`;
 }
 
+/* where a match is played: at home "vs", away "@", the final on neutral ground */
+const venue = h => h === 1 ? '<span class="ven" title="Home">🏠</span>vs' : h === 0 ? '<span class="ven" title="Away">✈️</span>@' : '<span class="ven" title="Neutral ground">🏟️</span>vs';
 function evHTML(e){
   const res = s => s[0] > s[1] ? 'W' : s[0] < s[1] ? 'L' : 'D';
   const opp = id => `${esc(nm(id))} ${gchip(id)}`;
@@ -1237,7 +1240,7 @@ function evHTML(e){
   const gls = e => (e.gl && e.gl.length) || (e.og && e.og.length) ? `<div class="gls2"><div>${col(e.gl)}</div><div class="them">${col(e.og)}</div></div>` : '';
   const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
   const score = (s, r) => `<div class="score num">${s[0]}<span class="muted" style="font-size:16px">:</span>${s[1]}${r ? `<span class="res ${r}">${r}</span>` : ''}</div>`;
-  if (e.k === 'md') return `<div class="ev"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}${hv(e)}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}</div>`;
+  if (e.k === 'md') return `<div class="ev"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}</div>`;
   if (e.k === 'table'){
     const z = e.pos <= 8 ? 'Straight into the Round of 16.' : e.pos <= 24 ? 'Into the knockout play-off.' : 'Out in the league phase.';
     return `<div class="ev big" style="display:block"><div class="rd">League phase final table</div>
@@ -1255,8 +1258,8 @@ function evHTML(e){
     if (e.won !== undefined) bits.push(e.won ? '<b style="color:var(--win)">Through</b>' : '<b style="color:var(--loss)">Out</b>');
     return bits.length ? `<div class="extra">${bits.join(' · ')}</div>` : '';
   };
-  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}"><div class="rd">${e.round} · Leg ${e.leg}${hv(e)}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? tail(e) : ''}</div>`;
-  if (e.k === 'final') return `<div class="ev big"><div class="rd">Final</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
+  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}"><div class="rd">${e.round} · Leg ${e.leg}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? tail(e) : ''}</div>`;
+  if (e.k === 'final') return `<div class="ev big"><div class="rd">Final</div><div class="opp">${venue(null)} ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
   if (e.k === 'podone'){
     const tie = t => `<tr class="${t[0] === e.opp || t[1] === e.opp ? 'me' : ''}"><td style="text-align:left">${t[3] === t[0] ? `<b>${esc(nm(t[0]))}</b>` : esc(nm(t[0]))}</td><td class="sc">${t[2][0]}:${t[2][1]}${t[4] === 1 ? ' <small>p</small>' : t[4] === 2 ? ' <small>aet</small>' : ''}</td><td style="text-align:right">${t[3] === t[1] ? `<b>${esc(nm(t[1]))}</b>` : esc(nm(t[1]))}</td></tr>`;
     return `<div class="ev big" style="display:block"><div class="rd">Knockout play-off · Done</div>
@@ -1285,10 +1288,10 @@ function pendingHTML(c){
   const tbd = e => e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
   const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
   return list.map(e => {
-    const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}${hv(e)}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}${hv(e)}` : 'Final';
+    const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}` : 'Final';
     const who = tbd(e) ? '<span class="muted">Play-off winner</span>' : `${esc(nm(e.opp))} ${gchip(e.opp)}`;
     const right = tbd(e) ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
-    return `<div class="ev pend"><div class="rd">${rd}</div><div class="opp">vs ${who}</div>${right}</div>`;
+    return `<div class="ev pend"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}</div>`;
   }).join('');
 }
 function teamBox(r){
