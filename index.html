@@ -1271,7 +1271,10 @@ function oddsHTML(opp, h){
   const sY = strength('YOU'), sO = strength(opp);
   const [w, d, l] = h === 0 ? winDrawLoss(sO - sY, false).reverse() : winDrawLoss(sY - sO, h == null);
   const o = p => Math.max(1.05, Math.round(Math.min(99, 1 / Math.max(p, 1e-4)) * 20) / 20).toFixed(2);   // to the nearest 0.05
-  return `<div class="odds num" title="Odds for this match over 90 minutes"><span class="ow"><small>W</small>${o(w)}</span><span class="od"><small>D</small>${o(d)}</span><span class="ol"><small>L</small>${o(l)}</span></div>`;
+  // traffic light by likelihood: the most likely outcome (lowest odds) green, the least likely red
+  const ps = [w, d, l], rank = ps.map(p => ps.filter(q => q > p).length), cls = ['ow', 'od', 'ol'];
+  const cell = (k, p, i) => `<span class="${cls[rank[i]]}"><small>${k}</small>${o(p)}</span>`;
+  return `<div class="odds num" title="Odds for this match over 90 minutes">${cell('W', w, 0)}${cell('D', d, 1)}${cell('L', l, 2)}</div>`;
 }
 /* fixtures that are certain but not played yet: the remaining matchdays, and the next knockout tie once it is set */
 function pendingHTML(c){
