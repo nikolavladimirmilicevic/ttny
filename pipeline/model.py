@@ -360,23 +360,53 @@ def credibility(world, G, top_clubs, sims=2000, seed_=7):
     rep['line_share_gap'] = round(max(abs(share_top[l] / 300 - share_all[l] / len(players)) for l in share_all), 4)
     rep['top10_players'] = [f"{p['name']} {p['ovr']}" for p in players[:10]]
     rep['top10_clubs'] = [f"{c['name']} {round(c['elo'])}" for c in by_elo[:10]]
-    # the competition, many times: 36 clubs drawn in proportion to UEFA points, league phase, knockouts
+    # the three competitions, many times, exactly as the game builds them: who gets in (comp_fields), the formats
+    # (Champions and Europa League 8 matches, Conference League 6), then the knockouts
     rnd = random.Random(seed_)
-    titles = Counter(); top8_wins = 0
     rank_of = {c['id']: i + 1 for i, c in enumerate(by_elo)}
-    for _ in range(sims):
-        field = pps(clubs, 36, rnd)
-        champ = sim_cup(field, G, rnd)
-        titles[champ['id']] += 1
-        if champ['id'] in {c['id'] for c in sorted(field, key=lambda c: -c['elo'])[:8]}:
-            top8_wins += 1
-    rep['title_share_top8_of_field'] = round(top8_wins / sims, 3)
-    rep['max_title_share_outside_top30'] = round(max([v / sims for k, v in titles.items() if rank_of[k] > 30] or [0]), 4)
-    rep['title_favourites'] = [f"{next(c['name'] for c in clubs if c['id'] == k)} {v / sims:.1%}" for k, v in titles.most_common(8)]
+    name = {c['id']: c['name'] for c in clubs}
+    rep['competitions'] = {}
+    for comp in ('cl', 'el', 'ecl'):
+        titles = Counter(); top8 = bottom = 0
+        n = sims if comp == 'cl' else sims // 2
+        for _ in range(n):
+            field = comp_fields(clubs, rnd)[comp]
+            champ = sim_cup(field, G, rnd, six=(comp == 'ecl'))
+            titles[champ['id']] += 1
+            order = [c['id'] for c in sorted(field, key=lambda c: -c['elo'])]
+            top8 += champ['id'] in order[:8]; bottom += champ['id'] in order[18:]
+        rep['competitions'][comp] = {'title_share_top8_of_field': round(top8 / n, 3), 'title_share_bottom_half': round(bottom / n, 3),
+                                     'favourites': [f"{name[k]} {v / n:.1%}" for k, v in titles.most_common(6)]}
+        if comp == 'cl':
+            rep['title_share_top8_of_field'] = round(top8 / n, 3)
+            rep['max_title_share_outside_top30'] = round(max([v / n for k, v in titles.items() if rank_of[k] > 30] or [0]), 4)
+            rep['title_favourites'] = rep['competitions'][comp]['favourites']
+    C3 = rep['competitions']
     rep['pass'] = {'big12_in_top15': rep['big12_in_top15'] >= 9, 'top25': rep['top25_players_from_top10_clubs'] >= 15,
                    'best_forward': fwd <= 5, 'line_share': rep['line_share_gap'] <= 0.05,
-                   'top8_titles': rep['title_share_top8_of_field'] >= 0.70, 'outsiders': rep['max_title_share_outside_top30'] <= 0.015}
+                   'top8_titles': rep['title_share_top8_of_field'] >= 0.70, 'outsiders': rep['max_title_share_outside_top30'] <= 0.015,
+                   # Europa and Conference League: still mostly the field's best, a little more open
+                   'el_top8': C3['el']['title_share_top8_of_field'] >= 0.55, 'ecl_top8': C3['ecl']['title_share_top8_of_field'] >= 0.55,
+                   'bottom_half': max(C3[c]['title_share_bottom_half'] for c in C3) <= 0.15}
     return rep
+
+
+FIELD_SIGMA, COUNTRY_CAP = 0.85, {'cl': 5, 'el': 4, 'ecl': 3}
+
+
+def comp_fields(clubs, rnd, size=36):
+    """Who plays where, as in the game: UEFA rank and rating rank, half each on a log scale, plus luck, then the
+    Champions League, Europa League and Conference League in that order with a cap per country."""
+    erank = {c['id']: i + 1 for i, c in enumerate(sorted(clubs, key=lambda c: -c['elo']))}
+    key = {c['id']: 0.5 * math.log(c['rank']) + 0.5 * math.log(erank[c['id']]) + FIELD_SIGMA * rnd.gauss(0, 1) for c in clubs}
+    fields = {k: [] for k in COUNTRY_CAP}; cnt = {k: Counter() for k in COUNTRY_CAP}
+    for c in sorted(clubs, key=lambda c: key[c['id']]):
+        for k in ('cl', 'el', 'ecl'):
+            if len(fields[k]) >= size or cnt[k][c['ctry']] >= COUNTRY_CAP[k]:
+                continue
+            fields[k].append(c); cnt[k][c['ctry']] += 1
+            break
+    return fields
 
 
 def pps(clubs, n, rnd):
@@ -421,20 +451,30 @@ def tie(G, a, b, rnd, legs=2):
     return a if x > y else b
 
 
-def sim_cup(field, G, rnd):
+def sim_cup(field, G, rnd, six=False):
     teams = sorted(field, key=lambda c: -c['elo'])
-    pots = [teams[i * 9:(i + 1) * 9] for i in range(4)]
     pts = {c['id']: 0 for c in teams}; gd = {c['id']: 0 for c in teams}
-    for i in range(4):
+    def result(h, w):
+        x, y = play(G, h, w, rnd, home=h)
+        pts[h['id']] += 3 if x > y else 1 if x == y else 0; pts[w['id']] += 3 if y > x else 1 if x == y else 0
+        gd[h['id']] += x - y; gd[w['id']] += y - x
+    if six:   # Conference League: 6 pots of 6, one opponent from each, home side by a coin
+        pots6 = [teams[i * 6:(i + 1) * 6] for i in range(6)]
+        for i in range(6):
+            for j in range(i, 6):
+                A = pots6[i][:]; rnd.shuffle(A)
+                pairs = [(A[k], A[k + 1]) for k in (0, 2, 4)] if i == j else list(zip(A, rnd.sample(pots6[j], 6)))
+                for h, w in pairs:
+                    result(*((h, w) if rnd.random() < 0.5 else (w, h)))
+    pots = [teams[i * 9:(i + 1) * 9] for i in range(4)]
+    for i in range(4 if not six else 0):
         for j in range(i, 4):
             A = pots[i][:]; rnd.shuffle(A); B = A if i == j else pots[j][:]
             if i != j: rnd.shuffle(B)
             for k in range(9):
                 pairs = [(A[k], A[(k + 1) % 9])] if i == j else [(A[k], B[k]), (B[(k + 1) % 9], A[k])]
                 for h, w in pairs:
-                    x, y = play(G, h, w, rnd, home=h)
-                    pts[h['id']] += 3 if x > y else 1 if x == y else 0; pts[w['id']] += 3 if y > x else 1 if x == y else 0
-                    gd[h['id']] += x - y; gd[w['id']] += y - x
+                    result(h, w)
     seed = sorted(teams, key=lambda c: (-pts[c['id']], -gd[c['id']], rnd.random()))
     po = [tie(G, seed[8 + i], seed[23 - i], rnd) for i in range(8)]
     r16 = [tie(G, seed[k], po[7 - k], rnd) for k in [0, 7, 3, 4, 1, 6, 2, 5]]

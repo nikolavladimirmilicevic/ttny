@@ -27,17 +27,53 @@
   "B. Dortmund 1967",
   "Porto 1956"
  ],
- "title_share_top8_of_field": 0.863,
- "max_title_share_outside_top30": 0.0035,
+ "competitions": {
+  "cl": {
+   "title_share_top8_of_field": 0.829,
+   "title_share_bottom_half": 0.024,
+   "favourites": [
+    "Bayern München 26.3%",
+    "Barcelona 13.2%",
+    "Man City 12.0%",
+    "Arsenal 10.5%",
+    "Real Madrid 5.9%",
+    "Inter 5.7%"
+   ]
+  },
+  "el": {
+   "title_share_top8_of_field": 0.715,
+   "title_share_bottom_half": 0.052,
+   "favourites": [
+    "Union SG 3.9%",
+    "Sporting CP 3.5%",
+    "Liverpool 3.4%",
+    "PSV 3.3%",
+    "Man Utd 3.2%",
+    "Bodø/Glimt 3.0%"
+   ]
+  },
+  "ecl": {
+   "title_share_top8_of_field": 0.738,
+   "title_share_bottom_half": 0.039,
+   "favourites": [
+    "Union SG 3.1%",
+    "Bodø/Glimt 2.7%",
+    "Juventus 2.5%",
+    "AEK Athens 2.4%",
+    "Man Utd 2.3%",
+    "Shakhtar 2.1%"
+   ]
+  }
+ },
+ "title_share_top8_of_field": 0.829,
+ "max_title_share_outside_top30": 0.0015,
  "title_favourites": [
-  "Bayern München 22.9%",
-  "Arsenal 12.8%",
-  "Man City 9.8%",
-  "Barcelona 9.7%",
-  "Inter 7.8%",
-  "Real Madrid 6.7%",
-  "Paris 4.7%",
-  "B. Dortmund 3.3%"
+  "Bayern München 26.3%",
+  "Barcelona 13.2%",
+  "Man City 12.0%",
+  "Arsenal 10.5%",
+  "Real Madrid 5.9%",
+  "Inter 5.7%"
  ],
  "pass": {
   "big12_in_top15": true,
@@ -45,7 +81,10 @@
   "best_forward": true,
   "line_share": true,
   "top8_titles": true,
-  "outsiders": true
+  "outsiders": true,
+  "el_top8": true,
+  "ecl_top8": true,
+  "bottom_half": true
  },
  "backtest": {
   "train": 3266,
