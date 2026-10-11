@@ -773,9 +773,10 @@ function playTie(a, b, legs, T){
    long view) with its rating rank (this year's form), half each on a log scale, plus luck: real places come from
    domestic leagues, where a strong club can have a bad year and a small one a great one. Clubs go in that order to
    the Champions League, then the Europa League, then the Conference League, 35 each beside your XI, with at most
-   5, 4 and 3 clubs from one country. Luck (sigma 0.65) is set so that about 3 in 10 Champions League clubs come from
-   outside the UEFA top 36 and a few from beyond 80, as in recent seasons, while the top 10 are nearly always there. */
-const FIELD_SIGMA = 0.65, COUNTRY_CAP = { cl: 5, el: 4, ecl: 3 };
+   5, 4 and 3 clubs from one country. Fitted to the real 2026/27 league phases (pipeline: entry fit): with luck 0.85
+   the share of clubs by UEFA rank (1-20, 21-40, 41-80, 81-150, beyond) matches the real fields within a few points
+   in all three competitions; the earlier guess (0.65) made the Champions League too predictable. */
+const FIELD_SIGMA = 0.85, COUNTRY_CAP = { cl: 5, el: 4, ecl: 3 };
 function compField(comp){
   const pool = W.oppPool, eloRank = {};
   pool.slice().sort((a, b) => W.C[b].elo - W.C[a].elo).forEach((id, i) => eloRank[id] = i + 1);

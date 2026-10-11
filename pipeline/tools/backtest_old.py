@@ -2,7 +2,7 @@
 import json, math, sys, datetime as dt
 from collections import defaultdict
 import os
-R = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..') + '/'
+R = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..') + '/'
 world = json.load(open(R + 'world.json')); fx = json.load(open(R + 'data/cache/fixtures.json'))
 FIN = {'FT', 'AET', 'PEN'}
 club = {c['id']: c for c in world['clubs']}
