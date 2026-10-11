@@ -281,6 +281,15 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .chembar b{font:600 18px var(--display);background:none!important}.chembar b small{font-size:11px;opacity:.6;margin-left:1px}
 .chm{font-size:12px;color:var(--win);margin-top:2px}
 .pc-chem{font-size:12px;color:var(--muted);line-height:1.4}.pc-chem b{color:var(--text);font-weight:500}
+@media (pointer:coarse){
+  .pcard.sheet{left:0;right:0;top:auto;bottom:0;width:auto;max-height:62vh;overflow:auto;pointer-events:auto;z-index:40;
+    border-radius:16px 16px 0 0;border-width:1px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom));font-size:14px;
+    box-shadow:0 -12px 32px rgba(0,0,0,.55);animation:sheetUp .18s ease-out}
+  .pcard.sheet h4{font-size:20px;padding-right:36px}
+  .pcard.sheet .pc-ov{margin-right:34px}
+  .pcard.sheet .sheet-x{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:15px}
+}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
@@ -1401,7 +1410,7 @@ function playersBox(r){
   const rows = arr.map(pid => W.P[pid]).sort((x, y) => ((g[y.id] || 0) + (a[y.id] || 0)) - ((g[x.id] || 0) + (a[x.id] || 0)) || (g[y.id] || 0) - (g[x.id] || 0) || POS_ORDER.indexOf(code(x.id)) - POS_ORDER.indexOf(code(y.id)));
   return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your players</div>
     <div class="tblwrap"><table class="tbl num"><thead><tr><th style="text-align:left">Player</th><th>Pos</th><th>G</th><th>A</th><th>Ovr</th></tr></thead><tbody>
-    ${rows.map(p => { const gr = ovGrade(playerRating(p.id).ov); return `<tr><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td>${code(p.id)}</td><td>${g[p.id] || 0}</td><td>${a[p.id] || 0}</td><td><span class="gt g${gr}">${gr}</span></td></tr>`; }).join('')}</tbody></table></div></section>`;
+    ${rows.map(p => { const gr = ovGrade(playerRating(p.id).ov); return `<tr data-pid="${p.id}"><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td>${code(p.id)}</td><td>${g[p.id] || 0}</td><td>${a[p.id] || 0}</td><td><span class="gt g${gr}">${gr}</span></td></tr>`; }).join('')}</tbody></table></div></section>`;
 }
 function topBox(r){
   const c = r.cup; if (!c.top) return '';
@@ -1510,7 +1519,10 @@ function render(){
   }
 }
 
+const TOUCH = () => matchMedia('(pointer:coarse)').matches;
 document.addEventListener('click', e => {
+  // on a phone, tapping a player's rating circle in the keep list opens his card instead of ticking him
+  if (TOUCH() && e.target.closest('.krow .ovdot')) return;
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
   const a = b.dataset.act;
   if (a !== 'fresh' && a !== 'quit' && a !== 'cont') S.armed = null;
@@ -1563,10 +1575,11 @@ document.addEventListener('click', e => {
 
 /* player card: hover on desktop, tap on a pitch slot on touch */
 const PC = $('#pcard');
-// hover targets: players on the pitch, and the rating circle on the end-of-run list
-const cardTarget = t => t.closest('.slot[data-pid]') || (t.closest('.krow .ovdot') && t.closest('.krow[data-pid]'));
+// hover targets: players on the pitch, the rating circle on the end-of-run list, rows of the players table
+const cardTarget = t => t.closest('.slot[data-pid]') || (t.closest('.krow .ovdot') && t.closest('.krow[data-pid]')) || t.closest('tr[data-pid]');
 function showCard(el, x, y){
   const p = W.P[el.dataset.pid]; if (!p) return;
+  PC.classList.remove('sheet');
   PC.innerHTML = cardHTML(p); PC.hidden = false;
   const w = PC.offsetWidth, h = PC.offsetHeight, vw = innerWidth, vh = innerHeight;
   let left = x + 16, top = y + 16;
@@ -1579,14 +1592,21 @@ document.addEventListener('pointermove', e => {
   const el = cardTarget(e.target);
   if (el) showCard(el, e.clientX, e.clientY); else PC.hidden = true;
 });
-document.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') PC.hidden = true; });   // a finger lifting off the screen also 'leaves': keep the card
-document.addEventListener('pointerup', e => {
-  if (e.pointerType === 'mouse') return;
+document.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') PC.hidden = true; });
+/* on a phone: a tap on a player opens his card as a sheet at the bottom of the screen; it stays while you scroll,
+   another tap on a player switches it, the cross or a tap anywhere else closes it */
+function openSheet(pid){
+  const p = W.P[pid]; if (!p) return;
+  PC.classList.add('sheet'); PC.style.left = PC.style.top = '';
+  PC.innerHTML = `<button class="sheet-x" data-sheet-x aria-label="Close">✕</button>` + cardHTML(p); PC.hidden = false;
+}
+document.addEventListener('click', e => {
+  if (!TOUCH()) return;
+  if (e.target.closest('[data-sheet-x]')){ PC.hidden = true; return; }
+  if (e.target.closest('#pcard')) return;
   const el = cardTarget(e.target);
-  if (el){ const r = el.getBoundingClientRect(); showCard(el, r.left, r.bottom); }
-  else PC.hidden = true;
+  if (el) openSheet(el.dataset.pid); else PC.hidden = true;
 });
-document.addEventListener('scroll', () => { if (!PC.hidden && matchMedia('(pointer:coarse)').matches) PC.hidden = true; }, { passive: true });
 
 async function boot(){
   let raw = null;
