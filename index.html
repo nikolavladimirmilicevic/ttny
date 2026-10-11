@@ -1262,7 +1262,7 @@ function evHTML(e){
 function oddsHTML(opp, h){
   const sY = strength('YOU'), sO = strength(opp);
   const [w, d, l] = h === 0 ? winDrawLoss(sO - sY, false).reverse() : winDrawLoss(sY - sO, h == null);
-  const o = p => Math.min(99, 1 / Math.max(p, 1e-4)).toFixed(2);
+  const o = p => Math.max(1.05, Math.round(Math.min(99, 1 / Math.max(p, 1e-4)) * 20) / 20).toFixed(2);   // to the nearest 0.05
   return `<div class="odds num" title="Odds for this match over 90 minutes"><span><small>W</small>${o(w)}</span><span><small>D</small>${o(d)}</span><span><small>L</small>${o(l)}</span></div>`;
 }
 /* fixtures that are certain but not played yet: the remaining matchdays, and the next knockout tie once it is set */
