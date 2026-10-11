@@ -2,42 +2,42 @@
  "big12_in_top15": 10,
  "top25_players_from_top10_clubs": 24,
  "best_forward_rank": 2,
- "line_share_gap": 0.030909090909090914,
+ "line_share_gap": 0.0341,
  "top10_players": [
   "Michael Olise 96.7",
-  "Harry Kane 96.7",
   "Lamine Yamal 96.7",
-  "Raphinha 96.2",
+  "Raphinha 96.7",
+  "Harry Kane 96.2",
   "Joshua Kimmich 95.7",
   "Declan Rice 95.3",
-  "Aleksandar Pavlović 94.9",
-  "Luis Díaz 94.6",
-  "Kylian Mbappé 94.3",
-  "Vitinha 94.0"
+  "Kylian Mbappé 94.9",
+  "Aleksandar Pavlović 94.6",
+  "Vitinha 94.3",
+  "Luis Díaz 94.0"
  ],
  "top10_clubs": [
-  "Bayern München 2131",
-  "Man City 2063",
-  "Arsenal 2056",
-  "Barcelona 2052",
-  "Inter 2020",
-  "Real Madrid 2012",
-  "Paris 1998",
-  "B. Dortmund 1972",
+  "Bayern München 2120",
+  "Man City 2057",
+  "Barcelona 2056",
+  "Arsenal 2048",
+  "Inter 2018",
+  "Real Madrid 2011",
+  "Paris 1994",
   "Sporting CP 1971",
-  "Porto 1960"
+  "B. Dortmund 1967",
+  "Porto 1956"
  ],
- "title_share_top8_of_field": 0.886,
- "max_title_share_outside_top30": 0.0025,
+ "title_share_top8_of_field": 0.863,
+ "max_title_share_outside_top30": 0.0035,
  "title_favourites": [
-  "Bayern München 24.9%",
-  "Arsenal 12.7%",
-  "Man City 10.2%",
-  "Barcelona 9.2%",
-  "Inter 7.2%",
-  "Real Madrid 6.5%",
-  "Paris 5.2%",
-  "B. Dortmund 3.7%"
+  "Bayern München 22.9%",
+  "Arsenal 12.8%",
+  "Man City 9.8%",
+  "Barcelona 9.7%",
+  "Inter 7.8%",
+  "Real Madrid 6.7%",
+  "Paris 4.7%",
+  "B. Dortmund 3.3%"
  ],
  "pass": {
   "big12_in_top15": true,
@@ -61,9 +61,9 @@
    "hit": 0.511
   },
   "model": {
-   "logloss": 0.9829,
-   "brier": 0.5858,
-   "hit": 0.529
+   "logloss": 0.9834,
+   "brier": 0.5861,
+   "hit": 0.539
   }
  }
 }

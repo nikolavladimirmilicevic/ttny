@@ -38,14 +38,14 @@ def g_mult(gd):
 
 
 # ---------------- clubs ----------------
-def run_elo(fx, top_pts, until, national=frozenset()):
+def run_elo(fx, top_pts, until, national=frozenset(), since=''):
     """Chronological Elo over every finished match. Returns current ratings and the pre-match ratings per fixture.
     National teams form their own pool, starting at 1500; other clubs off the UEFA list start a notch below the first
     rated side they meet (or at 1450 when neither side is rated yet)."""
     R, pre = {}, {}
     for tid, pts in top_pts.items():
         R[tid] = seed(pts)
-    games = sorted((f['d'], fid, f) for fid, f in fx.items() if f['s'] in FINISHED and f['hg'] is not None and f['d'] <= until)
+    games = sorted((f['d'], fid, f) for fid, f in fx.items() if f['s'] in FINISHED and f['hg'] is not None and since <= f['d'] <= until)   # the last 365 days only
     for d, fid, f in games:
         h, a = f['h'], f['a']
         for t, o in ((h, a), (a, h)):
@@ -298,7 +298,7 @@ def pct_ranks(d):
 def build(world, fx, lu, evs, pst, top_clubs, since, until, log=print, national=frozenset()):
     """top_clubs: {api id: UEFA club dict with 'points' and 'rank'}. Adds ratings to world in place; returns a report."""
     top_pts = {tid: (c.get('points') or 0.5) for tid, c in top_clubs.items()}
-    elo, pre = run_elo(fx, top_pts, until, national)
+    elo, pre = run_elo(fx, top_pts, until, national, since)
     rating = {t: blend(e, t, top_pts) for t, e in elo.items()}
     for c in world['clubs']:
         c['elo'] = round(rating.get(c['id'], seed(top_pts.get(c['id'], 0.5))), 1)
@@ -356,8 +356,8 @@ def credibility(world, G, top_clubs, sims=2000, seed_=7):
     rep['top25_players_from_top10_clubs'] = sum(1 for p in players[:25] if p['club'] in top10c)
     fwd = next((i for i, p in enumerate(players) if LINE.get(p['prim']) == 'FWD'), 999) + 1
     rep['best_forward_rank'] = fwd
-    share_all = Counter(LINE.get(p['prim'], 'MID') for p in players); share_top = Counter(LINE.get(p['prim'], 'MID') for p in players[:100])
-    rep['line_share_gap'] = max(abs(share_top[l] / 100 - share_all[l] / len(players)) for l in share_all)
+    share_all = Counter(LINE.get(p['prim'], 'MID') for p in players); share_top = Counter(LINE.get(p['prim'], 'MID') for p in players[:300])   # 300, not 100: a top 100 swings by ±5 points on chance alone
+    rep['line_share_gap'] = round(max(abs(share_top[l] / 300 - share_all[l] / len(players)) for l in share_all), 4)
     rep['top10_players'] = [f"{p['name']} {p['ovr']}" for p in players[:10]]
     rep['top10_clubs'] = [f"{c['name']} {round(c['elo'])}" for c in by_elo[:10]]
     # the competition, many times: 36 clubs drawn in proportion to UEFA points, league phase, knockouts

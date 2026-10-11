@@ -651,7 +651,7 @@ def fetch_arrivals(top_ids, extra, meta):
         for x in data.get('response', []):
             for t in x.get('transfers') or []:
                 d = t.get('date') or ''
-                if not d or d < (SINCE - dt.timedelta(days=60)).isoformat():
+                if not d or d < SINCE.isoformat():   # only moves inside the 365-day window
                     continue
                 for side in ('in', 'out'):
                     o = (t.get('teams') or {}).get(side) or {}
