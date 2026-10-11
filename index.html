@@ -272,6 +272,9 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:var(--gold);color:var(--gold-ink);padding:10px 16px;border-radius:10px;font-weight:500;z-index:9;max-width:calc(100% - 32px);text-align:center}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 @media(max-width:420px){.slot .ovdot{width:34px;height:34px;font-size:15px}.stats{grid-template-columns:repeat(2,1fr)}.slot{width:64px}.slot .lbl{max-width:64px;font-size:10px}.dot{width:34px;height:34px}}
+.odds{display:flex;gap:6px;justify-self:end;align-self:center}
+.odds span{display:flex;flex-direction:column;align-items:center;min-width:46px;padding:4px 6px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);font-size:14px;font-weight:600;line-height:1.15}
+.odds small{font-size:10px;font-weight:500;opacity:.6}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
@@ -891,6 +894,8 @@ function buildCup(T){
   if (pos > 24) stage = 'league';
   const po = []; for (let i = 0; i < 8; i++) po.push(run(STAGE_NAME.playoff, seed[8 + i], seed[23 - i], 2, 'playoff'));
   if (pos >= 9 && pos <= 24 && !po.includes('YOU')) alive = false;
+  // straight into the Round of 16: one click plays the play-offs and names your opponent before your first leg
+  if (pos <= 8) ev.push({ k: 'podone', opp: po[7 - (pos - 1)], ties: ko.filter(t => t.k === 'playoff').map(t => [t.a, t.b, t.agg, t.w, t.pens ? 1 : t.et ? 2 : 0]) });
   // R16: seed k vs winner of the tie that holds seeds 17-k / 8+k (bracket order 1,8,4,5,2,7,3,6)
   const r16pairs = [0, 7, 3, 4, 1, 6, 2, 5].map(k => [seed[k], po[7 - k]]);
   const r16 = r16pairs.map(([a, b]) => run(STAGE_NAME.r16, a, b, 2, 'r16'));
@@ -1244,8 +1249,21 @@ function evHTML(e){
   };
   if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}"><div class="rd">${e.round} · Leg ${e.leg}${hv(e)}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? tail(e) : ''}</div>`;
   if (e.k === 'final') return `<div class="ev big"><div class="rd">Final</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
+  if (e.k === 'podone'){
+    const tie = t => `<tr class="${t[0] === e.opp || t[1] === e.opp ? 'me' : ''}"><td style="text-align:left">${t[3] === t[0] ? `<b>${esc(nm(t[0]))}</b>` : esc(nm(t[0]))}</td><td class="sc">${t[2][0]}:${t[2][1]}${t[4] === 1 ? ' <small>p</small>' : t[4] === 2 ? ' <small>aet</small>' : ''}</td><td style="text-align:right">${t[3] === t[1] ? `<b>${esc(nm(t[1]))}</b>` : esc(nm(t[1]))}</td></tr>`;
+    return `<div class="ev big" style="display:block"><div class="rd">Knockout play-off · Done</div>
+      <div class="opp" style="margin:4px 0 8px">Your Round of 16 opponent: <b>${esc(nm(e.opp))}</b> ${gchip(e.opp)}</div>
+      <div class="tblwrap"><table class="tbl num"><tbody>${e.ties.map(tie).join('')}</tbody></table></div></div>`;
+  }
   if (e.k === 'end') return `<div class="ev" style="display:block"><div class="rd">Full time</div>${e.champ !== 'YOU' ? `<div><b>${esc(nm(e.champ))}</b> won the ${compOf(S.run).short}.</div>` : `<div><b>You</b> won the ${compOf(S.run).short}.</div>`}</div>`;
   return '';
+}
+/* bookmaker-style odds for your next matches (fair odds, 1 / probability, over 90 minutes); h: 1 home, 0 away, null neutral */
+function oddsHTML(opp, h){
+  const sY = strength('YOU'), sO = strength(opp);
+  const [w, d, l] = h === 0 ? winDrawLoss(sO - sY, false).reverse() : winDrawLoss(sY - sO, h == null);
+  const o = p => Math.min(99, 1 / Math.max(p, 1e-4)).toFixed(2);
+  return `<div class="odds num" title="Odds for this match over 90 minutes"><span><small>W</small>${o(w)}</span><span><small>D</small>${o(d)}</span><span><small>L</small>${o(l)}</span></div>`;
 }
 /* fixtures that are certain but not played yet: the remaining matchdays, and the next knockout tie once it is set */
 function pendingHTML(c){
@@ -1253,12 +1271,13 @@ function pendingHTML(c){
   const rest = c.ev.slice(c.shown);
   const list = nx.k === 'md' ? rest.filter(e => e.k === 'md') : nx.k === 'leg' ? rest.filter(e => e.k === 'leg' && e.round === nx.round) : nx.k === 'final' ? [nx] : [];
   // straight into the Round of 16: the opponent comes out of the play-offs, so he is not known yet
-  const tbd = e => e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg');
+  const tbd = e => e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
   const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
   return list.map(e => {
     const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}${hv(e)}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}${hv(e)}` : 'Final';
     const who = tbd(e) ? '<span class="muted">Play-off winner</span>' : `${esc(nm(e.opp))} ${gchip(e.opp)}`;
-    return `<div class="ev pend"><div class="rd">${rd}</div><div class="opp">vs ${who}</div><div class="score num">–<span style="font-size:16px">:</span>–</div></div>`;
+    const right = tbd(e) ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
+    return `<div class="ev pend"><div class="rd">${rd}</div><div class="opp">vs ${who}</div>${right}</div>`;
   }).join('');
 }
 function teamBox(r){
@@ -1269,7 +1288,7 @@ function viewCup(){
   const r = S.run, c = r.cup;
   const evs = c.ev.slice(0, c.shown);
   const next = c.ev[c.shown];
-  const label = !next ? '' : next.k === 'md' ? 'Play matchday ' + next.n : next.k === 'table' ? 'See the table' : next.k === 'end' ? 'Full time' : next.k === 'final' ? 'Play the final' : 'Play ' + next.round.toLowerCase() + ', leg ' + next.leg;
+  const label = !next ? '' : next.k === 'md' ? 'Play matchday ' + next.n : next.k === 'table' ? 'See the table' : next.k === 'podone' ? 'Play the knockout play-off' : next.k === 'end' ? 'Full time' : next.k === 'final' ? 'Play the final' : 'Play ' + next.round.toLowerCase() + ', leg ' + next.leg;
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot"><span class="lbl">Run ends in</span><span class="ico">⏱</span> <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
   <div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">Your XI · ${r.form}</div><h2>${compOf(r).short}</h2></div>
