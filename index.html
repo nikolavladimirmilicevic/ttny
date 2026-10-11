@@ -274,7 +274,8 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 @media(max-width:420px){.slot .ovdot{width:34px;height:34px;font-size:15px}.stats{grid-template-columns:repeat(2,1fr)}.slot{width:64px}.slot .lbl{max-width:64px;font-size:10px}.dot{width:34px;height:34px}}
 .odds{display:flex;gap:6px;justify-self:end;align-self:center}
 .odds span{display:flex;flex-direction:column;align-items:center;min-width:46px;padding:4px 6px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);font-size:14px;font-weight:600;line-height:1.15}
-.odds small{font-size:10px;font-weight:500;opacity:.6}
+.odds small{font-size:10px;font-weight:500;opacity:.75}
+.odds .ow{color:#5CC08A;border-color:rgba(92,192,138,.55)}.odds .od{color:#F2C14E;border-color:rgba(242,193,78,.55)}.odds .ol{color:#E8604C;border-color:rgba(232,96,76,.55)}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
@@ -1008,12 +1009,11 @@ function kickoff(){
   const r = S.run; const T = null;
   r.cup = buildCup(T); r.phase = 'cup'; save(); render(); scrollTo(0, 0);
 }
-/* keep the next match at the top of the screen; a table or the play-off results just revealed come first */
+/* after every click: what was just played (or revealed) at the top of the screen, the next match right below */
 const toTop = el => scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + scrollY - 10), behavior: 'smooth' });
 function focusNext(){
   const shown = [...document.querySelectorAll('.feed > .ev:not(.pend)')], last = shown[shown.length - 1];
-  const c = S.run && S.run.cup, ev = c && c.ev[c.shown - 1];
-  const el = ev && (ev.k === 'table' || ev.k === 'podone') ? last : document.querySelector('.feed > .ev.pend') || last;
+  const el = last || document.querySelector('.feed > .ev.pend');   // the match just played on top, the next one under it
   if (el) toTop(el);
 }
 function step(all){
@@ -1271,7 +1271,7 @@ function oddsHTML(opp, h){
   const sY = strength('YOU'), sO = strength(opp);
   const [w, d, l] = h === 0 ? winDrawLoss(sO - sY, false).reverse() : winDrawLoss(sY - sO, h == null);
   const o = p => Math.max(1.05, Math.round(Math.min(99, 1 / Math.max(p, 1e-4)) * 20) / 20).toFixed(2);   // to the nearest 0.05
-  return `<div class="odds num" title="Odds for this match over 90 minutes"><span><small>W</small>${o(w)}</span><span><small>D</small>${o(d)}</span><span><small>L</small>${o(l)}</span></div>`;
+  return `<div class="odds num" title="Odds for this match over 90 minutes"><span class="ow"><small>W</small>${o(w)}</span><span class="od"><small>D</small>${o(d)}</span><span class="ol"><small>L</small>${o(l)}</span></div>`;
 }
 /* fixtures that are certain but not played yet: the remaining matchdays, and the next knockout tie once it is set */
 function pendingHTML(c){
