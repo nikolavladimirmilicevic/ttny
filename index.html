@@ -761,6 +761,26 @@ function playTie(a, b, legs, T){
 /* The chance that a club is among the n opponents is exactly proportional to its UEFA points:
    pi = n x points / (sum of points), capped at 1 (any capped club is always in, the rest share what is left).
    Systematic sampling over a shuffled list gives every club exactly that chance. */
+/* Who plays in which competition, like a real season. Every club gets a standing that mixes its UEFA rank (the
+   long view) with its rating rank (this year's form), half each on a log scale, plus luck: real places come from
+   domestic leagues, where a strong club can have a bad year and a small one a great one. Clubs go in that order to
+   the Champions League, then the Europa League, then the Conference League, 35 each beside your XI, with at most
+   5, 4 and 3 clubs from one country. Luck (sigma 0.65) is set so that about 3 in 10 Champions League clubs come from
+   outside the UEFA top 36 and a few from beyond 80, as in recent seasons, while the top 10 are nearly always there. */
+const FIELD_SIGMA = 0.65, COUNTRY_CAP = { cl: 5, el: 4, ecl: 3 };
+function compField(comp){
+  const pool = W.oppPool, eloRank = {};
+  pool.slice().sort((a, b) => W.C[b].elo - W.C[a].elo).forEach((id, i) => eloRank[id] = i + 1);
+  const gauss = () => { let u = 0, v = 0; while (!u) u = MR(); while (!v) v = MR(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const order = pool.map(id => [id, 0.5 * Math.log(W.C[id].rank) + 0.5 * Math.log(eloRank[id]) + FIELD_SIGMA * gauss()]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+  const fields = { cl: [], el: [], ecl: [] }, cnt = { cl: {}, el: {}, ecl: {} };
+  for (const id of order) for (const c of ['cl', 'el', 'ecl']){
+    const ct = W.C[id].ctry;
+    if (fields[c].length >= 35 || (cnt[c][ct] || 0) >= COUNTRY_CAP[c]) continue;
+    fields[c].push(id); cnt[c][ct] = (cnt[c][ct] || 0) + 1; break;
+  }
+  return fields[comp] || fields.cl;
+}
 function drawOpponents(n){
   const band = compOf(S.run).band, pool = shuffle(W.oppPool.filter(id => W.C[id].rank > band)), w = id => W.ptsOf(W.C[id].rank);
   const pi = new Map(), sure = new Set();
@@ -812,11 +832,11 @@ function leagueSchedule6(teams){
   return { pots, games: shuffle(games) };
 }
 function drawCard(c){
-  if (!c.myPot) return '<div class="card muted">35 opponents drawn. Biggest clubs had the most balls in the draw.</div>';
-  return `<div class="card muted">The draw is in: 35 clubs, the biggest with the most balls. Your XI goes into <b style="color:var(--text)">pot ${c.myPot}</b> and meets ${(S.run && S.run.comp) === 'ecl' ? 'one club from every pot, three at home and three away' : 'two clubs from every pot, four at home and four away'}.</div>`;
+  if (!c.myPot) return `<div class="card muted">The 35 other clubs in this season's ${compOf(S.run).short} are in.</div>`;
+  return `<div class="card muted">The 35 other clubs in this season's ${compOf(S.run).short} are in. Your XI goes into <b style="color:var(--text)">pot ${c.myPot}</b> and meets ${(S.run && S.run.comp) === 'ecl' ? 'one club from every pot, three at home and three away' : 'two clubs from every pot, four at home and four away'}.</div>`;
 }
 function buildCup(T){
-  const opps = drawOpponents(35).sort((a, b) => W.C[b].elo - W.C[a].elo);
+  const opps = compField((S.run && S.run.comp) || 'cl').sort((a, b) => W.C[b].elo - W.C[a].elo);
   const mine = strength('YOU'), at = opps.filter(id => W.C[id].elo > mine).length;
   const teams = [...opps.slice(0, at), 'YOU', ...opps.slice(at)];
   const six = (S.run && S.run.comp) === 'ecl', myPot = Math.floor(at / (six ? 6 : 9)) + 1;
@@ -1105,6 +1125,7 @@ function viewHome(){
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>The further you go, the more players you keep: play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final or title 10. The clubs are then split into as many pots as you have picks left.</li>
         <li>A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
+        <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
         <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends. Missing the top 24 of the league phase ends it too.</li>
       </ol>
