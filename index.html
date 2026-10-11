@@ -282,7 +282,7 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 const CFG = {
   SHOOTOUT_P: 0.686,          // World Cup shootout conversion, all tournaments (Opta / The Analyst)
   TIMER_MS: 10 * 60 * 1000,   // 10 minutes to start the next run, 10 minutes to finish a started run
-  KEEP: { league: 0, playoff: 6, r16: 7, qf: 8, sf: 9, final: 10, champion: 10 },
+  KEEP: { league: 5, playoff: 6, r16: 7, qf: 8, sf: 9, final: 10, champion: 10 },
   STORE: 'ttny.v9'
 };
 const STAGE_NAME = { league: 'League phase', playoff: 'Knockout play-off', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', champion: 'Champions' };
@@ -1008,14 +1008,17 @@ function step(all){
 function finish(){
   const r = S.run; if (r.phase === 'done') return;
   const st = r.cup.stage, st8 = S.stats;
-  r.phase = 'done'; r.keepN = CFG.KEEP[st]; r.keepSel = [];
+  r.phase = 'done'; r.keepN = st === 'league' && (r.comp || 'cl') === 'ecl' ? 0 : CFG.KEEP[st]; r.keepSel = [];   // out of the Conference League's top 24: the end
   st8.runs++;
   if (!st8.bestStage || STAGE_RANK.indexOf(st) > STAGE_RANK.indexOf(st8.bestStage)) st8.bestStage = st;
   if (st === 'champion'){ st8.titlesBy = st8.titlesBy || {}; st8.titlesBy[r.comp || 'cl'] = (st8.titlesBy[r.comp || 'cl'] || 0) + 1; st8.titles++; st8.streak++; st8.best = Math.max(st8.best, st8.streak); } else st8.streak = 0;
   r.doneAt = Date.now();
 }
 // the next run of a dynasty: same difficulty; a title moves it up a competition
-const dynComp = r => ({ diff: r.diff || 'medium', comp: r.cup && r.cup.stage === 'champion' ? NEXT_COMP[r.comp || 'cl'] : (r.comp || 'cl') });
+// a title moves the dynasty up; missing the top 24 drops it a level (out of the Conference League, it ends)
+const PREV_COMP = { cl: 'el', el: 'ecl', ecl: null };
+const dynComp = r => { const c = r.comp || 'cl', st = r.cup && r.cup.stage;
+  return { diff: r.diff || 'medium', comp: st === 'champion' ? NEXT_COMP[c] : st === 'league' ? (PREV_COMP[c] || c) : c }; };
 function continueDynasty(){
   const r = S.run;
   S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, streak: S.stats.streak, ever: everOf(r), ...dynComp(r) } : null;
@@ -1139,7 +1142,7 @@ function viewHome(){
         <li>A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
-        <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends. Missing the top 24 of the league phase ends it too.</li>
+        <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends. Missing the top 24 of the league phase drops the dynasty a level, from the Champions League to the Europa League or from the Europa League to the Conference League, keeping 5 players; in the Conference League it ends the dynasty.</li>
       </ol>
     </details>
     <p class="foot">${W.meta.live ? 'Live data from API-Football, updated ' + niceDate(W.meta.updated) + '.' : 'Demo world: club names follow the UEFA ranking, players and results are invented.'} ${W.draftable.length} of ${W.meta.ranked || 100} ranked clubs have the 11 players needed for the draft, and ${W.eligCount.toLocaleString('en-GB')} players are rated. Penalties go in ${Math.round(CFG.SHOOTOUT_P * 1000) / 10}% of the time, the all-time World Cup shootout rate.</p>
@@ -1397,7 +1400,8 @@ function viewDone(){
       <h1 style="margin-top:8px">${head}</h1>
       ${champ ? `<p style="margin:8px 0 0">You won the ${compOf(r).name}.${r.comp && r.comp !== 'cl' && n ? ` Next run: the <b>${COMPS[NEXT_COMP[r.comp]].short}</b>.` : ''}</p>` : `<p style="margin:8px 0 0"><b>${esc(nm(r.cup.champ))}</b> won the ${compOf(r).short}.</p>`}
       <div style="margin-top:14px"><button class="chip quit" data-act="share" style="padding:6px 14px;font-size:13px;color:var(--text)">Share result</button></div>
-      <p class="muted" style="margin:10px 0 0">${n ? `You keep up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''}. Start the next run within <b class="num" style="color:var(--gold)" data-cd="${r.doneAt + CFG.TIMER_MS}">${fmt(r.doneAt + CFG.TIMER_MS - Date.now())}</b> or the dynasty ends.` : st === 'league' ? 'Out of the top 24, so the dynasty ends here. The next run starts from scratch.' : 'No players carry over. Next run starts from scratch.'}</p>
+      ${st === 'league' && n ? `<p style="margin:8px 0 0">Out of the top 24. Next run drops to the <b>${COMPS[PREV_COMP[r.comp || 'cl']].short}</b>.</p>` : ''}
+      <p class="muted" style="margin:10px 0 0">${n ? `You keep up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''}. Start the next run within <b class="num" style="color:var(--gold)" data-cd="${r.doneAt + CFG.TIMER_MS}">${fmt(r.doneAt + CFG.TIMER_MS - Date.now())}</b> or the dynasty ends.` : st === 'league' ? 'Out of the top 24 of the Conference League, so the dynasty ends here. The next run starts from scratch.' : 'No players carry over. Next run starts from scratch.'}</p>
     </section>
     ${n ? `<div><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div><div class="keep">${lst}</div></div>` : ''}
     <div class="endgrid">
