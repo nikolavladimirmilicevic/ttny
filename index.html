@@ -284,7 +284,7 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 const CFG = {
   SHOOTOUT_P: 0.686,          // World Cup shootout conversion, all tournaments (Opta / The Analyst)
   TIMER_MS: 10 * 60 * 1000,   // 10 minutes to start the next run, 10 minutes to finish a started run
-  KEEP: { league: 5, playoff: 6, r16: 7, qf: 8, sf: 9, final: 10, champion: 10 },
+  KEEP: { league: 5, playoff: 6, r16: 7, qf: 8, sf: 9, final: 10, champion: 11 },
   STORE: 'ttny.v9'
 };
 const STAGE_NAME = { league: 'League phase', playoff: 'Knockout play-off', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', champion: 'Champions' };
@@ -923,7 +923,9 @@ function newRun(diff){
   const ever = S.dyn && S.dyn.ever ? S.dyn.ever : [], gone = ever.filter(id => !kept.includes(id));
   S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null, diff, comp };
   S.dyn = null;
-  drawClub();
+  // champions keep the whole XI: straight to the line-up
+  if (!potCount){ S.run.phase = 'lineup'; const ok = feasible(S.run.picks); if (!ok.includes(S.run.form)) S.run.form = ok[0]; }
+  else drawClub();
   save(); render(); scrollTo(0, 0);
 }
 function pickable(cid){
@@ -1141,7 +1143,7 @@ function viewHome(){
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for reputation, role, performance and form. Your team and every opponent get a rating from 40 to 99. A player plays a little below his level in a weak position, one he started in at most half as often as his main one; weak positions are faded on his card.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
-        <li>The further you go, the more players you keep: play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final or title 10. The clubs are then split into as many pots as you have picks left.</li>
+        <li>The further you go, the more players you keep: out in the league phase 5 (in the Conference League that ends the dynasty), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
         <li>A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
