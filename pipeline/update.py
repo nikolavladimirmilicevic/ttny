@@ -469,7 +469,7 @@ def season_list():
     return sorted({TODAY.year - 1, TODAY.year, SINCE.year})
 
 
-def fetch_team_seasons(top_ids, fx, meta):
+def fetch_team_seasons(top_ids, fx, meta, tolerant=False):
     """Initial load: every fixture of every ranked club for the seasons that touch the last 365 days."""
     done = meta.setdefault('team_seasons', {})
     for tid in top_ids:
@@ -477,7 +477,12 @@ def fetch_team_seasons(top_ids, fx, meta):
             key = f'{tid}:{season}'
             if key in done:
                 continue
-            data = api('fixtures', team=tid, season=season)
+            try:
+                data = api('fixtures', team=tid, season=season)
+            except RuntimeError as e:
+                if not tolerant:
+                    raise
+                log(f'  fixtures failed for team {tid} {season}: {e}'); done[key] = TODAY.isoformat(); continue
             for item in data.get('response', []):
                 add_fixture(fx, item)
             done[key] = TODAY.isoformat()
@@ -621,7 +626,11 @@ def fetch_nations(people, squads, extra, meta):
     for nat in nats:
         if nat in have or days_old(tried.get(nat)) < 30:
             continue
-        data = api('teams', name=nat)
+        term = ''.join(ch if ch.isalnum() or ch == ' ' else ' ' for ch in ascii_name(nat)).strip()
+        try:   # the search takes letters, digits and spaces only
+            data = api('teams', search=term) if len(term) >= 3 else {}
+        except RuntimeError as e:
+            log(f'  national team search failed for {nat}: {e}'); tried[nat] = TODAY.isoformat(); continue
         hit = [x['team'] for x in data.get('response', []) if x['team'].get('national') and norm(x['team'].get('name')) == norm(nat)]
         if hit:
             extra[str(hit[0]['id'])] = {'kind': 'nat', 'nat': nat, 'name': hit[0]['name']}
@@ -635,7 +644,10 @@ def fetch_arrivals(top_ids, extra, meta):
     for tid in top_ids:
         if days_old(done.get(str(tid))) < 30:
             continue
-        data = api('transfers', team=tid)
+        try:
+            data = api('transfers', team=tid)
+        except RuntimeError as e:
+            log(f'  transfers failed for team {tid}: {e}'); done[str(tid)] = TODAY.isoformat(); continue
         for x in data.get('response', []):
             for t in x.get('transfers') or []:
                 d = t.get('date') or ''
@@ -796,7 +808,7 @@ def main():
         fetch_nations(people, squads, extra, meta)
         fetch_arrivals(top_ids, extra, meta)
         ext_ids = [int(k) for k in extra]
-        fetch_team_seasons(ext_ids, fx, meta)
+        fetch_team_seasons(ext_ids, fx, meta, tolerant=True)
         fetch_lineups(top | set(ext_ids), fx, lu, evs, pst)
     except OutOfBudget:
         stopped = f'Stopped after {used} calls (MAX_REQUESTS={BUDGET}). The next run continues from here.'

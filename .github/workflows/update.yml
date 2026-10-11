@@ -28,6 +28,7 @@ jobs:
           MAX_REQUESTS: ${{ vars.MAX_REQUESTS || '90' }}
           GRID_COL1_IS_RIGHT: ${{ vars.GRID_COL1_IS_RIGHT || '0' }}
       - name: Commit data
+        if: always()   # keep what was fetched even when the build step fails
         run: |
           git config user.name "ttny-data-bot"
           git config user.email "ttny-data-bot@users.noreply.github.com"
