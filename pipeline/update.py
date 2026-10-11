@@ -612,6 +612,42 @@ def read_players(tid, season, people):
             page += 1
 
 
+# ---------------- beyond the ranked clubs: national teams and clubs players came from ----------------
+def fetch_nations(people, squads, extra, meta):
+    """The national team of every nationality among the ranked clubs' players (one search per country, once)."""
+    nats = sorted({people.get(str(pid), {}).get('nat') for sq in squads.values() for pid in sq.get('p', [])} - {None, ''})
+    tried = meta.setdefault('nations_tried', {})
+    have = {v.get('nat') for v in extra.values() if v.get('kind') == 'nat'}
+    for nat in nats:
+        if nat in have or days_old(tried.get(nat)) < 30:
+            continue
+        data = api('teams', name=nat)
+        hit = [x['team'] for x in data.get('response', []) if x['team'].get('national') and norm(x['team'].get('name')) == norm(nat)]
+        if hit:
+            extra[str(hit[0]['id'])] = {'kind': 'nat', 'nat': nat, 'name': hit[0]['name']}
+        tried[nat] = TODAY.isoformat()
+
+
+def fetch_arrivals(top_ids, extra, meta):
+    """Clubs that players joined a ranked club from in the window: one transfers call per ranked club, refreshed monthly."""
+    done = meta.setdefault('transfers', {})
+    top = set(top_ids)
+    for tid in top_ids:
+        if days_old(done.get(str(tid))) < 30:
+            continue
+        data = api('transfers', team=tid)
+        for x in data.get('response', []):
+            for t in x.get('transfers') or []:
+                d = t.get('date') or ''
+                if not d or d < (SINCE - dt.timedelta(days=60)).isoformat():
+                    continue
+                for side in ('in', 'out'):
+                    o = (t.get('teams') or {}).get(side) or {}
+                    if o.get('id') and o['id'] not in top and str(o['id']) not in extra:
+                        extra[str(o['id'])] = {'kind': 'club', 'name': o.get('name')}
+        done[str(tid)] = TODAY.isoformat()
+
+
 # ---------------- build ----------------
 def fix_text(t):
     """Repair names that arrive double-encoded from the API ('CvetkoviÄ\x87' -> 'Cvetković')."""
@@ -736,6 +772,7 @@ def main():
     evs = load('events', {})
     squads = load('squads', {})
     people = load('people', {})
+    extra = load('extra_teams', {})   # national teams and non-ranked clubs players came from
     stopped = None
     core_done = False
     top_ids = []
@@ -747,7 +784,7 @@ def main():
         log('2/6 Season fixtures (first run only)')
         fetch_team_seasons(top_ids, fx, meta)
         log('3/6 Latest results')
-        fetch_recent_days(top, fx, meta)
+        fetch_recent_days(top | {int(k) for k in extra}, fx, meta)
         log('4/6 Line-ups')
         fetch_lineups(top, fx, lu, evs, pst)
         core_done = True
@@ -755,6 +792,12 @@ def main():
         fetch_squads(top_ids, squads, people)
         log('6/6 Nationality and age')
         fetch_profiles(top_ids, squads, people, meta)
+        log('7/7 National teams and the clubs players came from')
+        fetch_nations(people, squads, extra, meta)
+        fetch_arrivals(top_ids, extra, meta)
+        ext_ids = [int(k) for k in extra]
+        fetch_team_seasons(ext_ids, fx, meta)
+        fetch_lineups(top | set(ext_ids), fx, lu, evs, pst)
     except OutOfBudget:
         stopped = f'Stopped after {used} calls (MAX_REQUESTS={BUDGET}). The next run continues from here.'
         log(stopped)
@@ -765,13 +808,14 @@ def main():
             lu.pop(fid, None)
             evs.pop(fid, None)
             pst.pop(fid, None)
-        for name, obj in (('teams', teams), ('fixtures', fx), ('lineups', lu), ('events', evs), ('pstats', pst), ('squads', squads), ('people', people), ('meta', meta)):
+        for name, obj in (('teams', teams), ('fixtures', fx), ('lineups', lu), ('events', evs), ('pstats', pst), ('squads', squads), ('people', people), ('meta', meta), ('extra_teams', extra)):
             save(name, obj)
     world = build_world(clubs, teams, fx, lu, squads, people, evs)
     world['complete'] = stopped is None
     # the rating model (pipeline/model.py): club Elo, the goals model, player overalls, credibility tests
     top_map = {t['id']: c for c in clubs for t in [teams.get(tkey(c)) or {}] if t.get('id')}
-    report = model.build(world, fx, lu, evs, pst, top_map, SINCE.isoformat(), TODAY.isoformat(), log=log)
+    national = {int(k) for k, v in extra.items() if v.get('kind') == 'nat'}
+    report = model.build(world, fx, lu, evs, pst, top_map, SINCE.isoformat(), TODAY.isoformat(), log=log, national=national)
     with open(os.path.join(CACHE_DIR, 'model_report.json'), 'w', encoding='utf-8') as f:
         json.dump(report, f, ensure_ascii=False, indent=1)
     failed = [k for k, v in report['pass'].items() if not v]

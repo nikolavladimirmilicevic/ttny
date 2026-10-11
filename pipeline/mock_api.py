@@ -78,7 +78,11 @@ class H(BaseHTTPRequestHandler):
             body = json.dumps({'data': {'members': members}}).encode()
             self.send_response(200); self.send_header('Content-Type', 'application/json'); self.end_headers(); self.wfile.write(body)
             return
-        if path == 'teams':
+        if path == 'teams' and 'name' in q:   # national team lookup
+            resp = [{'team': {'id': 50000 + sum(map(ord, q['name'])), 'name': q['name'], 'national': True}}]
+        elif path == 'transfers':
+            resp = []
+        elif path == 'teams':
             s = q['search'].lower()
             resp = [{'team': t} for t in TEAMS.values() if s[:5] in t['name'].lower()]
         elif path == 'fixtures' and 'ids' in q:

@@ -38,19 +38,19 @@ def g_mult(gd):
 
 
 # ---------------- clubs ----------------
-def run_elo(fx, top_pts, until):
-    """Chronological Elo over every finished match. Returns current ratings and the pre-match ratings per fixture."""
+def run_elo(fx, top_pts, until, national=frozenset()):
+    """Chronological Elo over every finished match. Returns current ratings and the pre-match ratings per fixture.
+    National teams form their own pool, starting at 1500; other clubs off the UEFA list start a notch below the first
+    rated side they meet (or at 1450 when neither side is rated yet)."""
     R, pre = {}, {}
     for tid, pts in top_pts.items():
         R[tid] = seed(pts)
     games = sorted((f['d'], fid, f) for fid, f in fx.items() if f['s'] in FINISHED and f['hg'] is not None and f['d'] <= until)
     for d, fid, f in games:
         h, a = f['h'], f['a']
-        if h not in R and a not in R:
-            continue
         for t, o in ((h, a), (a, h)):
             if t not in R:
-                R[t] = min(1500.0, R[o] - 150)   # an unranked side first met: a notch below its opponent, at most 1500
+                R[t] = 1500.0 if t in national else min(1500.0, R[o] - 150) if o in R else 1450.0
         rh, ra = R[h], R[a]
         pre[fid] = (rh, ra)
         we = 1 / (10 ** (-(rh + HFA_ELO - ra) / 400) + 1)
@@ -154,7 +154,7 @@ def draw_score(G, gap, rnd, neutral=False):
 
 
 # ---------------- players ----------------
-def player_ratings(world, fx, lu, evs, pst, rating_now, since, until):
+def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=frozenset(), club_cap=None):
     """Overall and the four shown parts for every rated player."""
     players = world['players']
     ids = {p['id'] for p in players}
@@ -182,13 +182,20 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until):
                 st = ps.get(str(pid)) or [90, None, side]
                 starts[pid].append((f['d'], side, opp, gf, gc, st[0] or 90, st[1], ga_by[pid] + as_by[pid]))
     R = lambda t: rating_now.get(t, 1400.0)
+    nat_vals = [rating_now[t] for t in national if t in rating_now]
+    nat_mean = statistics.mean(nat_vals) if nat_vals else 1500.0
+    # an opponent's strength on one scale: national teams measured from their own pool's average
+    OPP = lambda t: (R(t) - nat_mean) / 100 if t in national else (R(t) - 1700) / 100
+    ranked = set(world.get('_ranked', []))
+    # a club off the UEFA list counts at most as a lower-quarter UEFA club for a player's level
+    LVL = lambda t: R(t) if t in ranked or club_cap is None else min(R(t), club_cap)
 
     # opponent effect on the API rating: slope of rating on opponent strength, pooled over all starts
     xs, ys = [], []
     for pid, ss in starts.items():
         for s in ss:
             if s[6] is not None and s[5] >= 30:
-                xs.append((R(s[2]) - 1700) / 100); ys.append(s[6])
+                xs.append(OPP(s[2])); ys.append(s[6])
     slope = 0.0
     if len(xs) > 500:
         mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
@@ -199,10 +206,11 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until):
         ss = sorted(starts.get(p['id'], []), reverse=True)
         if not ss:
             raw[p['id']] = None; continue
-        level = sum(R(s[1]) for s in ss) / len(ss)
+        cl = [s for s in ss if s[1] not in national]   # club starts only: a national team says nothing about his level
+        level = sum(LVL(s[1]) for s in cl) / len(cl) if cl else None
         # role: starts for each club over that club's matches while he was there, weighted by starts
         by_team = defaultdict(list)
-        for s in ss:
+        for s in cl:
             by_team[s[1]].append(s[0])
         # a stint runs from his first start for a club until his first start for another club after it (or today),
         # so a long injury or a place on the bench counts against him
@@ -213,8 +221,8 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until):
             hi = firsts[k + 1][0] if k + 1 < len(firsts) else until
             n = sum(1 for d in team_games[t] if lo <= d <= hi) or len(by_team[t])
             role += len(by_team[t]) * min(1.0, len(by_team[t]) / n)
-        role /= len(ss)
-        rated = [(s[6] - slope * (R(s[2]) - 1700) / 100) for s in ss if s[6] is not None and s[5] >= 30]
+        role = role / len(cl) if cl else 0.0
+        rated = [(s[6] - slope * OPP(s[2])) for s in ss if s[6] is not None and s[5] >= 30]
         form = [s[6] for s in ss[:5] if s[6] is not None]
         ga90 = sum(s[7] for s in ss) / sum(max(30, s[5]) for s in ss) * 90
         cs = sum(1 for s in ss if s[4] == 0) / len(ss)
@@ -222,6 +230,11 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until):
         raw[p['id']] = {'level': level, 'role': role, 'perf': (sum(rated), len(rated)), 'form': form, 'ga90': ga90,
                         'cs': cs, 'conc': conc, 'line': LINE.get(p['prim'], 'MID')}
 
+    # a player seen only with his national team: his current club stands in for his level
+    for p in players:
+        r = raw.get(p['id'])
+        if r and r['level'] is None:
+            r['level'] = LVL(p['club'])
     ok = [p for p in players if raw.get(p['id'])]
     # performance: shrunk mean API rating, as a z-score within his line
     by_line = defaultdict(list)
@@ -282,10 +295,10 @@ def pct_ranks(d):
 
 
 # ---------------- the whole thing ----------------
-def build(world, fx, lu, evs, pst, top_clubs, since, until, log=print):
+def build(world, fx, lu, evs, pst, top_clubs, since, until, log=print, national=frozenset()):
     """top_clubs: {api id: UEFA club dict with 'points' and 'rank'}. Adds ratings to world in place; returns a report."""
     top_pts = {tid: (c.get('points') or 0.5) for tid, c in top_clubs.items()}
-    elo, pre = run_elo(fx, top_pts, until)
+    elo, pre = run_elo(fx, top_pts, until, national)
     rating = {t: blend(e, t, top_pts) for t, e in elo.items()}
     for c in world['clubs']:
         c['elo'] = round(rating.get(c['id'], seed(top_pts.get(c['id'], 0.5))), 1)
@@ -300,7 +313,12 @@ def build(world, fx, lu, evs, pst, top_clubs, since, until, log=print):
     G = fit_goals(rows)
     log(f"  goals model on {len(rows)} matches: {G}")
 
-    ratings, pinfo = player_ratings(world, fx, lu, evs, pst, rating, since, until)
+    ranked_r = sorted(rating[t] for t in top_pts if t in rating)
+    cap = ranked_r[len(ranked_r) // 4] if ranked_r else None
+    world['_ranked'] = list(top_pts)
+    ratings, pinfo = player_ratings(world, fx, lu, evs, pst, rating, since, until, national, cap)
+    world.pop('_ranked', None)
+    pinfo['foreign_club_cap'] = round(cap or 0)
     for p in world['players']:
         r = ratings.get(p['id'])
         if r:
