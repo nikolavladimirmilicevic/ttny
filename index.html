@@ -787,16 +787,40 @@ function leagueSchedule(teams){
   }
   return { pots, games: shuffle(games) };   // [home, away]: everyone gets 4 home and 4 away games
 }
+/* Conference League: 36 clubs in 6 pots of 6, one opponent from each pot (own pot included), 3 home and 3 away. */
+function leagueSchedule6(teams){
+  const pots = [0, 1, 2, 3, 4, 5].map(k => shuffle(teams.slice(k * 6, k * 6 + 6))), pairs = [];
+  for (let a = 0; a < 6; a++) for (let b = a; b < 6; b++){
+    const A = pots[a];
+    if (a === b) for (let i = 0; i < 6; i += 2) pairs.push([A[i], A[i + 1]]);     // three games inside the pot
+    else { const B = shuffle([...pots[b]]); for (let i = 0; i < 6; i++) pairs.push([A[i], B[i]]); }
+  }
+  // everyone plays 6: walk an Euler circuit through the games and play each one at the side you leave from,
+  // which gives every club exactly 3 home and 3 away games
+  const adj = new Map(); teams.forEach(t => adj.set(t, []));
+  pairs.forEach((g, i) => { adj.get(g[0]).push([g[1], i]); adj.get(g[1]).push([g[0], i]); });
+  const used = new Array(pairs.length).fill(false), games = [];
+  for (const start of teams){
+    const stack = [start];
+    while (stack.length){
+      const v = stack[stack.length - 1], e = adj.get(v);
+      while (e.length && used[e[e.length - 1][1]]) e.pop();
+      if (!e.length){ stack.pop(); continue; }
+      const [w, i] = e.pop(); used[i] = true; games.push([v, w]); stack.push(w);
+    }
+  }
+  return { pots, games: shuffle(games) };
+}
 function drawCard(c){
   if (!c.myPot) return '<div class="card muted">35 opponents drawn. Biggest clubs had the most balls in the draw.</div>';
-  return `<div class="card muted">The draw is in: 35 clubs, the biggest with the most balls. Your XI goes into <b style="color:var(--text)">pot ${c.myPot}</b> and meets two clubs from every pot, four at home and four away.</div>`;
+  return `<div class="card muted">The draw is in: 35 clubs, the biggest with the most balls. Your XI goes into <b style="color:var(--text)">pot ${c.myPot}</b> and meets ${(S.run && S.run.comp) === 'ecl' ? 'one club from every pot, three at home and three away' : 'two clubs from every pot, four at home and four away'}.</div>`;
 }
 function buildCup(T){
   const opps = drawOpponents(35).sort((a, b) => W.C[b].elo - W.C[a].elo);
   const mine = strength('YOU'), at = opps.filter(id => W.C[id].elo > mine).length;
   const teams = [...opps.slice(0, at), 'YOU', ...opps.slice(at)];
-  const myPot = Math.floor(at / 9) + 1;
-  const sch = leagueSchedule(teams);
+  const six = (S.run && S.run.comp) === 'ecl', myPot = Math.floor(at / (six ? 6 : 9)) + 1;
+  const sch = six ? leagueSchedule6(teams) : leagueSchedule(teams);
   const rows = {}; teams.forEach(t => rows[t] = { id: t, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, Pts: 0, tb: MR() });
   const ours = [];
   const rec = (x, gf, ga) => { const r = rows[x]; r.P++; r.GF += gf; r.GA += ga; if (gf > ga){ r.W++; r.Pts += 3; } else if (gf === ga){ r.D++; r.Pts++; } else r.L++; };
@@ -1081,6 +1105,7 @@ function viewHome(){
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>The further you go, the more players you keep: play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final or title 10. The clubs are then split into as many pots as you have picks left.</li>
         <li>A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
+        <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
         <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends. Missing the top 24 of the league phase ends it too.</li>
       </ol>
     </details>
@@ -1210,7 +1235,7 @@ function viewCup(){
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot"><span class="lbl">Run ends in</span><span class="ico">⏱</span> <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
   <div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">Your XI · ${r.form}</div><h2>${compOf(r).short}</h2></div>
-    <span class="muted" style="font-size:13px">36 clubs · 8 matchdays</span></div>
+    <span class="muted" style="font-size:13px">36 clubs · ${r.comp === 'ecl' ? 6 : 8} matchdays</span></div>
   <div class="grid2">
     <div class="feed">${evs.map(evHTML).join('') || drawCard(r.cup)}${pendingHTML(c)}</div>
     <section class="sticky">${teamBox(r)}${pitch(r.picks, r.form, r.kept, true)}</section>
