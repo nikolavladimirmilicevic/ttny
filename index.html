@@ -659,12 +659,17 @@ function teamOvr(picks, form){
 }
 function teamRating(picks, form){
   const rs = picks.map(playerRating), m = k => rs.reduce((t, r) => t + r.q[k], 0) / rs.length;
-  const ov = teamOvr(picks, form), D = W.teamDist;
+  // the number shown is how strong your XI plays in this competition, on the clubs' scale, so it matches the odds
+  const ov = eloOv(xiElo(teamOvr(picks, form)) + youBonus()), D = W.teamDist;
   // an average of 11 percentiles bunches in the middle: place it among the clubs' own XIs instead
   const q = k => D ? pctBelow(D[k], m(k)) : m(k);
   return { ov, elo: xiElo(ov), q: { pe: q('pe'), ro: q('ro'), pf: q('pf'), fo: q('fo') } };
 }
-const strength = id => id === 'YOU' ? xiElo(teamOvr(S.run.picks, S.run.form)) : W.C[id].elo;
+/* your XI plays above a club XI of the same overall: no weak bench, no rotation, every player in form for you.
+   The lift is bigger on easier settings; calibrated with draft bots (pipeline/tools/draft_bots.js) */
+const YOU_BONUS = { cl: { easy: 210, medium: 215, hard: 180 }, el: { easy: 105, medium: 120, hard: 90 }, ecl: { easy: 115, medium: 115, hard: 75 } };
+const youBonus = () => { const T = window.__YB || YOU_BONUS, r = S.run || {}; return ((T[r.comp || 'el'] || {})[r.diff || 'medium']) || 0; };
+const strength = id => id === 'YOU' ? xiElo(teamOvr(S.run.picks, S.run.form)) + youBonus() : W.C[id].elo;
 const clubOv = id => eloOv(strength(id));
 const gchip = id => { const ov = clubOv(id); return `<span class="cg g${ovGrade(ov)}" title="Club rating">${teamNum(ov)}</span>`; };
 const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${ovGrade(r.ov)}</div>` : `<div class="ovdot big g${ovGrade(r.ov)}">${teamNum(r.ov)}</div>`;
