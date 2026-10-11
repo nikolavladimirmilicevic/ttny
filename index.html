@@ -253,7 +253,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 @media(max-width:420px){.slot .ovdot{width:34px;height:34px;font-size:15px}.stats{grid-template-columns:repeat(2,1fr)}.slot{width:64px}.slot .lbl{max-width:64px;font-size:10px}.dot{width:34px;height:34px}}
 </style>
 
-<div class="wrap" id="app"></div>
+<div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
 <div id="toast" class="toast" hidden></div>
 <div id="pcard" class="pcard" hidden></div>
 
@@ -606,6 +606,7 @@ const xiElo = ov => W.xi.alpha + W.xi.beta * ov;
 const eloOv = elo => (elo - W.xi.alpha) / W.xi.beta;   // a rating on the overall scale, for showing clubs as letters
 function teamOvr(picks, form){
   const arr = arrangement(picks, form), slots = FORMS[form];
+  if (!arr) return picks.reduce((t, pid) => t + W.P[pid].ovr, 0) / picks.length;
   return arr.reduce((t, pid, j) => t + (pid ? effOvr(pid, slots[j][0]) : 0), 0) / picks.length;
 }
 function teamRating(picks, form){
@@ -1310,7 +1311,14 @@ function viewDone(){
 
 function render(){
   const r = S.run; if (PC) PC.hidden = true;
-  $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
+  try {
+    $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
+  } catch (e) {
+    // a saved run that no longer fits the data (new ratings, new positions): drop it rather than show a blank page
+    console.error(e);
+    if (r){ S.run = null; save(); $('#app').innerHTML = viewHome(); toast('The data was updated, so your run in progress was reset.'); }
+    else throw e;
+  }
 }
 
 document.addEventListener('click', e => {
@@ -1393,8 +1401,10 @@ async function boot(){
   if (W.meta.live) CFG.STORE += '.live';
   window.__ttny = { W, CFG, feasible, assign, simMatch, buildCup, shootout };
   load();
-  const bad = id => !W.P[id] || !W.P[id].sc;
+  const bad = id => !W.P[id] || !W.P[id].sc || W.P[id].ovr == null;
   if (S.run && S.run.picks && S.run.picks.some(bad)) S.run = null;
+  // a run from before a data update whose players no longer fit together: start again
+  if (S.run && S.run.picks && S.run.picks.length === 11 && !feasible(S.run.picks).length) S.run = null;
   if (S.dyn && S.dyn.kept) S.dyn.kept = S.dyn.kept.filter(id => !bad(id));
   render();
   setInterval(tick, 1000);
