@@ -1,0 +1,69 @@
+{
+ "big12_in_top15": 10,
+ "top25_players_from_top10_clubs": 24,
+ "best_forward_rank": 3,
+ "line_share_gap": 0.03502454991816695,
+ "top10_players": [
+  "Lamine Yamal 96.7",
+  "Michael Olise 96.2",
+  "Raphinha 95.1",
+  "Harry Kane 94.4",
+  "Joshua Kimmich 93.8",
+  "Declan Rice 93.3",
+  "Rodri 92.9",
+  "Aleksandar Pavlović 92.6",
+  "Luis Díaz 92.2",
+  "Nico Schlotterbeck 92.0"
+ ],
+ "top10_clubs": [
+  "Bayern München 2131",
+  "Man City 2063",
+  "Arsenal 2056",
+  "Barcelona 2052",
+  "Inter 2020",
+  "Real Madrid 2012",
+  "Paris 1998",
+  "B. Dortmund 1972",
+  "Sporting CP 1971",
+  "Porto 1960"
+ ],
+ "title_share_top8_of_field": 0.886,
+ "max_title_share_outside_top30": 0.0025,
+ "title_favourites": [
+  "Bayern München 24.9%",
+  "Arsenal 12.7%",
+  "Man City 10.2%",
+  "Barcelona 9.2%",
+  "Inter 7.2%",
+  "Real Madrid 6.5%",
+  "Paris 5.2%",
+  "B. Dortmund 3.7%"
+ ],
+ "pass": {
+  "big12_in_top15": true,
+  "top25": true,
+  "best_forward": true,
+  "line_share": true,
+  "top8_titles": true,
+  "outsiders": true
+ },
+ "backtest": {
+  "train": 3266,
+  "test": 1143,
+  "base_rates": {
+   "logloss": 1.0546,
+   "brier": 0.637,
+   "hit": 0.466
+  },
+  "uefa_only": {
+   "logloss": 1.0045,
+   "brier": 0.6011,
+   "hit": 0.511
+  },
+  "model": {
+   "logloss": 0.9829,
+   "brier": 0.5858,
+   "hit": 0.529
+  }
+ }
+}

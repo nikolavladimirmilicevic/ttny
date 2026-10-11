@@ -22,6 +22,8 @@ Environment:
 """
 import csv, datetime as dt, difflib, html, json, math, os, re, sys, time, unicodedata, urllib.parse, urllib.request
 from collections import Counter, defaultdict
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import model
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_DIR = os.path.join(ROOT, 'data', 'cache')
@@ -703,139 +705,6 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
     return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'ranked': len(clubs), 'clubs': out_clubs, 'players': out_players}
 
 
-RATIO_EDGES = [1, 1.25, 1.5, 2, 3, 5, 10, 10 ** 6]
-DIFF_EDGES = [0, 10, 20, 30, 50, 75, 100, 150, 200, 300, 10 ** 6]
-
-
-def rank_model(clubs, teams, fx, force=False):
-    """Weekly, with the UEFA ranking: how often the better-ranked side wins, draws and loses, by how far apart the two
-    are (rank ratio and rank difference), from every competitive match between ranked clubs in the last 365 days."""
-    cached = load('rank_model', {})
-    if not force and cached.get('computed') and (TODAY.weekday() != UEFA_DAY or cached['computed'] == TODAY.isoformat()) \
-            and days_old(cached['computed']) < UEFA_MAX_AGE:
-        return cached
-    rank = {}
-    for c in clubs:
-        t = teams.get(tkey(c))
-        if t and t.get('id'):
-            rank[t['id']] = int(c['rank'])
-    ms = [(rank[f['h']], rank[f['a']], f['hg'], f['ag']) for f in fx.values()
-          if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat() and f['hg'] is not None
-          and f['h'] in rank and f['a'] in rank and 'friendl' not in (f.get('lg') or '').lower()]
-
-    def table(edges, key, pool=None):
-        out = []
-        for lo, hi in zip(edges, edges[1:]):
-            b = [m for m in (ms if pool is None else pool) if lo <= key(m) < hi]
-            if not b:
-                continue
-            w = sum(1 for h, a, x, y in b if x != y and (x > y) == (h < a))
-            d = sum(1 for m in b if m[2] == m[3])
-            out.append({'from': lo, 'to': hi if hi < 10 ** 6 else None, 'n': len(b),
-                        'better': round(w / len(b), 3), 'draw': round(d / len(b), 3), 'worse': round((len(b) - w - d) / len(b), 3)})
-        return out
-
-    def split(home_better):
-        b = [m for m in ms if (m[0] < m[1]) == home_better and m[0] != m[1]]
-        w = sum(1 for h, a, x, y in b if (x > y if home_better else y > x))
-        d = sum(1 for m in b if m[2] == m[3])
-        return {'n': len(b), 'better': round(w / len(b), 3), 'draw': round(d / len(b), 3), 'worse': round((len(b) - w - d) / len(b), 3)} if b else {}
-
-    model = {'computed': TODAY.isoformat(), 'matches': len(ms),
-             'by_ratio': table(RATIO_EDGES, lambda m: max(m[0], m[1]) / min(m[0], m[1])),
-             'by_difference': table(DIFF_EDGES, lambda m: abs(m[0] - m[1])),
-             # the same by ratio, split by whether the better side was at home or away (used by the game)
-             'by_ratio_home': table(RATIO_EDGES, lambda m: m[1] / m[0], [m for m in ms if m[0] < m[1]]),
-             'by_ratio_away': table(RATIO_EDGES, lambda m: m[0] / m[1], [m for m in ms if m[0] > m[1]]),
-             'better_at_home': split(True), 'better_away': split(False)}
-    save('rank_model', model)
-    lines = [f"Better-ranked side: wins / draws / losses, {len(ms)} matches between ranked clubs, computed {TODAY}", '']
-    for name, rows in (('rank ratio (worse rank / better rank)', model['by_ratio']), ('rank difference', model['by_difference'])):
-        lines.append('By ' + name)
-        for r in rows:
-            lines.append(f"  {r['from']}-{r['to'] or 'max'}: {r['n']:5d} matches  {r['better']:.0%} / {r['draw']:.0%} / {r['worse']:.0%}")
-        lines.append('')
-    for k in ('better_at_home', 'better_away'):
-        r = model[k]
-        if r:
-            lines.append(f"{k.replace('_', ' ')}: {r['n']} matches  {r['better']:.0%} / {r['draw']:.0%} / {r['worse']:.0%}")
-    with open(os.path.join(CACHE_DIR, 'rank_model.txt'), 'w', encoding='utf-8') as f:
-        f.write('\n'.join(lines) + '\n')
-    log('  rank model: ' + str(len(ms)) + ' matches')
-    return model
-
-
-# ---------------- match model ----------------
-def pct_rank(values):
-    """Mid-rank percentile (0-1) of every value among all of them."""
-    srt = sorted(values)
-    from bisect import bisect_left, bisect_right
-    n = len(srt)
-    return [(bisect_left(srt, v) + (bisect_right(srt, v) - bisect_left(srt, v)) / 2) / n for v in values]
-
-
-def probs(sh, sa, base, k):
-    """1X2 for a home side of strength sh against an away side of strength sa (both 0-1 percentiles).
-    Each side gets its own 1X2 by tilting the base rates by its strength; the two are then crossed (log5 style)."""
-    H, D, A = base
-    xh, xa = k * (2 * sh - 1), k * (2 * sa - 1)
-    h1, hx, h2 = H * (1 + xh), D, A * (1 - xh)
-    a1, ax, a2 = H * (1 - xa), D, A * (1 + xa)
-    th, ta = h1 + hx + h2, a1 + ax + a2
-    q1, qx, q2 = (h1 / th) * (a1 / ta) / H, (hx / th) * (ax / ta) / D, (h2 / th) * (a2 / ta) / A
-    t = q1 + qx + q2
-    return q1 / t, qx / t, q2 / t
-
-
-def match_model(world, fx, top):
-    """1X2 base rates and scorelines from every match between ranked clubs in the last 365 days (unweighted),
-    each club's strength from six equal parameters (percentiles), and the tilt k fitted to those same matches."""
-    pts_of_rank = {c['rank']: (c.get('pts') or (len(top) + 1 - c['rank'])) for c in world['clubs']}
-    ms = [f for f in fx.values() if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat()
-          and f['hg'] is not None and f['h'] in top and f['a'] in top]
-    res = lambda x, y: '1' if x > y else 'X' if x == y else '2'
-    cnt = Counter(res(f['hg'], f['ag']) for f in ms)
-    n = len(ms) or 1
-    base = (cnt['1'] / n, cnt['X'] / n, cnt['2'] / n)
-    scores = {r: Counter() for r in '1X2'}
-    for f in ms:
-        scores[res(f['hg'], f['ag'])][f"{f['hg']}:{f['ag']}"] += 1
-
-    # club parameters, every one but the first weighted by the opponent's UEFA points
-    pool = [c for c in world['clubs'] if c['n'] >= 10]
-
-    def wavg(rows, val):
-        w = sum(pts_of_rank.get(r[0], 1) for r in rows)
-        return sum(pts_of_rank.get(r[0], 1) * val(r) for r in rows) / w if w else 0
-    ppg = lambda r: 3 if r[2] > r[3] else 1 if r[2] == r[3] else 0
-    raw = {'uefa': [c.get('pts') or pts_of_rank[c['rank']] for c in pool],
-           'ppg': [wavg(c['m'], ppg) for c in pool],
-           'ppg5': [wavg(c['m'][:5], ppg) for c in pool],
-           'ppgH': [wavg([r for r in c['m'] if r[1]], ppg) for c in pool],
-           'ppgA': [wavg([r for r in c['m'] if not r[1]], ppg) for c in pool],
-           'gf': [wavg(c['m'], lambda r: r[2]) for c in pool],
-           'ga': [-wavg(c['m'], lambda r: r[3]) for c in pool]}   # fewer conceded = better
-    P = {k: pct_rank(v) for k, v in raw.items()}
-    for i, c in enumerate(pool):
-        rest = P['ppg'][i] + P['ppg5'][i] + P['gf'][i] + P['ga'][i]   # UEFA points half, the other five the other half
-        mix = lambda v: round(0.5 * P['uefa'][i] + 0.5 * (rest + v) / 5, 4)
-        c['S'] = {'h': mix(P['ppgH'][i]), 'a': mix(P['ppgA'][i]), 'n': mix((P['ppgH'][i] + P['ppgA'][i]) / 2)}
-    # fit the tilt k: the value that makes the strengths explain the real results best
-    S = {c['id']: c['S'] for c in pool}
-    fit = [(S[f['h']]['h'], S[f['a']]['a'], res(f['hg'], f['ag'])) for f in ms if f['h'] in S and f['a'] in S]
-    best = (None, 0)
-    for k in [i / 50 for i in range(0, 50)]:
-        ll = 0
-        for sh, sa, r in fit:
-            p = probs(sh, sa, base, k)
-            ll += math.log(max(1e-9, p['1X2'.index(r)]))
-        if best[0] is None or ll > best[0]:
-            best = (ll, k)
-    world['model'] = {'base': [round(x, 4) for x in base], 'k': best[1], 'matches': len(ms), 'fitted_on': len(fit),
-                      'scores': {r: dict(scores[r].most_common()) for r in '1X2'}}
-    log(f"  match model: {len(ms)} matches, 1X2 {base[0]:.3f}/{base[1]:.3f}/{base[2]:.3f}, k={best[1]}")
-
-
 def position_check(world):
     """A few players per club with their positions, to confirm left and right are not mirrored."""
     lines = ['Check that full-backs and wingers sit on the right side.',
@@ -894,11 +763,17 @@ def main():
             save(name, obj)
     world = build_world(clubs, teams, fx, lu, squads, people, evs)
     world['complete'] = stopped is None
-    world['rank_model'] = rank_model(clubs, teams, fx)
-    match_model(world, fx, {t['id']: c for c in clubs for t in [teams.get(tkey(c)) or {}] if t.get('id')})
-    # the game reads world.json: publish only once results, line-ups and every roster are in
+    # the rating model (pipeline/model.py): club Elo, the goals model, player overalls, credibility tests
+    top_map = {t['id']: c for c in clubs for t in [teams.get(tkey(c)) or {}] if t.get('id')}
+    report = model.build(world, fx, lu, evs, pst, top_map, SINCE.isoformat(), TODAY.isoformat(), log=log)
+    with open(os.path.join(CACHE_DIR, 'model_report.json'), 'w', encoding='utf-8') as f:
+        json.dump(report, f, ensure_ascii=False, indent=1)
+    failed = [k for k, v in report['pass'].items() if not v]
+    if failed:
+        log(f"  CREDIBILITY TESTS FAILED: {', '.join(failed)}. world.json is kept as it was; see data/cache/model_report.json")
+    # the game reads world.json: publish only once results, line-ups and every roster are in, and the tests pass
     have_rosters = all(str(t) in squads for t in top_ids)
-    ready = core_done and have_rosters and world['players']
+    ready = core_done and have_rosters and world['players'] and not failed
     target = OUT if ready else OUT.replace('world.json', 'world.partial.json')
     with open(target, 'w', encoding='utf-8') as f:
         json.dump(world, f, ensure_ascii=False, separators=(',', ':'))
