@@ -509,6 +509,14 @@ function buildWorld(){
   return finalize(C, P, { live: false });
 }
 
+/* all draftable clubs (by rank) into n pots as even as possible; leftover clubs go to the lowest pots */
+function splitPots(list, n){
+  const base = Math.floor(list.length / n), extra = list.length % n, pots = []; let at = 0;
+  for (let i = 0; i < n; i++){ const k = base + (i >= n - extra ? 1 : 0); pots.push(list.slice(at, at + k)); at += k; }
+  return pots;
+}
+// this run's pots: with players kept, every club is split into as many pots as there are picks left
+const runPots = r => r.potsN && r.potsN < 11 ? (W._pc && W._pc.n === r.potsN ? W._pc.p : (W._pc = { n: r.potsN, p: splitPots(W.draftable, r.potsN) }).p) : W.pots;
 /* Shared by demo and live data: eligibility, A-E grades, pots, opponent pool */
 function finalize(C, P, meta){
   const ids = Object.keys(C);
@@ -528,9 +536,7 @@ function finalize(C, P, meta){
   for (const id of ids){ C[id].elig = C[id].squad.filter(p => P[p].starts >= 10); }
   const draftable = ids.filter(id => C[id].elig.length >= 11).sort((a, b) => C[a].rank - C[b].rank);
   // 11 pots as even as possible; leftover clubs go to the lowest pots (100 clubs = 10 x 9 + 10)
-  const base = Math.floor(draftable.length / 11), extra = draftable.length % 11;
-  const pots = []; let at = 0;
-  for (let i = 0; i < 11; i++){ const n = base + (i >= 11 - extra ? 1 : 0); pots.push(draftable.slice(at, at + n)); at += n; }
+  const pots = splitPots(draftable, 11);
   const oppPool = ids.filter(id => C[id].n >= 10);
   const w = { C, P, pots, oppPool, draftable, eligCount: elig.length, meta };
   buildModel(w, elig);
@@ -821,7 +827,7 @@ function newRun(){
   const potCount = 11 - kept.length;
   // a dynasty remembers everyone who has played in it: whoever was let go cannot come back
   const ever = S.dyn && S.dyn.ever ? S.dyn.ever : [], gone = ever.filter(id => !kept.includes(id));
-  S.run = { phase: 'draft', kept, picks: [...kept], order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null };
+  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null };
   S.dyn = null;
   drawClub();
   save(); render(); scrollTo(0, 0);
@@ -834,7 +840,7 @@ const everOf = r => [...new Set([...(r.ever || []), ...r.picks])];
 function drawClub(){
   const r = S.run, pot = r.order[r.step];
   const pickedClubs = new Set();
-  let cand = W.pots[pot].filter(c => !r.tried.includes(c) && !pickedClubs.has(c));
+  let cand = runPots(r)[pot].filter(c => !r.tried.includes(c) && !pickedClubs.has(c));
   r.note = ''; r.cut = []; r.tip = null;
   while (true){
     if (!cand.length){ // whole pot exhausted: fall back to any pot
@@ -870,7 +876,7 @@ const TIP = { g: 'Top scorer', a: 'Top assister', cs: 'Most clean sheets', st: '
 const csOf = p => p.m.reduce((t, r) => t + (r[5] && r[3] === 0 ? 1 : 0), 0);
 const helpUsed = k => !!(S.run.help && S.run.help[k]);
 const visible = r => pickable(r.club).filter(id => !(r.cut || []).includes(id));
-function swapOk(r){ const pot = r.order[r.step]; return W.pots[pot].some(c => c !== r.club && !r.tried.includes(c) && pickable(c).length); }
+function swapOk(r){ const pot = r.order[r.step]; return runPots(r)[pot].some(c => c !== r.club && !r.tried.includes(c) && pickable(c).length); }
 function useHelp(k){
   const r = S.run; if (!r || r.phase !== 'draft' || !r.club || helpUsed(k)) return;
   if (k === 'swap'){
@@ -996,7 +1002,7 @@ function viewHome(){
       <div class="eyebrow">Dynasty alive · ${d.kept.length} kept</div>
       <h3 style="margin-top:6px">Start your next run within <span class="num" data-cd="${d.deadline}">${fmt(d.deadline - Date.now())}</span></h3>
       <div class="pills">${d.kept.map(id => `<span class="pill" data-pid="${id}">${natTag(W.P[id])} · ${esc(W.P[id].name)} · ${W.P[id].prim}</span>`).join('') || '<span class="pill">No players kept</span>'}</div>
-      <p class="muted" style="margin:10px 0 0;font-size:13px">You draft ${11 - d.kept.length} new players from pots 1 to ${11 - d.kept.length}.</p>
+      <p class="muted" style="margin:10px 0 0;font-size:13px">You draft ${11 - d.kept.length} new players, one from each of ${11 - d.kept.length} pots made from every club.</p>
     </section>` : '';
   const btns = d
     ? `<button class="btn primary" data-act="start">Continue dynasty</button><button class="btn ghost" data-act="fresh">${S.armed === 'fresh' ? 'Tap again to drop it' : 'Start fresh'}</button>`
@@ -1027,7 +1033,7 @@ function viewHome(){
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for reputation, attack, defence and form. Your team and every opponent get a rating from 40 to 99. A player loses a little away from his main position.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
-        <li>The further you go, the more players you keep: play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final or title 10. New picks then come only from the top pots.</li>
+        <li>The further you go, the more players you keep: play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final or title 10. The clubs are then split into as many pots as you have picks left.</li>
         <li>A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
         <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends. Missing the top 24 of the league phase ends it too.</li>
       </ol>
@@ -1048,8 +1054,9 @@ function viewDraft(){
   const r = S.run;
   if (!r.club) return `<div class="card stack"><h2>No club left that fits</h2><p class="muted">Your shape cannot be completed from the remaining pots.</p><button class="btn primary" data-act="fresh2">Start over</button></div>`;
   const club = W.C[r.club], pot = r.order[r.step];
-  const cells = [...Array(11).keys()].map(i => {
-    const off = i >= 11 - r.kept.length, done = r.order.indexOf(i) > -1 && r.order.indexOf(i) < r.step, now = i === pot;
+  const nP = runPots(r).length;
+  const cells = [...Array(nP).keys()].map(i => {
+    const off = false, done = r.order.indexOf(i) > -1 && r.order.indexOf(i) < r.step, now = i === pot;
     return `<div class="pot${off ? ' off' : done ? ' done' : now ? ' now' : ''}" title="Pot ${i + 1}">${i + 1}</div>`;
   }).join('');
   const ok = new Set(visible(r)), cut = new Set(r.cut || []), gone = new Set(r.gone || []);
@@ -1066,7 +1073,7 @@ function viewDraft(){
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot"><span class="lbl">Run ends in</span><span class="ico">⏱</span> <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
   <div class="drafthead"><div><div class="eyebrow">Draft</div><h2>Pick ${r.picks.length + 1} of 11</h2></div><span class="muted" style="font-size:13px">${r.kept.length ? r.kept.length + ' kept from last run' : 'Fresh squad'}</span></div>
-  <div class="pots" aria-label="Pots">${cells}</div>
+  <div class="pots" aria-label="Pots" style="grid-template-columns:repeat(${nP},1fr)">${cells}</div>
   ${shapeStrip(r)}
   <div class="grid2" style="margin-top:16px">
     <section class="card clubcard${anim ? ' reveal' : ''}" aria-live="polite">
