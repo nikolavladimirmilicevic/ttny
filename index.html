@@ -236,6 +236,12 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .diff.c-el{--c:#FF7A1A}.diff.c-ecl{--c:#1FCB64}
 .diff .dl{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--c)}
 .diff b{font:700 22px/1.1 var(--display);text-transform:uppercase}
+.diff{opacity:.55}.diff.on{opacity:1;box-shadow:0 0 0 2px var(--c)}
+.pick .eyebrow{margin-bottom:8px}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sg{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer;font:inherit}
+.sg b{font:600 15px var(--display);text-transform:uppercase;letter-spacing:.04em}.sg small{font-size:12px;color:var(--muted)}
+.sg.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}.sg.on b{color:var(--gold)}
 .diff small{font-size:12.5px;color:var(--muted);line-height:1.4}
 .endgrid{display:grid;gap:16px;align-items:start}@media(min-width:900px){.endgrid{grid-template-columns:1.1fr 1fr}}
 .stat small{display:block;font-size:11px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -537,9 +543,9 @@ const COMPS = {
 };
 const NEXT_COMP = { ecl: 'el', el: 'cl', cl: 'cl' };
 const DIFF = {
-  easy: { label: 'Easy', start: 'cl', share: 1 / 3, pool: 'the top third of the UEFA list' },
-  medium: { label: 'Medium', start: 'el', share: 2 / 3, pool: 'the top two thirds of the UEFA list' },
-  hard: { label: 'Hard', start: 'ecl', share: 1, pool: 'every club on the UEFA list' }
+  easy: { label: 'Easy', share: 1 / 3, pool: 'Top third of the UEFA list' },
+  medium: { label: 'Medium', share: 2 / 3, pool: 'Top two thirds' },
+  hard: { label: 'Hard', share: 1, pool: 'Every club on the list' }
 };
 const compOf = r => COMPS[(r && r.comp) || 'cl'];
 // the top third (or two thirds) of the UEFA list by rank, among the clubs with enough players to draft from
@@ -897,15 +903,17 @@ function buildCup(T){
 /* ================= STATE ================= */
 let S = { run: null, dyn: null, stats: { runs: 0, titles: 0, streak: 0, best: 0, bestStage: null }, armed: null };
 function load(){ try { const s = JSON.parse(localStorage.getItem(CFG.STORE) || 'null'); if (s && s.stats) S = Object.assign(S, s); } catch (e) {} }
-function save(){ try { localStorage.setItem(CFG.STORE, JSON.stringify({ run: S.run, dyn: S.dyn, stats: S.stats })); } catch (e) {} }
+function save(){ try { localStorage.setItem(CFG.STORE, JSON.stringify({ run: S.run, dyn: S.dyn, stats: S.stats, pref: S.pref })); } catch (e) {} }
 function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 3200); }
 const fmt = ms => { ms = Math.max(0, ms); const m = Math.floor(ms / 60000), s = Math.floor(ms % 60000 / 1000); return m + ':' + String(s).padStart(2, '0'); };
 const nm = id => id === 'YOU' ? 'Your XI' : W.C[id].name;
 const STAGE_RANK = ['league', 'playoff', 'r16', 'qf', 'sf', 'final', 'champion'];
 
 function newRun(diff){
-  diff = S.dyn && S.dyn.diff ? S.dyn.diff : DIFF[diff] ? diff : 'medium';
-  const comp = S.dyn && S.dyn.comp ? S.dyn.comp : DIFF[diff].start;
+  // a new dynasty takes the competition and the difficulty picked on the home screen; a dynasty keeps its own
+  const pref = S.pref || {};
+  diff = S.dyn && S.dyn.diff ? S.dyn.diff : DIFF[pref.diff] ? pref.diff : 'medium';
+  const comp = S.dyn && S.dyn.comp ? S.dyn.comp : COMPS[pref.comp] ? pref.comp : 'el';
   const kept = S.dyn && S.dyn.kept ? S.dyn.kept.filter(id => W.P[id] && W.P[id].starts >= MIN_STARTS) : [];
   const potCount = 11 - kept.length;
   // a dynasty remembers everyone who has played in it: whoever was let go cannot come back
@@ -1093,8 +1101,12 @@ function viewHome(){
   const btns = d
     ? `<button class="btn primary" data-act="start">Continue dynasty</button><button class="btn ghost" data-act="fresh">${S.armed === 'fresh' ? 'Tap again to drop it' : 'Start fresh'}</button>`
     : '';
-  const picker = d ? '' : `<div class="diffs">${Object.entries(DIFF).map(([k, v]) => `<button class="diff c-${v.start}" data-act="start" data-d="${k}">
-      <span class="dl">${v.label}</span><b>${COMPS[v.start].short}</b><small>Draft from ${v.pool}.${v.start !== 'cl' ? ` Win it to move up${v.start === 'ecl' ? ' to the Europa League, then the Champions League' : ' to the Champions League'}.` : ''}</small></button>`).join('')}</div>`;
+  const pref = Object.assign({ comp: 'el', diff: 'medium' }, S.pref);
+  const UP = { ecl: 'Win it to move up to the Europa League, then the Champions League.', el: 'Win it to move up to the Champions League.', cl: 'The top of the ladder.' };
+  const picker = d ? '' : `<div class="pick"><div class="eyebrow">Start in</div><div class="diffs">${['cl', 'el', 'ecl'].map(k => `<button class="diff c-${k}${pref.comp === k ? ' on' : ''}" data-act="pickc" data-c="${k}" aria-pressed="${pref.comp === k}">
+      <b>${COMPS[k].short}</b><small>${UP[k]}</small></button>`).join('')}</div>
+    <div class="eyebrow" style="margin-top:14px">Difficulty: the clubs you draft from</div><div class="seg">${Object.entries(DIFF).map(([k, v]) => `<button class="sg${pref.diff === k ? ' on' : ''}" data-act="pickd" data-d="${k}" aria-pressed="${pref.diff === k}"><b>${v.label}</b><small>${v.pool}</small></button>`).join('')}</div>
+    <div class="btnrow" style="margin-top:14px"><button class="btn primary" data-act="start">Start a run</button></div></div>`;
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><span class="chip">${W.meta.live ? 'Data ' + niceDate(W.meta.updated) : 'Demo data'}</span></header>
   <div class="stack">
@@ -1118,7 +1130,7 @@ function viewHome(){
         <li>The world is every club on the UEFA 5-year ranking. A player counts with at least one start for one of those clubs in the last 365 days, against any opponent; with only a few starts his grade leans toward a squad player's.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>Pick a difficulty for a new dynasty. Easy drafts from the top third of the UEFA list and plays the Champions League. Medium drafts from the top two thirds and starts in the Europa League. Hard drafts from every club and starts in the Conference League. Win your competition and the dynasty's next run moves up a level.</li>
+        <li>A new dynasty starts with two choices. The competition: Champions League, Europa League or Conference League; win it and the dynasty's next run moves up a level. The difficulty: the clubs you draft from, the top third of the UEFA list (easy), the top two thirds (medium) or every club (hard).</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for reputation, attack, defence and form. Your team and every opponent get a rating from 40 to 99. A player plays a little below his level in a weak position, one he started in at most half as often as his main one; weak positions are faded on his card.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
@@ -1401,7 +1413,7 @@ function viewDone(){
 
 function render(){
   const r = S.run; if (PC) PC.hidden = true;
-  document.body.dataset.comp = (r && r.comp) || (S.dyn && S.dyn.comp) || '';
+  document.body.dataset.comp = (r && r.comp) || (S.dyn && S.dyn.comp) || (S.pref && S.pref.comp) || 'el';
   try {
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
   } catch (e) {
@@ -1424,7 +1436,8 @@ document.addEventListener('click', e => {
     }
     return;
   }
-  if (a === 'start') newRun(b.dataset.d);
+  if (a === 'start') newRun();
+  else if (a === 'pickc' || a === 'pickd'){ S.pref = Object.assign({ comp: 'el', diff: 'medium' }, S.pref, a === 'pickc' ? { comp: b.dataset.c } : { diff: b.dataset.d }); save(); render(); }
   else if (a === 'fresh'){ if (S.armed === 'fresh'){ S.dyn = null; S.armed = null; S.stats.streak = 0; save(); render(); } else { S.armed = 'fresh'; render(); } }
   else if (a === 'pick') choose(b.dataset.p);
   else if (a === 'help') useHelp(b.dataset.k);
