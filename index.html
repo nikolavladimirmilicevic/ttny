@@ -226,6 +226,17 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 
 /* result */
 .verdict{text-align:center;padding:30px 18px}
+/* competition colours: the accent follows the competition you are in */
+body[data-comp="cl"]{--gold:#8FB0FF;--gold-ink:#06102A}
+body[data-comp="el"]{--gold:#FF7A1A;--gold-ink:#1A0A00}
+body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
+.diffs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}@media(max-width:640px){.diffs{grid-template-columns:1fr}}
+.diff{--c:#8FB0FF;text-align:left;display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:12px;border:2px solid var(--c);background:linear-gradient(160deg,color-mix(in srgb,var(--c) 22%,transparent),transparent 70%),var(--panel);color:var(--text);cursor:pointer;font:inherit}
+.diff:hover{box-shadow:0 0 0 2px var(--c)}
+.diff.c-el{--c:#FF7A1A}.diff.c-ecl{--c:#1FCB64}
+.diff .dl{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--c)}
+.diff b{font:700 22px/1.1 var(--display);text-transform:uppercase}
+.diff small{font-size:12.5px;color:var(--muted);line-height:1.4}
 .endgrid{display:grid;gap:16px;align-items:start}@media(min-width:900px){.endgrid{grid-template-columns:1.1fr 1fr}}
 .stat small{display:block;font-size:11px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tbl.matches td{padding:6px 6px;vertical-align:middle}.tbl.matches .rd{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
@@ -518,7 +529,24 @@ function splitPots(list, n){
   return pots;
 }
 // this run's pots: with players kept, every club is split into as many pots as there are picks left
-const runPots = r => r.potsN && r.potsN < 11 ? (W._pc && W._pc.n === r.potsN ? W._pc.p : (W._pc = { n: r.potsN, p: splitPots(W.draftable, r.potsN) }).p) : W.pots;
+/* difficulty: which clubs you draft from and which competition you start in; winning one moves the dynasty up */
+const COMPS = {
+  cl: { name: 'UEFA Champions League', short: 'Champions League', band: 0 },    // band: opponents ranked below this
+  el: { name: 'UEFA Europa League', short: 'Europa League', band: 25 },
+  ecl: { name: 'UEFA Conference League', short: 'Conference League', band: 75 }
+};
+const NEXT_COMP = { ecl: 'el', el: 'cl', cl: 'cl' };
+const DIFF = {
+  easy: { label: 'Easy', start: 'cl', share: 1 / 3, pool: 'the top third of the UEFA list' },
+  medium: { label: 'Medium', start: 'el', share: 2 / 3, pool: 'the top two thirds of the UEFA list' },
+  hard: { label: 'Hard', start: 'ecl', share: 1, pool: 'every club on the UEFA list' }
+};
+const compOf = r => COMPS[(r && r.comp) || 'cl'];
+// the top third (or two thirds) of the UEFA list by rank, among the clubs with enough players to draft from
+const poolOf = diff => { const d = DIFF[diff] || DIFF.hard, cut = Math.ceil((W.meta.ranked || 415) * d.share); return W.draftable.filter(id => W.C[id].rank <= cut); };
+const runPots = r => { const key = (r.diff || 'hard') + '|' + (r.potsN || 11);
+  if (!W._pc || W._pc.key !== key) W._pc = { key, p: splitPots(poolOf(r.diff), r.potsN || 11) };
+  return W._pc.p; };
 /* Shared by demo and live data: eligibility, A-E grades, pots, opponent pool */
 function finalize(C, P, meta){
   const ids = Object.keys(C);
@@ -734,7 +762,7 @@ function playTie(a, b, legs, T){
    pi = n x points / (sum of points), capped at 1 (any capped club is always in, the rest share what is left).
    Systematic sampling over a shuffled list gives every club exactly that chance. */
 function drawOpponents(n){
-  const pool = shuffle([...W.oppPool]), w = id => W.ptsOf(W.C[id].rank);
+  const band = compOf(S.run).band, pool = shuffle(W.oppPool.filter(id => W.C[id].rank > band)), w = id => W.ptsOf(W.C[id].rank);
   const pi = new Map(), sure = new Set();
   for (let changed = true; changed;){
     changed = false;
@@ -831,12 +859,14 @@ const fmt = ms => { ms = Math.max(0, ms); const m = Math.floor(ms / 60000), s = 
 const nm = id => id === 'YOU' ? 'Your XI' : W.C[id].name;
 const STAGE_RANK = ['league', 'playoff', 'r16', 'qf', 'sf', 'final', 'champion'];
 
-function newRun(){
+function newRun(diff){
+  diff = S.dyn && S.dyn.diff ? S.dyn.diff : DIFF[diff] ? diff : 'medium';
+  const comp = S.dyn && S.dyn.comp ? S.dyn.comp : DIFF[diff].start;
   const kept = S.dyn && S.dyn.kept ? S.dyn.kept.filter(id => W.P[id] && W.P[id].starts >= MIN_STARTS) : [];
   const potCount = 11 - kept.length;
   // a dynasty remembers everyone who has played in it: whoever was let go cannot come back
   const ever = S.dyn && S.dyn.ever ? S.dyn.ever : [], gone = ever.filter(id => !kept.includes(id));
-  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null };
+  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null, diff, comp };
   S.dyn = null;
   drawClub();
   save(); render(); scrollTo(0, 0);
@@ -853,7 +883,7 @@ function drawClub(){
   r.note = ''; r.cut = []; r.tip = null;
   while (true){
     if (!cand.length){ // whole pot exhausted: fall back to any pot
-      cand = W.draftable.filter(c => !r.tried.includes(c));
+      cand = poolOf(r.diff).filter(c => !r.tried.includes(c));
       if (!cand.length){ r.club = null; return; }
       r.note = 'No club in pot ' + (pot + 1) + ' had a player who fits. Drawn from another pot.';
     }
@@ -929,12 +959,14 @@ function finish(){
   r.phase = 'done'; r.keepN = CFG.KEEP[st]; r.keepSel = [];
   st8.runs++;
   if (!st8.bestStage || STAGE_RANK.indexOf(st) > STAGE_RANK.indexOf(st8.bestStage)) st8.bestStage = st;
-  if (st === 'champion'){ st8.titles++; st8.streak++; st8.best = Math.max(st8.best, st8.streak); } else st8.streak = 0;
+  if (st === 'champion'){ st8.titlesBy = st8.titlesBy || {}; st8.titlesBy[r.comp || 'cl'] = (st8.titlesBy[r.comp || 'cl'] || 0) + 1; st8.titles++; st8.streak++; st8.best = Math.max(st8.best, st8.streak); } else st8.streak = 0;
   r.doneAt = Date.now();
 }
+// the next run of a dynasty: same difficulty; a title moves it up a competition
+const dynComp = r => ({ diff: r.diff || 'medium', comp: r.cup && r.cup.stage === 'champion' ? NEXT_COMP[r.comp || 'cl'] : (r.comp || 'cl') });
 function continueDynasty(){
   const r = S.run;
-  S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, streak: S.stats.streak, ever: everOf(r) } : null;
+  S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, streak: S.stats.streak, ever: everOf(r), ...dynComp(r) } : null;
   S.run = null; save();
   newRun();
 }
@@ -1009,27 +1041,30 @@ function viewHome(){
   const st = S.stats, d = S.dyn;
   const best = st.bestStage ? STAGE_NAME[st.bestStage] : 'None yet';
   const dyn = d ? `<section class="card dyn">
-      <div class="eyebrow">Dynasty alive · ${d.kept.length} kept</div>
+      <div class="eyebrow">Dynasty alive · ${COMPS[d.comp || 'cl'].short} · ${DIFF[d.diff || 'medium'].label} · ${d.kept.length} kept</div>
       <h3 style="margin-top:6px">Start your next run within <span class="num" data-cd="${d.deadline}">${fmt(d.deadline - Date.now())}</span></h3>
       <div class="pills">${d.kept.map(id => `<span class="pill" data-pid="${id}">${natTag(W.P[id])} · ${esc(W.P[id].name)} · ${W.P[id].prim}</span>`).join('') || '<span class="pill">No players kept</span>'}</div>
-      <p class="muted" style="margin:10px 0 0;font-size:13px">You draft ${11 - d.kept.length} new players, one from each of ${11 - d.kept.length} pots made from every club.</p>
+      <p class="muted" style="margin:10px 0 0;font-size:13px">You draft ${11 - d.kept.length} new players, one from each of ${11 - d.kept.length} pots made from your difficulty's clubs.</p>
     </section>` : '';
   const btns = d
     ? `<button class="btn primary" data-act="start">Continue dynasty</button><button class="btn ghost" data-act="fresh">${S.armed === 'fresh' ? 'Tap again to drop it' : 'Start fresh'}</button>`
-    : `<button class="btn primary" data-act="start">Start a run</button>`;
+    : '';
+  const picker = d ? '' : `<div class="diffs">${Object.entries(DIFF).map(([k, v]) => `<button class="diff c-${v.start}" data-act="start" data-d="${k}">
+      <span class="dl">${v.label}</span><b>${COMPS[v.start].short}</b><small>Draft from ${v.pool}.${v.start !== 'cl' ? ` Win it to move up${v.start === 'ecl' ? ' to the Europa League, then the Champions League' : ' to the Champions League'}.` : ''}</small></button>`).join('')}</div>`;
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><span class="chip">${W.meta.live ? 'Data ' + niceDate(W.meta.updated) : 'Demo data'}</span></header>
   <div class="stack">
     <section class="hero">
-      <div class="eyebrow">Euro Cup draft</div>
+      <div class="eyebrow">European football draft</div>
       <h1 style="margin-top:10px">Eleven pots.<br><em>One trophy.</em></h1>
-      <p>Draft one player from each of 11 pots of real clubs, rated on how they played against the clubs of the UEFA ranking in the last year. Then win the Euro Cup.</p>
+      <p>Draft one player from each of 11 pots of real clubs, rated on how they played against the clubs of the UEFA ranking in the last year. Then win in Europe, from the Conference League up to the Champions League.</p>
     </section>
     ${dyn}
-    <div class="btnrow">${btns}</div>
+    ${picker}
+    ${btns ? `<div class="btnrow">${btns}</div>` : ''}
     <div class="stats">
       <div class="stat"><b class="num">${st.runs}</b><span>Runs</span></div>
-      <div class="stat"><b class="num">${st.titles}</b><span>Titles</span></div>
+      <div class="stat"><b class="num">${st.titles}</b><span>Titles${st.titlesBy ? ' · ' + ['cl', 'el', 'ecl'].filter(k => st.titlesBy[k]).map(k => ({ cl: 'UCL', el: 'UEL', ecl: 'UECL' }[k]) + ' ' + st.titlesBy[k]).join(', ') : ''}</span></div>
       <div class="stat"><b class="num">${st.best}</b><span>Best title streak</span></div>
       <div class="stat"><b style="font-size:18px;line-height:1.55">${best}</b><span>Best finish</span></div>
     </div>
@@ -1039,6 +1074,7 @@ function viewHome(){
         <li>The world is every club on the UEFA 5-year ranking. A player counts with at least one start for one of those clubs in the last 365 days, against any opponent; with only a few starts his grade leans toward a squad player's.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
+        <li>Pick a difficulty for a new dynasty. Easy drafts from the top third of the UEFA list and plays the Champions League. Medium drafts from the top two thirds and starts in the Europa League. Hard drafts from every club and starts in the Conference League. Win your competition and the dynasty's next run moves up a level.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for reputation, attack, defence and form. Your team and every opponent get a rating from 40 to 99. A player plays a little below his level in a weak position, one he started in at most half as often as his main one; weak positions are faded on his card.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
@@ -1114,7 +1150,7 @@ function viewLineup(){
     ${pitch(r.picks, r.form, r.kept, false, true)}
     <div class="hint">Tap a player, then a highlighted spot, to move him.</div>
   </div>
-  <div class="dock"><div class="btnrow"><button class="btn primary" data-act="kickoff">Kick off the Euro Cup</button></div></div>`;
+  <div class="dock"><div class="btnrow"><button class="btn primary" data-act="kickoff">Kick off the ${compOf(r).short}</button></div></div>`;
 }
 
 function evHTML(e){
@@ -1144,8 +1180,8 @@ function evHTML(e){
     return bits.length ? `<div class="extra">${bits.join(' · ')}</div>` : '';
   };
   if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}"><div class="rd">${e.round} · Leg ${e.leg}${hv(e)}</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? tail(e) : ''}</div>`;
-  if (e.k === 'final') return `<div class="ev big"><div class="rd">Final</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? 'Champions of Europe' : 'Runners-up'}</b></div></div>`;
-  if (e.k === 'end') return `<div class="ev" style="display:block"><div class="rd">Full time</div>${e.champ !== 'YOU' ? `<div><b>${esc(nm(e.champ))}</b> won the Euro Cup.</div>` : '<div><b>You</b> are champions of Europe.</div>'}</div>`;
+  if (e.k === 'final') return `<div class="ev big"><div class="rd">Final</div><div class="opp">vs ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
+  if (e.k === 'end') return `<div class="ev" style="display:block"><div class="rd">Full time</div>${e.champ !== 'YOU' ? `<div><b>${esc(nm(e.champ))}</b> won the ${compOf(S.run).short}.</div>` : `<div><b>You</b> won the ${compOf(S.run).short}.</div>`}</div>`;
   return '';
 }
 /* fixtures that are certain but not played yet: the remaining matchdays, and the next knockout tie once it is set */
@@ -1173,7 +1209,7 @@ function viewCup(){
   const label = !next ? '' : next.k === 'md' ? 'Play matchday ' + next.n : next.k === 'table' ? 'See the table' : next.k === 'end' ? 'Full time' : next.k === 'final' ? 'Play the final' : 'Play ' + next.round.toLowerCase() + ', leg ' + next.leg;
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot"><span class="lbl">Run ends in</span><span class="ico">⏱</span> <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
-  <div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">Your XI · ${r.form}</div><h2>Euro Cup</h2></div>
+  <div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">Your XI · ${r.form}</div><h2>${compOf(r).short}</h2></div>
     <span class="muted" style="font-size:13px">36 clubs · 8 matchdays</span></div>
   <div class="grid2">
     <div class="feed">${evs.map(evHTML).join('') || drawCard(r.cup)}${pendingHTML(c)}</div>
@@ -1270,7 +1306,7 @@ function koBox(c){
 /* a short text summary of the run, for sending to friends */
 function shareText(r){
   const c = r.cup, k = campaign(r), st = c.stage;
-  const head = st === 'champion' ? 'Won the Euro Cup 🏆' : st === 'final' ? 'Lost the Euro Cup final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase();
+  const C_ = compOf(r), head = st === 'champion' ? `Won the ${C_.short} 🏆` : st === 'final' ? `Lost the ${C_.short} final` : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase();
   const top = Object.entries(k.g).sort((x, y) => y[1] - x[1])[0];
   const run = S.stats.streak > 1 && st === 'champion' ? ` · ${S.stats.streak} titles in a row` : '';
   const ko = k.ms.filter(m => m.k !== 'md').map(m => m.k === 'final' ? `Final v ${nm(m.opp)} ${m.s[0] + (m.et ? m.et[0] : 0)}:${m.s[1] + (m.et ? m.et[1] : 0)}${m.pens ? ` (p ${m.pens.a}:${m.pens.b})` : ''}` : m.leg === 2 ? `${RD_SHORT[m.round]} v ${nm(m.opp)} ${m.agg[0]}:${m.agg[1]} agg${m.pens ? ` (p ${m.pens.a}:${m.pens.b})` : ''}` : null).filter(Boolean);
@@ -1288,7 +1324,7 @@ async function shareRun(){
 }
 function viewDone(){
   const r = S.run, st = r.cup.stage, n = r.keepN, champ = st === 'champion';
-  const head = champ ? 'Champions of Europe' : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase();
+  const head = champ ? (r.comp === 'cl' || !r.comp ? 'Champions of Europe' : `${compOf(r).short} winners`) : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase();
   const lst = arrangement(r.picks, r.form).map(pid => W.P[pid]).map(p => {
     const on = r.keepSel.includes(p.id);
     return `<button class="krow${on ? ' on' : ''}" data-act="keep" data-p="${p.id}" data-pid="${p.id}" aria-pressed="${on}" ${n ? '' : 'disabled'}>
@@ -1301,7 +1337,7 @@ function viewDone(){
     <section class="card verdict${champ ? ' champ' : ''}">
       <div class="eyebrow">${champ ? 'Champions' : 'Season over'}</div>
       <h1 style="margin-top:8px">${head}</h1>
-      ${champ ? '<p style="margin:8px 0 0">You won the Euro Cup.</p>' : `<p style="margin:8px 0 0"><b>${esc(nm(r.cup.champ))}</b> won the Euro Cup.</p>`}
+      ${champ ? `<p style="margin:8px 0 0">You won the ${compOf(r).name}.${r.comp && r.comp !== 'cl' && n ? ` Next run: the <b>${COMPS[NEXT_COMP[r.comp]].short}</b>.` : ''}</p>` : `<p style="margin:8px 0 0"><b>${esc(nm(r.cup.champ))}</b> won the ${compOf(r).short}.</p>`}
       <div style="margin-top:14px"><button class="chip quit" data-act="share" style="padding:6px 14px;font-size:13px;color:var(--text)">Share result</button></div>
       <p class="muted" style="margin:10px 0 0">${n ? `You keep up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''}. Start the next run within <b class="num" style="color:var(--gold)" data-cd="${r.doneAt + CFG.TIMER_MS}">${fmt(r.doneAt + CFG.TIMER_MS - Date.now())}</b> or the dynasty ends.` : st === 'league' ? 'Out of the top 24, so the dynasty ends here. The next run starts from scratch.' : 'No players carry over. Next run starts from scratch.'}</p>
     </section>
@@ -1319,6 +1355,7 @@ function viewDone(){
 
 function render(){
   const r = S.run; if (PC) PC.hidden = true;
+  document.body.dataset.comp = (r && r.comp) || (S.dyn && S.dyn.comp) || '';
   try {
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
   } catch (e) {
@@ -1341,8 +1378,8 @@ document.addEventListener('click', e => {
     }
     return;
   }
-  if (a === 'start') newRun();
-  else if (a === 'fresh'){ if (S.armed === 'fresh'){ S.dyn = null; S.armed = null; S.stats.streak = 0; save(); newRun(); } else { S.armed = 'fresh'; render(); } }
+  if (a === 'start') newRun(b.dataset.d);
+  else if (a === 'fresh'){ if (S.armed === 'fresh'){ S.dyn = null; S.armed = null; S.stats.streak = 0; save(); render(); } else { S.armed = 'fresh'; render(); } }
   else if (a === 'pick') choose(b.dataset.p);
   else if (a === 'help') useHelp(b.dataset.k);
   else if (a === 'form'){ S.run.form = b.dataset.f; S.run.sel = null; save(); render(); }
@@ -1365,10 +1402,10 @@ document.addEventListener('click', e => {
   }
   else if (a === 'cont') continueDynasty();
   else if (a === 'share') shareRun();
-  else if (a === 'fresh2'){ S.run = null; S.dyn = null; save(); newRun(); }
+  else if (a === 'fresh2'){ S.run = null; S.dyn = null; save(); render(); }
   else if (a === 'home'){
     const r = S.run;
-    if (r && r.phase === 'done'){ S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: r.doneAt + CFG.TIMER_MS, ever: everOf(r) } : null; S.run = null; }
+    if (r && r.phase === 'done'){ S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: r.doneAt + CFG.TIMER_MS, ever: everOf(r), ...dynComp(r) } : null; S.run = null; }
     save(); render(); scrollTo(0, 0);
   }
 });
