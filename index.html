@@ -1008,12 +1008,20 @@ function kickoff(){
   const r = S.run; const T = null;
   r.cup = buildCup(T); r.phase = 'cup'; save(); render(); scrollTo(0, 0);
 }
+/* keep the next match at the top of the screen; a table or the play-off results just revealed come first */
+const toTop = el => scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + scrollY - 10), behavior: 'smooth' });
+function focusNext(){
+  const shown = [...document.querySelectorAll('.feed > .ev:not(.pend)')], last = shown[shown.length - 1];
+  const c = S.run && S.run.cup, ev = c && c.ev[c.shown - 1];
+  const el = ev && (ev.k === 'table' || ev.k === 'podone') ? last : document.querySelector('.feed > .ev.pend') || last;
+  if (el) toTop(el);
+}
 function step(all){
   const c = S.run.cup;
   c.shown = all ? c.ev.length : Math.min(c.ev.length, c.shown + 1);
   if (c.shown >= c.ev.length) finish();
   save(); render();
-  if (!all) requestAnimationFrame(() => { const l = [...document.querySelectorAll('.feed > .ev:not(.pend)')].pop(); if (l) l.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+  if (!all) requestAnimationFrame(focusNext);
 }
 function finish(){
   const r = S.run; if (r.phase === 'done') return;
@@ -1487,7 +1495,8 @@ document.addEventListener('click', e => {
   else if (a === 'cont'){
     // fewer kept than allowed: ask once more, in case the list was missed
     const r = S.run;
-    if (r && r.keepN && r.keepSel.length < r.keepN && S.armed !== 'cont'){ S.armed = 'cont'; render(); toast(`You can keep ${r.keepN} but chose ${r.keepSel.length}. Tap again to go on.`); }
+    if (r && r.keepN && r.keepSel.length < r.keepN && S.armed !== 'cont'){ S.armed = 'cont'; render(); toast(`You can keep ${r.keepN} but chose ${r.keepSel.length}. Tap again to go on.`);
+      requestAnimationFrame(() => { const k = document.querySelector('.krow'); const sec = k && (k.closest('section') || k.parentElement); if (sec) toTop(sec); }); }
     else { S.armed = null; continueDynasty(); }
   }
   else if (a === 'share') shareRun();
