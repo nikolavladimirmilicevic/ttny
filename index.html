@@ -543,9 +543,9 @@ const COMPS = {
 };
 const NEXT_COMP = { ecl: 'el', el: 'cl', cl: 'cl' };
 const DIFF = {
-  easy: { label: 'Easy', share: 1 / 3, pool: 'Top third of the UEFA list' },
-  medium: { label: 'Medium', share: 2 / 3, pool: 'Top two thirds' },
-  hard: { label: 'Hard', share: 1, pool: 'Every club on the list' }
+  easy: { label: 'Easy', share: 1 / 3, pool: 'Draft from Europe\'s elite' },
+  medium: { label: 'Medium', share: 2 / 3, pool: 'A wider mix of clubs' },
+  hard: { label: 'Hard', share: 1, pool: 'Anyone, from anywhere' }
 };
 const compOf = r => COMPS[(r && r.comp) || 'cl'];
 // the top third (or two thirds) of the UEFA list by rank, among the clubs with enough players to draft from
@@ -1108,7 +1108,7 @@ function viewHome(){
   const UP = { ecl: 'Win it to move up to the Europa League, then the Champions League.', el: 'Win it to move up to the Champions League.', cl: 'The top of the ladder.' };
   const picker = d ? '' : `<div class="pick"><div class="eyebrow">Start in</div><div class="diffs">${['cl', 'el', 'ecl'].map(k => `<button class="diff c-${k}${pref.comp === k ? ' on' : ''}" data-act="pickc" data-c="${k}" aria-pressed="${pref.comp === k}">
       <b>${COMPS[k].short}</b><small>${UP[k]}</small></button>`).join('')}</div>
-    <div class="eyebrow" style="margin-top:14px">Difficulty: the clubs you draft from</div><div class="seg">${Object.entries(DIFF).map(([k, v]) => `<button class="sg${pref.diff === k ? ' on' : ''}" data-act="pickd" data-d="${k}" aria-pressed="${pref.diff === k}"><b>${v.label}</b><small>${v.pool}</small></button>`).join('')}</div>
+    <div class="eyebrow" style="margin-top:14px">Difficulty</div><div class="seg">${Object.entries(DIFF).map(([k, v]) => `<button class="sg${pref.diff === k ? ' on' : ''}" data-act="pickd" data-d="${k}" aria-pressed="${pref.diff === k}"><b>${v.label}</b><small>${v.pool}</small></button>`).join('')}</div>
     <div class="btnrow" style="margin-top:14px"><button class="btn primary" data-act="start">Start a run</button></div></div>`;
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><span class="chip">${W.meta.live ? 'Data ' + niceDate(W.meta.updated) : 'Demo data'}</span></header>
@@ -1133,7 +1133,7 @@ function viewHome(){
         <li>The world is every club on the UEFA 5-year ranking. A player counts with at least one start for one of those clubs in the last 365 days, against any opponent; with only a few starts his grade leans toward a squad player's.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>A new dynasty starts with two choices. The competition: Champions League, Europa League or Conference League; win it and the dynasty's next run moves up a level. The difficulty: the clubs you draft from, the top third of the UEFA list (easy), the top two thirds (medium) or every club (hard).</li>
+        <li>A new dynasty starts with two choices. The competition: Champions League, Europa League or Conference League; win it and the dynasty's next run moves up a level. The difficulty sets how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for reputation, attack, defence and form. Your team and every opponent get a rating from 40 to 99. A player plays a little below his level in a weak position, one he started in at most half as often as his main one; weak positions are faded on his card.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
