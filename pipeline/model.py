@@ -19,7 +19,9 @@ HFA_ELO = 60             # home advantage inside the Elo updates
 SHARE = {'level': 0.55, 'role': 0.15, 'perf': 0.30}
 OVR_MEAN, OVR_SD = 72, 7.5
 PERF_PRIOR = 10          # average matches of shrinkage toward his line's mean match rating
-SECONDARY_PENALTY = 2    # overall points a player loses away from his main position (applied in the game)
+EXPERIENCE_STARTS = 10   # starts for a full rating; fewer pull the score toward a squad player's
+SQUAD_Z = -0.5           # the score a player with almost no starts is pulled toward (a squad player, about a D)
+SECONDARY_PENALTY = 3    # overall points a player loses away from his main position (applied in the game)
 LINE = {'GK': 'GK', 'CB': 'DEF', 'LB': 'DEF', 'RB': 'DEF', 'DMF': 'MID', 'CMF': 'MID', 'LMF': 'MID', 'RMF': 'MID',
         'AMF': 'MID', 'LWF': 'FWD', 'RWF': 'FWD', 'CF': 'FWD'}
 ND = statistics.NormalDist()
@@ -239,7 +241,12 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until):
             form_z[i] = (fv[i] - fm) / fs
     z = lambda key: zscores({p['id']: raw[p['id']][key] for p in ok})
     lz, rz = z('level'), z('role')
-    score = {i: SHARE['level'] * lz[i] + SHARE['role'] * rz[i] + SHARE['perf'] * perf_z[i] for i in lz}
+    starts_of = {p['id']: len(starts.get(p['id'], [])) for p in ok}
+    def blended(i):
+        sc = SHARE['level'] * lz[i] + SHARE['role'] * rz[i] + SHARE['perf'] * perf_z[i]
+        e = min(1.0, starts_of[i] / EXPERIENCE_STARTS)   # 1 start = 10% of his own score, 10+ starts = all of it
+        return e * sc + (1 - e) * SQUAD_Z
+    score = {i: blended(i) for i in lz}
     pct = pct_ranks(score)
     # the parts shown on the card, as percentiles: level among all; attack, defence and form within the line
     att, dfn = {}, {}

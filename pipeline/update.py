@@ -636,7 +636,7 @@ def display_name(e, pid):
 
 
 DEF_POS = {'GK', 'CB', 'LB', 'RB', 'DMF'}
-MIN_STARTS = int(os.environ.get('MIN_STARTS', '3'))   # starts in the window a player needs to be rated and drafted
+MIN_STARTS = int(os.environ.get('MIN_STARTS', '1'))   # starts in the window a player needs to be rated and drafted
 
 
 def build_world(clubs, teams, fx, lu, squads, people, evs=None):
@@ -701,7 +701,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
             cs = sum(1 for s in st[:10] if s[2] == 0 and s[3] in DEF_POS)
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': fix_text(display_name(e, pid)), 'nat': e.get('nat'), 'age': e.get('age'),
-                                'club': tid, 'prim': pos[0], 'pos': pos, 'starts': len(st), 'g': g, 'a': a, 'cs': cs,
+                                'club': tid, 'prim': pos[0], 'pos': pos, 'pc': [cnt[k] for k in pos] if cnt else [1], 'starts': len(st), 'g': g, 'a': a, 'cs': cs,
                                 'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]],
                                 'or': [s[5] for s in st[:10]], 'm': m})
     return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'ranked': len(clubs), 'clubs': out_clubs, 'players': out_players}

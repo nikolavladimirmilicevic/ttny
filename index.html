@@ -155,6 +155,8 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .pc-two .gt{margin-top:2px}
 .pcard .poss b,.pcard .poss i{font-style:normal;font-weight:500;font-size:11px;padding:0 5px;border-radius:4px;background:var(--panel)}
 .pcard .poss b{background:var(--gold);color:var(--gold-ink)}
+.pcard .poss i.wk{background:transparent;border:1px dashed var(--muted);color:var(--muted);opacity:.8}
+.wk{opacity:.55;font-style:italic}
 .pcard .gr{display:flex;gap:6px;margin-top:12px}
 .slot.edit{cursor:pointer}
 .slot.sel .dot{box-shadow:0 0 0 3px var(--text),0 4px 12px rgba(0,0,0,.4)}
@@ -550,13 +552,13 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, ovr: p.ovr, lvl: p.lvl, at: p.att, df: p.def, fm: p.frm };
+    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, at: p.att, df: p.def, fm: p.frm };
     club.squad.push(pid);
   }
   return finalize(C, P, { live: true, updated: raw.updated, ranked: raw.ranked || Math.max(...raw.clubs.map(c => c.rank)), model: raw.model || null });
 }
 let W;
-const MIN_STARTS = 3;   // starts in the last year a player needs to be drafted (the pipeline uses the same)
+const MIN_STARTS = 1;   // starts in the last year a player needs to be drafted (the pipeline uses the same)
 const niceDate = d => { const t = new Date(d + 'T12:00:00Z'); return isNaN(t) ? esc(d) : t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); };
 function unent(t){ return String(t || '').replace(/&apos;|&#0?39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&'); }
 
@@ -601,7 +603,12 @@ function playerRating(pid){
   return { ov: p.ovr, q: { pe: p.lvl, at: p.at, df: p.df, fo: p.fm } };
 }
 // a player's overall where he stands: a little lower away from his main position
-function effOvr(pid, code){ const p = W.P[pid]; return p.ovr - (code && code !== p.prim ? W.pen : 0); }
+// a weak position: one he started in at most half as often as his most frequent one; he plays below his level there
+function isWeak(p, code){
+  if (!p.pc) return code !== p.prim;
+  const i = p.pos.indexOf(code); return i < 0 || p.pc[i] <= Math.max(...p.pc) / 2;
+}
+function effOvr(pid, code){ const p = W.P[pid]; return p.ovr - (code && isWeak(p, code) ? W.pen : 0); }
 const xiElo = ov => W.xi.alpha + W.xi.beta * ov;
 const eloOv = elo => (elo - W.xi.alpha) / W.xi.beta;   // a rating on the overall scale, for showing clubs as letters
 function teamOvr(picks, form){
@@ -635,7 +642,7 @@ function assign(pids, form){
     if (k === order.length) return true;
     const i = order[k], p = ps[i];
     const c = slots.map((_, j) => j).filter(j => used[j] < 0 && p.pos.includes(slots[j][0]));
-    c.sort((a, b) => (slots[a][0] === p.prim ? 0 : 1) - (slots[b][0] === p.prim ? 0 : 1));
+    c.sort((a, b) => (slots[a][0] === p.prim ? 0 : isWeak(p, slots[a][0]) ? 2 : 1) - (slots[b][0] === p.prim ? 0 : isWeak(p, slots[b][0]) ? 2 : 1));
     for (const j of c){ used[j] = i; if (bt(k + 1)) return true; used[j] = -1; }
     return false;
   }
@@ -946,7 +953,8 @@ function tick(){
 
 /* ================= RENDER ================= */
 const gBadge = (g, lbl) => `<span class="g g${g}" title="${lbl} ${g}"><small>${lbl}</small>${g}</span>`;
-function posText(p){ return `<b>${p.prim}</b>${p.pos.length > 1 ? ' · ' + p.pos.filter(x => x !== p.prim).join(' · ') : ''}`; }
+// positions, most played first: the main one bold, the other strong ones plain, the weak ones faded
+function posText(p){ return p.pos.map(x => x === p.prim ? `<b>${x}</b>` : isWeak(p, x) ? `<span class="wk">${x}</span>` : x).join(' · '); }
 const LINES = ['GK', 'DEF', 'MID', 'FWD'];
 const POS_ORDER = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'CF'];
 const quitBtn = () => `<button class="chip quit${S.armed === 'quit' ? ' warn' : ''}" data-act="quit">${S.armed === 'quit' ? (S.run && S.run.kept.length ? 'Tap again: dynasty ends' : 'Tap again to quit') : 'Quit run'}</button>`;
@@ -965,7 +973,7 @@ function cardHTML(p){
   return `<div class="pc-head"><div style="min-width:0"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age}</div></div>
       ${r ? `<div class="pc-ov g${ovGrade(r.ov)}"><b>${ovGrade(r.ov)}</b><small>Overall</small></div>` : ''}</div>
     <div class="pc-club">${esc(c.name)}</div>
-    <div class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : `<i>${x}</i>`).join('')}</div>
+    <div class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : isWeak(p, x) ? `<i class="wk" title="Weaker here">${x}</i>` : `<i>${x}</i>`).join('')}</div>
     ${r ? `<div class="pc-sec pc-ped"><span>Reputation</span>${badge(qGrade(r.q.pe))}</div>
     <div class="pc-sec">${p.prim === 'GK' ? '' : row('Attack', '', qGrade(r.q.at))}${row('Defence', '', qGrade(r.q.df))}</div>
     <div class="pc-sec">${row('Form', '', qGrade(r.q.fo), true)}</div>` : ''}`;
@@ -1028,11 +1036,11 @@ function viewHome(){
     <details class="rules">
       <summary>How it works</summary>
       <ol>
-        <li>The world is every club on the UEFA 5-year ranking. A player counts with at least 3 starts for one of those clubs in the last 365 days, against any opponent.</li>
+        <li>The world is every club on the UEFA 5-year ranking. A player counts with at least one start for one of those clubs in the last 365 days, against any opponent; with only a few starts his grade leans toward a squad player's.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for reputation, attack, defence and form. Your team and every opponent get a rating from 40 to 99. A player loses a little away from his main position.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for reputation, attack, defence and form. Your team and every opponent get a rating from 40 to 99. A player plays a little below his level in a weak position, one he started in at most half as often as his main one; weak positions are faded on his card.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>The further you go, the more players you keep: play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final or title 10. The clubs are then split into as many pots as you have picks left.</li>
