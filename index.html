@@ -570,7 +570,7 @@ const gTag = n => `<span class="gt g${grade(n)}">${grade(n)}</span>`;
    Base: how often the home side wins, draws and loses (1X2) across every match between ranked clubs in the last year.
    Each side gets a strength (0-1): half its UEFA points percentile, half the average of its results percentiles.
    Every result is adjusted for the opponent (see buildModel). The base is tilted by each side's strength, the two tilted
-   1X2s are crossed, and the result is drawn; the score is then drawn from real scorelines with that result.
+   1X2s are crossed, and the result is drawn; the score is then drawn from real scorelines with that result, from matches just as uneven.
    Clubs: points per game (all, last 5, home or away), goals scored and conceded per game.
    Your XI: the same from each player's own starts, plus his own contribution ranked within his line. */
 const PPG = r => r[2] > r[3] ? 3 : r[2] === r[3] ? 1 : 0;
@@ -658,6 +658,20 @@ function buildModel(w, elig){
     for (let k = 0; k <= 1.2; k += 0.02){ let ll = 0; for (const [sh, sa, o] of fit) ll += Math.log(Math.max(1e-9, probs1x2(sh, sa, w.base, k)[o])); if (!best || ll > best[0]) best = [ll, k]; }
     w.k = Math.round(best[1] * 100) / 100; w.kFit = fit.length;
   }
+  /* Scorelines by how uneven the match is: the real matches between drawable clubs, split into five equal groups by
+     home strength minus away strength. A score is drawn from the group the match falls in, so a big favourite wins
+     big more often and an upset is usually narrow. */
+  const sm = []; for (const id of w.oppPool) for (const r of C[id].m) if (r[1] && byR[r[0]]) sm.push([C[id].S.h - C[byR[r[0]]].S.a, r[2], r[3]]);
+  if (sm.length >= 300){
+    sm.sort((a, b) => a[0] - b[0]);
+    const G = 5, edges = [], tabs = [];
+    for (let g = 0; g < G; g++){
+      const part = sm.slice(Math.floor(g * sm.length / G), Math.floor((g + 1) * sm.length / G)), t = { '1': {}, 'X': {}, '2': {} };
+      for (const [, h, a] of part){ const o = h > a ? '1' : h === a ? 'X' : '2', k = h + ':' + a; t[o][k] = (t[o][k] || 0) + 1; }
+      tabs.push(t); if (g) edges.push(part[0][0]);
+    }
+    w.scoreB = { edges, tabs };
+  }
   w.scores = M.scores || { '1': { '1:0': 3, '2:1': 3, '2:0': 2, '3:1': 1 }, 'X': { '1:1': 3, '0:0': 2, '2:2': 1 }, '2': { '0:1': 3, '1:2': 3, '0:2': 2, '1:3': 1 } };
 }
 function playerRating(pid){
@@ -702,8 +716,11 @@ function probs1x2(sh, sa, base, k){
   const q = [h[0] / th * a[0] / ta / H, h[1] / th * a[1] / ta / D, h[2] / th * a[2] / ta / A], t = q[0] + q[1] + q[2];
   return q.map(x => x / t);
 }
-function drawScore(res){
-  const tab = W.scores[res], tot = Object.values(tab).reduce((a, b) => a + b, 0); let x = MR() * tot;
+function drawScore(res, d){
+  let tab = W.scores[res];
+  if (W.scoreB && d != null){ const B = W.scoreB; let g = 0; while (g < B.edges.length && d >= B.edges[g]) g++;
+    const t = B.tabs[g][res]; if (Object.values(t).reduce((a, b) => a + b, 0) >= 15) tab = t; }   // a thin group falls back to all matches
+  const tot = Object.values(tab).reduce((a, b) => a + b, 0); let x = MR() * tot;
   for (const [k, n] of Object.entries(tab)){ x -= n; if (x <= 0) return k.split(':').map(Number); }
   return Object.keys(tab)[0].split(':').map(Number);
 }
@@ -763,9 +780,9 @@ const canMove = (a, form, from, to) => { const slots = FORMS[form], p = W.P[a[fr
 function simMatch(a, b, T, et, home){
   const neutral = home !== a && home !== b, H = neutral ? a : home, A_ = H === a ? b : a;
   const base = neutral ? [(W.base[0] + W.base[2]) / 2, W.base[1], (W.base[0] + W.base[2]) / 2] : W.base;
-  const p = probs1x2(strength(H, neutral ? 'n' : 'h'), strength(A_, neutral ? 'n' : 'a'), base, W.k);
+  const sh = strength(H, neutral ? 'n' : 'h'), sa = strength(A_, neutral ? 'n' : 'a'), p = probs1x2(sh, sa, base, W.k);
   const u = MR(), res = u < p[0] ? '1' : u < p[0] + p[1] ? 'X' : '2';
-  let [gh, ga] = drawScore(res);
+  let [gh, ga] = drawScore(res, sh - sa);
   if (et){ const thin = n => { let k = 0; for (let i = 0; i < n; i++) if (MR() < 1 / 3) k++; return k; }; gh = thin(gh); ga = thin(ga); }   // extra time: a third of a match
   return H === a ? [gh, ga] : [ga, gh];
 }
@@ -1120,7 +1137,7 @@ function viewHome(){
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows an overall grade from A to E; hover him for reputation, collective and individual attack and defence, and form. Your team's big number (40 to 99) is the strength it takes into every match.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
-        <li>Matches start from real football: how often the home side wins, draws and loses across every match between ranked clubs in the last year. Each side then tilts those odds by its strength. A club's strength is half its UEFA points and half five results measures: points per game, points per game in the last 5, at home or away, goals scored and goals conceded. Every result is judged against the opponent: a win, a goal or a clean sheet against a strong side counts for more, and the strength of whole leagues comes through the European matches between them. Your XI's strength is the same from your players' starts, plus each player's own contribution, ranked against his own line: goals and assists for forwards, clean sheets for keepers, both for the rest. The two tilted odds are combined, the result is drawn, and the score is a real scoreline with that result.</li>
+        <li>Matches start from real football: how often the home side wins, draws and loses across every match between ranked clubs in the last year. Each side then tilts those odds by its strength. A club's strength is half its UEFA points and half five results measures: points per game, points per game in the last 5, at home or away, goals scored and goals conceded. Every result is judged against the opponent: a win, a goal or a clean sheet against a strong side counts for more, and the strength of whole leagues comes through the European matches between them. Your XI's strength is the same from your players' starts, plus each player's own contribution, ranked against his own line: goals and assists for forwards, clean sheets for keepers, both for the rest. The two tilted odds are combined, the result is drawn, and the score is a real scoreline with that result from matches just as uneven, so a big favourite wins big more often and an upset is usually narrow.</li>
         <li>The further you go, the more players you keep: play-off 1, Round of 16 2, quarter-final 3, semi-final 4, final 5, title 6. New picks then come only from the top pots.</li>
         <li>A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
         <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends. Missing the top 24 of the league phase ends it too.</li>
