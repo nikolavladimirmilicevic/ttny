@@ -18,6 +18,7 @@ K_BASE = 20              # Elo step
 HFA_ELO = 60             # home advantage inside the Elo updates
 SHARE = {'level': 0.55, 'role': 0.15, 'perf': 0.30}
 OVR_MEAN, OVR_SD = 72, 7.5
+PERF_PRIOR = 10          # average matches of shrinkage toward his line's mean match rating
 SECONDARY_PENALTY = 2    # overall points a player loses away from his main position (applied in the game)
 LINE = {'GK': 'GK', 'CB': 'DEF', 'LB': 'DEF', 'RB': 'DEF', 'DMF': 'MID', 'CMF': 'MID', 'LMF': 'MID', 'RMF': 'MID',
         'AMF': 'MID', 'LWF': 'FWD', 'RWF': 'FWD', 'CF': 'FWD'}
@@ -201,11 +202,15 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until):
         by_team = defaultdict(list)
         for s in ss:
             by_team[s[1]].append(s[0])
+        # a stint runs from his first start for a club until his first start for another club after it (or today),
+        # so a long injury or a place on the bench counts against him
+        firsts = sorted((min(ds), t) for t, ds in by_team.items())
         role = 0
-        for t, ds in by_team.items():
-            lo, hi = min(ds), max(ds)
-            n = sum(1 for d in team_games[t] if lo <= d <= hi) or len(ds)
-            role += len(ds) * min(1.0, len(ds) / n)
+        for k, (lo, t) in enumerate(firsts):
+            lo = since if k == 0 else lo   # his first club counts from the start of the window: time out injured counts too
+            hi = firsts[k + 1][0] if k + 1 < len(firsts) else until
+            n = sum(1 for d in team_games[t] if lo <= d <= hi) or len(by_team[t])
+            role += len(by_team[t]) * min(1.0, len(by_team[t]) / n)
         role /= len(ss)
         rated = [(s[6] - slope * (R(s[2]) - 1700) / 100) for s in ss if s[6] is not None and s[5] >= 30]
         form = [s[6] for s in ss[:5] if s[6] is not None]
@@ -224,7 +229,7 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until):
     for line, pids in by_line.items():
         rated = [raw[i]['perf'] for i in pids if raw[i]['perf'][1] >= 5]
         m0 = sum(s for s, n in rated) / max(1, sum(n for s, n in rated)) if rated else 6.8
-        vals = {i: (raw[i]['perf'][0] + 5 * m0) / (raw[i]['perf'][1] + 5) for i in pids}
+        vals = {i: (raw[i]['perf'][0] + PERF_PRIOR * m0) / (raw[i]['perf'][1] + PERF_PRIOR) for i in pids}
         mu, sd = statistics.mean(vals.values()), statistics.pstdev(vals.values()) or 1
         for i in pids:
             perf_z[i] = (vals[i] - mu) / sd

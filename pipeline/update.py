@@ -636,6 +636,7 @@ def display_name(e, pid):
 
 
 DEF_POS = {'GK', 'CB', 'LB', 'RB', 'DMF'}
+MIN_STARTS = int(os.environ.get('MIN_STARTS', '3'))   # starts in the window a player needs to be rated and drafted
 
 
 def build_world(clubs, teams, fx, lu, squads, people, evs=None):
@@ -661,9 +662,10 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
                 continue
             if side in top and opp in top:
                 club_res[side].append((f['d'], sc, co, int(top[opp]['rank']), side == h))
-            if opp in top and codes:
-                for pid, code in codes:
-                    starts[pid].append((f['d'], sc, co, code, fid, int(top[opp]['rank']), side == h, int(top[side]['rank']) if side in top else 0))
+            # a player's starts: every match with positions, ranked opponent or not (opponent rank 0 = off the list)
+            for pid, code in codes:
+                starts[pid].append((f['d'], sc, co, code, fid, int(top[opp]['rank']) if opp in top else 0, side == h,
+                                    int(top[side]['rank']) if side in top else 0))
     out_clubs = []
     for tid, c in top.items():
         res = sorted(club_res[tid], reverse=True)
@@ -678,7 +680,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
             if pid in seen:
                 continue
             st = sorted(starts.get(pid, []), reverse=True)
-            if len(st) < 10 or not (people.get(str(pid)) or {}).get('nat'):   # 10+ starts, and a known nationality
+            if len(st) < MIN_STARTS or not (people.get(str(pid)) or {}).get('nat'):   # a few starts, and a known nationality
                 continue
             seen.add(pid)
             cnt = Counter(s[3] for s in st[:10] if s[3])   # positions from the same last 10 starts as the grades

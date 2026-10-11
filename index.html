@@ -522,10 +522,10 @@ function finalize(C, P, meta){
   const ids = Object.keys(C);
   const elig = [];
   for (const p of Object.values(P)){
-    if (p.starts >= 10 && p.sc && p.sc.length === 10){
-      p.avgS = p.sc.reduce((a, b) => a + b, 0) / 10; p.avgC = p.co.reduce((a, b) => a + b, 0) / 10;
+    if (p.starts >= MIN_STARTS && p.sc && p.sc.length){
+      p.avgS = p.sc.reduce((a, b) => a + b, 0) / p.sc.length; p.avgC = p.co.reduce((a, b) => a + b, 0) / p.co.length;
       elig.push(p);
-    } else p.starts = Math.min(p.starts || 0, 9);
+    } else p.starts = Math.min(p.starts || 0, MIN_STARTS - 1);
   }
   // relative grades: top 20% = A ... bottom 20% = E (ties share the better grade)
   const grade = (arr, key, asc) => {
@@ -533,7 +533,7 @@ function finalize(C, P, meta){
     let prevV = null, prevG = null;
     s.forEach((p, i) => { const g = (prevV === p[key]) ? prevG : 'ABCDE'[Math.min(4, Math.floor(i / s.length * 5))]; p[asc ? 'def' : 'att'] = g; prevV = p[key]; prevG = g; });
   };
-  for (const id of ids){ C[id].elig = C[id].squad.filter(p => P[p].starts >= 10); }
+  for (const id of ids){ C[id].elig = C[id].squad.filter(p => P[p].starts >= MIN_STARTS); }
   const draftable = ids.filter(id => C[id].elig.length >= 11).sort((a, b) => C[a].rank - C[b].rank);
   // 11 pots as even as possible; leftover clubs go to the lowest pots (100 clubs = 10 x 9 + 10)
   const pots = splitPots(draftable, 11);
@@ -556,6 +556,7 @@ function worldFromData(raw){
   return finalize(C, P, { live: true, updated: raw.updated, ranked: raw.ranked || Math.max(...raw.clubs.map(c => c.rank)), model: raw.model || null });
 }
 let W;
+const MIN_STARTS = 3;   // starts in the last year a player needs to be drafted (the pipeline uses the same)
 const niceDate = d => { const t = new Date(d + 'T12:00:00Z'); return isNaN(t) ? esc(d) : t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); };
 function unent(t){ return String(t || '').replace(/&apos;|&#0?39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&'); }
 
@@ -823,7 +824,7 @@ const nm = id => id === 'YOU' ? 'Your XI' : W.C[id].name;
 const STAGE_RANK = ['league', 'playoff', 'r16', 'qf', 'sf', 'final', 'champion'];
 
 function newRun(){
-  const kept = S.dyn && S.dyn.kept ? S.dyn.kept.filter(id => W.P[id] && W.P[id].starts >= 10) : [];
+  const kept = S.dyn && S.dyn.kept ? S.dyn.kept.filter(id => W.P[id] && W.P[id].starts >= MIN_STARTS) : [];
   const potCount = 11 - kept.length;
   // a dynasty remembers everyone who has played in it: whoever was let go cannot come back
   const ever = S.dyn && S.dyn.ever ? S.dyn.ever : [], gone = ever.filter(id => !kept.includes(id));
@@ -1026,7 +1027,7 @@ function viewHome(){
     <details class="rules">
       <summary>How it works</summary>
       <ol>
-        <li>The world is every club on the UEFA 5-year ranking. A player counts only with 10+ starts against those clubs in the last 365 days.</li>
+        <li>The world is every club on the UEFA 5-year ranking. A player counts with at least 3 starts for one of those clubs in the last 365 days, against any opponent.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
