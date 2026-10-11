@@ -1,4 +1,4 @@
-// Draft bots for calibrating difficulty: node draft_bots.js <runs> [bonus table JSON or null]; needs the game served on 127.0.0.1:8830
+// Draft bots for calibrating difficulty: node draft_bots.js <runs> [{"lift":{cl,el,ecl},"chem":n} or null]; needs the game served on 127.0.0.1:8830
 const { chromium } = require('playwright');
 (async () => { const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }); const pg = await b.newPage(); const errs = []; pg.on('pageerror', e => errs.push(e.message)); await pg.route(/fonts/, r => r.abort());
  await pg.goto('http://127.0.0.1:8830/index.html'); await pg.waitForSelector('[data-act=start]');

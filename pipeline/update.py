@@ -713,7 +713,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
             # a player's starts: every match with positions, ranked opponent or not (opponent rank 0 = off the list)
             for pid, code in codes:
                 starts[pid].append((f['d'], sc, co, code, fid, int(top[opp]['rank']) if opp in top else 0, side == h,
-                                    int(top[side]['rank']) if side in top else 0))
+                                    int(top[side]['rank']) if side in top else 0, side))
     out_clubs = []
     for tid, c in top.items():
         res = sorted(club_res[tid], reverse=True)
@@ -755,7 +755,9 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
             out_players.append({'id': pid, 'name': fix_text(display_name(e, pid)), 'nat': e.get('nat'), 'age': e.get('age'),
                                 'club': tid, 'prim': pos[0], 'pos': pos, 'pc': [cnt[k] for k in pos] if cnt else [1], 'starts': len(st), 'g': g, 'a': a, 'cs': cs,
                                 'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]],
-                                'or': [s[5] for s in st[:10]], 'm': m})
+                                'or': [s[5] for s in st[:10]], 'm': m,
+                                # every team he started for in the window (clubs and national teams): for chemistry
+                                'tm': sorted({s[8] for s in st})})
     return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'ranked': len(clubs), 'clubs': out_clubs, 'players': out_players}
 
 
