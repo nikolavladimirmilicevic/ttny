@@ -498,13 +498,14 @@ def fetch_recent_days(top, fx, meta):
         log(f'  {d}: {n} fixtures with a ranked club')
 
 
-def fetch_lineups(top, fx, lu, evs):
+def fetch_lineups(top, fx, lu, evs, pst=None):
+    pst = {} if pst is None else pst
     """Starting XIs and goals (scorer, assist) for every finished fixture in the window that involves a ranked club."""
     need = [fid for fid, f in fx.items()
             if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat()
             and (f['h'] in top or f['a'] in top)
             and (fid not in lu or (not lu[fid] and days_old(f['d']) <= 3) or any(isinstance(v, list) for v in lu[fid].values())
-                 or (lu[fid] and fid not in evs))]   # older fixtures fetched before goals were kept
+                 or (lu[fid] and fid not in evs) or fid not in pst)]   # older fixtures fetched before goals or player stats were kept
     need.sort(key=lambda fid: fx[fid]['d'], reverse=True)
     log(f'  {len(need)} fixtures need line-ups')
     for i in range(0, len(need), 20):
@@ -532,9 +533,24 @@ def fetch_lineups(top, fx, lu, evs):
                 goals.append([(e.get('team') or {}).get('id'), (e.get('player') or {}).get('id'), (e.get('assist') or {}).get('id'),
                               kind, (e.get('time') or {}).get('elapsed')])
             evs[fid] = goals
+            # per player: [minutes, match rating, team id] from the API's own player statistics
+            ps = {}
+            for side in item.get('players') or []:
+                tid = (side.get('team') or {}).get('id')
+                for e in side.get('players') or []:
+                    pid = (e.get('player') or {}).get('id'); st = (e.get('statistics') or [{}])[0] or {}
+                    g = st.get('games') or {}
+                    try:
+                        rt = round(float(g.get('rating')), 2) if g.get('rating') else None
+                    except (TypeError, ValueError):
+                        rt = None
+                    if pid and (g.get('minutes') or 0) > 0:
+                        ps[str(pid)] = [g.get('minutes') or 0, rt, tid]
+            pst[fid] = ps
             got.add(fid)
         for fid in batch:
             lu.setdefault(fid, {})
+            pst.setdefault(fid, {})
 
 
 def fetch_squads(top_ids, squads, people):
@@ -841,6 +857,7 @@ def main():
     teams = load('teams', {})
     fx = load('fixtures', {})
     lu = load('lineups', {})
+    pst = load('pstats', {})
     evs = load('events', {})
     squads = load('squads', {})
     people = load('people', {})
@@ -857,7 +874,7 @@ def main():
         log('3/6 Latest results')
         fetch_recent_days(top, fx, meta)
         log('4/6 Line-ups')
-        fetch_lineups(top, fx, lu, evs)
+        fetch_lineups(top, fx, lu, evs, pst)
         core_done = True
         log('5/6 Rosters')
         fetch_squads(top_ids, squads, people)
@@ -872,7 +889,8 @@ def main():
             fx.pop(fid, None)
             lu.pop(fid, None)
             evs.pop(fid, None)
-        for name, obj in (('teams', teams), ('fixtures', fx), ('lineups', lu), ('events', evs), ('squads', squads), ('people', people), ('meta', meta)):
+            pst.pop(fid, None)
+        for name, obj in (('teams', teams), ('fixtures', fx), ('lineups', lu), ('events', evs), ('pstats', pst), ('squads', squads), ('people', people), ('meta', meta)):
             save(name, obj)
     world = build_world(clubs, teams, fx, lu, squads, people, evs)
     world['complete'] = stopped is None
