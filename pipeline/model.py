@@ -261,19 +261,14 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
         return e * sc + (1 - e) * SQUAD_Z
     score = {i: blended(i) for i in lz}
     pct = pct_ranks(score)
-    # the parts shown on the card, as percentiles: level among all; attack, defence and form within the line
-    att, dfn = {}, {}
-    for line, pids in by_line.items():
-        a = pct_ranks({i: raw[i]['ga90'] for i in pids})
-        dval = {i: raw[i]['cs'] - 0.25 * raw[i]['conc'] for i in pids}
-        d_ = pct_ranks(dval)
-        att.update(a); dfn.update(d_)
-    lvl_p, frm_p = pct_ranks({i: raw[i]['level'] for i in lz}), pct_ranks(form_z)
+    # the parts shown on the card are the overall's own ingredients, as percentiles:
+    # reputation (level) and role among all players, performance within his line; form (last 5) is shown beside them
+    lvl_p, rol_p, prf_p, frm_p = pct_ranks({i: raw[i]['level'] for i in lz}), pct_ranks(rz), pct_ranks(perf_z), pct_ranks(form_z)
     out = {}
     for i in score:
         ovr = OVR_MEAN + OVR_SD * ND.inv_cdf(min(0.9995, max(0.0005, pct[i])))
-        out[i] = {'ovr': round(max(45, min(97, ovr)), 1), 'lvl': round(lvl_p[i], 3), 'att': round(att[i], 3),
-                  'def': round(dfn[i], 3), 'frm': round(frm_p[i], 3)}
+        out[i] = {'ovr': round(max(45, min(97, ovr)), 1), 'lvl': round(lvl_p[i], 3), 'rol': round(rol_p[i], 3),
+                  'prf': round(prf_p[i], 3), 'frm': round(frm_p[i], 3)}
     return out, {'slope': round(slope, 4), 'rated_starts': len(xs)}
 
 
