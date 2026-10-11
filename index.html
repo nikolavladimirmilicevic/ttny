@@ -640,6 +640,14 @@ function buildModel(w, elig){
     // what counts as his own contribution depends on his line: keepers clean sheets, forwards goals + assists, the rest both
     q.ind = l === 'GK' ? q.cs : l === 'FWD' ? q.gapm : (q.gapm + q.cs) / 2;
     p.v = v; p.q = q; }
+  /* Your XI is an average of 11 players, so its raw strength bunches in the middle while a club's spans 0-1.
+     Calibrate it against the clubs themselves: each club's own XI (its 11 most-used rated players) gets the same
+     average, and your XI takes the club strength that sits at the same place in that order. As good as Arsenal's
+     own XI means as strong as Arsenal. */
+  const xi = [], cs = [];
+  for (const id of w.oppPool){ const ps = (C[id].elig || []).map(pid => w.P[pid]).filter(p => p.q).sort((a, b) => b.starts - a.starts).slice(0, 11);
+    if (ps.length < 11) continue; xi.push(ps.reduce((t, p) => t + simStrength(p.q), 0) / 11); cs.push(C[id].S.n); }
+  w.calib = xi.length >= 20 ? { x: asc(xi), y: asc(cs) } : null;
   const M = w.meta.model || {};
   w.base = M.base || [0.45, 0.24, 0.31]; w.k = M.k != null ? M.k : 0.8;
   // fit the tilt k here, on the strengths just computed: the value that makes them explain the real results best
@@ -668,14 +676,23 @@ function teamRating(picks, form){
   const rs = picks.map(pid => playerRating(pid));
   const m = k => Math.round(rs.reduce((t, r) => t + r[k], 0) / rs.length);
   // overall = the XI's strength in the simulation (the average of its players'), on the 40-99 scale
-  const st = rs.reduce((t, r) => t + r.st, 0) / rs.length;
+  const st = calibrate(rs.reduce((t, r) => t + r.st, 0) / rs.length);
   return Object.assign(parts(m('ta'), m('ia'), m('td'), m('id')), { st, ov: R(st), fo: m('fo'), pe: m('pe') });
 }
 // your XI's strength: 8 parameters, each the average of the 11 players' percentiles; venue 'h', 'a' or 'n'
 function youStrength(venue){
   // the same formula as each player's overall: the average of the 11 players' simulation strengths at this venue
   const ps = S.run.picks.map(id => W.P[id].q);
-  return ps.reduce((t, q) => t + simStrength(q, venue === 'h' ? q.ppgH : venue === 'a' ? q.ppgA : undefined), 0) / ps.length;
+  return calibrate(ps.reduce((t, q) => t + simStrength(q, venue === 'h' ? q.ppgH : venue === 'a' ? q.ppgA : undefined), 0) / ps.length);
+}
+// raw XI average -> club scale (quantile mapping, linear in between, held at the ends)
+function calibrate(v){
+  const c = W.calib; if (!c) return v;
+  const { x, y } = c, n = x.length;
+  if (v <= x[0]) return y[0]; if (v >= x[n - 1]) return y[n - 1];
+  let i = 1; while (x[i] < v) i++;
+  const t = (v - x[i - 1]) / Math.max(1e-9, x[i] - x[i - 1]);
+  return y[i - 1] + t * (y[i] - y[i - 1]);
 }
 const strength = (id, venue) => id === 'YOU' ? youStrength(venue) : W.C[id].S[venue];
 function probs1x2(sh, sa, base, k){
