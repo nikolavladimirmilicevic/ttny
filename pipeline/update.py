@@ -684,8 +684,12 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
                 continue
             seen.add(pid)
             cnt = Counter(s[3] for s in st[:10] if s[3])   # positions from the same last 10 starts as the grades
-            # offered positions: every position he started in during those last 10, most frequent first
-            pos = [k for k, _ in sorted(cnt.items(), key=lambda kv: -kv[1])]
+            # offered positions: every position he started in during those last 10, most frequent first;
+            # on a tie, the one he played most recently first (starts are newest first)
+            last = {}
+            for i, s in enumerate(st[:10]):
+                last.setdefault(s[3], i)
+            pos = [k for k, _ in sorted(cnt.items(), key=lambda kv: (-kv[1], last[kv[0]]))]
             pos = pos or ['CMF']
             # goals and assists per start (own goals and missed penalties do not count)
             g = a = 0
