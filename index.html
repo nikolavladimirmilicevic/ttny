@@ -1391,11 +1391,11 @@ document.addEventListener('pointermove', e => {
   const el = cardTarget(e.target);
   if (el) showCard(el, e.clientX, e.clientY); else PC.hidden = true;
 });
-document.addEventListener('pointerleave', () => PC.hidden = true);
+document.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') PC.hidden = true; });   // a finger lifting off the screen also 'leaves': keep the card
 document.addEventListener('pointerup', e => {
   if (e.pointerType === 'mouse') return;
   const el = cardTarget(e.target);
-  if (el){ const r = el.getBoundingClientRect(); showCard(el, r.left, r.bottom); clearTimeout(showCard.t); showCard.t = setTimeout(() => PC.hidden = true, 4000); }
+  if (el){ const r = el.getBoundingClientRect(); showCard(el, r.left, r.bottom); }
   else PC.hidden = true;
 });
 document.addEventListener('scroll', () => { if (!PC.hidden && matchMedia('(pointer:coarse)').matches) PC.hidden = true; }, { passive: true });
