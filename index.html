@@ -310,6 +310,13 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .pc-note{font-size:10px;color:var(--muted);margin-top:3px}
 .pc-chem .ci{display:inline-block;width:1.4em}
 @media (pointer:coarse){.pcard.sheet .pips i{width:14px;height:8px}.pcard.sheet .pc-stats b{font-size:22px}.pcard.sheet .pp{font-size:13px;padding:2px 8px}}
+.tbl tr.best td{color:var(--gold);font-weight:600}
+.tbl tr.best td:nth-child(2)::before,.tbl.matches tr.best td.op::before{content:'★ ';color:var(--gold)}
+.tbl td.best{color:var(--gold);font-weight:700;white-space:nowrap}.tbl td.best::before{content:'★';font-size:.75em;margin-right:2px}
+.tbl tr[data-pid].best td:first-child::before{content:'★ ';color:var(--gold)}
+.tbl tr[data-pid].best td:nth-child(2)::before{content:none}
+.nm.bestn::after{content:' ★';color:var(--gold)}
+.endgrid>*,.grid2>*,.stack>*{min-width:0}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
@@ -1432,9 +1439,10 @@ function viewCup(){
 }
 function squadBox(r){
   const arr = arrangement(r.picks, r.form), code = pid => FORMS[r.form][arr.indexOf(pid)][0];
-  const rows = arr.map(pid => W.P[pid]);
+  const rows = arr.map(pid => W.P[pid]).sort((x, y) => POS_ORDER.indexOf(code(x.id)) - POS_ORDER.indexOf(code(y.id)));
+  const top = Math.max(...rows.map(p => effOvr(p.id, code(p.id))));
   return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your players</div><div class="tblwrap"><table class="tbl num"><thead><tr><th style="text-align:left">Player</th><th style="text-align:left">Club</th><th>Pos</th><th>Ovr</th></tr></thead><tbody>
-    ${rows.map(p => { const gr = ovGrade(playerRating(p.id).ov); return `<tr data-pid="${p.id}"><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td style="text-align:left;white-space:nowrap" class="muted">${esc(W.C[p.club].name)}</td><td>${code(p.id)}</td><td><span class="gt g${gr}">${gr}</span></td></tr>`; }).join('')}</tbody></table></div></section>`;
+    ${rows.map(p => { const gr = ovGrade(playerRating(p.id).ov); return `<tr data-pid="${p.id}"${effOvr(p.id, code(p.id)) === top ? ' class="best"' : ''}><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td style="text-align:left;white-space:nowrap" class="muted">${esc(W.C[p.club].name)}</td><td>${code(p.id)}</td><td><span class="gt g${gr}">${gr}</span></td></tr>`; }).join('')}</tbody></table></div></section>`;
 }
 function viewTeam(){
   const r = S.run;
@@ -1466,7 +1474,7 @@ function tableAfter(c, k){
 function tableHTML(rows, title, sub){
   return `<section class="card"><div class="eyebrow" style="margin-bottom:4px">${title}</div>${sub ? `<div class="muted" style="font-size:13px;margin-bottom:8px">${sub}</div>` : ''}
     <div class="tblwrap"><table class="tbl num"><thead><tr><th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>
-    ${rows.map((t, i) => `<tr class="${i < 8 ? 'z1' : i < 24 ? 'z2' : ''}${t.id === 'YOU' ? ' me' : ''}"><td>${i + 1}</td><td>${esc(nm(t.id))}</td><td>${t.P}</td><td>${t.W}</td><td>${t.D}</td><td>${t.L}</td><td>${t.GF - t.GA > 0 ? '+' : ''}${t.GF - t.GA}</td><td>${t.Pts}</td></tr>`).join('')}
+    ${rows.map((t, i) => `<tr class="${i < 8 ? 'z1' : i < 24 ? 'z2' : ''}${t.id === 'YOU' ? ' me' : ''}${i === 0 && t.P ? ' best' : ''}"><td>${i + 1}</td><td>${esc(nm(t.id))}</td><td>${t.P}</td><td>${t.W}</td><td>${t.D}</td><td>${t.L}</td><td>${t.GF - t.GA > 0 ? '+' : ''}${t.GF - t.GA}</td><td>${t.Pts}</td></tr>`).join('')}
     </tbody></table></div></section>`;
 }
 const nextLabel = e => !e ? '' : e.k === 'md' ? 'Play matchday ' + e.n : e.k === 'table' ? 'Final table' : e.k === 'podone' ? 'Play the knockout play-off' : e.k === 'end' ? 'Season summary' : e.k === 'final' ? 'Play the final' : 'Play ' + e.round.toLowerCase() + ', leg ' + e.leg;
@@ -1532,7 +1540,7 @@ function seasonBox(r){
     const tie = m.k === 'leg' && m.leg === 2 ? `<b class="${m.won ? 'thru' : 'outt'}">${m.won ? 'Through' : 'Out'}${m.agg ? ` · ${m.agg[0]}:${m.agg[1]} agg` : ''}</b>` : '';
     const sc = (m.gl || []).map(([p]) => short(W.P[p].name)), cnt = {}; sc.forEach(n => cnt[n] = (cnt[n] || 0) + 1);
     const who = Object.entries(cnt).map(([n, x]) => x > 1 ? `${n} ${x}` : n).join(', ');
-    return `<tr><td class="rd">${rd}</td><td class="op">${esc(nm(m.opp))}${who || tie ? `<small>${tie}${tie && who ? ' · ' : ''}${esc(who)}</small>` : ''}</td><td class="muted">${ven}</td><td class="sc">${f}:${ag}${m.pens ? ` <small>p ${m.pens.a}:${m.pens.b}</small>` : m.et ? ' <small>aet</small>' : ''}</td><td><span class="res ${r_}">${r_}</span></td></tr>`;
+    return `<tr${k.big && m.opp === k.big.opp && f === k.big.f && ag === k.big.ag ? ' class="best" title="Biggest win"' : ''}><td class="rd">${rd}</td><td class="op">${esc(nm(m.opp))}${who || tie ? `<small>${tie}${tie && who ? ' · ' : ''}${esc(who)}</small>` : ''}</td><td class="muted">${ven}</td><td class="sc">${f}:${ag}${m.pens ? ` <small>p ${m.pens.a}:${m.pens.b}</small>` : m.et ? ' <small>aet</small>' : ''}</td><td><span class="res ${r_}">${r_}</span></td></tr>`;
   }).join('');
   return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your campaign</div>
     <div class="stats s3">${tile('Played', k.ms.length)}${tile('W-D-L', `${k.W_}-${k.D}-${k.L}`)}${tile('Goals', `${k.GF}:${k.GA}`)}${tile('Clean sheets', k.CS)}${tile('League phase', ord(c.pos))}${tile('Biggest win', k.big ? `${k.big.f}:${k.big.ag}` : '-', k.big ? 'v ' + esc(nm(k.big.opp)) : '')}</div>
@@ -1541,15 +1549,17 @@ function seasonBox(r){
 function playersBox(r){
   const k = campaign(r), g = k.g, a = k.a;
   const arr = arrangement(r.picks, r.form), code = pid => FORMS[r.form][arr.indexOf(pid)][0];
-  const rows = arr.map(pid => W.P[pid]).sort((x, y) => ((g[y.id] || 0) + (a[y.id] || 0)) - ((g[x.id] || 0) + (a[x.id] || 0)) || (g[y.id] || 0) - (g[x.id] || 0) || POS_ORDER.indexOf(code(x.id)) - POS_ORDER.indexOf(code(y.id)));
+  const rows = arr.map(pid => W.P[pid]).sort((x, y) => POS_ORDER.indexOf(code(x.id)) - POS_ORDER.indexOf(code(y.id)));
+  const mg = Math.max(0, ...rows.map(p => g[p.id] || 0)), ma = Math.max(0, ...rows.map(p => a[p.id] || 0));
+  const cell = (v, m) => `<td${m && v === m ? ' class="best"' : ''}>${v}</td>`;
   return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your players</div>
     <div class="tblwrap"><table class="tbl num"><thead><tr><th style="text-align:left">Player</th><th>Pos</th><th>G</th><th>A</th><th>Ovr</th></tr></thead><tbody>
-    ${rows.map(p => { const gr = ovGrade(playerRating(p.id).ov); return `<tr data-pid="${p.id}"><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td>${code(p.id)}</td><td>${g[p.id] || 0}</td><td>${a[p.id] || 0}</td><td><span class="gt g${gr}">${gr}</span></td></tr>`; }).join('')}</tbody></table></div></section>`;
+    ${rows.map(p => { const gr = ovGrade(playerRating(p.id).ov); return `<tr data-pid="${p.id}"><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td>${code(p.id)}</td>${cell(g[p.id] || 0, mg)}${cell(a[p.id] || 0, ma)}<td><span class="gt g${gr}">${gr}</span></td></tr>`; }).join('')}</tbody></table></div></section>`;
 }
 function topBox(r){
   const c = r.cup; if (!c.top) return '';
   const list = (title, L) => `<div class="card"><div class="eyebrow" style="margin-bottom:8px">${title}</div><div class="tblwrap"><table class="tbl num toplist"><tbody>
-    ${L.length ? L.map(([pid, n], i) => `<tr class="${r.picks.includes(pid) ? 'me' : ''}"><td>${i + 1}</td><td>${esc(W.P[pid].name)}<small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small></td><td>${n}</td></tr>`).join('') : '<tr><td>No goals</td></tr>'}</tbody></table></div></div>`;
+    ${L.length ? L.map(([pid, n], i) => `<tr class="${r.picks.includes(pid) ? 'me' : ''}${n === L[0][1] ? ' best' : ''}"><td>${i + 1}</td><td>${esc(W.P[pid].name)}<small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small></td><td>${n}</td></tr>`).join('') : '<tr><td>No goals</td></tr>'}</tbody></table></div></div>`;
   return `<div class="toplists">${list('Top scorers', c.top.g)}${list('Top assists', c.top.a)}</div>`;
 }
 /* knockout bracket: play-off -> Round of 16 -> quarter-finals -> semi-finals -> final, drawn as a tree */
@@ -1603,8 +1613,13 @@ function koBox(c, st){
   }));
   const heads = names.map((n, ci) => `<div class="bh" style="left:${x(ci)}px;width:${BW}px">${n}</div>`).join('');
   const W_ = x(4) + BW;
+  // keep the round that matters in view: the one being played, or after the season the last one you reached
+  let fc = -1;
+  if (Object.keys(st).length){ fc = KO_KEYS.findIndex(k => st[k] === 'leg1' || st[k] === 'names'); if (fc < 0) fc = KO_KEYS.map(k => st[k]).lastIndexOf('full'); }
+  else cols.forEach((ts, ci) => { if (ts.some(t => t && (t.a === 'YOU' || t.b === 'YOU'))) fc = ci; });
+  if (fc < 0) fc = 0;
   return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Knockout stage</div>
-    <div class="bracket-wrap"><div class="bracket" style="width:${W_}px;height:${H}px">${heads}<svg width="${W_}" height="${H}" aria-hidden="true">${paths}</svg>${boxes}</div></div>
+    <div class="bracket-wrap" data-focus="${Math.max(0, x(fc) - 12)}"><div class="bracket" style="width:${W_}px;height:${H}px">${heads}<svg width="${W_}" height="${H}" aria-hidden="true">${paths}</svg>${boxes}</div></div>
     <div class="muted" style="font-size:12px;margin-top:8px">Aggregate scores. <span class="wide-only">Hover a tie for the legs.</span><span class="narrow-only">Swipe sideways for the later rounds.</span></div></section>`;
 }
 /* a short text summary of the run, for sending to friends */
@@ -1666,10 +1681,11 @@ function viewComp(){
 /* who stays for the next run */
 function viewKeep(){
   const r = S.run, st = r.cup.stage, n = r.keepN, champ = st === 'champion';
+  const topOv = Math.max(...r.picks.map(id => W.P[id].ovr));
   const lst = arrangement(r.picks, r.form).map(pid => W.P[pid]).map(p => {
     const on = r.keepSel.includes(p.id);
     return `<button class="krow${on ? ' on' : ''}" data-act="keep" data-p="${p.id}" data-pid="${p.id}" aria-pressed="${on}" ${n ? '' : 'disabled'}>
-      <span class="box">${on ? '✓' : ''}</span><span style="min-width:0"><div class="nm" style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${natTag(p)} · ${p.pos.join(' · ')} · ${esc(W.C[p.club].name)}</div></span>
+      <span class="box">${on ? '✓' : ''}</span><span style="min-width:0"><div class="nm${p.ovr === topOv ? ' bestn' : ''}" style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${natTag(p)} · ${p.pos.join(' · ')} · ${esc(W.C[p.club].name)}</div></span>
       ${ovDot(playerRating(p.id), p)}</button>`;
   }).join('');
   return `${doneTop()}
@@ -1690,6 +1706,7 @@ function render(){
   const r = S.run; if (PC) PC.hidden = true;
   document.body.dataset.comp = (r && r.comp) || (S.dyn && S.dyn.comp) || (S.pref && S.pref.comp) || 'el';
   try {
+    requestAnimationFrame(() => document.querySelectorAll('.bracket-wrap[data-focus]').forEach(el => { el.scrollLeft = +el.dataset.focus; }));
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
   } catch (e) {
     // a saved run that no longer fits the data (new ratings, new positions): drop it rather than show a blank page
