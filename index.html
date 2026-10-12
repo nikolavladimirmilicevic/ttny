@@ -1786,24 +1786,6 @@ function koBox(c, st){
     <div class="muted" style="font-size:12px;margin-top:8px">Aggregate scores. <span class="wide-only">Hover a tie for the legs.</span><span class="narrow-only">Swipe sideways for the later rounds.</span></div></section>`;
 }
 /* a short text summary of the run, for sending to friends */
-function shareText(r){
-  const c = r.cup, k = campaign(r), st = c.stage;
-  const C_ = compOf(r), head = st === 'champion' ? `Won the ${C_.short} 🏆` : st === 'final' ? `Lost the ${C_.short} final` : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase();
-  const top = Object.entries(k.g).sort((x, y) => y[1] - x[1])[0];
-  const run = S.stats.streak > 1 && st === 'champion' ? ` · ${S.stats.streak} titles in a row` : '';
-  const ko = k.ms.filter(m => m.k !== 'md').map(m => m.k === 'final' ? `Final v ${nm(m.opp)} ${m.s[0] + (m.et ? m.et[0] : 0)}:${m.s[1] + (m.et ? m.et[1] : 0)}${m.pens ? ` (p ${m.pens.a}:${m.pens.b})` : ''}` : m.leg === 2 ? `${RD_SHORT[m.round]} v ${nm(m.opp)} ${m.agg[0]}:${m.agg[1]} agg${m.pens ? ` (p ${m.pens.a}:${m.pens.b})` : ''}` : null).filter(Boolean);
-  return [`This Time Next Year · ${head}${run}${(r.season || 1) > 1 ? ` · season ${r.season} of the dynasty` : ''}`,
-    `League phase ${ord(c.pos)} · ${k.W_}-${k.D}-${k.L} · goals ${k.GF}:${k.GA}`,
-    ...ko,
-    top ? `Top scorer: ${W.P[top[0]].name} (${top[1]})` : '',
-    `XI (${r.form}): ${arrangement(r.picks, r.form).map(id => short(W.P[id].name)).join(', ')}`].filter(Boolean).join('\n');
-}
-async function shareRun(){
-  const t = shareText(S.run);
-  try { if (navigator.share && matchMedia('(pointer:coarse)').matches){ await navigator.share({ text: t }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(t); toast('Result copied. Paste it anywhere.'); }
-  catch (e) { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); toast('Result copied. Paste it anywhere.'); } catch (x) { toast('Could not copy.'); } a.remove(); }
-}
 /* ================= DYNASTY: 10 SEASONS, A HISTORY, AND IMAGES TO SHARE ================= */
 const DYNASTY_SEASONS = 10;
 const ACCENT = { cl: '#8FB0FF', el: '#FF7A1A', ecl: '#1FCB64' };
@@ -2015,7 +1997,7 @@ function viewSeason(){
     <section class="card verdict${champ ? ' champ' : ''}">
       <div class="eyebrow">${champ ? 'Champions' : 'Season over'} · Your season</div>
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
-      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="season" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button><button class="chip quit" data-act="share" style="padding:6px 14px;font-size:13px;color:var(--text)">Copy as text</button></div>
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="season" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button></div>
     </section>
     <div class="endgrid">
       <div class="stack">${seasonBox(r)}</div>
@@ -2126,7 +2108,6 @@ document.addEventListener('click', e => {
       requestAnimationFrame(() => { const k = document.querySelector('.krow'); const sec = k && (k.closest('section') || k.parentElement); if (sec) toTop(sec); }); }
     else { S.armed = null; continueDynasty(); }
   }
-  else if (a === 'share') shareRun();
   else if (a === 'img') showImage(b.dataset.kind);
   else if (a === 'fresh2'){ S.run = null; S.dyn = null; save(); render(); }
   else if (a === 'home'){
