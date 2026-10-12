@@ -333,6 +333,8 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .btn.primary.warn{background:var(--loss);color:#fff}
 /* on a phone the player sheet sits above the bottom buttons, so they stay tappable */
 @media (pointer:coarse){body:has(.dock) .pcard.sheet{bottom:calc(68px + env(safe-area-inset-bottom,0px));border-radius:16px;border-width:1px;max-height:calc(62vh - 68px)}}
+.slot .lbl.fit0{color:#5CC08A}.slot .lbl.fit1{color:#F2C14E}.slot .lbl.fit2{color:#E8604C}
+.slot .lbl.fit0,.slot .lbl.fit1,.slot .lbl.fit2{font-weight:600}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
@@ -785,12 +787,52 @@ function assign(pids, form){
   }
   return bt(0) ? used.map(i => i < 0 ? null : pids[i]) : null;
 }
-const feasible = pids => FORM_ORDER.filter(f => assign(pids, f));
+/* The best placement in a formation, by these rules in order: as many players as possible in their main position,
+   then as many as possible in a strong other position (-1), then in their second, third... most played position,
+   and only then the higher overall. Solved exactly as an assignment problem (Hungarian method). */
+const FIT_BASE = 12;
+function fitTier(p, code){   // 0 main, 1 strong other (-1), 2+ weak by how often he plays it; -1 not his position
+  const r = p.pos.indexOf(code); if (r < 0) return -1;
+  if (code === p.prim) return 0;
+  return isWeak(p, code) ? 1 + Math.min(r, 5) : 1;
+}
+const fitWeight = (p, code) => { const t = fitTier(p, code); if (t < 0) return null;
+  return Math.pow(FIT_BASE, 7 - t) + effOvr(p.id, code) / 1000; };
+function hungarian(cost){   // rows <= cols, minimise; returns the column of each row
+  const n = cost.length, m = cost[0].length, INF = 1e18, u = Array(n + 1).fill(0), v = Array(m + 1).fill(0), p = Array(m + 1).fill(0), way = Array(m + 1).fill(0);
+  for (let i = 1; i <= n; i++){
+    p[0] = i; let j0 = 0; const minv = Array(m + 1).fill(INF), used = Array(m + 1).fill(false);
+    do { used[j0] = true; const i0 = p[j0]; let delta = INF, j1 = 0;
+      for (let j = 1; j <= m; j++) if (!used[j]){ const cur = cost[i0 - 1][j - 1] - u[i0] - v[j]; if (cur < minv[j]){ minv[j] = cur; way[j] = j0; } if (minv[j] < delta){ delta = minv[j]; j1 = j; } }
+      for (let j = 0; j <= m; j++) if (used[j]){ u[p[j]] += delta; v[j] -= delta; } else minv[j] -= delta;
+      j0 = j1; } while (p[j0] !== 0);
+    do { const j1 = way[j0]; p[j0] = p[j1]; j0 = j1; } while (j0);
+  }
+  const res = Array(n).fill(-1); for (let j = 1; j <= m; j++) if (p[j]) res[p[j] - 1] = j - 1; return res;
+}
+const BEST = new Map();
+function bestAssign(pids, form){
+  const key = form + '|' + pids.join(','); if (BEST.has(key)) return BEST.get(key);
+  let out = null;
+  if (pids.length && assign(pids, form)){
+    const slots = FORMS[form], ps = pids.map(id => W.P[id]), BIG = Math.pow(FIT_BASE, 8), BAN = 1e15;
+    const cost = ps.map(p => slots.map(s => { const w = fitWeight(p, s[0]); return w == null ? BAN : BIG - w; }));
+    const col = hungarian(cost);
+    if (col.every((j, i) => j >= 0 && cost[i][j] < BAN)){ out = Array(slots.length).fill(null); col.forEach((j, i) => out[j] = pids[i]); }
+  }
+  if (!out && pids.length) out = assign(pids, form);
+  if (BEST.size > 500) BEST.clear(); BEST.set(key, out); return out;
+}
+// how good a formation is for these players, by the same rules (higher is better)
+function formScore(pids, form){ const a = bestAssign(pids, form); if (!a) return -1;
+  return a.reduce((t, id, j) => t + (id ? fitWeight(W.P[id], FORMS[form][j][0]) : 0), 0); }
+// formations that work, best first
+const feasible = pids => { const ok = FORM_ORDER.filter(f => assign(pids, f)); return pids.length ? ok.map(f => [f, formScore(pids, f)]).sort((a, b) => b[1] - a[1]).map(x => x[0]) : ok; };
 const fits = pids => FORM_ORDER.some(f => assign(pids, f));
 /* The arrangement the player sees and plays with: his manual moves for this formation are kept
    where still valid, new picks fill the free compatible slots; otherwise fall back to auto. */
 function arrangement(pids, form){
-  const slots = FORMS[form], man = S.run && S.run.manual && S.run.manual[form];
+  const slots = FORMS[form], man = S.run && S.run.phase !== 'draft' && S.run.manual && S.run.manual[form];
   if (man){
     const a = Array(slots.length).fill(null), used = new Set();
     man.forEach((pid, j) => { if (pid && pids.includes(pid) && !used.has(pid) && W.P[pid].pos.includes(slots[j][0])){ a[j] = pid; used.add(pid); } });
@@ -800,7 +842,7 @@ function arrangement(pids, form){
       return false; };
     if (bt(0)) return a;
   }
-  return assign(pids, form);
+  return bestAssign(pids, form);
 }
 const canMove = (a, form, from, to) => { const slots = FORMS[form], p = W.P[a[from]], q = a[to] && W.P[a[to]];
   return from !== to && p.pos.includes(slots[to][0]) && (!q || q.pos.includes(slots[from][0])); };
@@ -1082,7 +1124,7 @@ function newRun(diff){
   S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null, diff, comp, season: (S.dyn && S.dyn.season) || 1 };
   S.dyn = null;
   // champions keep the whole XI: straight to the line-up
-  if (!potCount){ S.run.phase = 'lineup'; const ok = feasible(S.run.picks); if (!ok.includes(S.run.form)) S.run.form = ok[0]; }
+  if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; S.run.form = feasible(S.run.picks)[0]; }
   else drawClub();
   save(); render(); scrollTo(0, 0);
 }
@@ -1112,7 +1154,7 @@ function choose(pid){
   const r = S.run; if (!r || r.phase !== 'draft' || !visible(r).includes(pid)) return;
   r.picks.push(pid); r.step++; r.tried = []; r.cut = []; r.tip = null;
   r.sel = null;
-  if (r.picks.length === 11){ r.phase = 'lineup'; const ok = feasible(r.picks); if (!ok.includes(r.form)) r.form = ok[0]; }
+  if (r.picks.length === 11){ r.phase = 'lineup'; r.manual = null; r.form = feasible(r.picks)[0]; }
   else drawClub();
   save(); render();
 }
@@ -1283,7 +1325,7 @@ function chemCard(p){
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
 
-function pitch(pids, form, kept, rated, editable){
+function pitch(pids, form, kept, rated, editable, fit){
   const f = form || feasible(pids)[0] || FORM_ORDER[0];
   const a = (pids.length ? arrangement(pids, f) : null) || Array(11).fill(null);
   const sel = editable && S.run.sel != null && a[S.run.sel] ? S.run.sel : null;
@@ -1294,13 +1336,13 @@ function pitch(pids, form, kept, rated, editable){
     if (!pid) return `<div class="slot empty${cls(j)}"${act(j)} style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
     const p = W.P[pid];
     const rt = rated ? playerRating(pid) : null;
-    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${rt ? ovDot(rt, p) : `<div class="dot">${code}</div>`}<div class="lbl">${esc(short(p.name))}</div></div>`;
+    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${rt ? ovDot(rt, p) : `<div class="dot">${code}</div>`}<div class="lbl${fit ? ' fit' + Math.min(2, fitTier(p, code)) : ''}">${esc(short(p.name))}</div></div>`;
   }).join('') + `</div>`;
 }
 function shapes(pids, active, clickable){
   const ok = feasible(pids);
   if (!clickable) return `<div class="shapes">` + ok.map(f => `<span class="shape${f === active ? ' on' : ' ok'}">${f}</span>`).join('') + `</div>`;
-  return `<div class="shapes">` + FORM_ORDER.map(f => {
+  return `<div class="shapes">` + (pids.length ? ok : FORM_ORDER).map(f => {
     const on = f === active, can = ok.includes(f);
     if (clickable) return can ? `<button class="shape${on ? ' on' : ' ok'}" data-act="form" data-f="${f}" aria-pressed="${on}">${f}</button>` : '';
     return `<span class="shape${can ? ' ok' : ''}" style="${can ? '' : 'opacity:.3;text-decoration:line-through'}">${f}</span>`;
@@ -1386,6 +1428,7 @@ function viewDraft(){
         <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
+  if (r.picks.length && r.formAt !== r.picks.length){ r.form = shp[0]; r.formAt = r.picks.length; }   // the best shape after every pick
   if (!shp.includes(r.form)) r.form = shp[0];
   const anim = r.anim !== r.club; r.anim = r.club;
   return `
@@ -1405,8 +1448,8 @@ function viewDraft(){
     </section>
     <section class="sticky">
       ${shapes(r.picks, r.form, true)}
-      ${pitch(r.picks, r.form, r.kept, false, true)}
-      ${r.picks.length > 1 ? '<div class="hint">Tap a player, then a highlighted spot, to move him.</div>' : ''}
+      ${pitch(r.picks, r.form, r.kept, false, false)}
+      ${r.picks.length > 1 ? '<div class="hint">Placed in the best positions automatically. You can move players once your XI is complete.</div>' : ''}
     </section>
   </div>`;
 }
@@ -1419,9 +1462,9 @@ function viewLineup(){
     <div><div class="eyebrow">Your XI · ${seasonTag()}</div><h2 style="font-size:30px;margin-top:4px">${feasible(r.picks).length > 1 ? 'Pick your shape' : 'Your shape'}</h2>
     </div>
     ${shapes(r.picks, r.form, true)}
-    ${pitch(r.picks, r.form, r.kept, false, true)}
+    ${pitch(r.picks, r.form, r.kept, false, true, true)}
     ${chemBar(r.picks)}
-    <div class="hint">Tap a player, then a highlighted spot, to move him.</div>
+    <div class="hint">Green: his main position. Yellow: a position he plays often (a little below his level). Red: a weak position (further below). Tap a player, then a highlighted spot, to move him.</div>
   </div>
   <div class="dock"><div class="btnrow"><button class="btn primary${S.armed === 'kickoff' ? ' warn' : ''}" data-act="kickoff">${S.armed === 'kickoff' ? 'Sure? Tap again to lock it in' : 'Confirm your XI'}</button></div></div>`;
 }
@@ -1877,7 +1920,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-sheet-x]')){ PC.hidden = true; return; }
   if (e.target.closest('#pcard')) return;
   const el = cardTarget(e.target);
-  if (el) openSheet(el.dataset.pid); else PC.hidden = true;
+  if (el && !(S.run && S.run.phase === 'lineup')) openSheet(el.dataset.pid); else PC.hidden = true;   // line-up: a tap moves players
 });
 
 async function boot(){
