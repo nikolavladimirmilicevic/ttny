@@ -353,7 +353,8 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 /* ================= CONFIG ================= */
 const CFG = {
   SHOOTOUT_P: 0.686,          // World Cup shootout conversion, all tournaments (Opta / The Analyst)
-  TIMER_MS: 10 * 60 * 1000,   // 10 minutes to start the next run, 10 minutes to finish a started run
+  TIMER_MS: 10 * 60 * 1000,   // between runs of a dynasty: 10 minutes to start the next one
+  STEP_S: { draft: 60, lineup: 120, next: 60, keep: 120 },   // seconds per decision; when time runs out the game decides
   KEEP: { league: 5, playoff: 6, r16: 7, qf: 8, sf: 9, final: 10, champion: 11 },
   STORE: 'ttny.v9'
 };
@@ -1253,17 +1254,54 @@ function continueDynasty(){
   S.run = null; save();
   newRun();
 }
+/* step timers: every decision has its own clock; when it runs out the game makes the decision */
+function stepKey(r){
+  const T = CFG.STEP_S;
+  if (r.phase === 'draft') return ['draft:' + r.step, T.draft];
+  if (r.phase === 'lineup') return ['lineup', T.lineup];
+  if (r.phase === 'cup') return ['cup:' + r.scr + ':' + (r.cup ? r.cup.shown : 0), T.next];
+  const d = r.dscr || 'season';
+  if (d === 'dynasty') return null;
+  if (d === 'keep') return r.keepN && !r.dynEnd ? ['keep', T.keep] : null;
+  return ['done:' + d, T.next];
+}
+function syncStep(){
+  const r = S.run; if (!r) return;
+  const k = stepKey(r);
+  if (!k){ if (r.stepK){ r.stepK = null; r.stepDl = null; save(); } return; }
+  if (r.stepK !== k[0]){ r.stepK = k[0]; r.stepDl = Date.now() + k[1] * 1000; save(); }
+}
+function timeUp(){
+  const r = S.run; S.armed = null; r.stepDl = null;
+  document.querySelectorAll('.imgov').forEach(o => o.remove());
+  if (r.phase === 'draft'){
+    const ids = r.club ? visible(r) : [];
+    if (ids.length){ toast('Time is up. A random player was picked.'); choose(pick(ids)); }
+    return;
+  }
+  if (r.phase === 'lineup'){
+    const fs = feasible(r.picks); r.form = pick(fs.length ? fs : [r.form]); r.manual = null; r.sel = null;
+    toast('Time is up. A random shape was locked in.'); kickoff(); return;
+  }
+  if (r.phase === 'done' && (r.dscr || 'season') === 'keep'){
+    r.keepSel = []; S.dyn = { kept: [], keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, ever: everOf(r), ...dynComp(r) }; S.run = null;
+    save(); render(); scrollTo(0, 0); toast('Time is up. Nobody carries over.'); return;
+  }
+  const b = document.querySelector('.dock .btn.primary');
+  if (b) b.click(); else save();
+}
 function tick(){
   const now = Date.now();
-  if (S.run && S.run.phase !== 'done' && now > S.run.deadline){
-    S.run = null; S.dyn = null; S.stats.runs++; S.stats.streak = 0; save(); render();
-    toast('Time is up. The run counts as lost and the dynasty is over.');
-  }
-  if (S.run && S.run.phase === 'done' && S.run.keepN > 0 && now > S.run.doneAt + CFG.TIMER_MS){
-    S.run = null; S.stats.streak = 0; save(); render(); toast('Ten minutes passed. The dynasty is over.');
-  }
+  if (S.run && S.run.stepDl && now > S.run.stepDl) timeUp();
   if (!S.run && S.dyn && now > S.dyn.deadline){ S.dyn = null; S.stats.streak = 0; save(); render(); toast('Ten minutes passed. The dynasty is over.'); }
-  document.querySelectorAll('[data-cd]').forEach(el => { const left = +el.dataset.cd - now; el.textContent = fmt(left); const c = el.closest('.chip'); if (c) c.classList.toggle('warn', left < 60000); });
+  document.querySelectorAll('[data-cd]').forEach(el => { const left = +el.dataset.cd - now; el.textContent = fmt(left); const c = el.closest('.chip'); if (c) c.classList.toggle('warn', left < (+el.dataset.w || 60000)); });
+}
+// the clock in the top bar, for the decision in front of you
+const STEP_LBL = { draft: 'Pick within', lineup: 'Confirm within', cup: 'Next within', done: 'Next within', keep: 'Choose within' };
+function stepChip(r){
+  if (!r || !r.stepDl) return '';
+  const k = r.stepK.split(':')[0] === 'keep' ? 'keep' : r.stepK.split(':')[0];
+  return `<span class="chip hot"><span class="lbl">${STEP_LBL[k] || 'Time left'}</span><span class="ico">⏱</span> <span class="num" data-cd="${r.stepDl}" data-w="15000">${fmt(r.stepDl - Date.now())}</span></span>`;
 }
 
 /* ================= RENDER ================= */
@@ -1409,7 +1447,7 @@ function viewHome(){
         <li>A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
-        <li>You have 10 minutes to start the next run and 10 minutes to finish it, or the dynasty ends. Missing the top 24 of the league phase drops the dynasty a level, from the Champions League to the Europa League or from the Europa League to the Conference League, keeping 5 players; in the Conference League it ends the dynasty.</li>
+        <li>Every decision has a clock: 60 seconds for each draft pick (then a random player is picked), 2 minutes to confirm your shape (then a random one is locked in), 60 seconds for each step of the season (then it moves on) and 2 minutes to choose who stays (then nobody carries over). Between runs you have 10 minutes to start the next one, or the dynasty ends. Missing the top 24 of the league phase drops the dynasty a level, from the Champions League to the Europa League or from the Europa League to the Conference League, keeping 5 players; in the Conference League it ends the dynasty.</li>
       </ol>
     </details>
     <p class="foot">${W.meta.live ? 'Live data from API-Football, updated ' + niceDate(W.meta.updated) + '.' : 'Demo world: club names follow the UEFA ranking, players and results are invented.'} ${W.draftable.length} of ${W.meta.ranked || 100} ranked clubs have the 11 players needed for the draft, and ${W.eligCount.toLocaleString('en-GB')} players are rated. Penalties go in ${Math.round(CFG.SHOOTOUT_P * 1000) / 10}% of the time, the all-time World Cup shootout rate.</p>
@@ -1443,7 +1481,7 @@ function viewDraft(){
   if (!shp.includes(r.form)) r.form = shp[0];
   const anim = r.anim !== r.club; r.anim = r.club;
   return `
-  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot"><span class="lbl">Run ends in</span><span class="ico">⏱</span> <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
+  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center">${stepChip(r)}${quitBtn()}</div></header>
   <div class="drafthead"><div><div class="eyebrow">Draft · ${seasonTag()}</div><h2>Pick ${r.picks.length + 1} of 11</h2></div><span class="muted" style="font-size:13px">${r.kept.length ? r.kept.length + ' kept from last run' : 'Fresh squad'}</span></div>
   <div class="pots" aria-label="Pots" style="grid-template-columns:repeat(${nP},1fr)">${cells}</div>
   ${shapeStrip(r, cells, nP)}
@@ -1468,7 +1506,7 @@ function viewDraft(){
 function viewLineup(){
   const r = S.run;
   return `
-  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot"><span class="lbl">Run ends in</span><span class="ico">⏱</span> <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
+  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center">${stepChip(r)}${quitBtn()}</div></header>
   <div class="stack">
     <div><div class="eyebrow">Your XI · ${seasonTag()}</div><h2 style="font-size:30px;margin-top:4px">${feasible(r.picks).length > 1 ? 'Pick your shape' : 'Your shape'}</h2>
     </div>
@@ -1551,7 +1589,7 @@ function teamBox(r){
 /* ================= THE SEASON, SCREEN BY SCREEN =================
    team -> draw -> league phase (table after every matchday) -> knockouts (bracket after every match)
    -> your season -> the competition -> who stays */
-const cupTop = r => `<header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot"><span class="lbl">Run ends in</span><span class="ico">⏱</span> <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>`;
+const cupTop = r => `<header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center">${stepChip(r)}${quitBtn()}</div></header>`;
 // which season of the dynasty this is
 const seasonTag = () => 'Season ' + ((S.run && S.run.season) || 1);
 const cupHead = (eyebrow, title, side) => `<div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">${eyebrow} · ${seasonTag()}</div><h2>${title}</h2></div>${side ? `<span class="muted" style="font-size:13px">${side}</span>` : ''}</div>`;
@@ -1967,7 +2005,7 @@ function viewDone(){
   const r = S.run, d = r.dscr || 'season';
   return d === 'comp' ? viewComp() : d === 'keep' ? viewKeep() : d === 'dynasty' ? viewDynasty() : viewSeason();
 }
-const doneTop = () => `<header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px">${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}<span class="chip">${seasonTag()}</span></div></header>`;
+const doneTop = () => `<header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center">${stepChip(S.run)}${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}<span class="chip">${seasonTag()}</span></div></header>`;
 const verdictHead = r => { const st = r.cup.stage; return st === 'champion' ? (r.comp === 'cl' || !r.comp ? 'Champions of Europe' : `${compOf(r).short} winners`) : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase(); };
 /* your season: the verdict, every match you played, your players */
 function viewSeason(){
@@ -2017,7 +2055,7 @@ function viewKeep(){
       <h1 style="margin-top:8px">${n ? 'Who stays?' : 'Starting over'}</h1>
       ${champ && r.comp && r.comp !== 'cl' && n ? `<p style="margin:8px 0 0">You won the ${compOf(r).short}. Next run: the <b>${COMPS[NEXT_COMP[r.comp]].short}</b>.</p>` : ''}
       ${st === 'league' && n ? `<p style="margin:8px 0 0">Out of the top 24. Next run drops to the <b>${COMPS[PREV_COMP[r.comp || 'cl']].short}</b>.</p>` : ''}
-      <p class="muted" style="margin:10px 0 0">${n ? `You keep up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''}. Start the next run within <b class="num" style="color:var(--gold)" data-cd="${r.doneAt + CFG.TIMER_MS}">${fmt(r.doneAt + CFG.TIMER_MS - Date.now())}</b> or the dynasty ends.` : st === 'league' ? 'Out of the top 24 of the Conference League, so the dynasty ends here. The next run starts from scratch.' : 'No players carry over. Next run starts from scratch.'}</p>
+      <p class="muted" style="margin:10px 0 0">${n ? `You keep up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''}. Choose within <b class="num" style="color:var(--gold)" data-cd="${r.stepDl || Date.now()}">${fmt((r.stepDl || Date.now()) - Date.now())}</b> or nobody carries over.` : st === 'league' ? 'Out of the top 24 of the Conference League, so the dynasty ends here. The next run starts from scratch.' : 'No players carry over. Next run starts from scratch.'}</p>
     </section>
     ${n ? `<div><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div><div class="keep">${lst}</div></div>` : ''}
   </div>
@@ -2028,6 +2066,7 @@ function render(){
   const r = S.run; if (PC) PC.hidden = true;
   document.body.dataset.comp = (r && r.comp) || (S.dyn && S.dyn.comp) || START_COMP[(S.pref && S.pref.diff) || 'medium'];
   try {
+    syncStep();
     requestAnimationFrame(() => document.querySelectorAll('.bracket-wrap[data-focus]').forEach(el => { el.scrollLeft = +el.dataset.focus; }));
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
   } catch (e) {
@@ -2092,7 +2131,7 @@ document.addEventListener('click', e => {
   else if (a === 'fresh2'){ S.run = null; S.dyn = null; save(); render(); }
   else if (a === 'home'){
     const r = S.run;
-    if (r && r.phase === 'done'){ S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: r.doneAt + CFG.TIMER_MS, ever: everOf(r), ...dynComp(r) } : null; S.run = null; }
+    if (r && r.phase === 'done'){ S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, ever: everOf(r), ...dynComp(r) } : null; S.run = null; }
     save(); render(); scrollTo(0, 0);
   }
 });
