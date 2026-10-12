@@ -289,6 +289,12 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
   .pcard.sheet .sheet-x{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:15px}
 }
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+.pots{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(min-width:820px){.pots.p4{grid-template-columns:repeat(4,minmax(0,1fr))}.pots.p6{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.potc{padding:10px 12px}.potc .pr{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;font-size:13px;color:var(--muted);border-top:1px solid var(--line)}
+.potc .pr:nth-child(2){border-top:0}.potc .pr span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.potc .pr.opp{color:var(--text);font-weight:500}.potc .pr.me{color:var(--gold);font-weight:600}
+.potc .ven{width:1.3em;font-size:12px;margin-right:2px}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
@@ -882,6 +888,40 @@ function leagueSchedule6(teams){
   }
   return { pots, games: shuffle(games) };
 }
+/* split the league games into matchdays where every club plays once: one perfect matching at a time, with restarts */
+function roundsOf(games, teams, d){
+  for (let attempt = 0; attempt < 400; attempt++){
+    let left = games.map((g, i) => i); const rounds = []; let ok = true;
+    for (let r = 0; r < d && ok; r++){
+      const m = matching(left, games, teams); if (!m){ ok = false; break; }
+      rounds.push(m); const used = new Set(m); left = left.filter(i => !used.has(i));
+    }
+    if (ok) return rounds.map(rd => rd.map(i => games[i]));
+  }
+  // fallback (never seen): each club's games in its own order; the table is then approximate between matchdays
+  const n = {}, rounds = Array.from({ length: d }, () => []);
+  for (const g of games){ const k = Math.max(n[g[0]] || 0, n[g[1]] || 0); rounds[Math.min(d - 1, k)].push(g); n[g[0]] = n[g[1]] = k + 1; }
+  return rounds;
+}
+function matching(left, games, teams){
+  const adj = new Map(teams.map(t => [t, []]));
+  for (const i of left){ adj.get(games[i][0]).push(i); adj.get(games[i][1]).push(i); }
+  const free = new Set(teams), out = []; let steps = 0;
+  const go = () => {
+    if (!free.size) return true;
+    if (++steps > 4000) return false;
+    let v = null, best = 1e9;
+    for (const t of free){ const k = adj.get(t).filter(i => free.has(games[i][0]) && free.has(games[i][1])).length; if (k < best){ best = k; v = t; } }
+    if (!best) return false;
+    for (const i of shuffle(adj.get(v).filter(i => free.has(games[i][0]) && free.has(games[i][1])))){
+      const [a, b] = games[i]; free.delete(a); free.delete(b); out.push(i);
+      if (go()) return true;
+      out.pop(); free.add(a); free.add(b);
+    }
+    return false;
+  };
+  return go() ? out : null;
+}
 function drawCard(c){
   if (!c.myPot) return `<div class="card muted">The 35 other clubs in this season's ${compOf(S.run).short} are in.</div>`;
   return `<div class="card muted">The 35 other clubs in this season's ${compOf(S.run).short} are in. Your XI goes into <b style="color:var(--text)">pot ${c.myPot}</b> of ${(S.run && S.run.comp) === 'ecl' ? 6 : 4} and meets ${(S.run && S.run.comp) === 'ecl' ? 'one club from every pot, three at home and three away' : 'two clubs from every pot, four at home and four away'}.</div>`;
@@ -893,20 +933,22 @@ function buildCup(T){
   const six = (S.run && S.run.comp) === 'ecl', myPot = Math.floor(at / (six ? 6 : 9)) + 1;
   const sch = six ? leagueSchedule6(teams) : leagueSchedule(teams);
   const rows = {}; teams.forEach(t => rows[t] = { id: t, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, Pts: 0, tb: MR() });
+  const rounds = roundsOf(sch.games, teams, six ? 6 : 8), lg = [];
   const ours = [];
   const rec = (x, gf, ga) => { const r = rows[x]; r.P++; r.GF += gf; r.GA += ga; if (gf > ga){ r.W++; r.Pts += 3; } else if (gf === ga){ r.D++; r.Pts++; } else r.L++; };
   const potOf = id => sch.pots.findIndex(p => p.includes(id)) + 1;
   // competition scorers and assists, every match
   const G = {}, A = {}, tally = gl => { for (const [sc, as] of gl){ G[sc] = (G[sc] || 0) + 1; if (as) A[as] = (A[as] || 0) + 1; } return gl; };
   const goals = (team, n, lo, hi) => tally(teamGoals(team, n, lo, hi));
-  for (const [a, b] of sch.games){
-    const [ga, gb] = simMatch(a, b, T, false, a);   // first-named side is at home
-    rec(a, ga, gb); rec(b, gb, ga);
-    const la = goals(a, ga, 1, 90), lb = goals(b, gb, 1, 90);
-    if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b), gl: la, og: lb, h: 1 });
-    if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a), gl: lb, og: la, h: 0 });
-  }
-  shuffle(ours);
+  rounds.forEach((rd, ri) => { const res = []; lg.push(res);
+    for (const [a, b] of rd){
+      const [ga, gb] = simMatch(a, b, T, false, a);   // first-named side is at home
+      rec(a, ga, gb); rec(b, gb, ga); res.push([a, b, ga, gb]);
+      const la = goals(a, ga, 1, 90), lb = goals(b, gb, 1, 90);
+      if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b), gl: la, og: lb, h: 1 });
+      if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a), gl: lb, og: la, h: 0 });
+    }
+  });
   const table = Object.values(rows).sort((x, y) => y.Pts - x.Pts || (y.GF - y.GA) - (x.GF - x.GA) || y.GF - x.GF || x.tb - y.tb);
   const seed = table.map(r => r.id);
   const pos = seed.indexOf('YOU') + 1;
@@ -944,7 +986,8 @@ function buildCup(T){
   if (pos > 24) stage = 'league';
   ev.push({ k: 'end', stage, champ });
   const top = M => Object.entries(M).sort((x, y) => y[1] - x[1] || W.P[x[0]].name.localeCompare(W.P[y[0]].name)).slice(0, 10);
-  return { ev, shown: 0, stage, champ, pos, myPot, top: { g: top(G), a: top(A) }, ko };
+  const tb = {}; teams.forEach(t => tb[t] = rows[t].tb);
+  return { ev, shown: 0, stage, champ, pos, myPot, top: { g: top(G), a: top(A) }, ko, lg, tb, pots: sch.pots };
 }
 
 /* ================= STATE ================= */
@@ -1045,21 +1088,16 @@ function helpBar(r){
 }
 function kickoff(){
   const r = S.run; const T = null;
-  r.cup = buildCup(T); r.phase = 'cup'; save(); render(); scrollTo(0, 0);
+  r.cup = buildCup(T); r.phase = 'cup'; r.scr = 'team'; save(); render(); scrollTo(0, 0);
 }
 /* after every click: what was just played (or revealed) at the top of the screen, the next match right below */
 const toTop = el => scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + scrollY - 10), behavior: 'smooth' });
-function focusNext(){
-  const shown = [...document.querySelectorAll('.feed > .ev:not(.pend)')], last = shown[shown.length - 1];
-  const el = last || document.querySelector('.feed > .ev.pend');   // the match just played on top, the next one under it
-  if (el) toTop(el);
-}
 function step(all){
   const c = S.run.cup;
   c.shown = all ? c.ev.length : Math.min(c.ev.length, c.shown + 1);
   if (c.shown >= c.ev.length) finish();
   save(); render();
-  if (!all) requestAnimationFrame(focusNext);
+  requestAnimationFrame(() => scrollTo({ top: 0, behavior: 'smooth' }));
 }
 function finish(){
   const r = S.run; if (r.phase === 'done') return;
@@ -1068,7 +1106,7 @@ function finish(){
   st8.runs++;
   if (!st8.bestStage || STAGE_RANK.indexOf(st) > STAGE_RANK.indexOf(st8.bestStage)) st8.bestStage = st;
   if (st === 'champion'){ st8.titlesBy = st8.titlesBy || {}; st8.titlesBy[r.comp || 'cl'] = (st8.titlesBy[r.comp || 'cl'] || 0) + 1; st8.titles++; st8.streak++; st8.best = Math.max(st8.best, st8.streak); } else st8.streak = 0;
-  r.doneAt = Date.now();
+  r.doneAt = Date.now(); r.dscr = 'season';
 }
 // the next run of a dynasty: same difficulty; a title moves it up a competition
 // a title moves the dynasty up; missing the top 24 drops it a level (out of the Conference League, it ends)
@@ -1274,7 +1312,7 @@ function viewLineup(){
     ${chemBar(r.picks)}
     <div class="hint">Tap a player, then a highlighted spot, to move him.</div>
   </div>
-  <div class="dock"><div class="btnrow"><button class="btn primary" data-act="kickoff">Kick off the ${compOf(r).short}</button></div></div>`;
+  <div class="dock"><div class="btnrow"><button class="btn primary" data-act="kickoff">Confirm your XI</button></div></div>`;
 }
 
 /* where a match is played: at home "vs", away "@", the final on neutral ground */
@@ -1327,38 +1365,108 @@ function oddsHTML(opp, h){
   return `<div class="odds num" title="Odds for this match over 90 minutes">${cell('W', w, 0)}${cell('D', d, 1)}${cell('L', l, 2)}</div>`;
 }
 /* fixtures that are certain but not played yet: the remaining matchdays, and the next knockout tie once it is set */
-function pendingHTML(c){
-  const nx = c.ev[c.shown]; if (!nx) return '';
+function pendList(c){
+  const nx = c.ev[c.shown]; if (!nx) return [];
   const rest = c.ev.slice(c.shown);
-  const list = nx.k === 'md' ? rest.filter(e => e.k === 'md') : nx.k === 'leg' ? rest.filter(e => e.k === 'leg' && e.round === nx.round) : nx.k === 'final' ? [nx] : [];
+  return nx.k === 'md' ? rest.filter(e => e.k === 'md') : nx.k === 'leg' ? rest.filter(e => e.k === 'leg' && e.round === nx.round) : nx.k === 'final' ? [nx] : [];
+}
+function pendCard(e){
+  const c = S.run.cup;
   // straight into the Round of 16: the opponent comes out of the play-offs, so he is not known yet
-  const tbd = e => e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
-  const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
-  return list.map(e => {
-    const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}` : 'Final';
-    const who = tbd(e) ? '<span class="muted">Play-off winner</span>' : `${esc(nm(e.opp))} ${gchip(e.opp)}`;
-    const right = tbd(e) ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
-    return `<div class="ev pend"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}</div>`;
-  }).join('');
+  const tbd = e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
+  const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}` : 'Final';
+  const who = tbd ? '<span class="muted">Play-off winner</span>' : `${esc(nm(e.opp))} ${gchip(e.opp)}`;
+  const right = tbd ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
+  return `<div class="ev pend"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}</div>`;
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
   return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r"><span>Chemistry</span><b class="num tnum g${ovGrade(chemNum(t.chem))}">${chemNum(t.chem)}</b></div></div></div></section>`;
 }
+/* ================= THE SEASON, SCREEN BY SCREEN =================
+   team -> draw -> league phase (table after every matchday) -> knockouts (bracket after every match)
+   -> your season -> the competition -> who stays */
+const cupTop = r => `<header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot"><span class="lbl">Run ends in</span><span class="ico">⏱</span> <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>`;
+const cupHead = (eyebrow, title, side) => `<div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">${eyebrow}</div><h2>${title}</h2></div>${side ? `<span class="muted" style="font-size:13px">${side}</span>` : ''}</div>`;
+const dock = (main, ghost) => `<div class="dock"><div class="btnrow">${main}${ghost || ''}</div></div>`;
+const skipBtn = '<button class="btn ghost" data-act="all">Skip to the end</button>';
 function viewCup(){
   const r = S.run, c = r.cup;
-  const evs = c.ev.slice(0, c.shown);
-  const next = c.ev[c.shown];
-  const label = !next ? '' : next.k === 'md' ? 'Play matchday ' + next.n : next.k === 'table' ? 'See the table' : next.k === 'podone' ? 'Play the knockout play-off' : next.k === 'end' ? 'Full time' : next.k === 'final' ? 'Play the final' : 'Play ' + next.round.toLowerCase() + ', leg ' + next.leg;
-  return `
-  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center"><span class="chip hot"><span class="lbl">Run ends in</span><span class="ico">⏱</span> <span class="num" data-cd="${r.deadline}">${fmt(r.deadline - Date.now())}</span></span>${quitBtn()}</div></header>
-  <div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">Your XI · ${r.form}</div><h2>${compOf(r).short}</h2></div>
-    <span class="muted" style="font-size:13px">36 clubs · ${r.comp === 'ecl' ? 6 : 8} matchdays</span></div>
-  <div class="grid2">
-    <div class="feed">${evs.map(evHTML).join('') || drawCard(r.cup)}${pendingHTML(c)}</div>
-    <section class="sticky">${teamBox(r)}${pitch(r.picks, r.form, r.kept, true)}</section>
+  if (!r.scr) r.scr = c.ev.slice(0, c.shown).some(e => e.k === 'table') ? 'ko' : 'league';   // runs saved before the screens existed
+  return r.scr === 'team' ? viewTeam() : r.scr === 'draw' ? viewDraw() : r.scr === 'ko' ? viewKO() : viewLeague();
+}
+function squadBox(r){
+  const arr = arrangement(r.picks, r.form), code = pid => FORMS[r.form][arr.indexOf(pid)][0];
+  const rows = arr.map(pid => W.P[pid]);
+  return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your players</div><div class="tblwrap"><table class="tbl num"><thead><tr><th style="text-align:left">Player</th><th style="text-align:left">Club</th><th>Pos</th><th>Ovr</th></tr></thead><tbody>
+    ${rows.map(p => { const gr = ovGrade(playerRating(p.id).ov); return `<tr data-pid="${p.id}"><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td style="text-align:left;white-space:nowrap" class="muted">${esc(W.C[p.club].name)}</td><td>${code(p.id)}</td><td><span class="gt g${gr}">${gr}</span></td></tr>`; }).join('')}</tbody></table></div></section>`;
+}
+function viewTeam(){
+  const r = S.run;
+  return `${cupTop(r)}${cupHead(`Your XI · ${r.form}`, 'Your team', compOf(r).short)}
+  <div class="grid2"><div class="stack">${teamBox(r)}${squadBox(r)}</div><section class="sticky">${pitch(r.picks, r.form, r.kept, true)}</section></div>
+  ${dock('<button class="btn primary" data-act="scr" data-to="draw">Go to the draw</button>')}`;
+}
+function viewDraw(){
+  const r = S.run, c = r.cup, six = r.comp === 'ecl';
+  const mds = c.ev.filter(e => e.k === 'md'), venueOf = {}; mds.forEach(e => venueOf[e.opp] = e.h);
+  const pots = c.pots || [];
+  const potCard = (p, k) => `<div class="card potc"><div class="eyebrow" style="margin-bottom:6px">Pot ${k + 1}</div>${p.map(id => id === 'YOU'
+      ? `<div class="pr me"><span>Your XI</span></div>`
+      : `<div class="pr${id in venueOf ? ' opp' : ''}"><span>${id in venueOf ? `<span class="ven">${venueOf[id] ? '🏠' : '✈️'}</span>` : ''}${esc(W.C[id].name)}</span>${gchip(id)}</div>`).join('')}</div>`;
+  return `${cupTop(r)}${cupHead(compOf(r).short, 'The draw', `36 clubs · ${six ? 6 : 8} matchdays`)}
+  <div class="stack">${drawCard(c)}
+    <div class="pots ${six ? 'p6' : 'p4'}">${pots.map(potCard).join('')}</div>
+    <div class="eyebrow">Your league phase</div>
+    <div class="feed">${mds.map(pendCard).join('')}</div></div>
+  ${dock('<button class="btn primary" data-act="scr" data-to="league">Start the league phase</button>')}`;
+}
+/* the league table after k matchdays */
+function tableAfter(c, k){
+  const rows = {}; (c.pots || []).flat().forEach(t => rows[t] = { id: t, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, Pts: 0 });
+  const rec = (x, gf, ga) => { const q = rows[x]; q.P++; q.GF += gf; q.GA += ga; if (gf > ga){ q.W++; q.Pts += 3; } else if (gf === ga){ q.D++; q.Pts++; } else q.L++; };
+  for (const rd of (c.lg || []).slice(0, k)) for (const [a, b, ga, gb] of rd){ rec(a, ga, gb); rec(b, gb, ga); }
+  return Object.values(rows).sort((x, y) => y.Pts - x.Pts || (y.GF - y.GA) - (x.GF - x.GA) || y.GF - x.GF || (c.tb[x.id] || 0) - (c.tb[y.id] || 0));
+}
+function tableHTML(rows, title, sub){
+  return `<section class="card"><div class="eyebrow" style="margin-bottom:4px">${title}</div>${sub ? `<div class="muted" style="font-size:13px;margin-bottom:8px">${sub}</div>` : ''}
+    <div class="tblwrap"><table class="tbl num"><thead><tr><th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>
+    ${rows.map((t, i) => `<tr class="${i < 8 ? 'z1' : i < 24 ? 'z2' : ''}${t.id === 'YOU' ? ' me' : ''}"><td>${i + 1}</td><td>${esc(nm(t.id))}</td><td>${t.P}</td><td>${t.W}</td><td>${t.D}</td><td>${t.L}</td><td>${t.GF - t.GA > 0 ? '+' : ''}${t.GF - t.GA}</td><td>${t.Pts}</td></tr>`).join('')}
+    </tbody></table></div></section>`;
+}
+const nextLabel = e => !e ? '' : e.k === 'md' ? 'Play matchday ' + e.n : e.k === 'table' ? 'Final table' : e.k === 'podone' ? 'Play the knockout play-off' : e.k === 'end' ? 'Season summary' : e.k === 'final' ? 'Play the final' : 'Play ' + e.round.toLowerCase() + ', leg ' + e.leg;
+function viewLeague(){
+  const r = S.run, c = r.cup, evs = c.ev.slice(0, c.shown), next = c.ev[c.shown];
+  const played = evs.filter(e => e.k === 'md'), k = played.length, N = r.comp === 'ecl' ? 6 : 8;
+  const fin = evs.find(e => e.k === 'table');
+  const last = played[played.length - 1];
+  const upcoming = c.ev.slice(c.shown).filter(e => e.k === 'md');
+  const toKO = next && (next.k === 'podone' || next.k === 'leg' || next.k === 'final');
+  const main = !next ? '' : toKO ? '<button class="btn primary" data-act="scr" data-to="ko">Go to the knockouts</button>' : `<button class="btn primary" data-act="next">${nextLabel(next)}</button>`;
+  const z = fin ? (fin.pos <= 8 ? 'Straight into the Round of 16.' : fin.pos <= 24 ? 'Into the knockout play-off.' : 'Out in the league phase.') : '';
+  return `${cupTop(r)}${cupHead(compOf(r).short, 'League phase', fin ? `Finished ${ord(fin.pos)}` : k ? `Matchday ${k} of ${N}` : `${N} matchdays`)}
+  <div class="stack">
+    ${fin ? `<section class="card verdict"><div class="eyebrow">League phase over</div><h1 style="margin-top:8px">You finished ${ord(fin.pos)}</h1><p style="margin:8px 0 0">${z}</p></section>` : ''}
+    ${last && !fin ? `<div class="feed">${evHTML(last)}</div>` : ''}
+    ${upcoming.length ? `<div class="feed">${pendCard(upcoming[0])}</div>` : ''}
+    ${k ? tableHTML(tableAfter(c, k), fin ? 'Final table' : `Table after matchday ${k}`, '') : ''}
+    ${upcoming.length > 1 ? `<div class="eyebrow">Still to play</div><div class="feed">${upcoming.slice(1).map(pendCard).join('')}</div>` : ''}
+    ${played.length > (fin ? 0 : 1) ? `<div class="eyebrow">Results</div><div class="feed">${played.slice(0, fin ? played.length : -1).reverse().map(evHTML).join('')}</div>` : ''}
   </div>
-  <div class="dock"><div class="btnrow"><button class="btn primary" data-act="next">${label}</button><button class="btn ghost" data-act="all">Skip to the end</button></div></div>`;
+  ${dock(main, next && next.k !== 'end' ? skipBtn : '')}`;
+}
+function viewKO(){
+  const r = S.run, c = r.cup, evs = c.ev.slice(0, c.shown), next = c.ev[c.shown];
+  const kos = evs.filter(e => e.k === 'podone' || e.k === 'leg' || e.k === 'final'), last = kos[kos.length - 1];
+  const pend = pendList(c);
+  const stage = next && next.k !== 'end' ? (next.k === 'podone' ? 'Knockout play-off' : next.k === 'final' ? 'Final' : next.round) : last ? (last.k === 'podone' ? 'Knockout play-off' : last.k === 'final' ? 'Final' : last.round) : 'Knockouts';
+  return `${cupTop(r)}${cupHead(compOf(r).short, stage, '')}
+  <div class="stack">
+    ${last ? `<div class="feed">${evHTML(last)}</div>` : ''}
+    ${pend.length ? `<div class="feed">${pend.map(pendCard).join('')}</div>` : ''}
+    ${koBox(c, koState(c))}
+  </div>
+  ${dock(next ? `<button class="btn primary" data-act="next">${nextLabel(next)}</button>` : '', next && next.k !== 'end' ? skipBtn : '')}`;
 }
 
 /* end of a run: your campaign, your players, and the competition's top scorers and assists */
@@ -1410,8 +1518,23 @@ function topBox(r){
   return `<div class="toplists">${list('Top scorers', c.top.g)}${list('Top assists', c.top.a)}</div>`;
 }
 /* knockout bracket: play-off -> Round of 16 -> quarter-finals -> semi-finals -> final, drawn as a tree */
-function koBox(c){
+/* how much of the bracket you have seen: hidden, names (the pairings), leg1 (first legs played) or full */
+const KO_KEYS = ['playoff', 'r16', 'qf', 'sf', 'final'];
+const KEY_OF = Object.fromEntries(Object.entries(STAGE_NAME).map(([k, v]) => [v, k]));
+function koState(c){
+  const st = {}; if (S.run && S.run.phase === 'done') return st;   // after the season: everything
+  let fullTo = -1;
+  for (const e of c.ev.slice(0, c.shown)){
+    if (e.k === 'podone') fullTo = Math.max(fullTo, 0);
+    if (e.k === 'leg'){ const i = KO_KEYS.indexOf(KEY_OF[e.round]); if (e.leg === 2) fullTo = Math.max(fullTo, i); else { fullTo = Math.max(fullTo, i - 1); st[KO_KEYS[i]] = 'leg1'; } }
+    if (e.k === 'final') fullTo = 4;
+  }
+  KO_KEYS.forEach((k, i) => { if (i <= fullTo) st[k] = 'full'; else if (!st[k]) st[k] = i === fullTo + 1 ? 'names' : 'hidden'; });
+  return st;
+}
+function koBox(c, st){
   if (!c.ko || !c.ko.length) return '';
+  st = st || {};
   const by = k => c.ko.filter(t => t.k === k);
   const po = by('playoff'), r16 = by('r16'), qf = by('qf'), sf = by('sf'), fi = by('final');
   // R16 slot j holds seed k = [1,8,4,5,2,7,3,6][j] - 1 and the winner of play-off tie 7 - k
@@ -1420,8 +1543,11 @@ function koBox(c){
   const names = ['Play-off', 'Round of 16', 'Quarter-finals', 'Semi-finals', 'Final'];
   const BW = 156, GAP = 28, RH = 62, BH = 46, TOP = 26, H = TOP + 8 * RH;
   const x = ci => ci * (BW + GAP), y = (ci, i) => TOP + (i + 0.5) * (8 / cols[ci].length) * RH;
-  const line = (id, t) => {
-    const i = id === t.a ? 0 : 1, sc = t.agg[i], won = id === t.w;
+  const line = (id, t, mode) => {
+    if (mode === 'hidden') return `<div class="bl"><span class="bn muted">?</span></div>`;
+    const i = id === t.a ? 0 : 1;
+    if (mode === 'names' || mode === 'leg1') return `<div class="bl${id === 'YOU' ? ' me' : ''}"><span class="bn">${esc(nm(id))}</span><span class="bs num">${mode === 'leg1' ? t.legs[0][i] : ''}</span></div>`;
+    const sc = t.agg[i], won = id === t.w;
     const pen = t.pens ? `<small>${t.pens[i]}p</small>` : t.et ? (won ? '<small>aet</small>' : '') : '';
     return `<div class="bl${won ? ' w' : ''}${id === 'YOU' ? ' me' : ''}"><span class="bn">${esc(nm(id))}</span><span class="bs num">${pen}${sc}</span></div>`;
   };
@@ -1429,13 +1555,13 @@ function koBox(c){
   let boxes = '', paths = '';
   cols.forEach((ts, ci) => ts.forEach((t, i) => {
     if (!t) return;
-    const mine = t.a === 'YOU' || t.b === 'YOU';
-    boxes += `<div class="bx${mine ? ' mine' : ''}${ci === 4 ? ' fin' : ''}" style="left:${x(ci)}px;top:${y(ci, i) - BH / 2}px;width:${BW}px;height:${BH}px" title="${esc(nm(t.a))} v ${esc(nm(t.b))}: ${tip(t)}">${line(t.a, t)}${line(t.b, t)}</div>`;
+    const mode = st[KO_KEYS[ci]] || 'full', mine = mode !== 'hidden' && (t.a === 'YOU' || t.b === 'YOU');
+    boxes += `<div class="bx${mine ? ' mine' : ''}${ci === 4 ? ' fin' : ''}" style="left:${x(ci)}px;top:${y(ci, i) - BH / 2}px;width:${BW}px;height:${BH}px"${mode === 'full' ? ` title="${esc(nm(t.a))} v ${esc(nm(t.b))}: ${tip(t)}"` : ''}>${line(t.a, t, mode)}${line(t.b, t, mode)}</div>`;
     if (ci > 0){
       const kids = ci === 1 ? [i] : [2 * i, 2 * i + 1], x2 = x(ci), y2 = y(ci, i);
       for (const k of kids){
         const x1 = x(ci - 1) + BW, y1 = y(ci - 1, k), xm = x1 + GAP / 2, ch = cols[ci - 1][k];
-        const hot = ch && ch.w === 'YOU';
+        const hot = ch && ch.w === 'YOU' && (st[KO_KEYS[ci - 1]] || 'full') === 'full';
         paths += `<path d="M${x1} ${y1}H${xm}V${y2}H${x2}" class="${hot ? 'hot' : ''}"/>`;
       }
     }
@@ -1466,35 +1592,63 @@ async function shareRun(){
   catch (e) { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); toast('Result copied. Paste it anywhere.'); } catch (x) { toast('Could not copy.'); } a.remove(); }
 }
 function viewDone(){
+  const r = S.run, d = r.dscr || 'season';
+  return d === 'comp' ? viewComp() : d === 'keep' ? viewKeep() : viewSeason();
+}
+const doneTop = () => `<header class="topbar"><div class="mark">This Time <span>Next Year</span></div>${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}</header>`;
+const verdictHead = r => { const st = r.cup.stage; return st === 'champion' ? (r.comp === 'cl' || !r.comp ? 'Champions of Europe' : `${compOf(r).short} winners`) : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase(); };
+/* your season: the verdict, every match you played, your players */
+function viewSeason(){
+  const r = S.run, champ = r.cup.stage === 'champion';
+  return `${doneTop()}
+  <div class="stack">
+    <section class="card verdict${champ ? ' champ' : ''}">
+      <div class="eyebrow">${champ ? 'Champions' : 'Season over'} · Your season</div>
+      <h1 style="margin-top:8px">${verdictHead(r)}</h1>
+      <div style="margin-top:14px"><button class="chip quit" data-act="share" style="padding:6px 14px;font-size:13px;color:var(--text)">Share result</button></div>
+    </section>
+    <div class="endgrid">
+      <div class="stack">${seasonBox(r)}</div>
+      <div class="stack">${teamBox(r)}${playersBox(r)}</div>
+    </div>
+  </div>
+  ${dock('<button class="btn primary" data-act="scr" data-to="comp">The competition</button>')}`;
+}
+/* the whole competition: the winner, the bracket, the league table, the top scorers */
+function viewComp(){
+  const r = S.run, c = r.cup, t = c.ev.find(e => e.k === 'table');
+  const champ = c.champ === 'YOU';
+  return `${doneTop()}
+  <div class="stack">
+    <section class="card verdict${champ ? ' champ' : ''}"><div class="eyebrow">${compOf(r).name}</div>
+      <h1 style="margin-top:8px">${champ ? 'Your XI' : esc(nm(c.champ))}</h1><p style="margin:8px 0 0">won the ${compOf(r).short}.</p></section>
+    ${koBox(c)}
+    ${topBox(r)}
+    ${t ? tableHTML(tableAfter(c, (c.lg || []).length), 'League phase table', `You finished ${ord(t.pos)}`) : ''}
+  </div>
+  ${dock('<button class="btn primary" data-act="scr" data-to="keep">' + (r.keepN ? 'Choose who stays' : 'Continue') + '</button>', '<button class="btn ghost" data-act="scr" data-to="season">Your season</button>')}`;
+}
+/* who stays for the next run */
+function viewKeep(){
   const r = S.run, st = r.cup.stage, n = r.keepN, champ = st === 'champion';
-  const head = champ ? (r.comp === 'cl' || !r.comp ? 'Champions of Europe' : `${compOf(r).short} winners`) : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase();
   const lst = arrangement(r.picks, r.form).map(pid => W.P[pid]).map(p => {
     const on = r.keepSel.includes(p.id);
     return `<button class="krow${on ? ' on' : ''}" data-act="keep" data-p="${p.id}" data-pid="${p.id}" aria-pressed="${on}" ${n ? '' : 'disabled'}>
       <span class="box">${on ? '✓' : ''}</span><span style="min-width:0"><div class="nm" style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${natTag(p)} · ${p.pos.join(' · ')} · ${esc(W.C[p.club].name)}</div></span>
       ${ovDot(playerRating(p.id), p)}</button>`;
   }).join('');
-  return `
-  <header class="topbar"><div class="mark">This Time <span>Next Year</span></div>${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}</header>
+  return `${doneTop()}
   <div class="stack">
     <section class="card verdict${champ ? ' champ' : ''}">
-      <div class="eyebrow">${champ ? 'Champions' : 'Season over'}</div>
-      <h1 style="margin-top:8px">${head}</h1>
-      ${champ ? `<p style="margin:8px 0 0">You won the ${compOf(r).name}.${r.comp && r.comp !== 'cl' && n ? ` Next run: the <b>${COMPS[NEXT_COMP[r.comp]].short}</b>.` : ''}</p>` : `<p style="margin:8px 0 0"><b>${esc(nm(r.cup.champ))}</b> won the ${compOf(r).short}.</p>`}
-      <div style="margin-top:14px"><button class="chip quit" data-act="share" style="padding:6px 14px;font-size:13px;color:var(--text)">Share result</button></div>
+      <div class="eyebrow">Next run</div>
+      <h1 style="margin-top:8px">${n ? 'Who stays?' : 'Starting over'}</h1>
+      ${champ && r.comp && r.comp !== 'cl' && n ? `<p style="margin:8px 0 0">You won the ${compOf(r).short}. Next run: the <b>${COMPS[NEXT_COMP[r.comp]].short}</b>.</p>` : ''}
       ${st === 'league' && n ? `<p style="margin:8px 0 0">Out of the top 24. Next run drops to the <b>${COMPS[PREV_COMP[r.comp || 'cl']].short}</b>.</p>` : ''}
       <p class="muted" style="margin:10px 0 0">${n ? `You keep up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''}. Start the next run within <b class="num" style="color:var(--gold)" data-cd="${r.doneAt + CFG.TIMER_MS}">${fmt(r.doneAt + CFG.TIMER_MS - Date.now())}</b> or the dynasty ends.` : st === 'league' ? 'Out of the top 24 of the Conference League, so the dynasty ends here. The next run starts from scratch.' : 'No players carry over. Next run starts from scratch.'}</p>
     </section>
     ${n ? `<div><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div><div class="keep">${lst}</div></div>` : ''}
-    <div class="endgrid">
-      <div class="stack">${seasonBox(r)}</div>
-      <div class="stack">${teamBox(r)}${playersBox(r)}</div>
-    </div>
-    ${koBox(r.cup)}
-    ${topBox(r)}
-    ${(t => t ? `<details class="card tbldet"><summary><span class="eyebrow">League phase table</span><span class="muted">You finished ${ord(t.pos)} · tap to open</span></summary>${evHTML(t)}</details>` : '')(r.cup.ev.find(e => e.k === 'table'))}
   </div>
-  <div class="dock"><div class="btnrow">${n ? `<button class="btn primary" data-act="cont">${S.armed === 'cont' ? `Sure? Only ${r.keepSel.length} of ${n} kept` : r.keepSel.length ? `Next run · ${r.keepSel.length} kept` : 'Next run'}</button>` : `<button class="btn primary" data-act="cont">New run</button>`}<button class="btn ghost" data-act="home">Home</button></div></div>`;
+  ${dock(n ? `<button class="btn primary" data-act="cont">${S.armed === 'cont' ? `Sure? Only ${r.keepSel.length} of ${n} kept` : r.keepSel.length ? `Next run · ${r.keepSel.length} kept` : 'Next run'}</button>` : `<button class="btn primary" data-act="cont">New run</button>`, '<button class="btn ghost" data-act="home">Home</button>')}`;
 }
 
 function render(){
@@ -1541,6 +1695,7 @@ document.addEventListener('click', e => {
     save(); render();
   }
   else if (a === 'kickoff') kickoff();
+  else if (a === 'scr'){ const r = S.run; if (r.phase === 'done') r.dscr = b.dataset.to; else r.scr = b.dataset.to; S.armed = null; save(); render(); scrollTo(0, 0); }
   else if (a === 'next') step(false);
   else if (a === 'all') step(true);
   else if (a === 'keep'){
