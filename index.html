@@ -279,7 +279,6 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .ven{display:inline-block;width:1.4em;margin-right:4px;text-align:center;font-size:15px}
 .chembar{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--muted)}
 .chembar b{font:600 18px var(--display);background:none!important}.chembar b small{font-size:11px;opacity:.6;margin-left:1px}
-.chm{font-size:12px;color:var(--win);margin-top:2px}
 .pc-chem{font-size:12px;color:var(--muted);line-height:1.4}.pc-chem b{color:var(--text);font-weight:500}
 @media (pointer:coarse){
   .pcard.sheet{left:0;right:0;top:auto;bottom:0;width:auto;max-height:62vh;overflow:auto;pointer-events:auto;z-index:40;
@@ -690,18 +689,10 @@ function chemOf(picks){
   }
   return { total, per };
 }
-const chemGrade = c => c >= 22 ? 'A' : c >= 15 ? 'B' : c >= 9 ? 'C' : c >= 4 ? 'D' : 'E';
-const chemBar = picks => { const c = chemOf(picks).total;
-  return `<div class="chembar" title="2 for every team-mate (same club, or started for the same team in the last year), 1 for every compatriot; at most 3 per player"><span>Chemistry</span><b class="tnum g${chemGrade(c)}">${c}<small>/33</small></b></div>`; };
-// what a candidate would add: the chemistry gain and who he links with
-function chemTag(pid, picks){
-  if (!picks.length) return '';
-  const gain = chemOf([...picks, pid]).total - chemOf(picks).total; if (gain <= 0) return '';
-  const p = W.P[pid], ps = picks.map(id => W.P[id]);
-  const tm = ps.filter(q => mates(p, q)), cp = ps.filter(q => !mates(p, q) && p.nat && q.nat === p.nat);
-  const bits = [tm.length ? 'played with ' + tm.map(q => short(q.name)).join(', ') : '', cp.length ? `${cp.length} compatriot${cp.length > 1 ? 's' : ''}` : ''].filter(Boolean);
-  return `<div class="chm">+${gain} chemistry · ${esc(bits.join(' · '))}</div>`;
-}
+// shown only once the XI is complete, on the same 40-99 scale as the other team numbers
+const chemNum = c => Math.round(40 + 59 * Math.min(33, c) / 33);
+const chemBar = picks => { const n = chemNum(chemOf(picks).total);
+  return `<div class="chembar"><span>Chemistry</span><b class="tnum g${ovGrade(n)}">${n}</b></div>`; };
 /* Your XI's strength: the clubs' line from its overall, a lift that grows with how good the XI is (no weak bench, no
    rotation; bigger where the field is stronger) and its chemistry. Calibrated with draft bots (pipeline/tools/draft_bots.js). */
 const LIFT = { cl: 16, el: 8.5, ecl: 9 }, LIFT_FROM = 68, CHEM_ELO = 3;
@@ -1132,9 +1123,10 @@ function cardHTML(p){
 }
 // his chemistry in your XI: who he played with and his compatriots
 function chemCard(p){
-  const r = S.run; if (!r || !r.picks || !r.picks.includes(p.id) || r.picks.length < 2) return '';
+  const r = S.run; if (!r || !r.picks || !r.picks.includes(p.id) || r.picks.length < 11 || r.phase === 'draft') return '';
   const c = chemOf(r.picks).per[p.id], names = ids => ids.map(id => esc(short(W.P[id].name))).join(', ');
-  return `<div class="pc-sec pc-chem"><div class="pc-row" style="margin:0"><span>Chemistry</span><b>${c.pts}/3</b></div>
+  if (!c.tm.length && !c.cp.length) return '';
+  return `<div class="pc-sec pc-chem"><div style="color:var(--text);font-weight:500">Chemistry</div>
     ${c.tm.length ? `<div>Played with <b>${names(c.tm)}</b></div>` : ''}${c.cp.length ? `<div>Compatriots: ${names(c.cp)}</div>` : ''}</div>`;
 }
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
@@ -1211,7 +1203,7 @@ function viewHome(){
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>The further you go, the more players you keep: out in the league phase 5 (in the Conference League that ends the dynasty), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
-        <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) and 1 for each compatriot, at most 3 each, 33 for the XI. It makes your XI play stronger, and the draft shows what each player would add.</li>
+        <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) and 1 for each compatriot, at most 3 each. It makes your XI play stronger. You see it as a number from 40 to 99 once your XI is complete.</li>
         <li>A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
@@ -1242,7 +1234,7 @@ function viewDraft(){
     .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || POS_ORDER.indexOf(a.prim) - POS_ORDER.indexOf(b.prim) || a.name.localeCompare(b.name))
     .sort((a, b) => (r.tip && b.id === r.tip.pid) - (r.tip && a.id === r.tip.pid))
     .map(p => `<button class="prow kitcard${r.tip && r.tip.pid === p.id ? ' tipped' : ''}" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
-        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${TIP[r.tip.kind]} · ${r.tip.n}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : why(p.id)}</div>${ok.has(p.id) ? chemTag(p.id, r.picks) : ''}</span>
+        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${TIP[r.tip.kind]} · ${r.tip.n}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   if (!shp.includes(r.form)) r.form = shp[0];
@@ -1265,7 +1257,6 @@ function viewDraft(){
     <section class="sticky">
       ${shapes(r.picks, r.form, true)}
       ${pitch(r.picks, r.form, r.kept, false, true)}
-      ${r.picks.length > 1 ? chemBar(r.picks) : ''}
       ${r.picks.length > 1 ? '<div class="hint">Tap a player, then a highlighted spot, to move him.</div>' : ''}
     </section>
   </div>`;
@@ -1352,7 +1343,7 @@ function pendingHTML(c){
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
-  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r"><span>Chemistry</span><b class="num tnum g${chemGrade(t.chem)}">${t.chem}<small style="font-size:11px;opacity:.6">/33</small></b></div></div></div></section>`;
+  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r"><span>Chemistry</span><b class="num tnum g${ovGrade(chemNum(t.chem))}">${chemNum(t.chem)}</b></div></div></div></section>`;
 }
 function viewCup(){
   const r = S.run, c = r.cup;
