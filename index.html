@@ -335,6 +335,13 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 @media (pointer:coarse){body:has(.dock) .pcard.sheet{bottom:calc(68px + env(safe-area-inset-bottom,0px));border-radius:16px;border-width:1px;max-height:calc(62vh - 68px)}}
 .slot .lbl.fit0{color:#5CC08A}.slot .lbl.fit1{color:#F2C14E}.slot .lbl.fit2{color:#E8604C}
 .slot .lbl.fit0,.slot .lbl.fit1,.slot .lbl.fit2{font-weight:600}
+.cups{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.cupbox{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center;display:flex;flex-direction:column}
+.cupbox b{font:700 40px/1 var(--display);color:var(--best,#F2C14E)}.cupbox span{font:600 14px var(--display);letter-spacing:.06em;margin-top:4px}
+.cupbox.c-cl span{color:#8FB0FF}.cupbox.c-el span{color:#FF7A1A}.cupbox.c-ecl span{color:#1FCB64}.cupbox small{color:var(--muted);font-size:11px;margin-top:2px}
+.imgov{position:fixed;inset:0;z-index:60;background:rgba(5,10,20,.88);display:grid;place-items:center;padding:16px}
+.imgbox{max-width:520px;width:100%}.imgbox img{width:100%;border-radius:12px;display:block;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.imgbox .btnrow{margin-top:12px}.imgbox a.btn{text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
@@ -1121,7 +1128,7 @@ function newRun(diff){
   const potCount = 11 - kept.length;
   // a dynasty remembers everyone who has played in it: whoever was let go cannot come back
   const ever = S.dyn && S.dyn.ever ? S.dyn.ever : [], gone = ever.filter(id => !kept.includes(id));
-  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null, diff, comp, season: (S.dyn && S.dyn.season) || 1 };
+  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null, diff, comp, season: (S.dyn && S.dyn.season) || 1, hist: (S.dyn && S.dyn.hist) || [] };
   S.dyn = null;
   // champions keep the whole XI: straight to the line-up
   if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; S.run.form = feasible(S.run.picks)[0]; }
@@ -1230,12 +1237,15 @@ function finish(){
   if (!st8.bestStage || STAGE_RANK.indexOf(st) > STAGE_RANK.indexOf(st8.bestStage)) st8.bestStage = st;
   if (st === 'champion'){ st8.titlesBy = st8.titlesBy || {}; st8.titlesBy[r.comp || 'cl'] = (st8.titlesBy[r.comp || 'cl'] || 0) + 1; st8.titles++; st8.streak++; st8.best = Math.max(st8.best, st8.streak); } else st8.streak = 0;
   r.doneAt = Date.now(); r.dscr = 'season';
+  // the dynasty's history; after ten seasons (or out of the Conference League) the dynasty is over
+  try { r.hist = [...(r.hist || []), seasonSummary(r)]; } catch (e) { r.hist = r.hist || []; }
+  if ((r.season || 1) >= DYNASTY_SEASONS){ r.keepN = 0; r.dynEnd = 'complete'; } else if (!r.keepN) r.dynEnd = 'out';
 }
 // the next run of a dynasty: same difficulty; a title moves it up a competition
 // a title moves the dynasty up; missing the top 24 drops it a level (out of the Conference League, it ends)
 const PREV_COMP = { cl: 'el', el: 'ecl', ecl: null };
 const dynComp = r => { const c = r.comp || 'cl', st = r.cup && r.cup.stage;
-  return { season: (r.season || 1) + 1, diff: r.diff || 'medium', comp: st === 'champion' ? NEXT_COMP[c] : st === 'league' ? (PREV_COMP[c] || c) : c }; };
+  return { season: (r.season || 1) + 1, hist: r.hist || [], diff: r.diff || 'medium', comp: st === 'champion' ? NEXT_COMP[c] : st === 'league' ? (PREV_COMP[c] || c) : c }; };
 function continueDynasty(){
   const r = S.run;
   S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, streak: S.stats.streak, ever: everOf(r), ...dynComp(r) } : null;
@@ -1755,9 +1765,170 @@ async function shareRun(){
   try { await navigator.clipboard.writeText(t); toast('Result copied. Paste it anywhere.'); }
   catch (e) { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); toast('Result copied. Paste it anywhere.'); } catch (x) { toast('Could not copy.'); } a.remove(); }
 }
+/* ================= DYNASTY: 10 SEASONS, A HISTORY, AND IMAGES TO SHARE ================= */
+const DYNASTY_SEASONS = 10;
+const ACCENT = { cl: '#8FB0FF', el: '#FF7A1A', ecl: '#1FCB64' };
+const CUP = { cl: 'UCL', el: 'UEL', ecl: 'UECL' };
+const STAGE_SHORT = { league: 'League phase', playoff: 'Play-off', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', champion: 'Champions' };
+// everything worth keeping about a season, with names stored so later data updates cannot break the history
+function seasonSummary(r){
+  const c = r.cup, k = campaign(r), arr = arrangement(r.picks, r.form) || [], t = teamRating(r.picks, r.form);
+  const xi = arr.map((id, j) => { if (!id) return null; const p = W.P[id], s = FORMS[r.form][j];
+    return { id, n: p.name, nat: p.nat, code: s[0], x: s[1], y: s[2], g: k.g[id] || 0, a: k.a[id] || 0, gr: ovGrade(playerRating(id).ov), fit: fitTier(p, s[0]) }; }).filter(Boolean);
+  const lt = c.top && c.top.g[0];
+  return { season: r.season || 1, comp: r.comp || 'cl', diff: r.diff || 'medium', stage: c.stage, pos: c.pos, champ: c.champ === 'YOU' ? 'YOU' : nm(c.champ),
+    w: k.W_, d: k.D, l: k.L, gf: k.GF, ga: k.GA, cs: k.CS, big: k.big ? [k.big.f, k.big.ag, nm(k.big.opp)] : null,
+    team: Math.round(Math.min(99, t.ov)), chem: chemNum(t.chem), form: r.form, xi, top: lt ? [W.P[lt[0]].name, lt[1], r.picks.includes(lt[0])] : null };
+}
+const stageWord = h => h.stage === 'champion' ? 'Champions' : h.stage === 'final' ? 'Lost the final' : h.stage === 'league' ? `League phase · ${ord(h.pos)}` : 'Out in the ' + STAGE_SHORT[h.stage].toLowerCase();
+function dynastyStats(hist){
+  const cups = { cl: 0, el: 0, ecl: 0 }, finals = { cl: 0, el: 0, ecl: 0 }, G = {}, A = {}, seasons = {}, names = {};
+  let w = 0, d = 0, l = 0, gf = 0, ga = 0, cs = 0, big = null, best = null;
+  for (const h of hist){
+    if (h.stage === 'champion') cups[h.comp]++; if (h.stage === 'final') finals[h.comp]++;
+    w += h.w; d += h.d; l += h.l; gf += h.gf; ga += h.ga; cs += h.cs || 0;
+    if (h.big && (!big || h.big[0] - h.big[1] > big[0] - big[1])) big = [...h.big, h.season];
+    if (!best || h.team > best.team) best = h;
+    for (const p of h.xi){ names[p.id] = p.n; G[p.id] = (G[p.id] || 0) + p.g; A[p.id] = (A[p.id] || 0) + p.a; seasons[p.id] = (seasons[p.id] || 0) + 1; }
+  }
+  const top = (M, min) => Object.entries(M).filter(([, v]) => v >= (min || 1)).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([id, v]) => [names[id], v]);
+  return { cups, finals, titles: cups.cl + cups.el + cups.ecl, w, d, l, gf, ga, cs, big, best, scorers: top(G), assists: top(A), legends: top(seasons, 2), n: hist.length };
+}
+function viewDynasty(){
+  const r = S.run, hist = r.hist || [], s = dynastyStats(hist), done = r.dynEnd === 'complete';
+  const row = h => `<tr class="${h.stage === 'champion' ? 'best' : ''}"><td class="rd">S${h.season}</td><td class="op">${COMPS[h.comp].short}<small>${esc(stageWord(h))}${h.stage !== 'champion' && h.champ ? ' · ' + esc(h.champ === 'YOU' ? 'you' : h.champ) + ' won' : ''}</small></td><td class="sc">${h.w}-${h.d}-${h.l}</td><td><span class="cg g${ovGrade(h.team)}">${h.team}</span></td></tr>`;
+  const list = (title, L, unit) => `<div class="card"><div class="eyebrow" style="margin-bottom:8px">${title}</div><div class="tblwrap"><table class="tbl num toplist"><tbody>
+    ${L.length ? L.map(([n, v], i) => `<tr class="${i === 0 ? 'best' : ''}"><td>${i === 0 ? '<span class="medal">1</span>' : i + 1}</td><td>${esc(n)}</td><td>${v}${unit ? ' <small style="display:inline">' + unit + '</small>' : ''}</td></tr>`).join('') : '<tr><td>None</td></tr>'}</tbody></table></div></div>`;
+  return `${doneTop()}
+  <div class="stack">
+    <section class="card verdict${s.titles ? ' champ' : ''}">
+      <div class="eyebrow">${done ? 'Dynasty complete' : 'Dynasty over'} · ${DIFF[hist[0] ? hist[0].diff : 'medium'].label} · ${s.n} season${s.n > 1 ? 's' : ''}</div>
+      <h1 style="margin-top:8px">${s.titles ? `${s.titles} trophy${s.titles > 1 ? ' haul' : ''}` : 'No trophies'}</h1>
+      <div class="cups">${['cl', 'el', 'ecl'].map(c => `<div class="cupbox c-${c}"><b>${s.cups[c]}</b><span>${CUP[c]}</span>${s.finals[c] ? `<small>${s.finals[c]} lost final${s.finals[c] > 1 ? 's' : ''}</small>` : ''}</div>`).join('')}</div>
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="dynasty" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button></div>
+    </section>
+    <div class="stats s3">
+      <div class="stat"><span>Matches</span><b class="num">${s.w + s.d + s.l}</b><small>${s.w}-${s.d}-${s.l}</small></div>
+      <div class="stat"><span>Goals</span><b class="num">${s.gf}:${s.ga}</b></div>
+      <div class="stat"><span>Clean sheets</span><b class="num">${s.cs}</b></div>
+      <div class="stat"><span>Best team</span><b class="num">${s.best ? s.best.team : '-'}</b><small>${s.best ? 'Season ' + s.best.season : ''}</small></div>
+      <div class="stat"><span>Biggest win</span><b class="num">${s.big ? s.big[0] + ':' + s.big[1] : '-'}</b><small>${s.big ? 'v ' + esc(s.big[2]) + ' · S' + s.big[3] : ''}</small></div>
+      <div class="stat"><span>Win rate</span><b class="num">${s.w + s.d + s.l ? Math.round(100 * s.w / (s.w + s.d + s.l)) : 0}%</b></div>
+    </div>
+    <section class="card"><div class="eyebrow" style="margin-bottom:10px">Season by season</div><div class="tblwrap"><table class="tbl matches"><tbody>${hist.map(row).join('')}</tbody></table></div></section>
+    <div class="toplists">${list('Top scorers', s.scorers, 'goals')}${list('Top assists', s.assists, 'assists')}</div>
+    ${s.legends.length ? list('Legends: most seasons in your XI', s.legends, 'seasons') : ''}
+  </div>
+  ${dock('<button class="btn primary" data-act="cont">New dynasty</button>', '<button class="btn ghost" data-act="home">Home</button>')}`;
+}
+
+/* ----- images: drawn on a canvas, then shared (phone) or shown to save ----- */
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+async function fontsReady(){ try { await Promise.all(['700 64px Oswald, "Arial Narrow", Arial, sans-serif', '600 30px Oswald, "Arial Narrow", Arial, sans-serif', '500 28px Rubik, Arial, sans-serif', '400 24px Rubik, Arial, sans-serif'].map(f => document.fonts.load(f.split(',')[0]))); } catch (e) {} }
+function canvasBase(w, h, acc){
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0B1626'); g.addColorStop(1, '#13233A'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  x.fillStyle = acc; x.fillRect(0, 0, w, 10);
+  return [cv, x];
+}
+function txt(x, s, X, Y, font, color, align, maxW){
+  x.font = font; x.fillStyle = color; x.textAlign = align || 'left'; x.textBaseline = 'alphabetic';
+  let t = String(s); if (maxW) while (t.length > 1 && x.measureText(t).width > maxW) t = t.slice(0, -2) + '…';
+  x.fillText(t, X, Y);
+}
+const rrect = (x, X, Y, w, h, r) => { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + w, Y, X + w, Y + h, r); x.arcTo(X + w, Y + h, X, Y + h, r); x.arcTo(X, Y + h, X, Y, r); x.arcTo(X, Y, X + w, Y, r); x.closePath(); };
+const surname = n => { const s = n.split(' '); return s.length > 1 ? s.slice(1).join(' ') : n; };
+async function seasonImage(h){
+  await fontsReady();
+  const W_ = 1080, H = 1350, acc = ACCENT[h.comp], [cv, x] = canvasBase(W_, H, acc), white = '#F4F1EA', muted = '#9AA8BD';
+  txt(x, 'THIS TIME NEXT YEAR', 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
+  txt(x, `SEASON ${h.season} · ${COMPS[h.comp].short.toUpperCase()}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
+  const head = h.stage === 'champion' ? (h.comp === 'cl' ? 'CHAMPIONS OF EUROPE' : CUP[h.comp] + ' WINNERS') : stageWord(h).toUpperCase();
+  let fs = 76; x.font = `700 ${fs}px Oswald, "Arial Narrow", Arial, sans-serif`; while (fs > 40 && x.measureText(head).width > W_ - 120){ fs -= 2; x.font = `700 ${fs}px Oswald, "Arial Narrow", Arial, sans-serif`; }
+  txt(x, head, 60, 170, x.font, h.stage === 'champion' ? '#F2C14E' : white);
+  txt(x, h.stage === 'champion' ? `${h.form} · team ${h.team}` : `${h.champ === 'YOU' ? '' : h.champ + ' won the ' + COMPS[h.comp].short + ' · '}${h.form} · team ${h.team}`, 60, 215, '400 28px Rubik, Arial, sans-serif', muted, 'left', W_ - 120);
+  // pitch
+  const PX = 60, PY = 245, PW = W_ - 120, PH = 790, ys = h.xi.map(p => p.y), y0 = Math.min(...ys), y1 = Math.max(...ys), lv = [...new Set(ys.map(Math.round))].sort((a, b) => a - b);
+  rrect(x, PX, PY, PW, PH, 24); x.fillStyle = '#16432F'; x.fill();
+  x.save(); rrect(x, PX, PY, PW, PH, 24); x.clip(); for (let i = 0; i < 8; i++) if (i % 2){ x.fillStyle = 'rgba(255,255,255,.035)'; x.fillRect(PX, PY + i * PH / 8, PW, PH / 8); } x.restore();
+  x.strokeStyle = 'rgba(255,255,255,.25)'; x.lineWidth = 3; rrect(x, PX, PY, PW, PH, 24); x.stroke();
+  x.beginPath(); x.arc(PX + PW / 2, PY, 110, 0, Math.PI); x.stroke(); x.strokeRect(PX + PW * 0.28, PY + PH - 130, PW * 0.44, 130);
+  const GC = { A: css('--gA'), B: css('--gB'), C: css('--gC'), D: css('--gD'), E: css('--gE') }, FITC = ['#5CC08A', '#F2C14E', '#E8604C'];
+  for (const p of h.xi){
+    const cx = PX + PW * (0.06 + 0.88 * p.x / 100), li = lv.indexOf(Math.round(p.y)), cy = PY + 62 + (lv.length > 1 ? li / (lv.length - 1) : 0.5) * (PH - 190);
+    x.beginPath(); x.arc(cx, cy, 32, 0, 2 * Math.PI); x.fillStyle = GC[p.gr] || '#888'; x.fill(); x.lineWidth = 4; x.strokeStyle = '#0B1626'; x.stroke();
+    txt(x, p.gr, cx, cy + 12, '700 34px Oswald, "Arial Narrow", Arial, sans-serif', p.gr === 'C' ? '#0B1626' : '#fff', 'center');
+    const nm_ = surname(p.n); x.font = '500 24px Rubik, Arial, sans-serif'; const tw = Math.min(200, x.measureText(nm_).width) + 20;
+    rrect(x, cx - tw / 2, cy + 38, tw, 32, 8); x.fillStyle = 'rgba(11,22,38,.85)'; x.fill();
+    txt(x, nm_, cx, cy + 62, '500 24px Rubik, Arial, sans-serif', white, 'center', 200);
+    const bits = [p.code, p.g ? `⚽${p.g}` : '', p.a ? `🅰${p.a}` : ''].filter(Boolean).join('  ');
+    txt(x, bits, cx, cy + 92, '500 20px Rubik, Arial, sans-serif', FITC[Math.min(2, p.fit || 0)], 'center');
+  }
+  // stats
+  const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Clean sheets', h.cs], ['Chemistry', h.chem]];
+  const SY = 1060, cw = (W_ - 120) / stats.length;
+  stats.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, SY, cw - 12, 120, 16); x.fillStyle = '#1A2E4A'; x.fill();
+    txt(x, v, X + cw / 2, SY + 70, '700 46px Oswald, "Arial Narrow", Arial, sans-serif', white, 'center'); txt(x, l.toUpperCase(), X + cw / 2, SY + 103, '500 18px Rubik, Arial, sans-serif', muted, 'center'); });
+  const best = [...h.xi].sort((a, b) => b.g - a.g)[0], line = [];
+  if (best && best.g) line.push(`Top scorer: ${best.n} (${best.g})`);
+  if (h.big) line.push(`Biggest win: ${h.big[0]}:${h.big[1]} v ${h.big[2]}`);
+  txt(x, line.join('   ·   '), 60, 1222, '500 26px Rubik, Arial, sans-serif', white, 'left', W_ - 120);
+  if (h.top) txt(x, `Competition top scorer: ${h.top[0]} (${h.top[1]})${h.top[2] ? ' · yours' : ''}`, 60, 1258, '400 24px Rubik, Arial, sans-serif', muted, 'left', W_ - 120);
+  txt(x, `${DIFF[h.diff].label} · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`, 60, 1316, '400 22px Rubik, Arial, sans-serif', muted);
+  txt(x, 'This Time Next Year', W_ - 60, 1316, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
+  return cv;
+}
+async function dynastyImage(hist, ended){
+  await fontsReady();
+  const s = dynastyStats(hist), last = hist[hist.length - 1] || { comp: 'cl', diff: 'medium' }, acc = ACCENT[last.comp];
+  const W_ = 1080, H = 1350, [cv, x] = canvasBase(W_, H, acc), white = '#F4F1EA', muted = '#9AA8BD';
+  txt(x, 'THIS TIME NEXT YEAR', 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
+  txt(x, `${DIFF[hist[0] ? hist[0].diff : 'medium'].label.toUpperCase()} · ${s.n} SEASONS`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
+  txt(x, ended === 'complete' ? 'DYNASTY COMPLETE' : 'DYNASTY OVER', 60, 170, '700 80px Oswald, "Arial Narrow", Arial, sans-serif', white);
+  // trophy cabinet
+  ['cl', 'el', 'ecl'].forEach((c, i) => { const X = 60 + i * 330, Y = 210; rrect(x, X, Y, 300, 170, 20); x.fillStyle = '#1A2E4A'; x.fill(); x.strokeStyle = ACCENT[c]; x.lineWidth = 3; rrect(x, X, Y, 300, 170, 20); x.stroke();
+    txt(x, s.cups[c], X + 150, Y + 100, '700 84px Oswald, "Arial Narrow", Arial, sans-serif', s.cups[c] ? '#F2C14E' : muted, 'center'); txt(x, CUP[c], X + 150, Y + 140, '600 28px Oswald, "Arial Narrow", Arial, sans-serif', ACCENT[c], 'center');
+    if (s.finals[c]) txt(x, `+${s.finals[c]} final${s.finals[c] > 1 ? 's' : ''}`, X + 150, Y + 163, '400 18px Rubik, Arial, sans-serif', muted, 'center'); });
+  // season by season
+  txt(x, 'SEASON BY SEASON', 60, 440, '600 26px Oswald, "Arial Narrow", Arial, sans-serif', acc);
+  hist.slice(0, 10).forEach((h, i) => { const Y = 470 + i * 44;
+    if (i % 2 === 0){ x.fillStyle = 'rgba(255,255,255,.04)'; x.fillRect(60, Y, W_ - 120, 44); }
+    txt(x, `S${h.season}`, 76, Y + 31, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', muted);
+    txt(x, CUP[h.comp], 150, Y + 31, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', ACCENT[h.comp]);
+    txt(x, stageWord(h), 260, Y + 31, '500 24px Rubik, Arial, sans-serif', h.stage === 'champion' ? '#F2C14E' : white, 'left', 470);
+    txt(x, `${h.w}-${h.d}-${h.l}`, W_ - 200, Y + 31, '500 24px Rubik, Arial, sans-serif', muted, 'right');
+    txt(x, h.team, W_ - 80, Y + 31, '700 26px Oswald, "Arial Narrow", Arial, sans-serif', white, 'right'); });
+  // totals and people
+  const Y0 = 470 + Math.min(10, hist.length) * 44 + 40;
+  const tot = [['Matches', s.w + s.d + s.l], ['W-D-L', `${s.w}-${s.d}-${s.l}`], ['Goals', `${s.gf}:${s.ga}`], ['Win %', (s.w + s.d + s.l ? Math.round(100 * s.w / (s.w + s.d + s.l)) : 0) + '%']], cw = (W_ - 120) / tot.length;
+  tot.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, Y0, cw - 12, 104, 16); x.fillStyle = '#1A2E4A'; x.fill();
+    txt(x, v, X + cw / 2, Y0 + 60, '700 40px Oswald, "Arial Narrow", Arial, sans-serif', white, 'center'); txt(x, l.toUpperCase(), X + cw / 2, Y0 + 90, '500 18px Rubik, Arial, sans-serif', muted, 'center'); });
+  const col = (title, L, unit, X) => { txt(x, title, X, Y0 + 160, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc); L.slice(0, 3).forEach(([n, v], i) => txt(x, `${i + 1}. ${surname(n)} · ${v} ${unit}`, X, Y0 + 198 + i * 34, '500 23px Rubik, Arial, sans-serif', i ? white : '#F2C14E', 'left', 300)); };
+  col('TOP SCORERS', s.scorers, 'g', 60); col('TOP ASSISTS', s.assists, 'a', 400); col('LEGENDS', s.legends, 'seasons', 740);
+  txt(x, 'This Time Next Year', W_ - 60, 1310, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
+  return cv;
+}
+// show the image in an overlay: share it (phones), save it, or long-press it
+async function showImage(kind){
+  const r = S.run; if (!r) return;
+  const hist = r.hist || [], cv = kind === 'dynasty' ? await dynastyImage(hist, r.dynEnd) : await seasonImage(hist[hist.length - 1] || seasonSummary(r));
+  const url = cv.toDataURL('image/png'), name = kind === 'dynasty' ? 'ttny-dynasty.png' : `ttny-season-${r.season || 1}.png`;
+  const ov = document.createElement('div'); ov.className = 'imgov';
+  ov.innerHTML = `<div class="imgbox"><img src="${url}" alt="Your ${kind} as an image"><div class="btnrow"><button class="btn primary" data-img="share">Share</button><a class="btn ghost" href="${url}" download="${name}">Save</a><button class="btn ghost" data-img="close">Close</button></div><div class="muted" style="font-size:12px;text-align:center;margin-top:8px">On a phone you can also press and hold the image to save it.</div></div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', async e => {
+    if (e.target === ov || e.target.dataset.img === 'close'){ ov.remove(); return; }
+    if (e.target.dataset.img === 'share'){
+      try { const blob = await new Promise(res => cv.toBlob(res, 'image/png')); const file = new File([blob], name, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], title: 'This Time Next Year' }); return; } } catch (err) { if (err && err.name === 'AbortError') return; }
+      toast('Sharing is not available here. Use Save, or press and hold the image.');
+    }
+  });
+}
+
 function viewDone(){
   const r = S.run, d = r.dscr || 'season';
-  return d === 'comp' ? viewComp() : d === 'keep' ? viewKeep() : viewSeason();
+  return d === 'comp' ? viewComp() : d === 'keep' ? viewKeep() : d === 'dynasty' ? viewDynasty() : viewSeason();
 }
 const doneTop = () => `<header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px">${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}<span class="chip">${seasonTag()}</span></div></header>`;
 const verdictHead = r => { const st = r.cup.stage; return st === 'champion' ? (r.comp === 'cl' || !r.comp ? 'Champions of Europe' : `${compOf(r).short} winners`) : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase(); };
@@ -1769,7 +1940,7 @@ function viewSeason(){
     <section class="card verdict${champ ? ' champ' : ''}">
       <div class="eyebrow">${champ ? 'Champions' : 'Season over'} · Your season</div>
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
-      <div style="margin-top:14px"><button class="chip quit" data-act="share" style="padding:6px 14px;font-size:13px;color:var(--text)">Share result</button></div>
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="season" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button><button class="chip quit" data-act="share" style="padding:6px 14px;font-size:13px;color:var(--text)">Copy as text</button></div>
     </section>
     <div class="endgrid">
       <div class="stack">${seasonBox(r)}</div>
@@ -1790,7 +1961,7 @@ function viewComp(){
     ${topBox(r)}
     ${t ? tableHTML(tableAfter(c, (c.lg || []).length), 'League phase table', `You finished ${ord(t.pos)}`) : ''}
   </div>
-  ${dock('<button class="btn primary" data-act="scr" data-to="keep">' + (r.keepN ? 'Choose who stays' : 'Continue') + '</button>', '<button class="btn ghost" data-act="scr" data-to="season">Your season</button>')}`;
+  ${dock(r.dynEnd ? '<button class="btn primary" data-act="scr" data-to="dynasty">Dynasty review</button>' : '<button class="btn primary" data-act="scr" data-to="keep">' + (r.keepN ? 'Choose who stays' : 'Continue') + '</button>', '<button class="btn ghost" data-act="scr" data-to="season">Your season</button>')}`;
 }
 /* who stays for the next run */
 function viewKeep(){
@@ -1880,6 +2051,7 @@ document.addEventListener('click', e => {
     else { S.armed = null; continueDynasty(); }
   }
   else if (a === 'share') shareRun();
+  else if (a === 'img') showImage(b.dataset.kind);
   else if (a === 'fresh2'){ S.run = null; S.dyn = null; save(); render(); }
   else if (a === 'home'){
     const r = S.run;
