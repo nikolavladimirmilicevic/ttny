@@ -884,7 +884,7 @@ function leagueSchedule6(teams){
 }
 function drawCard(c){
   if (!c.myPot) return `<div class="card muted">The 35 other clubs in this season's ${compOf(S.run).short} are in.</div>`;
-  return `<div class="card muted">The 35 other clubs in this season's ${compOf(S.run).short} are in. Your XI goes into <b style="color:var(--text)">pot ${c.myPot}</b> and meets ${(S.run && S.run.comp) === 'ecl' ? 'one club from every pot, three at home and three away' : 'two clubs from every pot, four at home and four away'}.</div>`;
+  return `<div class="card muted">The 35 other clubs in this season's ${compOf(S.run).short} are in. Your XI goes into <b style="color:var(--text)">pot ${c.myPot}</b> of ${(S.run && S.run.comp) === 'ecl' ? 6 : 4} and meets ${(S.run && S.run.comp) === 'ecl' ? 'one club from every pot, three at home and three away' : 'two clubs from every pot, four at home and four away'}.</div>`;
 }
 function buildCup(T){
   const opps = compField((S.run && S.run.comp) || 'cl').sort((a, b) => W.C[b].elo - W.C[a].elo);
