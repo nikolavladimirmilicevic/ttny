@@ -321,20 +321,11 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .medal{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--best);color:#1B1606!important;font-weight:700;font-size:12px}
 .tbl tr.best{box-shadow:inset 0 0 0 1px rgba(242,193,78,.45)}
 .endgrid>*,.grid2>*,.stack>*{min-width:0}
-.pp sub{font-size:8px;opacity:.7;margin-left:1px;vertical-align:baseline}
-.pc-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px 6px;margin-top:3px}
-.pc-tiles div{display:flex;flex-direction:column;min-width:0}.pc-tiles .w2{grid-column:span 2}
-.pc-tiles b{font:600 14px/1.15 var(--display);color:var(--text);white-space:nowrap}
-.pc-tiles small{font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pc-line{display:flex;justify-content:space-between;align-items:center;gap:8px}.pc-line .pc-h{margin:0;flex:none}
 .pc-line b{color:var(--text)}.pc-teams{text-align:right;color:var(--text);font-size:11px;min-width:0}
-.dots{display:flex;gap:2px}.dot{width:14px;height:14px;border-radius:3px;font:700 8px/14px var(--display);text-align:center;color:#0B1626}
-.dot.W{background:var(--win)}.dot.D{background:var(--draw)}.dot.L{background:var(--loss)}.dot.gi{box-shadow:0 0 0 1.5px var(--best,#F2C14E)}
-.pc-sub{flex-wrap:nowrap;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-@media (pointer:coarse){.pcard.sheet .pc-tiles b{font-size:18px}.pcard.sheet .pc-tiles small{font-size:10px}.pcard.sheet .dot{width:20px;height:20px;line-height:20px;font-size:10px}.pcard.sheet .pc-teams{font-size:13px}}
+.pc-sub{display:block}
 .pc-tags{display:block;line-height:1}.pc-tags .tag{white-space:nowrap;display:inline-block;line-height:1.4;margin:0 4px 0 0;vertical-align:middle}
 .pc-part{grid-template-columns:1fr auto 34px}.pc-part>:last-child{justify-self:end}
-.dots{gap:2px;flex-wrap:nowrap}.dot{width:13px;height:13px;line-height:13px;font-size:7.5px}
 .pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
 .pc-g{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;color:var(--muted);min-width:0}
 .pc-g span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc-g .gt{font-size:10px;padding:0 5px;min-width:18px;text-align:center}
@@ -1220,21 +1211,19 @@ function cardHTML(p){
   let slot = null;
   if (mine && r.form && r.picks.length === 11){ const a = arrangement(r.picks, r.form); const j = a ? a.indexOf(p.id) : -1; if (j > -1) slot = FORMS[r.form][j][0]; }
   const weakHere = slot && isWeak(p, slot);
-  const chip = (x, i) => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}${p.pc && p.pc[i] ? `<sub>${p.pc[i]}</sub>` : ''}</span>`;
-  const pips = g => { const n = 5 - 'ABCDE'.indexOf(g); return `<span class="pips">${[1, 2, 3, 4, 5].map(k => `<i class="${k <= n ? 'g' + g : ''}"></i>`).join('')}</span>`; };
-  const part = (label, q, arrow) => { const g = qGrade(q); return `<div class="pc-part"><span>${label}</span>${pips(g)}${arrow ? badge(g, true) : `<b class="gt g${g}">${g}</b>`}</div>`; };
+  const chip = (x, i) => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}</span>`;
   const tags = [r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : ''].join('');
   const head = `<div class="pc-head"><div style="min-width:0"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age} · ${esc(c.name)}</div></div>
       ${rt ? `<div class="pc-ov g${ovGrade(rt.ov)}"><b>${ovGrade(rt.ov)}</b><small>Overall</small></div>` : ''}</div>
     <div class="pc-pos">${p.pos.map(chip).join('')}</div>${tags ? `<div class="pc-tags">${tags}</div>` : ''}`;
   if (!rt) return head;
-  // more grades, A to E against players of his line over the last 12 months: for show, they do not drive the simulation
+  // every A-E grade in one list, alphabetical (the overall stays on its own at the top)
   const gk = p.prim === 'GK';
-  const extra = (p.gr || []).map((q, i) => [CARD_GRADES[i], q]).filter(([g]) => g && !(gk && g[2])).map(([g, q]) => { const l = qGrade(q);
-    return `<div class="pc-g" title="${g[1]}"><span>${g[0]}</span><b class="gt g${l}">${l}</b></div>`; }).join('');
-  // his last 10 starts, newest first: result dots, with a mark where he scored or assisted
-  const last10 = (p.sc || []).map((g, i) => { const a = p.co[i], m = (p.m || [])[i], res = g > a ? 'W' : g < a ? 'L' : 'D';
-    return `<span class="dot ${res}${m && m[4] ? ' gi' : ''}" title="${g}:${a}${m && m[4] ? ' · scored or assisted' : ''}">${res}</span>`; }).join('');
+  const all = [['Reputation', rt.q.pe, 'Strength of the clubs he started for'], ['Role', rt.q.ro, 'How often he started for them'],
+    ['Performance', rt.q.pf, 'Match ratings, adjusted for the opponent'], ['Form', rt.q.fo, 'Match ratings in his last 5 starts'],
+    ...(p.gr || []).map((q, i) => CARD_GRADES[i] && !(gk && CARD_GRADES[i][2]) ? [CARD_GRADES[i][0], q, CARD_GRADES[i][1]] : null).filter(Boolean)]
+    .sort((x, y) => x[0].localeCompare(y[0]));
+  const grades = all.map(([n, q, t]) => { const l = qGrade(q); return `<div class="pc-g" title="${t}"><span>${n}</span><b class="gt g${l}">${l}</b></div>`; }).join('');
   // this season so far (only what you have already seen)
   let season = '';
   if (r.cup){
@@ -1243,13 +1232,9 @@ function cardHTML(p){
     for (const e of shown) if (e.k === 'md' || e.k === 'leg' || e.k === 'final'){ n++; for (const [sc, as] of e.gl || []){ if (sc === p.id) g++; if (as === p.id) a++; } }
     if (n) season = `<div class="pc-sec pc-line"><span class="pc-h">This season</span><span><b>${n}</b> played · <b>${g}</b> G · <b>${a}</b> A</span></div>`;
   }
-  const teams = (p.tm || []).map(teamName).filter(Boolean);
   return `${head}
-    <div class="pc-sec">${part('Reputation', rt.q.pe)}${part('Role', rt.q.ro)}${part('Performance', rt.q.pf)}${part('Form', rt.q.fo, true)}</div>
+    <div class="pc-sec pc-grid">${grades}</div>
     ${season}
-    ${extra ? `<div class="pc-sec pc-grid">${extra}</div>` : ''}
-    ${last10 ? `<div class="pc-sec pc-line"><span class="pc-h">Last ${(p.sc || []).length}</span><span class="dots">${last10}</span></div>` : ''}
-    ${teams.length ? `<div class="pc-sec pc-line"><span class="pc-h">Played for</span><span class="pc-teams">${esc(teams.join(' · '))}</span></div>` : ''}
     ${chemCard(p)}`;
 }
 // his chemistry in your XI: who he played with and his compatriots
