@@ -1327,6 +1327,15 @@ const gBadge = (g, lbl) => `<span class="g g${g}" title="${lbl} ${g}"><small>${l
 // positions, most played first: the main one bold, the other strong ones plain, the weak ones faded
 function posText(p){ return p.pos.map(x => x === p.prim ? `<b>${x}</b>` : isWeak(p, x) ? `<span class="wk">${x}</span>` : x).join(' · '); }
 const LINES = ['GK', 'DEF', 'MID', 'FWD'];
+// the draft list: by main position, then second, third and so on (fewer positions first on a tie), then by name
+const DRAFT_POS = ['GK', 'CB', 'RB', 'LB', 'DMF', 'CMF', 'RMF', 'LMF', 'AMF', 'RWF', 'LWF', 'CF'];
+function byPositions(a, b){
+  for (let i = 0; i < Math.max(a.pos.length, b.pos.length); i++){
+    const x = i < a.pos.length ? DRAFT_POS.indexOf(a.pos[i]) : -1, y = i < b.pos.length ? DRAFT_POS.indexOf(b.pos[i]) : -1;
+    if (x !== y) return x - y;
+  }
+  return 0;
+}
 const POS_ORDER = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'CF'];
 const quitBtn = () => `<button class="chip quit${S.armed === 'quit' ? ' warn' : ''}" data-act="quit">${S.armed === 'quit' ? (S.run && S.run.kept.length ? 'Tap again: dynasty ends' : 'Tap again to quit') : 'Quit run'}</button>`;
 const kit = p => { const n = natInfo(p.nat); return `--kit:${n[1]};--kit-ink:${n[2]}`; };
@@ -1489,7 +1498,7 @@ function viewDraft(){
   const ok = new Set(visible(r)), cut = new Set(r.cut || []), gone = new Set(r.gone || []);
   const why = id => gone.has(id) ? ' · left your dynasty' : cut.has(id) ? ' · fifty-fifty' : ' · no slot left';
   const rows = club.elig.filter(p => !r.picks.includes(p)).map(pid => W.P[pid])
-    .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || POS_ORDER.indexOf(a.prim) - POS_ORDER.indexOf(b.prim) || a.name.localeCompare(b.name))
+    .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || byPositions(a, b) || a.name.localeCompare(b.name))
     .sort((a, b) => (r.tip && b.id === r.tip.pid) - (r.tip && a.id === r.tip.pid))
     .map(p => `<button class="prow kitcard${r.tip && r.tip.pid === p.id ? ' tipped' : ''}" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
         <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
