@@ -21,7 +21,8 @@ OVR_MEAN, OVR_SD = 72, 7.5
 PERF_PRIOR = 10          # average matches of shrinkage toward his line's mean match rating
 EXPERIENCE_STARTS = 10   # starts for a full rating; fewer pull the score toward a squad player's
 SQUAD_Z = -0.5           # the score a player with almost no starts is pulled toward (a squad player, about a D)
-SECONDARY_PENALTY = 3    # overall points a player loses away from his main position (applied in the game)
+SECONDARY_PENALTY = 2    # overall points lost in a weak position (half or fewer of his main position's starts)
+STRONG_PENALTY = 1       # ... and in any other non-main position: measured from match ratings, about 1 point either way
 LINE = {'GK': 'GK', 'CB': 'DEF', 'LB': 'DEF', 'RB': 'DEF', 'DMF': 'MID', 'CMF': 'MID', 'LMF': 'MID', 'RMF': 'MID',
         'AMF': 'MID', 'LWF': 'FWD', 'RWF': 'FWD', 'CF': 'FWD'}
 ND = statistics.NormalDist()
@@ -333,7 +334,7 @@ def build(world, fx, lu, evs, pst, top_clubs, since, until, log=print, national=
     alpha = my - beta * mx
     corr = beta * statistics.pstdev([x for x, _ in pts]) / (statistics.pstdev([y for _, y in pts]) or 1)
     world['model'] = {'goals': G, 'xi': {'alpha': round(alpha, 3), 'beta': round(beta, 3), 'clubs': len(pts), 'r': round(corr, 3)},
-                      'prestige': PRESTIGE, 'secondary_penalty': SECONDARY_PENALTY, 'player': pinfo}
+                      'prestige': PRESTIGE, 'secondary_penalty': SECONDARY_PENALTY, 'strong_penalty': STRONG_PENALTY, 'player': pinfo}
     report = credibility(world, G, top_clubs)
     report['backtest'] = backtest(fx, pre, top_pts, until)
     world['model']['tests'] = report

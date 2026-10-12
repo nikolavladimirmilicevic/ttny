@@ -681,7 +681,8 @@ function buildModel(w, elig){
   }
   w.goals = M.goals || { a: 0.21, h: 0.23, b: 0.18, rho: -0.04 };
   w.xi = M.xi || { alpha: 453, beta: 18.1 };
-  w.pen = M.secondary_penalty != null ? M.secondary_penalty : 2;
+  w.pen = M.secondary_penalty != null ? Math.min(2, M.secondary_penalty) : 2;
+  w.pen2 = M.strong_penalty != null ? M.strong_penalty : 1;
   // each club's own XI (its 11 most-used rated players): the averages of the four parts, for placing your XI's
   const D = { pe: [], ro: [], pf: [], fo: [] };
   for (const id of w.draftable){ const ps = C[id].elig.map(pid => w.P[pid]).sort((a, b) => b.starts - a.starts).slice(0, 11);
@@ -706,7 +707,8 @@ function isWeak(p, code){
   if (!p.pc) return code !== p.prim;
   const i = p.pos.indexOf(code); return i < 0 || p.pc[i] <= Math.max(...p.pc) / 2;
 }
-function effOvr(pid, code){ const p = W.P[pid]; return p.ovr - (code && isWeak(p, code) ? W.pen : 0); }
+// away from his main position he plays a little below his level: 2 points in a weak position, 1 in any other (measured)
+function effOvr(pid, code){ const p = W.P[pid]; return p.ovr - (!code || code === p.prim ? 0 : isWeak(p, code) ? W.pen : W.pen2); }
 const xiElo = ov => W.xi.alpha + W.xi.beta * ov;
 const eloOv = elo => (elo - W.xi.alpha) / W.xi.beta;   // a rating on the overall scale, for showing clubs as letters
 function teamOvr(picks, form){
@@ -1211,9 +1213,9 @@ function cardHTML(p){
   const rated = locked() && mine, rt = rated ? playerRating(p.id) : null;
   let slot = null;
   if (mine && r.form && r.picks.length === 11){ const a = arrangement(r.picks, r.form); const j = a ? a.indexOf(p.id) : -1; if (j > -1) slot = FORMS[r.form][j][0]; }
-  const weakHere = slot && isWeak(p, slot);
+  const weakHere = slot && isWeak(p, slot), offHere = slot && slot !== p.prim && !weakHere;
   const chip = (x, i) => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}</span>`;
-  const tags = [r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : ''].join('');
+  const tags = [r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : offHere ? `<span class="tag">Slightly below his level at ${slot}</span>` : ''].join('');
   const head = `<div class="pc-head"><div style="min-width:0"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age} · ${esc(c.name)}</div></div>
       ${rt ? `<div class="pc-ov g${ovGrade(rt.ov)}"><b>${ovGrade(rt.ov)}</b><small>Overall</small></div>` : ''}</div>
     <div class="pc-pos">${p.pos.map(chip).join('')}</div>${tags ? `<div class="pc-tags">${tags}</div>` : ''}`;
@@ -1314,7 +1316,7 @@ function viewHome(){
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>A new dynasty starts with one choice, the difficulty. It sets where you start (Easy in the Champions League, Medium in the Europa League, Hard in the Conference League) and how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots. Win a competition and the next run moves up a level.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for club strength, playing time, performance and form. Your team and every opponent get a rating from 40 to 99. A player plays a little below his level in a weak position, one he started in at most half as often as his main one; weak positions are faded on his card.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for club strength, playing time, performance and form. Your team and every opponent get a rating from 40 to 99. Away from his main position a player plays a little below his level: a bit less in a position he plays often, a bit more in a weak one (started in at most half as often as his main one). Weak positions are faded on his card.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>The further you go, the more players you keep: out in the league phase 5 (in the Conference League that ends the dynasty), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
