@@ -687,8 +687,9 @@ DEF_POS = {'GK', 'CB', 'LB', 'RB', 'DMF'}
 MIN_STARTS = int(os.environ.get('MIN_STARTS', '1'))   # starts in the window a player needs to be rated and drafted
 
 
-def build_world(clubs, teams, fx, lu, squads, people, evs=None):
-    evs = evs or {}
+def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=None):
+    evs = evs or {}; pst = pst or {}; extra = extra or {}
+    national = {int(k) for k, v in extra.items() if v.get('kind') == 'nat'}
     top = {}
     for c in clubs:
         t = teams.get(tkey(c))
@@ -722,6 +723,21 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
                           'pts': c.get('points'),
                           # every relevant match in 365 days, newest first: [opponent rank, at home, scored, conceded]
                           'm': [[r[3], int(r[4]), r[1], r[2]] for r in res]})
+    # every appearance in the window, from the bench too: minutes and match ratings (API player stats), goals,
+    # penalties and assists (match events). For the player card and the scout, not for the ratings.
+    apps = defaultdict(lambda: [0, 0, 0.0, 0, 0, 0, 0])   # [appearances, minutes, rating sum, rated, goals, penalties, assists]
+    for fid, f in fx.items():
+        if f['s'] not in FINISHED or not (SINCE.isoformat() <= f['d'] <= TODAY.isoformat()):
+            continue
+        for pid, v in (pst.get(fid) or {}).items():
+            a = apps[int(pid)]; a[0] += 1; a[1] += v[0] or 0
+            if v[1] is not None: a[2] += v[1]; a[3] += 1
+        for e in evs.get(fid) or []:
+            if e[3] != 'o' and e[1]:
+                apps[e[1]][4] += 1
+                if e[3] == 'p': apps[e[1]][5] += 1
+            if e[3] != 'o' and e[2]:
+                apps[e[2]][6] += 1
     out_players, seen = [], set()
     for tid, c in sorted(top.items(), key=lambda x: int(x[1]['rank'])):
         for pid in (squads.get(str(tid)) or {}).get('p', []):
@@ -757,8 +773,18 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None):
                                 'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]],
                                 'or': [s[5] for s in st[:10]], 'm': m,
                                 # every team he started for in the window (clubs and national teams): for chemistry
-                                'tm': sorted({s[8] for s in st})})
-    return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'ranked': len(clubs), 'clubs': out_clubs, 'players': out_players}
+                                'tm': sorted({s[8] for s in st}),
+                                # the card's numbers over the whole window, bench appearances included
+                                'ap': max(apps[pid][0], len(st)), 'mn': apps[pid][1], 'ga': apps[pid][4], 'pk': apps[pid][5], 'aa': apps[pid][6],
+                                'rt': round(apps[pid][2] / apps[pid][3], 2) if apps[pid][3] else None,
+                                'csy': sum(1 for s in st if s[2] == 0 and s[3] in DEF_POS),        # clean sheets in defensive starts
+                                'csg': sum(1 for s in st if s[2] == 0 and s[3] == 'GK'),           # ... as goalkeeper
+                                'nt': sum(1 for s in st if s[8] in national),                      # starts for his national team
+                                'wdl': [sum(1 for s in st if s[1] > s[2]), sum(1 for s in st if s[1] == s[2]), sum(1 for s in st if s[1] < s[2])]})
+    # names of the other teams players started for (national teams and clubs off the UEFA list)
+    used = {t for p in out_players for t in p['tm']} - set(top)
+    others = {str(t): [extra[str(t)].get('name'), extra[str(t)].get('kind')] for t in used if str(t) in extra}
+    return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'ranked': len(clubs), 'clubs': out_clubs, 'players': out_players, 'teams': others}
 
 
 def position_check(world):
@@ -824,7 +850,7 @@ def main():
             pst.pop(fid, None)
         for name, obj in (('teams', teams), ('fixtures', fx), ('lineups', lu), ('events', evs), ('pstats', pst), ('squads', squads), ('people', people), ('meta', meta), ('extra_teams', extra)):
             save(name, obj)
-    world = build_world(clubs, teams, fx, lu, squads, people, evs)
+    world = build_world(clubs, teams, fx, lu, squads, people, evs, pst, load('extra_teams', {}))
     world['complete'] = stopped is None
     # the rating model (pipeline/model.py): club Elo, the goals model, player overalls, credibility tests
     top_map = {t['id']: c for c in clubs for t in [teams.get(tkey(c)) or {}] if t.get('id')}

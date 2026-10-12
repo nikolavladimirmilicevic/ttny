@@ -104,7 +104,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .help:disabled{opacity:.4;cursor:not-allowed;border-color:transparent}
 .help.used .hn{background:var(--muted)}
 .prow.tipped{box-shadow:0 0 0 2px var(--gold)}
-.tiptag{font:600 11px var(--display);letter-spacing:.05em;text-transform:uppercase;color:var(--gold);background:#0B1626;display:inline-block;padding:1px 6px;border-radius:4px;margin-bottom:3px}
+.tiptag{font:600 11px var(--display);letter-spacing:.04em;text-transform:none;color:var(--gold);background:#0B1626;display:inline-block;padding:1px 6px;border-radius:4px;margin-bottom:3px}
 @media(max-width:520px){.help{padding:8px 6px;gap:6px;align-items:center}.help small{display:none}.help.used small{display:block}.help b{font-size:11.5px;letter-spacing:.02em}.help .hn{width:18px;height:18px;font-size:11px}}
 .plist{display:flex;flex-direction:column;gap:6px;margin-top:14px}
 .prow{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center;background:var(--panel-2);border-radius:10px;padding:8px 8px 8px 12px;border:1px solid transparent;text-align:left;width:100%}
@@ -321,6 +321,20 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .medal{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--best);color:#1B1606!important;font-weight:700;font-size:12px}
 .tbl tr.best{box-shadow:inset 0 0 0 1px rgba(242,193,78,.45)}
 .endgrid>*,.grid2>*,.stack>*{min-width:0}
+.pp sub{font-size:8px;opacity:.7;margin-left:1px;vertical-align:baseline}
+.pc-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px 6px;margin-top:3px}
+.pc-tiles div{display:flex;flex-direction:column;min-width:0}.pc-tiles .w2{grid-column:span 2}
+.pc-tiles b{font:600 14px/1.15 var(--display);color:var(--text);white-space:nowrap}
+.pc-tiles small{font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-line{display:flex;justify-content:space-between;align-items:center;gap:8px}.pc-line .pc-h{margin:0;flex:none}
+.pc-line b{color:var(--text)}.pc-teams{text-align:right;color:var(--text);font-size:11px;min-width:0}
+.dots{display:flex;gap:2px}.dot{width:14px;height:14px;border-radius:3px;font:700 8px/14px var(--display);text-align:center;color:#0B1626}
+.dot.W{background:var(--win)}.dot.D{background:var(--draw)}.dot.L{background:var(--loss)}.dot.gi{box-shadow:0 0 0 1.5px var(--best,#F2C14E)}
+.pc-sub{flex-wrap:wrap}
+@media (pointer:coarse){.pcard.sheet .pc-tiles b{font-size:18px}.pcard.sheet .pc-tiles small{font-size:10px}.pcard.sheet .dot{width:20px;height:20px;line-height:20px;font-size:10px}.pcard.sheet .pc-teams{font-size:13px}}
+.pc-tags{display:block;line-height:1}.pc-tags .tag{white-space:nowrap;display:inline-block;line-height:1.4;margin:0 4px 0 0;vertical-align:middle}
+.pc-part{grid-template-columns:1fr auto 34px}.pc-part>:last-child{justify-self:end}
+.dots{gap:2px;flex-wrap:nowrap}.dot{width:13px;height:13px;line-height:13px;font-size:7.5px}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
@@ -637,12 +651,14 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [] };
+    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [],
+      ap: p.ap, mn: p.mn, ga: p.ga, pk: p.pk, aa: p.aa, rt: p.rt, csy: p.csy, csg: p.csg, nt: p.nt, wdl: p.wdl };
     club.squad.push(pid);
   }
+  TEAMS = raw.teams || {};
   return finalize(C, P, { live: true, updated: raw.updated, ranked: raw.ranked || Math.max(...raw.clubs.map(c => c.rank)), model: raw.model || null });
 }
-let W;
+let W, TEAMS = {};
 const MIN_STARTS = 1;   // starts in the last year a player needs to be drafted (the pipeline uses the same)
 const niceDate = d => { const t = new Date(d + 'T12:00:00Z'); return isNaN(t) ? esc(d) : t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); };
 function unent(t){ return String(t || '').replace(/&apos;|&#0?39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&'); }
@@ -1075,13 +1091,16 @@ function choose(pid){
    1 Redraw: swap the club for another from the same pot.
    2 Fifty-fifty: drop the weaker half of the players you can pick (by overall); with an odd count the bigger half stays.
    3 Scout's tip: mark one player you can pick, chosen at random among his club's top scorer, top assister,
-     most clean sheets (in a defensive position) and most starts in the last year. */
+     most clean sheets (goalkeepers only) and most starts in the last year; goals and assists count bench appearances too. */
 const HELP = [
   { k: 'swap', name: 'Redraw', desc: 'Swap this club for another from the same pot' },
   { k: 'half', name: 'Fifty-fifty', desc: 'Rule out the weaker half of the players you can pick' },
   { k: 'tip', name: "Scout's tip", desc: 'Mark one standout player at this club' }
 ];
 const TIP = { g: 'Top scorer', a: 'Top assister', cs: 'Most clean sheets', st: 'Most starts' };
+// what the scout says: goals and assists count every appearance, bench included; clean sheets only for goalkeepers
+const TIP_UNIT = { g: ['goal', 'goals'], a: ['assist', 'assists'], cs: ['clean sheet', 'clean sheets'], st: ['start', 'starts'] };
+const tipText = t => `${TIP[t.kind]} · ${t.n} ${TIP_UNIT[t.kind][t.n === 1 ? 0 : 1]} in the last 12 months`;
 const csOf = p => p.m.reduce((t, r) => t + (r[5] && r[3] === 0 ? 1 : 0), 0);
 const helpUsed = k => !!(S.run.help && S.run.help[k]);
 const visible = r => pickable(r.club).filter(id => !(r.cut || []).includes(id));
@@ -1097,7 +1116,7 @@ function useHelp(k){
     r.cut = (r.cut || []).concat(byOv.slice(0, Math.floor(ids.length / 2)).map(x => x[0]));
   } else if (k === 'tip'){
     const ids = visible(r); if (!ids.length) return;
-    const val = { g: p => p.g, a: p => p.a, cs: csOf, st: p => p.starts };
+    const val = { g: p => p.ga != null ? p.ga : p.g, a: p => p.aa != null ? p.aa : p.a, cs: p => p.prim === 'GK' ? (p.csg != null ? p.csg : csOf(p)) : 0, st: p => p.starts };
     const kinds = shuffle(Object.keys(val)).filter(t => ids.some(id => val[t](W.P[id]) > 0));
     if (!kinds.length) return;
     const t = kinds[0], best = ids.map(id => W.P[id]).sort((x, y) => val[t](y) - val[t](x) || y.starts - x.starts)[0];
@@ -1174,36 +1193,54 @@ const natTag = p => { const n = natInfo(p.nat)[0], f = flagOf(n);
   return (f ? `<span class="flag">${f}</span>` : `<span class="kit" style="${kit(p)}"></span>`) + esc(n); };
 const ARROW = { A: '↑', B: '↗', C: '→', D: '↘', E: '↓' };   // PES condition arrows, used for form
 const badge = (g, arrow) => `<span class="gt g${g}">${arrow ? ARROW[g] + ' ' : ''}${g}</span>`;
-/* the player card: who he is, where he plays for you, what his overall is made of, his year in numbers, his links */
+/* the player card, packed: who he is, where he plays for you, what his overall is made of, his last 12 months in
+   numbers (bench appearances included), his last 10 starts, this season, the teams he played for, his links */
+const teamName = id => (W.C['t' + id] || {}).name || (TEAMS[id] || [])[0] || null;
 function cardHTML(p){
   const r = S.run, c = W.C[p.club], mine = r && r.picks && r.picks.includes(p.id);
   const rated = locked() && mine, rt = rated ? playerRating(p.id) : null;
-  // where he stands in your XI, and whether that is a weak spot for him
   let slot = null;
   if (mine && r.form && r.picks.length === 11){ const a = arrangement(r.picks, r.form); const j = a ? a.indexOf(p.id) : -1; if (j > -1) slot = FORMS[r.form][j][0]; }
   const weakHere = slot && isWeak(p, slot);
-  const chip = x => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}</span>`;
+  const chip = (x, i) => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}${p.pc && p.pc[i] ? `<sub>${p.pc[i]}</sub>` : ''}</span>`;
   const pips = g => { const n = 5 - 'ABCDE'.indexOf(g); return `<span class="pips">${[1, 2, 3, 4, 5].map(k => `<i class="${k <= n ? 'g' + g : ''}"></i>`).join('')}</span>`; };
-  const part = (label, q) => { const g = qGrade(q); return `<div class="pc-part"><span>${label}</span>${pips(g)}<b class="gt g${g}">${g}</b></div>`; };
+  const part = (label, q, arrow) => { const g = qGrade(q); return `<div class="pc-part"><span>${label}</span>${pips(g)}${arrow ? badge(g, true) : `<b class="gt g${g}">${g}</b>`}</div>`; };
   const tags = [r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : ''].join('');
-  // his numbers: this season (only what you have already seen) and the last year
+  const head = `<div class="pc-head"><div style="min-width:0"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age} · ${esc(c.name)}</div></div>
+      ${rt ? `<div class="pc-ov g${ovGrade(rt.ov)}"><b>${ovGrade(rt.ov)}</b><small>Overall</small></div>` : ''}</div>
+    <div class="pc-pos">${p.pos.map(chip).join('')}</div>${tags ? `<div class="pc-tags">${tags}</div>` : ''}`;
+  if (!rt) return head;
+  // the last 12 months
+  const gk = p.prim === 'GK', def = gk || p.line === 'DEF';
+  const goals = p.ga != null ? p.ga : p.g, assists = p.aa != null ? p.aa : p.a, mins = p.mn || 0;
+  const per90 = mins >= 270 ? ((goals + assists) / mins * 90).toFixed(2) : '–';
+  const tile = (v, l, cls) => `<div${cls ? ` class="${cls}"` : ''}><b>${v}</b><small>${l}</small></div>`;
+  const wdl = p.wdl || [0, 0, 0];
+  const tiles = [
+    tile(p.ap != null ? p.ap : p.starts, 'Apps'), tile(p.starts, 'Starts'), tile(mins ? mins.toLocaleString('en-GB') : '–', 'Minutes'), tile(p.rt != null ? p.rt.toFixed(2) : '–', 'Rating'),
+    ...(gk ? [tile(p.csg != null ? p.csg : csOf(p), 'Clean sh.'), tile(p.starts ? Math.round(100 * (p.csg || 0) / p.starts) + '%' : '–', 'CS rate'), tile(assists, 'Assists'), tile(p.nt || 0, 'Caps')]
+           : [tile(goals, 'Goals'), tile(assists, 'Assists'), tile(per90, 'G+A /90'), def ? tile(p.csy != null ? p.csy : csOf(p), 'Clean sh.') : tile(p.pk || 0, 'Pens')]),
+    tile(`${wdl[0]}-${wdl[1]}-${wdl[2]}`, 'W-D-L', 'w2'), tile(p.starts ? Math.round(100 * wdl[0] / p.starts) + '%' : '–', 'Win %'), tile(gk ? (p.pk || 0) : (p.nt || 0), gk ? 'Goals' : 'Caps')
+  ].join('');
+  // his last 10 starts, newest first: result dots, with a mark where he scored or assisted
+  const last10 = (p.sc || []).map((g, i) => { const a = p.co[i], m = (p.m || [])[i], res = g > a ? 'W' : g < a ? 'L' : 'D';
+    return `<span class="dot ${res}${m && m[4] ? ' gi' : ''}" title="${g}:${a}${m && m[4] ? ' · scored or assisted' : ''}">${res}</span>`; }).join('');
+  // this season so far (only what you have already seen)
   let season = '';
-  if (rated && r.cup){
+  if (r.cup){
     const shown = r.phase === 'done' ? r.cup.ev : r.cup.ev.slice(0, r.cup.shown);
     let g = 0, a = 0, n = 0;
     for (const e of shown) if (e.k === 'md' || e.k === 'leg' || e.k === 'final'){ n++; for (const [sc, as] of e.gl || []){ if (sc === p.id) g++; if (as === p.id) a++; } }
-    if (n) season = `<div class="pc-sec"><div class="pc-h">This season · ${n} match${n > 1 ? 'es' : ''}</div><div class="pc-stats"><div><b>${g}</b><small>Goals</small></div><div><b>${a}</b><small>Assists</small></div></div></div>`;
+    if (n) season = `<div class="pc-sec pc-line"><span class="pc-h">This season</span><span><b>${n}</b> played · <b>${g}</b> G · <b>${a}</b> A</span></div>`;
   }
-  const def = p.line === 'GK' || p.line === 'DEF';
-  const year = rated ? `<div class="pc-sec"><div class="pc-h">Last 12 months</div><div class="pc-stats"><div><b>${p.starts}</b><small>Starts</small></div>${def
-      ? `<div><b>${p.cs || 0}</b><small>Clean sheets*</small></div>${p.line === 'GK' ? '' : `<div><b>${p.g}</b><small>Goals</small></div>`}`
-      : `<div><b>${p.g}</b><small>Goals</small></div><div><b>${p.a}</b><small>Assists</small></div>`}</div>${def ? '<div class="pc-note">*in his last 10 starts</div>' : ''}</div>` : '';
-  return `<div class="pc-head"><div style="min-width:0"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age}</div><div class="pc-club">${esc(c.name)}</div></div>
-      ${rt ? `<div class="pc-ov g${ovGrade(rt.ov)}"><b>${ovGrade(rt.ov)}</b><small>Overall</small></div>` : ''}</div>
-    <div class="pc-pos">${p.pos.map(chip).join('')}</div>${tags ? `<div class="pc-tags">${tags}</div>` : ''}
-    ${rt ? `<div class="pc-sec">${part('Reputation', rt.q.pe)}${part('Role', rt.q.ro)}${part('Performance', rt.q.pf)}</div>
-    <div class="pc-sec pc-form"><span>Form</span>${badge(qGrade(rt.q.fo), true)}</div>` : ''}
-    ${season}${year}${chemCard(p)}`;
+  const teams = (p.tm || []).map(teamName).filter(Boolean);
+  return `${head}
+    <div class="pc-sec">${part('Reputation', rt.q.pe)}${part('Role', rt.q.ro)}${part('Performance', rt.q.pf)}${part('Form', rt.q.fo, true)}</div>
+    ${season}
+    <div class="pc-sec"><div class="pc-h" title="Appearances, minutes, goals and assists include games off the bench">Last 12 months</div><div class="pc-tiles">${tiles}</div></div>
+    ${last10 ? `<div class="pc-sec pc-line"><span class="pc-h">Last ${(p.sc || []).length}</span><span class="dots">${last10}</span></div>` : ''}
+    ${teams.length ? `<div class="pc-sec pc-line"><span class="pc-h">Played for</span><span class="pc-teams">${esc(teams.join(' · '))}</span></div>` : ''}
+    ${chemCard(p)}`;
 }
 // his chemistry in your XI: who he played with and his compatriots
 function chemCard(p){
@@ -1318,7 +1355,7 @@ function viewDraft(){
     .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || POS_ORDER.indexOf(a.prim) - POS_ORDER.indexOf(b.prim) || a.name.localeCompare(b.name))
     .sort((a, b) => (r.tip && b.id === r.tip.pid) - (r.tip && a.id === r.tip.pid))
     .map(p => `<button class="prow kitcard${r.tip && r.tip.pid === p.id ? ' tipped' : ''}" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
-        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${TIP[r.tip.kind]} · ${r.tip.n}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
+        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   if (!shp.includes(r.form)) r.form = shp[0];
