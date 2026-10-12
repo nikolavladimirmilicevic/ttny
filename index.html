@@ -1848,34 +1848,51 @@ async function seasonImage(h){
   txt(x, head, 60, 170, x.font, h.stage === 'champion' ? '#F2C14E' : white);
   txt(x, h.stage === 'champion' ? `${h.form} · team ${h.team}` : `${h.champ === 'YOU' ? '' : h.champ + ' won the ' + COMPS[h.comp].short + ' · '}${h.form} · team ${h.team}`, 60, 215, '400 28px Rubik, Arial, sans-serif', muted, 'left', W_ - 120);
   // pitch
-  const PX = 60, PY = 245, PW = W_ - 120, PH = 790, ys = h.xi.map(p => p.y), y0 = Math.min(...ys), y1 = Math.max(...ys), lv = [...new Set(ys.map(Math.round))].sort((a, b) => a - b);
+  const PX = 60, PY = 245, PW = W_ - 120, PH = 790;
+  // rows: cluster the formation lines (small nudges stay on one row), back line at the bottom
+  const sorted = [...h.xi].sort((p, q) => p.y - q.y), rows = [];
+  for (const p of sorted){ const r = rows[rows.length - 1]; if (r && p.y - r[0].y <= 8) r.push(p); else rows.push([p]); }
   rrect(x, PX, PY, PW, PH, 24); x.fillStyle = '#16432F'; x.fill();
   x.save(); rrect(x, PX, PY, PW, PH, 24); x.clip(); for (let i = 0; i < 8; i++) if (i % 2){ x.fillStyle = 'rgba(255,255,255,.035)'; x.fillRect(PX, PY + i * PH / 8, PW, PH / 8); } x.restore();
   x.strokeStyle = 'rgba(255,255,255,.25)'; x.lineWidth = 3; rrect(x, PX, PY, PW, PH, 24); x.stroke();
-  x.beginPath(); x.arc(PX + PW / 2, PY, 110, 0, Math.PI); x.stroke(); x.strokeRect(PX + PW * 0.28, PY + PH - 130, PW * 0.44, 130);
+  // the penalty area sits in the gap between the back line and the keeper, the goal area under the keeper's label
+  x.strokeRect(PX + PW * 0.28, PY + PH - 175, PW * 0.44, 175); x.strokeRect(PX + PW * 0.4, PY + PH - 28, PW * 0.2, 28);
   const GC = { A: css('--gA'), B: css('--gB'), C: css('--gC'), D: css('--gD'), E: css('--gE') }, FITC = ['#5CC08A', '#F2C14E', '#E8604C'];
-  for (const p of h.xi){
-    const cx = PX + PW * (0.06 + 0.88 * p.x / 100), li = lv.indexOf(Math.round(p.y)), cy = PY + 62 + (lv.length > 1 ? li / (lv.length - 1) : 0.5) * (PH - 190);
-    x.beginPath(); x.arc(cx, cy, 32, 0, 2 * Math.PI); x.fillStyle = GC[p.gr] || '#888'; x.fill(); x.lineWidth = 4; x.strokeStyle = '#0B1626'; x.stroke();
-    txt(x, p.gr, cx, cy + 12, '700 34px Oswald, "Arial Narrow", Arial, sans-serif', p.gr === 'C' ? '#0B1626' : '#fff', 'center');
-    const nm_ = surname(p.n); x.font = '500 24px Rubik, Arial, sans-serif'; const tw = Math.min(200, x.measureText(nm_).width) + 20;
-    rrect(x, cx - tw / 2, cy + 38, tw, 32, 8); x.fillStyle = 'rgba(11,22,38,.85)'; x.fill();
-    txt(x, nm_, cx, cy + 62, '500 24px Rubik, Arial, sans-serif', white, 'center', 200);
-    const bits = [p.code, p.g ? `⚽${p.g}` : '', p.a ? `🅰${p.a}` : ''].filter(Boolean).join('  ');
-    txt(x, bits, cx, cy + 92, '500 20px Rubik, Arial, sans-serif', FITC[Math.min(2, p.fit || 0)], 'center');
-  }
+  // a font size that fits the width; below the floor the text is shortened instead
+  const fit = (s, w, weight, size, floor) => { let f = size; x.font = `${weight} ${f}px Rubik, Arial, sans-serif`; while (f > floor && x.measureText(s).width > w){ f--; x.font = `${weight} ${f}px Rubik, Arial, sans-serif`; } return x.font; };
+  const BH = 136, top = PY + 30, gap = rows.length > 1 ? (PH - 60 - BH) / (rows.length - 1) : 0, boxes = [];
+  rows.forEach((row, ri) => {
+    const cy = top + 32 + (rows.length > 1 ? ri * gap : (PH - 60 - BH) / 2);
+    row.sort((p, q) => p.x - q.x);
+    const cxs = row.map(p => PX + PW * (0.06 + 0.88 * p.x / 100));
+    row.forEach((p, i) => {
+      const cx = cxs[i], left = i ? (cx - cxs[i - 1]) : 2 * (cx - PX - 6), right = i < row.length - 1 ? (cxs[i + 1] - cx) : 2 * (PX + PW - 6 - cx);
+      const room = Math.min(left, right, 230) - 10; // the label never reaches past half way to a neighbour
+      x.beginPath(); x.arc(cx, cy, 32, 0, 2 * Math.PI); x.fillStyle = GC[p.gr] || '#888'; x.fill(); x.lineWidth = 4; x.strokeStyle = '#0B1626'; x.stroke();
+      txt(x, p.gr, cx, cy + 12, '700 34px Oswald, "Arial Narrow", Arial, sans-serif', p.gr === 'C' ? '#0B1626' : '#fff', 'center');
+      const nm_ = surname(p.n), nf = fit(nm_, room - 20, 500, 24, 17), tw = Math.min(room, x.measureText(nm_).width + 20);
+      rrect(x, cx - tw / 2, cy + 38, tw, 32, 8); x.fillStyle = 'rgba(11,22,38,.85)'; x.fill();
+      txt(x, nm_, cx, cy + 62, nf, white, 'center', room - 20);
+      const bits = [p.code, p.g ? `⚽${p.g}` : '', p.a ? `🅰${p.a}` : ''].filter(Boolean).join('  ');
+      const bf = fit(bits, room, 500, 20, 15);
+      txt(x, bits, cx, cy + 92, bf, FITC[Math.min(2, p.fit || 0)], 'center', room);
+      const bw = Math.max(64, tw, Math.min(room, x.measureText(bits).width));
+      boxes.push({ n: p.n, x0: cx - bw / 2, x1: cx + bw / 2, y0: cy - 34, y1: cy + 100 });
+    });
+  });
+  cv._boxes = boxes; cv._pitch = { x0: PX, x1: PX + PW, y0: PY, y1: PY + PH }; cv._lines = [PY + PH - 175, PY + PH - 28];
   // stats
   const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Clean sheets', h.cs], ['Chemistry', h.chem]];
   const SY = 1060, cw = (W_ - 120) / stats.length;
   stats.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, SY, cw - 12, 120, 16); x.fillStyle = '#1A2E4A'; x.fill();
-    txt(x, v, X + cw / 2, SY + 70, '700 46px Oswald, "Arial Narrow", Arial, sans-serif', white, 'center'); txt(x, l.toUpperCase(), X + cw / 2, SY + 103, '500 18px Rubik, Arial, sans-serif', muted, 'center'); });
-  const best = [...h.xi].sort((a, b) => b.g - a.g)[0], line = [];
-  if (best && best.g) line.push(`Top scorer: ${best.n} (${best.g})`);
-  if (h.big) line.push(`Biggest win: ${h.big[0]}:${h.big[1]} v ${h.big[2]}`);
-  txt(x, line.join('   ·   '), 60, 1222, '500 26px Rubik, Arial, sans-serif', white, 'left', W_ - 120);
-  if (h.top) txt(x, `Competition top scorer: ${h.top[0]} (${h.top[1]})${h.top[2] ? ' · yours' : ''}`, 60, 1258, '400 24px Rubik, Arial, sans-serif', muted, 'left', W_ - 120);
-  txt(x, `${DIFF[h.diff].label} · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`, 60, 1316, '400 22px Rubik, Arial, sans-serif', muted);
-  txt(x, 'This Time Next Year', W_ - 60, 1316, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
+    let vf = 46; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; while (vf > 26 && x.measureText(String(v)).width > cw - 32){ vf -= 2; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; }
+    txt(x, v, X + cw / 2, SY + 70, x.font, white, 'center', cw - 28); txt(x, l.toUpperCase(), X + cw / 2, SY + 103, '500 18px Rubik, Arial, sans-serif', muted, 'center', cw - 24); });
+  const best = [...h.xi].sort((a, b) => b.g - a.g)[0], F26 = '500 26px Rubik, Arial, sans-serif';
+  if (best && best.g) txt(x, `Top scorer: ${best.n} (${best.g})`, 60, 1220, F26, white, 'left', W_ - 120);
+  if (h.big) txt(x, `Biggest win: ${h.big[0]}:${h.big[1]} v ${h.big[2]}`, 60, 1254, F26, white, 'left', W_ - 120);
+  if (h.top) txt(x, `Competition top scorer: ${h.top[0]} (${h.top[1]})${h.top[2] ? ' · yours' : ''}`, 60, 1286, '400 22px Rubik, Arial, sans-serif', muted, 'left', W_ - 120);
+  txt(x, `${DIFF[h.diff].label} · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`, 60, 1328, '400 22px Rubik, Arial, sans-serif', muted);
+  txt(x, 'This Time Next Year', W_ - 60, 1328, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   return cv;
 }
 async function dynastyImage(hist, ended){
