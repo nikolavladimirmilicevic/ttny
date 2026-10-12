@@ -731,8 +731,9 @@ function teamRating(picks, form){
   const rs = picks.map(playerRating), m = k => rs.reduce((t, r) => t + r.q[k], 0) / rs.length;
   // the number shown is how strong your XI plays in this competition, on the clubs' scale, so it matches the odds
   const ov = eloOv(youElo(picks, form)), D = W.teamDist;
-  // an average of 11 percentiles bunches in the middle: place it among the clubs' own XIs instead
-  const q = k => D ? pctBelow(D[k], m(k)) : m(k);
+  // the parts: the plain average of your 11 players on the players' own scale (not ranked against club XIs, which
+  // put any good draft at 99)
+  const q = k => m(k);
   return { ov, elo: xiElo(ov), q: { pe: q('pe'), ro: q('ro'), pf: q('pf'), fo: q('fo') }, chem: chemOf(picks).total };
 }
 /* Chemistry, per player as in FIFA: 2 links for every team-mate (same club, or started for the same team, club or
