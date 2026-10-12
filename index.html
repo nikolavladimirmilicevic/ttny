@@ -331,6 +331,8 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .pc-g span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc-g .gt{font-size:10px;padding:0 5px;min-width:18px;text-align:center}
 @media (pointer:coarse){.pcard.sheet .pc-g{font-size:13px}.pcard.sheet .pc-g .gt{font-size:12px}}
 .btn.primary.warn{background:var(--loss);color:#fff}
+/* on a phone the player sheet sits above the bottom buttons, so they stay tappable */
+@media (pointer:coarse){body:has(.dock) .pcard.sheet{bottom:calc(68px + env(safe-area-inset-bottom,0px));border-radius:16px;border-width:1px;max-height:calc(62vh - 68px)}}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
