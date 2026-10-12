@@ -159,6 +159,11 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .pcard .poss b{background:var(--gold);color:var(--gold-ink)}
 .pcard .poss i.wk{background:transparent;border:1px dashed var(--muted);color:var(--muted);opacity:.8}
 .wk{opacity:.55;font-style:italic}
+.pts{display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:6px;vertical-align:1px}
+.pt{font:600 11px/1 var(--display);letter-spacing:.03em;font-style:normal;padding:3px 6px;border-radius:5px;border:1px solid rgba(11,22,38,.35)}
+.pt.f0{background:#5CC08A;color:#0B1626}.pt.f1{background:#F2C14E;color:#0B1626}.pt.f2{background:#E8604C;color:#fff}
+.prow.kitcard .pos{opacity:1}
+.ptleg{display:flex;gap:6px;align-items:center;margin:10px 0 2px;font-size:12px;color:var(--muted)}
 .pcard .gr{display:flex;gap:6px;margin-top:12px}
 .slot.edit{cursor:pointer}
 .slot.sel .dot{box-shadow:0 0 0 3px var(--text),0 4px 12px rgba(0,0,0,.4)}
@@ -1326,6 +1331,10 @@ function stepChip(r){
 const gBadge = (g, lbl) => `<span class="g g${g}" title="${lbl} ${g}"><small>${lbl}</small>${g}</span>`;
 // positions, most played first: the main one bold, the other strong ones plain, the weak ones faded
 function posText(p){ return p.pos.map(x => x === p.prim ? `<b>${x}</b>` : isWeak(p, x) ? `<span class="wk">${x}</span>` : x).join(' · '); }
+// the draft list: one chip per position, coloured like the pitch: main (green), strong other, -1 (yellow), weak, -2 (red)
+const PT_TITLE = ['Main position', 'Strong position: -1', 'Weak position: -2'];
+function posChips(p){ return `<span class="pts">${p.pos.map(x => { const t = Math.min(2, fitTier(p, x)); return `<i class="pt f${t}" title="${PT_TITLE[t]}">${x}</i>`; }).join('')}</span>`; }
+const ptLegend = '<div class="ptleg"><i class="pt f0">Main</i><i class="pt f1">−1</i><i class="pt f2">−2</i></div>';
 const LINES = ['GK', 'DEF', 'MID', 'FWD'];
 // the draft list: by main position, then second, third and so on (fewer positions first on a tie), then by name
 const DRAFT_POS = ['GK', 'CB', 'RB', 'LB', 'DMF', 'CMF', 'RMF', 'LMF', 'AMF', 'RWF', 'LWF', 'CF'];
@@ -1501,7 +1510,7 @@ function viewDraft(){
     .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || byPositions(a, b) || a.name.localeCompare(b.name))
     .sort((a, b) => (r.tip && b.id === r.tip.pid) - (r.tip && a.id === r.tip.pid))
     .map(p => `<button class="prow kitcard${r.tip && r.tip.pid === p.id ? ' tipped' : ''}" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
-        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)} · ${posText(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
+        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)}${posChips(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   if (r.picks.length && r.formAt !== r.picks.length){ r.form = shp[0]; r.formAt = r.picks.length; }   // the best shape after every pick
@@ -1520,6 +1529,7 @@ function viewDraft(){
       ${r.note ? `<div class="note">${esc(r.note)}</div>` : ''}
       ${(r.cut || []).length ? `<div class="note">Fifty-fifty: ${r.cut.length} weaker player${r.cut.length > 1 ? 's' : ''} ruled out.</div>` : ''}
       ${helpBar(r)}
+      ${ptLegend}
       <div class="plist">${rows}</div>
     </section>
     <section class="sticky">
