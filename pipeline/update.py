@@ -505,7 +505,7 @@ def fetch_recent_days(top, fx, meta):
         log(f'  {d}: {n} fixtures with a ranked club')
 
 
-def fetch_lineups(top, fx, lu, evs, pst=None):
+def fetch_lineups(top, fx, lu, evs, pst=None, first=frozenset()):
     pst = {} if pst is None else pst
     """Starting XIs and goals (scorer, assist) for every finished fixture in the window that involves a ranked club."""
     need = [fid for fid, f in fx.items()
@@ -514,6 +514,8 @@ def fetch_lineups(top, fx, lu, evs, pst=None):
             and (fid not in lu or (not lu[fid] and days_old(f['d']) <= 3) or any(isinstance(v, list) for v in lu[fid].values())
                  or (lu[fid] and fid not in evs) or fid not in pst)]   # older fixtures fetched before goals or player stats were kept
     need.sort(key=lambda fid: fx[fid]['d'], reverse=True)
+    # national-team matches before the (many) matches of clubs players came from, newest first within each
+    need.sort(key=lambda fid: not (fx[fid]['h'] in first or fx[fid]['a'] in first))
     log(f'  {len(need)} fixtures need line-ups')
     for i in range(0, len(need), 20):
         batch = need[i:i + 20]
@@ -933,7 +935,7 @@ def main():
         fetch_arrivals(top_ids, extra, meta)
         ext_ids = [int(k) for k in extra]
         fetch_team_seasons(ext_ids, fx, meta, tolerant=True)
-        fetch_lineups(top | set(ext_ids), fx, lu, evs, pst)
+        fetch_lineups(top | set(ext_ids), fx, lu, evs, pst, first={int(k) for k, v in extra.items() if v.get('kind') == 'nat'})
     except OutOfBudget:
         stopped = f'Stopped after {used} calls (MAX_REQUESTS={BUDGET}). The next run continues from here.'
         log(stopped)
