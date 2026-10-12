@@ -651,7 +651,7 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [],
+    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo,
       ap: p.ap, mn: p.mn, ga: p.ga, pk: p.pk, aa: p.aa, rt: p.rt, csy: p.csy, csg: p.csg, nt: p.nt, wdl: p.wdl };
     club.squad.push(pid);
   }
@@ -1100,7 +1100,7 @@ const HELP = [
 const TIP = { g: 'Top scorer', a: 'Top assister', cs: 'Most clean sheets', st: 'Most starts' };
 // what the scout says: goals and assists count every appearance, bench included; clean sheets only for goalkeepers
 const TIP_UNIT = { g: ['goal', 'goals'], a: ['assist', 'assists'], cs: ['clean sheet', 'clean sheets'], st: ['start', 'starts'] };
-const tipText = t => `${TIP[t.kind]} · ${t.n} ${TIP_UNIT[t.kind][t.n === 1 ? 0 : 1]} in the last 12 months`;
+const tipText = t => `${t.n} ${TIP_UNIT[t.kind][t.n === 1 ? 0 : 1]} in the last ${t.m || 12} months`;
 const csOf = p => p.m.reduce((t, r) => t + (r[5] && r[3] === 0 ? 1 : 0), 0);
 const helpUsed = k => !!(S.run.help && S.run.help[k]);
 const visible = r => pickable(r.club).filter(id => !(r.cut || []).includes(id));
@@ -1116,11 +1116,18 @@ function useHelp(k){
     r.cut = (r.cut || []).concat(byOv.slice(0, Math.floor(ids.length / 2)).map(x => x[0]));
   } else if (k === 'tip'){
     const ids = visible(r); if (!ids.length) return;
-    const val = { g: p => p.ga != null ? p.ga : p.g, a: p => p.aa != null ? p.aa : p.a, cs: p => p.prim === 'GK' ? (p.csg != null ? p.csg : csOf(p)) : 0, st: p => p.starts };
-    const kinds = shuffle(Object.keys(val)).filter(t => ids.some(id => val[t](W.P[id]) > 0));
-    if (!kinds.length) return;
-    const t = kinds[0], best = ids.map(id => W.P[id]).sort((x, y) => val[t](y) - val[t](x) || y.starts - x.starts)[0];
-    r.tip = { pid: best.id, kind: t, n: val[t](best) };
+    // a random stat over a random recent stretch (3 to 12 months), every match he played in it counted
+    const ROW = { g: 0, a: 1, st: 2, cs: 3 };
+    const year = { g: p => p.ga != null ? p.ga : p.g, a: p => p.aa != null ? p.aa : p.a, cs: p => p.csg != null ? p.csg : csOf(p), st: p => p.starts };
+    const val = (t, p, m) => t === 'cs' && p.prim !== 'GK' ? 0 : p.mo ? (p.mo[ROW[t]] || []).slice(0, m).reduce((x, y) => x + y, 0) : m === 12 ? year[t](p) : 0;
+    let tip = null;
+    for (let i = 0; i < 40 && !tip; i++){
+      const t = pick(Object.keys(ROW)), m = i < 30 ? 3 + Math.floor(MR() * 10) : 12;
+      const best = ids.map(id => W.P[id]).sort((x, y) => val(t, y, m) - val(t, x, m) || y.starts - x.starts)[0];
+      const n = val(t, best, m); if (n > 0) tip = { pid: best.id, kind: t, n, m };
+    }
+    if (!tip) return;
+    r.tip = tip;
   }
   r.help = Object.assign({}, r.help, { [k]: true });
   save(); render();

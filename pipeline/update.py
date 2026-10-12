@@ -687,6 +687,19 @@ DEF_POS = {'GK', 'CB', 'LB', 'RB', 'DMF'}
 MIN_STARTS = int(os.environ.get('MIN_STARTS', '1'))   # starts in the window a player needs to be rated and drafted
 
 
+def monthly(m, st, month):
+    """[goals, assists, starts, clean sheets in goal] per month, newest first, trailing zeros dropped."""
+    m = [r[:] for r in m]
+    for s in st:
+        k = month(s[0]); m[2][k] += 1
+        if s[3] == 'GK' and s[2] == 0: m[3][k] += 1
+    out = []
+    for r in m:
+        while r and r[-1] == 0: r.pop()
+        out.append(r)
+    return out
+
+
 def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=None):
     evs = evs or {}; pst = pst or {}; extra = extra or {}
     national = {int(k) for k, v in extra.items() if v.get('kind') == 'nat'}
@@ -726,13 +739,22 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
     # every appearance in the window, from the bench too: minutes and match ratings (API player stats), goals,
     # penalties and assists (match events). For the player card and the scout, not for the ratings.
     apps = defaultdict(lambda: [0, 0, 0.0, 0, 0, 0, 0])   # [appearances, minutes, rating sum, rated, goals, penalties, assists]
+    # the same by month (0 = the last 30 days ... 11), so the scout can speak about any recent stretch:
+    # goals, assists, starts, clean sheets as goalkeeper
+    month = lambda d: min(11, max(0, int((TODAY - dt.date.fromisoformat(d)).days / 30.44)))
+    mo = defaultdict(lambda: [[0] * 12 for _ in range(4)])
     for fid, f in fx.items():
         if f['s'] not in FINISHED or not (SINCE.isoformat() <= f['d'] <= TODAY.isoformat()):
             continue
         for pid, v in (pst.get(fid) or {}).items():
             a = apps[int(pid)]; a[0] += 1; a[1] += v[0] or 0
             if v[1] is not None: a[2] += v[1]; a[3] += 1
+        k = month(f['d'])
         for e in evs.get(fid) or []:
+            if e[3] != 'o' and e[1]:
+                mo[e[1]][0][k] += 1
+            if e[3] != 'o' and e[2]:
+                mo[e[2]][1][k] += 1
             if e[3] != 'o' and e[1]:
                 apps[e[1]][4] += 1
                 if e[3] == 'p': apps[e[1]][5] += 1
@@ -780,7 +802,8 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                                 'csy': sum(1 for s in st if s[2] == 0 and s[3] in DEF_POS),        # clean sheets in defensive starts
                                 'csg': sum(1 for s in st if s[2] == 0 and s[3] == 'GK'),           # ... as goalkeeper
                                 'nt': sum(1 for s in st if s[8] in national),                      # starts for his national team
-                                'wdl': [sum(1 for s in st if s[1] > s[2]), sum(1 for s in st if s[1] == s[2]), sum(1 for s in st if s[1] < s[2])]})
+                                'wdl': [sum(1 for s in st if s[1] > s[2]), sum(1 for s in st if s[1] == s[2]), sum(1 for s in st if s[1] < s[2])],
+                                'mo': monthly(mo[pid], st, month)})
     # names of the other teams players started for (national teams and clubs off the UEFA list)
     used = {t for p in out_players for t in p['tm']} - set(top)
     others = {str(t): [extra[str(t)].get('name'), extra[str(t)].get('kind')] for t in used if str(t) in extra}
