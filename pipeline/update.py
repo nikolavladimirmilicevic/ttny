@@ -462,7 +462,8 @@ def add_fixture(fx, item):
     if hg is None:
         hg, ag = item['goals'].get('home'), item['goals'].get('away')
     fx[str(f['id'])] = {'d': f['date'][:10], 's': f['status']['short'], 'h': t['home']['id'], 'a': t['away']['id'],
-                        'hg': hg, 'ag': ag, 'lg': item['league'].get('name')}
+                        'hg': hg, 'ag': ag, 'lg': item['league'].get('name'),
+                        'hn': t['home'].get('name'), 'an': t['away'].get('name')}
 
 
 def season_list():
@@ -852,6 +853,33 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             if e[3] != 'o' and (e[4] or 0) >= 76:
                 if e[1]: late[e[1]] += 1
                 if e[2]: late[e[2]] += 1
+    # the last match each player played, start or from the bench, for the scout ("on Tuesday he scored against ...")
+    tname = lambda t: (top[t]['name'] if t in top else (extra.get(str(t)) or {}).get('name'))
+    last_seen = {}
+    def seen_in(pid, d, fid, side):
+        if pid not in last_seen or d > last_seen[pid][0]:
+            last_seen[pid] = (d, fid, side)
+    for fid, f in window:
+        for pid, v in (pst.get(fid) or {}).items():
+            if v[2] in (f['h'], f['a']):
+                seen_in(int(pid), f['d'], fid, v[2])
+    for pid, st_ in starts.items():
+        for s_ in st_:
+            seen_in(pid, s_[0], s_[4], s_[8])
+    recent = (TODAY - dt.timedelta(days=10)).isoformat()
+    def last_match(pid):
+        if pid not in last_seen or last_seen[pid][0] < recent:
+            return None
+        d, fid, side = last_seen[pid]; f = fx[fid]; home = side == f['h']
+        opp = f['a'] if home else f['h']
+        name = tname(opp) or (f.get('an') if home else f.get('hn'))
+        if not name:
+            return None
+        g = sum(1 for e in evs.get(fid) or [] if e[3] != 'o' and e[1] == pid)
+        a = sum(1 for e in evs.get(fid) or [] if e[3] != 'o' and e[2] == pid)
+        gk = next((s_ for s_ in starts.get(pid, []) if s_[4] == fid and s_[3] == 'GK'), None)
+        # [date, opponent, goals, assists, conceded as the starting goalkeeper (None otherwise), at home]
+        return [d, fix_text(name), g, a, gk[2] if gk else None, int(home)]
     out_players, seen = [], set()
     for tid, c in sorted(top.items(), key=lambda x: int(x[1]['rank'])):
         for pid in (squads.get(str(tid)) or {}).get('p', []):
@@ -896,6 +924,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                                 'nt': sum(1 for s in st if s[8] in national),                      # starts for his national team
                                 'wdl': [sum(1 for s in st if s[1] > s[2]), sum(1 for s in st if s[1] == s[2]), sum(1 for s in st if s[1] < s[2])],
                                 'mo': monthly(mo[pid], st, month),
+                                'lm': last_match(pid),
                                 '_raw': card_raw(pid, st, apps[pid], late[pid], pst, national)})
     card_grades(out_players)
     # when goals fall (share per minute of the 90) and how many are own goals: for the match reports in the game
