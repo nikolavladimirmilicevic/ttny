@@ -136,7 +136,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .slot[data-pid]{cursor:help}
 .flag{font-family:'Noto Color Emoji',sans-serif;font-size:14px;line-height:1;margin-right:5px;flex:none;vertical-align:-1px}
 .kit{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--kit);border:2px solid var(--kit-ink);vertical-align:-1px;margin-right:5px;flex:none}
-.pcard{position:fixed;z-index:20;width:232px;background:var(--panel-2);border:1px solid var(--gold);border-radius:10px;padding:10px 12px;box-shadow:0 10px 28px rgba(0,0,0,.5);pointer-events:none;font-size:12px;line-height:1.35}
+.pcard{position:fixed;z-index:20;width:260px;background:var(--panel-2);border:1px solid var(--gold);border-radius:10px;padding:10px 12px;box-shadow:0 10px 28px rgba(0,0,0,.5);pointer-events:none;font-size:12px;line-height:1.35}
 .pcard h4{margin:0;font:600 16px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
 .pcard .r{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-top:1px solid var(--line)}
 .pcard .r span:first-child{color:var(--muted)}
@@ -295,6 +295,21 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .potc .pr:nth-child(2){border-top:0}.potc .pr span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .potc .pr.opp{color:var(--text);font-weight:500}.potc .pr.me{color:var(--gold);font-weight:600}
 .potc .ven{width:1.3em;font-size:12px;margin-right:2px}
+.pc-pos{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.pp{font-size:11px;font-weight:500;padding:1px 6px;border-radius:4px;background:var(--panel);color:var(--text)}
+.pp.main{background:var(--gold);color:var(--gold-ink)}.pp.wk{background:transparent;border:1px dashed var(--muted);color:var(--muted)}
+.pp.here{outline:2px solid var(--text);outline-offset:1px}
+.pc-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.tag{font-size:10.5px;padding:1px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.tag.keep{border-color:var(--gold);color:var(--gold)}.tag.warn{border-color:var(--loss);color:var(--loss)}
+.pc-part{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:2px 0}
+.pips{display:flex;gap:2px}.pips i{width:9px;height:6px;border-radius:2px;background:var(--line)}
+.pips i.gA{background:var(--gA)}.pips i.gB{background:var(--gB)}.pips i.gC{background:var(--gC)}.pips i.gD{background:var(--gD)}.pips i.gE{background:var(--gE)}
+.pc-part .gt{min-width:22px;text-align:center}
+.pc-form{display:flex;justify-content:space-between;align-items:center}
+.pc-stats{display:flex;gap:14px}.pc-stats div{display:flex;flex-direction:column}.pc-stats b{font:600 18px/1.1 var(--display);color:var(--text)}.pc-stats small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.pc-note{font-size:10px;color:var(--muted);margin-top:3px}
+.pc-chem .ci{display:inline-block;width:1.4em}
+@media (pointer:coarse){.pcard.sheet .pips i{width:14px;height:8px}.pcard.sheet .pc-stats b{font-size:22px}.pcard.sheet .pp{font-size:13px;padding:2px 8px}}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
@@ -1148,24 +1163,44 @@ const natTag = p => { const n = natInfo(p.nat)[0], f = flagOf(n);
   return (f ? `<span class="flag">${f}</span>` : `<span class="kit" style="${kit(p)}"></span>`) + esc(n); };
 const ARROW = { A: '↑', B: '↗', C: '→', D: '↘', E: '↓' };   // PES condition arrows, used for form
 const badge = (g, arrow) => `<span class="gt g${g}">${arrow ? ARROW[g] + ' ' : ''}${g}</span>`;
+/* the player card: who he is, where he plays for you, what his overall is made of, his year in numbers, his links */
 function cardHTML(p){
-  const c = W.C[p.club], rated = locked() && S.run.picks.includes(p.id), r = rated ? playerRating(p.id) : null;
-  const row = (label, hint, g, arrow) => `<div class="pc-row"><span>${label}${hint ? `<small>${hint}</small>` : ''}</span>${badge(g, arrow)}</div>`;
-  return `<div class="pc-head"><div style="min-width:0"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age}</div></div>
-      ${r ? `<div class="pc-ov g${ovGrade(r.ov)}"><b>${ovGrade(r.ov)}</b><small>Overall</small></div>` : ''}</div>
-    <div class="pc-club">${esc(c.name)}</div>
-    <div class="poss">${p.pos.map(x => x === p.prim ? `<b>${x}</b>` : isWeak(p, x) ? `<i class="wk" title="Weaker here">${x}</i>` : `<i>${x}</i>`).join('')}</div>
-    ${r ? `<div class="pc-sec pc-ped"><span>Reputation</span>${badge(qGrade(r.q.pe))}</div>
-    <div class="pc-sec">${row('Role', '', qGrade(r.q.ro))}${row('Performance', '', qGrade(r.q.pf))}</div>
-    <div class="pc-sec">${row('Form', '', qGrade(r.q.fo), true)}</div>` : ''}${chemCard(p)}`;
+  const r = S.run, c = W.C[p.club], mine = r && r.picks && r.picks.includes(p.id);
+  const rated = locked() && mine, rt = rated ? playerRating(p.id) : null;
+  // where he stands in your XI, and whether that is a weak spot for him
+  let slot = null;
+  if (mine && r.form && r.picks.length === 11){ const a = arrangement(r.picks, r.form); const j = a ? a.indexOf(p.id) : -1; if (j > -1) slot = FORMS[r.form][j][0]; }
+  const weakHere = slot && isWeak(p, slot);
+  const chip = x => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}</span>`;
+  const pips = g => { const n = 5 - 'ABCDE'.indexOf(g); return `<span class="pips">${[1, 2, 3, 4, 5].map(k => `<i class="${k <= n ? 'g' + g : ''}"></i>`).join('')}</span>`; };
+  const part = (label, q) => { const g = qGrade(q); return `<div class="pc-part"><span>${label}</span>${pips(g)}<b class="gt g${g}">${g}</b></div>`; };
+  const tags = [r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : ''].join('');
+  // his numbers: this season (only what you have already seen) and the last year
+  let season = '';
+  if (rated && r.cup){
+    const shown = r.phase === 'done' ? r.cup.ev : r.cup.ev.slice(0, r.cup.shown);
+    let g = 0, a = 0, n = 0;
+    for (const e of shown) if (e.k === 'md' || e.k === 'leg' || e.k === 'final'){ n++; for (const [sc, as] of e.gl || []){ if (sc === p.id) g++; if (as === p.id) a++; } }
+    if (n) season = `<div class="pc-sec"><div class="pc-h">This season · ${n} match${n > 1 ? 'es' : ''}</div><div class="pc-stats"><div><b>${g}</b><small>Goals</small></div><div><b>${a}</b><small>Assists</small></div></div></div>`;
+  }
+  const def = p.line === 'GK' || p.line === 'DEF';
+  const year = rated ? `<div class="pc-sec"><div class="pc-h">Last 12 months</div><div class="pc-stats"><div><b>${p.starts}</b><small>Starts</small></div>${def
+      ? `<div><b>${p.cs || 0}</b><small>Clean sheets*</small></div>${p.line === 'GK' ? '' : `<div><b>${p.g}</b><small>Goals</small></div>`}`
+      : `<div><b>${p.g}</b><small>Goals</small></div><div><b>${p.a}</b><small>Assists</small></div>`}</div>${def ? '<div class="pc-note">*in his last 10 starts</div>' : ''}</div>` : '';
+  return `<div class="pc-head"><div style="min-width:0"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age}</div><div class="pc-club">${esc(c.name)}</div></div>
+      ${rt ? `<div class="pc-ov g${ovGrade(rt.ov)}"><b>${ovGrade(rt.ov)}</b><small>Overall</small></div>` : ''}</div>
+    <div class="pc-pos">${p.pos.map(chip).join('')}</div>${tags ? `<div class="pc-tags">${tags}</div>` : ''}
+    ${rt ? `<div class="pc-sec">${part('Reputation', rt.q.pe)}${part('Role', rt.q.ro)}${part('Performance', rt.q.pf)}</div>
+    <div class="pc-sec pc-form"><span>Form</span>${badge(qGrade(rt.q.fo), true)}</div>` : ''}
+    ${season}${year}${chemCard(p)}`;
 }
 // his chemistry in your XI: who he played with and his compatriots
 function chemCard(p){
   const r = S.run; if (!r || !r.picks || !r.picks.includes(p.id) || r.picks.length < 11 || r.phase === 'draft') return '';
   const c = chemOf(r.picks).per[p.id], names = ids => ids.map(id => esc(short(W.P[id].name))).join(', ');
   if (!c.tm.length && !c.cp.length) return '';
-  return `<div class="pc-sec pc-chem"><div style="color:var(--text);font-weight:500">Chemistry</div>
-    ${c.tm.length ? `<div>Played with <b>${names(c.tm)}</b></div>` : ''}${c.cp.length ? `<div>Compatriots: ${names(c.cp)}</div>` : ''}</div>`;
+  return `<div class="pc-sec pc-chem"><div class="pc-h">Chemistry</div>
+    ${c.tm.length ? `<div><span class="ci">🤝</span>Played with <b>${names(c.tm)}</b></div>` : ''}${c.cp.length ? `<div><span class="ci">${flagOf(natInfo(p.nat)[0]) || '🏳️'}</span>Compatriots: ${names(c.cp)}</div>` : ''}</div>`;
 }
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
