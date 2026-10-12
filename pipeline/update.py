@@ -505,12 +505,19 @@ def fetch_recent_days(top, fx, meta):
         log(f'  {d}: {n} fixtures with a ranked club')
 
 
-def fetch_lineups(top, fx, lu, evs, pst=None, first=frozenset()):
+def wanted(f, until):
+    """A match of a club a player came from counts only up to the day he left it."""
+    return any(t not in until or f['d'] <= until[t] for t in (f['h'], f['a']) if t in until or t in wanted.base)
+wanted.base = set()
+
+
+def fetch_lineups(top, fx, lu, evs, pst=None, first=frozenset(), until=None):
     pst = {} if pst is None else pst
     """Starting XIs and goals (scorer, assist) for every finished fixture in the window that involves a ranked club."""
     need = [fid for fid, f in fx.items()
             if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat()
             and (f['h'] in top or f['a'] in top)
+            and (until is None or wanted(f, until))
             and (fid not in lu or (not lu[fid] and days_old(f['d']) <= 3) or any(isinstance(v, list) for v in lu[fid].values())
                  or (lu[fid] and fid not in evs) or fid not in pst)]   # older fixtures fetched before goals or player stats were kept
     need.sort(key=lambda fid: fx[fid]['d'], reverse=True)
@@ -639,10 +646,17 @@ def fetch_nations(people, squads, extra, meta):
         tried[nat] = TODAY.isoformat()
 
 
-def fetch_arrivals(top_ids, extra, meta):
-    """Clubs that players joined a ranked club from in the window: one transfers call per ranked club, refreshed monthly."""
+def fetch_arrivals(top_ids, extra, meta, squads):
+    """The clubs today's players came from: for every move into a ranked club inside the window, by a player who is
+    in a ranked squad now, the club he left and the date he left it. Only his matches there count, so only that
+    club's matches up to that date are needed. One transfers call per ranked club, refreshed monthly."""
+    if meta.get('transfers_v') != 2:   # the first version also took clubs players left to, and whole seasons
+        meta['transfers'] = {}; meta['transfers_v'] = 2
+        for k in [k for k, v in extra.items() if v.get('kind') == 'club']:
+            extra.pop(k)
     done = meta.setdefault('transfers', {})
     top = set(top_ids)
+    members = {pid for sq in squads.values() for pid in (sq.get('p') or [])}
     for tid in top_ids:
         if days_old(done.get(str(tid))) < 30:
             continue
@@ -651,14 +665,17 @@ def fetch_arrivals(top_ids, extra, meta):
         except RuntimeError as e:
             log(f'  transfers failed for team {tid}: {e}'); done[str(tid)] = TODAY.isoformat(); continue
         for x in data.get('response', []):
+            if (x.get('player') or {}).get('id') not in members:
+                continue
             for t in x.get('transfers') or []:
                 d = t.get('date') or ''
-                if not d or d < SINCE.isoformat():   # only moves inside the 365-day window
+                came_to = ((t.get('teams') or {}).get('in') or {}).get('id')
+                left = (t.get('teams') or {}).get('out') or {}
+                if not d or not (SINCE.isoformat() <= d <= TODAY.isoformat()) or came_to not in top:
                     continue
-                for side in ('in', 'out'):
-                    o = (t.get('teams') or {}).get(side) or {}
-                    if o.get('id') and o['id'] not in top and str(o['id']) not in extra:
-                        extra[str(o['id'])] = {'kind': 'club', 'name': o.get('name')}
+                if left.get('id') and left['id'] not in top:
+                    e = extra.setdefault(str(left['id']), {'kind': 'club', 'name': left.get('name'), 'until': d})
+                    e['until'] = max(e.get('until') or d, d)
         done[str(tid)] = TODAY.isoformat()
 
 
@@ -932,10 +949,16 @@ def main():
         fetch_profiles(top_ids, squads, people, meta)
         log('7/7 National teams and the clubs players came from')
         fetch_nations(people, squads, extra, meta)
-        fetch_arrivals(top_ids, extra, meta)
+        fetch_arrivals(top_ids, extra, meta, squads)
         ext_ids = [int(k) for k in extra]
+        keep = top | set(ext_ids)   # drop matches of clubs no longer followed (the first version took too many)
+        for fid in [k for k, f in fx.items() if f['h'] not in keep and f['a'] not in keep]:
+            fx.pop(fid, None); lu.pop(fid, None); evs.pop(fid, None); pst.pop(fid, None)
         fetch_team_seasons(ext_ids, fx, meta, tolerant=True)
-        fetch_lineups(top | set(ext_ids), fx, lu, evs, pst, first={int(k) for k, v in extra.items() if v.get('kind') == 'nat'})
+        nat_ids = {int(k) for k, v in extra.items() if v.get('kind') == 'nat'}
+        until = {int(k): v['until'] for k, v in extra.items() if v.get('kind') == 'club' and v.get('until')}
+        wanted.base = top | nat_ids   # ranked clubs and national teams: every match in the window
+        fetch_lineups(top | set(ext_ids), fx, lu, evs, pst, first=nat_ids, until=until)
     except OutOfBudget:
         stopped = f'Stopped after {used} calls (MAX_REQUESTS={BUDGET}). The next run continues from here.'
         log(stopped)
