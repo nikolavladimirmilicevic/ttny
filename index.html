@@ -330,6 +330,7 @@ body[data-comp="ecl"]{--gold:#1FCB64;--gold-ink:#03170A}
 .pc-g{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;color:var(--muted);min-width:0}
 .pc-g span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc-g .gt{font-size:10px;padding:0 5px;min-width:18px;text-align:center}
 @media (pointer:coarse){.pcard.sheet .pc-g{font-size:13px}.pcard.sheet .pc-g .gt{font-size:12px}}
+.btn.primary.warn{background:var(--loss);color:#fff}
 </style>
 
 <div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
@@ -1417,7 +1418,7 @@ function viewLineup(){
     ${chemBar(r.picks)}
     <div class="hint">Tap a player, then a highlighted spot, to move him.</div>
   </div>
-  <div class="dock"><div class="btnrow"><button class="btn primary" data-act="kickoff">Confirm your XI</button></div></div>`;
+  <div class="dock"><div class="btnrow"><button class="btn primary${S.armed === 'kickoff' ? ' warn' : ''}" data-act="kickoff">${S.armed === 'kickoff' ? 'Sure? Tap again to lock it in' : 'Confirm your XI'}</button></div></div>`;
 }
 
 /* where a match is played: at home "vs", away "@", the final on neutral ground */
@@ -1787,7 +1788,7 @@ document.addEventListener('click', e => {
   if (TOUCH() && e.target.closest('.krow .ovdot')) return;
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
   const a = b.dataset.act;
-  if (a !== 'fresh' && a !== 'quit' && a !== 'cont') S.armed = null;
+  if (a !== 'fresh' && a !== 'quit' && a !== 'cont' && a !== 'kickoff') S.armed = null;
   if (a === 'quit'){
     if (S.armed === 'quit'){ S.armed = null; S.run = null; S.dyn = null; S.stats.runs++; S.stats.streak = 0; save(); render(); scrollTo(0, 0); toast('Run abandoned. It counts as a loss.'); }
     else {   // update the button in place so the draft card does not replay its reveal
@@ -1811,7 +1812,10 @@ document.addEventListener('click', e => {
     else r.sel = arr[j] ? j : null;
     save(); render();
   }
-  else if (a === 'kickoff') kickoff();
+  else if (a === 'kickoff'){   // a second tap confirms: shape and positions are final for the season
+    if (S.armed === 'kickoff'){ S.armed = null; kickoff(); }
+    else { S.armed = 'kickoff'; render(); toast('Shape and positions are final for the whole season. Tap again to confirm.'); }
+  }
   else if (a === 'scr'){ const r = S.run; if (r.phase === 'done') r.dscr = b.dataset.to; else r.scr = b.dataset.to; S.armed = null; save(); render(); scrollTo(0, 0); }
   else if (a === 'next') step(false);
   else if (a === 'all') step(true);
