@@ -1914,14 +1914,21 @@ async function showImage(kind){
   const hist = r.hist || [], cv = kind === 'dynasty' ? await dynastyImage(hist, r.dynEnd) : await seasonImage(hist[hist.length - 1] || seasonSummary(r));
   const url = cv.toDataURL('image/png'), name = kind === 'dynasty' ? 'ttny-dynasty.png' : `ttny-season-${r.season || 1}.png`;
   const ov = document.createElement('div'); ov.className = 'imgov';
-  ov.innerHTML = `<div class="imgbox"><img src="${url}" alt="Your ${kind} as an image"><div class="btnrow"><button class="btn primary" data-img="share">Share</button><a class="btn ghost" href="${url}" download="${name}">Save</a><button class="btn ghost" data-img="close">Close</button></div><div class="muted" style="font-size:12px;text-align:center;margin-top:8px">On a phone you can also press and hold the image to save it.</div></div>`;
+  ov.innerHTML = `<div class="imgbox"><img src="${url}" alt="Your ${kind} as an image"><div class="btnrow"><button class="btn primary" data-img="share">Share</button><button class="btn ghost" data-img="save">Save</button><button class="btn ghost" data-img="close">Close</button></div><div class="muted" style="font-size:12px;text-align:center;margin-top:8px">On a phone you can also press and hold the image to save it.</div></div>`;
   document.body.appendChild(ov);
   ov.addEventListener('click', async e => {
     if (e.target === ov || e.target.dataset.img === 'close'){ ov.remove(); return; }
+    const saveIt = async () => {
+      const blob = await new Promise(res => cv.toBlob(res, 'image/png'));
+      const dl = window.claude && window.claude.use ? await window.claude.use('downloads').catch(() => null) : null;
+      if (dl){ try { await dl.save({ filename: name, data: blob }); toast('Saved.'); } catch (err) { if (err && err.code === 'declined') return; toast('Saving is not available here. Press and hold the image instead.'); } return true; }
+      const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); return true;
+    };
+    if (e.target.dataset.img === 'save'){ await saveIt(); return; }
     if (e.target.dataset.img === 'share'){
       try { const blob = await new Promise(res => cv.toBlob(res, 'image/png')); const file = new File([blob], name, { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], title: 'This Time Next Year' }); return; } } catch (err) { if (err && err.name === 'AbortError') return; }
-      toast('Sharing is not available here. Use Save, or press and hold the image.');
+      await saveIt();
     }
   });
 }
