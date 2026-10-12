@@ -663,7 +663,7 @@ function unent(t){ return String(t || '').replace(/&apos;|&#0?39;/g, "'").replac
 /* ================= THE MODEL =================
    Everything heavy is computed by the pipeline (pipeline/model.py) and arrives in world.json:
    clubs: an Elo rating (seeded from UEFA points, kept partly as prestige); players: an overall on a 40-99 scale and
-   four parts as percentiles (reputation, role, performance, form); model.goals: expected goals from the rating gap;
+   four parts as percentiles (club strength, playing time, performance, form); model.goals: expected goals from the rating gap;
    model.xi: the line from a club's own best XI to its rating, which turns your XI into a rating too.
    The game shows letters only, never the numbers behind them. */
 const asc = a => a.sort((x, y) => x - y);
@@ -750,7 +750,7 @@ const strength = id => id === 'YOU' ? youElo(S.run.picks, S.run.form) : W.C[id].
 const clubOv = id => eloOv(strength(id));
 const gchip = id => { const ov = clubOv(id); return `<span class="cg g${ovGrade(ov)}" title="Club rating">${teamNum(ov)}</span>`; };
 const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${ovGrade(r.ov)}</div>` : `<div class="ovdot big g${ovGrade(r.ov)}">${teamNum(r.ov)}</div>`;
-const partRows = r => [['Reputation', 'pe'], ['Role', 'ro'], ['Performance', 'pf'], ['Form', 'fo']]
+const partRows = r => [['Club strength', 'pe'], ['Playing time', 'ro'], ['Performance', 'pf'], ['Form', 'fo']]
   .map(([k, f]) => `<div class="r"><span>${k}</span><b class="num tnum g${qGrade(r.q[f])}">${R(r.q[f])}</b></div>`).join('');
 const locked = () => S.run && (S.run.phase === 'cup' || S.run.phase === 'done');
 function roleOf(pid){ const r = S.run, a = arrangement(r.picks, r.form); return FORMS[r.form][a.indexOf(pid)][3]; }
@@ -1220,7 +1220,7 @@ function cardHTML(p){
   if (!rt) return head;
   // every A-E grade in one list, alphabetical (the overall stays on its own at the top)
   const gk = p.prim === 'GK';
-  const all = [['Reputation', rt.q.pe, 'Strength of the clubs he started for'], ['Role', rt.q.ro, 'How often he started for them'],
+  const all = [['Club strength', rt.q.pe, 'How strong the clubs he started for are'], ['Playing time', rt.q.ro, 'How often he started while he was at them'],
     ['Performance', rt.q.pf, 'Match ratings, adjusted for the opponent'], ['Form', rt.q.fo, 'Match ratings in his last 5 starts'],
     ...(p.gr || []).map((q, i) => CARD_GRADES[i] && !(gk && CARD_GRADES[i][2]) ? [CARD_GRADES[i][0], q, CARD_GRADES[i][1]] : null).filter(Boolean)]
     .sort((x, y) => x[0].localeCompare(y[0]));
@@ -1314,7 +1314,7 @@ function viewHome(){
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>A new dynasty starts with one choice, the difficulty. It sets where you start (Easy in the Champions League, Medium in the Europa League, Hard in the Conference League) and how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots. Win a competition and the next run moves up a level.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for reputation, role, performance and form. Your team and every opponent get a rating from 40 to 99. A player plays a little below his level in a weak position, one he started in at most half as often as his main one; weak positions are faded on his card.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for club strength, playing time, performance and form. Your team and every opponent get a rating from 40 to 99. A player plays a little below his level in a weak position, one he started in at most half as often as his main one; weak positions are faded on his card.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>The further you go, the more players you keep: out in the league phase 5 (in the Conference League that ends the dynasty), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
