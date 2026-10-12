@@ -716,10 +716,11 @@ def card_raw(pid, st, ap, late_n, pst, national):
         'ver': sum(1 for k, v in Counter(s[3] for s in st if s[3]).items() if v >= 2),   # positions with 2+ starts
         'mom': (mean(recent) - mean(older)) if len(recent) >= 3 and len(older) >= 3 else None,   # rating trend
         'awy': (sum(away) + 3 * 6.7) / (len(away) + 3) if away else None,  # rating away from home
+        'inv': (ap[4] + ap[6]) / max(mins, 1000) * 90,           # goals and assists per 90
     }
 
 
-CARD_KEYS = ['fin', 'cre', 'pen', 'clu', 'big', 'con', 'fit', 'int', 'win', 'def', 'ver', 'mom', 'awy']
+CARD_KEYS = ['fin', 'cre', 'pen', 'clu', 'big', 'con', 'fit', 'int', 'win', 'def', 'ver', 'mom', 'awy', 'inv']
 COUNT_KEYS = {'pen', 'int'}   # counts where zero means none at all: zero stays at the bottom
 
 

@@ -1203,7 +1203,8 @@ const badge = (g, arrow) => `<span class="gt g${g}">${arrow ? ARROW[g] + ' ' : '
 const CARD_GRADES = [['Finishing', 'Goals per 90 minutes, penalties left out', 1], ['Creativity', 'Assists per 90 minutes', 1], ['Penalties', 'Penalty goals', 1],
   ['Late impact', 'Goals and assists from the 76th minute', 1], ['Big games', 'Match ratings against top-40 UEFA clubs'], ['Consistency', 'How steady his match ratings are'],
   ['Workload', 'Minutes played'], ['International', 'Starts for his national team'], ['Winning', 'Wins in his starts'], ['Defending', 'Clean sheets in his starts'],
-  ['Versatility', 'Positions he started in more than once', 1], ['Momentum', 'Ratings in the last 3 months against before'], ['Away form', 'Match ratings away from home']];
+  ['Versatility', 'Positions he started in more than once', 1], ['Momentum', 'Ratings in the last 3 months against before'], ['Away form', 'Match ratings away from home'], ['Involvement', 'Goals and assists per 90 minutes', 1]];
+// 4 main grades + 14 here = 18 for outfield players, 4 + 8 = 12 for goalkeepers: always an even number, two full columns
 const teamName = id => (W.C['t' + id] || {}).name || (TEAMS[id] || [])[0] || null;
 function cardHTML(p){
   const r = S.run, c = W.C[p.club], mine = r && r.picks && r.picks.includes(p.id);
