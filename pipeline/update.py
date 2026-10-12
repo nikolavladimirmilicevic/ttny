@@ -866,6 +866,28 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
     for pid, st_ in starts.items():
         for s_ in st_:
             seen_in(pid, s_[0], s_[4], s_[8])
+    # every appearance (start, from the bench, or seen in a goal), for the scout's "N goals in his last M games"
+    appeared = defaultdict(dict)   # pid -> fid -> date
+    for fid, f in window:
+        for pid in (pst.get(fid) or {}):
+            appeared[int(pid)][fid] = f['d']
+        for e in evs.get(fid) or []:
+            if e[3] != 'o':
+                for q in (e[1], e[2]):
+                    if q: appeared[q][fid] = f['d']
+    for pid, st_ in starts.items():
+        for s_ in st_:
+            appeared[pid][s_[4]] = s_[0]
+    def last_games(pid, n=40):
+        """His last n games, newest first, one number each: goals | assists << 3 | clean sheet in goal << 6 | started << 7."""
+        mine = {s_[4]: s_ for s_ in starts.get(pid, [])}
+        out = []
+        for fid, d in sorted(appeared.get(pid, {}).items(), key=lambda kv: kv[1], reverse=True)[:n]:
+            g = min(7, sum(1 for e in evs.get(fid) or [] if e[3] != 'o' and e[1] == pid))
+            a = min(7, sum(1 for e in evs.get(fid) or [] if e[3] != 'o' and e[2] == pid))
+            s_ = mine.get(fid)
+            out.append(g | a << 3 | (1 if s_ and s_[3] == 'GK' and s_[2] == 0 else 0) << 6 | (1 if s_ else 0) << 7)
+        return out
     recent = (TODAY - dt.timedelta(days=10)).isoformat()
     def last_match(pid):
         if pid not in last_seen or last_seen[pid][0] < recent:
@@ -924,7 +946,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                                 'nt': sum(1 for s in st if s[8] in national),                      # starts for his national team
                                 'wdl': [sum(1 for s in st if s[1] > s[2]), sum(1 for s in st if s[1] == s[2]), sum(1 for s in st if s[1] < s[2])],
                                 'mo': monthly(mo[pid], st, month),
-                                'lm': last_match(pid),
+                                'lm': last_match(pid), 'lg': last_games(pid),
                                 '_raw': card_raw(pid, st, apps[pid], late[pid], pst, national)})
     card_grades(out_players)
     # when goals fall (share per minute of the 90) and how many are own goals: for the match reports in the game

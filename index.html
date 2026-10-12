@@ -661,7 +661,7 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, gr: p.gr,
+    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, lg: p.lg, gr: p.gr,
       ap: p.ap, mn: p.mn, ga: p.ga, pk: p.pk, aa: p.aa, rt: p.rt, csy: p.csy, csg: p.csg, nt: p.nt, wdl: p.wdl };
     club.squad.push(pid);
   }
@@ -1189,7 +1189,7 @@ function lastTipText(t){
   const list = did.length > 1 ? did.slice(0, -1).join(', ') + ' and ' + did[did.length - 1] : did[0];
   return `${when}: ${list} against ${t.opp}`;
 }
-const tipText = t => t.kind === 'last' ? lastTipText(t) : `${t.n} ${TIP_UNIT[t.kind][t.n === 1 ? 0 : 1]} in the last ${(t.m || 12) === 1 ? 'month' : (t.m || 12) + ' months'}`;
+const tipText = t => t.kind === 'last' ? lastTipText(t) : t.kind === 'st' && t.n === t.m ? `Started each of his last ${t.m} games` : `${t.n} ${TIP_UNIT[t.kind][t.n === 1 ? 0 : 1]} in his last ${t.m} games`;
 const csOf = p => p.m.reduce((t, r) => t + (r[5] && r[3] === 0 ? 1 : 0), 0);
 const helpUsed = k => !!(S.run.help && S.run.help[k]);
 const visible = r => pickable(r.club).filter(id => !(r.cut || []).includes(id));
@@ -1205,13 +1205,13 @@ function useHelp(k){
     r.cut = (r.cut || []).concat(byOv.slice(0, Math.floor(ids.length / 2)).map(x => x[0]));
   } else if (k === 'tip'){
     const ids = visible(r); if (!ids.length) return;
-    // two kinds of tip, in random order: (1) a stat over the stretch that shows it best, the shortest run of months
-    // with the most (n / months^0.8, so 4 in one month beats 9 in three; starts by plain rate); (2) what he did in his last match, if it was
-    // in the past 7 days and he scored, assisted or, in goal, kept a clean sheet
-    const ROW = { g: 0, a: 1, st: 2, cs: 3 };
-    const year = { g: p => p.ga != null ? p.ga : p.g, a: p => p.aa != null ? p.aa : p.a, cs: p => p.csg != null ? p.csg : csOf(p), st: p => p.starts };
-    const val = (t, p, m) => t === 'cs' && p.prim !== 'GK' ? 0 : p.mo ? (p.mo[ROW[t]] || []).slice(0, m).reduce((x, y) => x + y, 0) : m === 12 ? year[t](p) : 0;
+    // two kinds of tip, in random order: (1) a stat over his last M games, the shortest run with the most
+    // (n / M^0.8 from 3 games up, so 3 in 3 beats 5 in 8; starts by plain rate, the longest run on a tie); (2) what he did in his last match,
+    // if it was in the past 7 days and he scored, assisted or, in goal, kept a clean sheet
+    const BIT = { g: v => v & 7, a: v => (v >> 3) & 7, cs: v => (v >> 6) & 1, st: v => (v >> 7) & 1 };
+    const games = p => (p.lg || []).map(v => ({ g: BIT.g(v), a: BIT.a(v), cs: p.prim === 'GK' ? BIT.cs(v) : 0, st: BIT.st(v) }));
     const lastC = ids.map(id => W.P[id]).filter(p => { const l = p.lm; return l && daysAgo(l[0]) <= 7 && (l[2] || l[3] || l[4] === 0); });
+    const ROW = { g: 0, a: 1, st: 2, cs: 3 };
     let tip = null;
     for (const t of shuffle([...Object.keys(ROW), ...(lastC.length ? ['last'] : [])])){
       if (t === 'last'){
@@ -1219,9 +1219,9 @@ function useHelp(k){
         tip = { pid: p.id, kind: 'last', d: p.lm[0], opp: p.lm[1], g: p.lm[2], a: p.lm[3], cs: p.lm[4] === 0 }; break;
       }
       let best = null;
-      for (const id of ids){ const p = W.P[id];
-        for (let m = 1; m <= 12; m++){ const n = val(t, p, m); if (!n) continue; const sc = n / Math.pow(m, t === 'st' ? 1 : 0.8);
-          if (!best || sc > best.sc + 1e-9 || (Math.abs(sc - best.sc) < 1e-9 && m < best.m)) best = { pid: id, n, m, sc }; } }
+      for (const id of ids){ const gs = games(W.P[id]); let n = 0;
+        for (let m = 1; m <= gs.length; m++){ n += gs[m - 1][t]; if (m < 3 || !n) continue; const sc = n / Math.pow(m, t === 'st' ? 1 : 0.8);
+          if (!best || sc > best.sc + 1e-9 || (Math.abs(sc - best.sc) < 1e-9 && (t === 'st' ? m > best.m : m < best.m))) best = { pid: id, n, m, sc }; } }
       if (best){ tip = { pid: best.pid, kind: t, n: best.n, m: best.m }; break; }
     }
     if (!tip) return;
