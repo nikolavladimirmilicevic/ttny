@@ -717,7 +717,7 @@ def card_raw(pid, st, ap, late_n, pst, national):
     rated = []   # (date, rating, opponent rank, at home) for his starts with a match rating
     for s in st:
         v = (pst.get(s[4]) or {}).get(str(pid))
-        if v and v[1] is not None:
+        if v and v[1] and 3 <= v[1] <= 10:
             rated.append((s[0], v[1], s[5], s[6]))
     rs = [x[1] for x in rated]
     mean = lambda xs: sum(xs) / len(xs) if xs else None
@@ -832,7 +832,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             continue
         for pid, v in (pst.get(fid) or {}).items():
             a = apps[int(pid)]; a[0] += 1; a[1] += v[0] or 0
-            if v[1] is not None: a[2] += v[1]; a[3] += 1
+            if v[1] and 3 <= v[1] <= 10: a[2] += v[1]; a[3] += 1   # 0 means no rating
         k = month(f['d'])
         for e in evs.get(fid) or []:
             if e[3] != 'o' and e[1]:

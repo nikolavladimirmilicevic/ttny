@@ -181,7 +181,8 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
                 if pid not in ids:
                     continue
                 st = ps.get(str(pid)) or [90, None, side]
-                starts[pid].append((f['d'], side, opp, gf, gc, st[0] or 90, st[1], ga_by[pid] + as_by[pid]))
+                rt = st[1] if st[1] and 3 <= st[1] <= 10 else None   # the API sometimes sends 0 for a missing rating
+                starts[pid].append((f['d'], side, opp, gf, gc, st[0] or 90, rt, ga_by[pid] + as_by[pid]))
     R = lambda t: rating_now.get(t, 1400.0)
     nat_vals = [rating_now[t] for t in national if t in rating_now]
     nat_mean = statistics.mean(nat_vals) if nat_vals else 1500.0
