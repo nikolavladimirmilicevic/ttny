@@ -616,6 +616,8 @@ const DIFF = {
   medium: { label: 'Medium', share: 2 / 3, pool: 'A wider mix of clubs' },
   hard: { label: 'Hard', share: 1, pool: 'Anyone, from anywhere' }
 };
+// the difficulty also sets where a new dynasty starts: easy in the Champions League, hard in the Conference League
+const START_COMP = { easy: 'cl', medium: 'el', hard: 'ecl' };
 const compOf = r => COMPS[(r && r.comp) || 'cl'];
 // the top third (or two thirds) of the UEFA list by rank, among the clubs with enough players to draft from
 const poolOf = diff => { const d = DIFF[diff] || DIFF.hard, cut = Math.ceil((W.meta.ranked || 415) * d.share); return W.draftable.filter(id => W.C[id].rank <= cut); };
@@ -1049,7 +1051,7 @@ function newRun(diff){
   // a new dynasty takes the competition and the difficulty picked on the home screen; a dynasty keeps its own
   const pref = S.pref || {};
   diff = S.dyn && S.dyn.diff ? S.dyn.diff : DIFF[pref.diff] ? pref.diff : 'medium';
-  const comp = S.dyn && S.dyn.comp ? S.dyn.comp : COMPS[pref.comp] ? pref.comp : 'el';
+  const comp = S.dyn && S.dyn.comp ? S.dyn.comp : START_COMP[diff];
   const kept = S.dyn && S.dyn.kept ? S.dyn.kept.filter(id => W.P[id] && W.P[id].starts >= MIN_STARTS) : [];
   const potCount = 11 - kept.length;
   // a dynasty remembers everyone who has played in it: whoever was let go cannot come back
@@ -1297,11 +1299,9 @@ function viewHome(){
   const btns = d
     ? `<button class="btn primary" data-act="start">Continue dynasty</button><button class="btn ghost" data-act="fresh">${S.armed === 'fresh' ? 'Tap again to drop it' : 'Start fresh'}</button>`
     : '';
-  const pref = Object.assign({ comp: 'el', diff: 'medium' }, S.pref);
-  const UP = { ecl: 'Win it to move up to the Europa League, then the Champions League.', el: 'Win it to move up to the Champions League.', cl: 'The top of the ladder.' };
-  const picker = d ? '' : `<div class="pick"><div class="eyebrow">Start in</div><div class="diffs">${['cl', 'el', 'ecl'].map(k => `<button class="diff c-${k}${pref.comp === k ? ' on' : ''}" data-act="pickc" data-c="${k}" aria-pressed="${pref.comp === k}">
-      <b>${COMPS[k].short}</b><small>${UP[k]}</small></button>`).join('')}</div>
-    <div class="eyebrow" style="margin-top:14px">Difficulty</div><div class="seg">${Object.entries(DIFF).map(([k, v]) => `<button class="sg${pref.diff === k ? ' on' : ''}" data-act="pickd" data-d="${k}" aria-pressed="${pref.diff === k}"><b>${v.label}</b><small>${v.pool}</small></button>`).join('')}</div>
+  const pref = Object.assign({ diff: 'medium' }, S.pref);
+  const picker = d ? '' : `<div class="pick"><div class="eyebrow">Difficulty</div><div class="diffs">${Object.entries(DIFF).map(([k, v]) => `<button class="diff c-${START_COMP[k]}${pref.diff === k ? ' on' : ''}" data-act="pickd" data-d="${k}" aria-pressed="${pref.diff === k}">
+      <b>${v.label}</b><small>${v.pool}. Starts in the ${COMPS[START_COMP[k]].short}.</small></button>`).join('')}</div>
     <div class="btnrow" style="margin-top:14px"><button class="btn primary" data-act="start">Start a run</button></div></div>`;
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><span class="chip">${W.meta.live ? 'Data ' + niceDate(W.meta.updated) : 'Demo data'}</span></header>
@@ -1326,7 +1326,7 @@ function viewHome(){
         <li>The world is every club on the UEFA 5-year ranking. A player counts with at least one start for one of those clubs in the last 365 days, against any opponent; with only a few starts his grade leans toward a squad player's.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>A new dynasty starts with two choices. The competition: Champions League, Europa League or Conference League; win it and the dynasty's next run moves up a level. The difficulty sets how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots.</li>
+        <li>A new dynasty starts with one choice, the difficulty. It sets where you start (Easy in the Champions League, Medium in the Europa League, Hard in the Conference League) and how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots. Win a competition and the next run moves up a level.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for reputation, role, performance and form. Your team and every opponent get a rating from 40 to 99. A player plays a little below his level in a weak position, one he started in at most half as often as his main one; weak positions are faded on his card.</li>
         <li>Your shape builds itself. A player can only be picked if he still fits one of the allowed formations.</li>
@@ -1755,7 +1755,7 @@ function viewKeep(){
 
 function render(){
   const r = S.run; if (PC) PC.hidden = true;
-  document.body.dataset.comp = (r && r.comp) || (S.dyn && S.dyn.comp) || (S.pref && S.pref.comp) || 'el';
+  document.body.dataset.comp = (r && r.comp) || (S.dyn && S.dyn.comp) || START_COMP[(S.pref && S.pref.diff) || 'medium'];
   try {
     requestAnimationFrame(() => document.querySelectorAll('.bracket-wrap[data-focus]').forEach(el => { el.scrollLeft = +el.dataset.focus; }));
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
@@ -1783,7 +1783,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (a === 'start') newRun();
-  else if (a === 'pickc' || a === 'pickd'){ S.pref = Object.assign({ comp: 'el', diff: 'medium' }, S.pref, a === 'pickc' ? { comp: b.dataset.c } : { diff: b.dataset.d }); save(); render(); }
+  else if (a === 'pickd'){ S.pref = Object.assign({ diff: 'medium' }, S.pref, { diff: b.dataset.d }); save(); render(); }
   else if (a === 'fresh'){ if (S.armed === 'fresh'){ S.dyn = null; S.armed = null; S.stats.streak = 0; save(); render(); } else { S.armed = 'fresh'; render(); } }
   else if (a === 'pick') choose(b.dataset.p);
   else if (a === 'help') useHelp(b.dataset.k);
