@@ -1,4 +1,4 @@
-// Draft bots for calibrating difficulty: node draft_bots.js <runs> [{"lift":{cl,el,ecl},"chem":n} or null]; needs the game served on 127.0.0.1:8830
+// Draft bots for calibrating difficulty (easy-CL, medium-EL, hard-ECL): node draft_bots.js <runs> [{"lift":{cl,el,ecl},"chem":n} or null]; game served on 127.0.0.1:8830
 const { chromium } = require('playwright');
 (async () => { const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }); const pg = await b.newPage(); const errs = []; pg.on('pageerror', e => errs.push(e.message)); await pg.route(/fonts/, r => r.abort());
  await pg.goto('http://127.0.0.1:8830/index.html'); await pg.waitForSelector('[data-act=start]');
@@ -20,7 +20,7 @@ const { chromium } = require('playwright');
    }
    const out = {};
    for (const [bot, noise] of [['random', null], ['casual', 6], ['sharp', 2]]){
-     for (const comp of ['cl', 'el', 'ecl']) for (const diff of ['easy', 'medium', 'hard']){
+     for (const [comp, diff] of [['cl', 'easy'], ['el', 'medium'], ['ecl', 'hard']]){
        const st = {}; let ov = 0, n = 0;
        for (let i = 0; i < N; i++){
          if (!draft(diff, noise)){ i--; continue; }
