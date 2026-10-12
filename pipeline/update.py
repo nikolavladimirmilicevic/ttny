@@ -898,10 +898,20 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                                 'mo': monthly(mo[pid], st, month),
                                 '_raw': card_raw(pid, st, apps[pid], late[pid], pst, national)})
     card_grades(out_players)
+    # when goals fall (share per minute of the 90) and how many are own goals: for the match reports in the game
+    mins, own, total = [0] * 90, 0, 0
+    for fid, f in fx.items():
+        if f['s'] not in FINISHED or not (SINCE.isoformat() <= f['d'] <= TODAY.isoformat()):
+            continue
+        for e in evs.get(fid) or []:
+            total += 1
+            if e[3] == 'o': own += 1
+            mins[min(90, max(1, e[4] or 1)) - 1] += 1
     # names of the other teams players started for (national teams and clubs off the UEFA list)
     used = {t for p in out_players for t in p['tm']} - set(top)
     others = {str(t): [extra[str(t)].get('name'), extra[str(t)].get('kind')] for t in used if str(t) in extra}
-    return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'ranked': len(clubs), 'clubs': out_clubs, 'players': out_players, 'teams': others}
+    return {'updated': TODAY.isoformat(), 'source': 'API-Football', 'ranked': len(clubs), 'clubs': out_clubs, 'players': out_players, 'teams': others,
+            'goal_shape': {'min': mins, 'own': round(own / total, 4) if total else 0.026}}
 
 
 def position_check(world):

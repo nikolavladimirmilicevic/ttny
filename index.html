@@ -653,7 +653,7 @@ function worldFromData(raw){
     club.squad.push(pid);
   }
   TEAMS = raw.teams || {};
-  return finalize(C, P, { live: true, updated: raw.updated, ranked: raw.ranked || Math.max(...raw.clubs.map(c => c.rank)), model: raw.model || null });
+  return finalize(C, P, { live: true, shape: raw.goal_shape || null, updated: raw.updated, ranked: raw.ranked || Math.max(...raw.clubs.map(c => c.rank)), model: raw.model || null });
 }
 let W, TEAMS = {};
 const MIN_STARTS = 1;   // starts in the last year a player needs to be drafted (the pipeline uses the same)
@@ -680,6 +680,14 @@ function buildModel(w, elig){
     p.ovr = Math.max(45, Math.min(95, 72 + r)); p.lvl = MR(); p.rl = MR(); p.pf = MR(); p.fm = MR();
   }
   w.goals = M.goals || { a: 0.21, h: 0.23, b: 0.18, rho: -0.04 };
+  // usual goals and assists per 90 by position (players with 900+ minutes), and when goals fall
+  const pr = {}, add = (k, g, a) => { (pr[k] = pr[k] || [0, 0, 0]); pr[k][0] += g; pr[k][1] += a; pr[k][2]++; };
+  for (const p of elig){ const m = p.mn || 0; if (m >= 900){ const g = (p.ga != null ? p.ga : p.g) / m * 90, a = (p.aa != null ? p.aa : p.a) / m * 90; add(p.prim, g, a); add('_', g, a); } }
+  w.posRate = {}; for (const k in pr) w.posRate[k] = { g: pr[k][0] / pr[k][2], a: pr[k][1] / pr[k][2] };
+  if (!w.posRate._) w.posRate._ = { g: 0.2, a: 0.12 };
+  const gs = w.meta.shape;
+  if (gs && gs.min && gs.min.length === 90){ const tot = gs.min.reduce((t, x) => t + x, 0); let c = 0; w.minCdf = gs.min.map(x => (c += x) / tot); }
+  w.ogShare = gs && gs.own != null ? gs.own : 0.026;
   w.xi = M.xi || { alpha: 453, beta: 18.1 };
   w.pen = M.secondary_penalty != null ? Math.min(2, M.secondary_penalty) : 2;
   w.pen2 = M.strong_penalty != null ? M.strong_penalty : 1;
@@ -817,16 +825,34 @@ function drawScore(gap, neutral){
 }
 function winDrawLoss(gap, neutral){ const M = scoreMatrix(gap, neutral); let w = 0, d = 0, l = 0; M.forEach((r, i) => r.forEach((v, j) => { if (i > j) w += v; else if (i === j) d += v; else l += v; })); return [w, d, l]; }
 /* Who scored our goals: weighted by goals in his last 10 (assists by assists), everyone keeps a small chance. */
-const ourGoals = (n, lo, hi) => teamGoals('YOU', n, lo, hi);
 /* scorers for any side: your XI, or a club's rated players (minus anyone in your XI) */
-function teamGoals(team, n, lo, hi){
-  const ps = team === 'YOU' ? S.run.picks.map(id => W.P[id]) : W.C[team].squad.filter(id => !S.run.picks.includes(id)).map(id => W.P[id]), out = [];
+/* Who scores: each player's own goal and assist rates per 90 (bench games included), shrunk toward the usual rate for
+   the position he plays (10 matches' worth); for a club also how much he plays. A share of goals are own goals by the
+   other side, mostly defenders. Minutes follow when goals really fall (more late on). */
+function teamGoals(team, n, lo, hi, opp){
+  const you = team === 'YOU', pick = id => W.P[id];
+  const ps = you ? S.run.picks.map(pick) : W.C[team].squad.filter(id => !S.run.picks.includes(id)).map(pick), out = [];
   if (!ps.length) return [];
-  const w = (p, k) => (p[k] || 0) + (p.prim === 'GK' ? 0.01 : 0.15);
-  const draw = (list, k) => { let x = MR() * list.reduce((t, p) => t + w(p, k), 0); for (const p of list){ x -= w(p, k); if (x <= 0) return p; } return list[list.length - 1]; };
+  let slot = {};
+  if (you){ const a = arrangement(S.run.picks, S.run.form); if (a) a.forEach((id, j) => { if (id) slot[id] = FORMS[S.run.form][j][0]; }); }
+  const posOf = p => slot[p.id] || p.prim;
+  const maxMn = Math.max(1, ...ps.map(p => p.mn || p.starts * 90 || 0));
+  const share = p => you ? 1 : Math.min(1, (p.mn || p.starts * 90 || 0) / maxMn);
+  const rate = (p, k) => { const pr = (W.posRate[posOf(p)] || W.posRate._)[k], cnt = k === 'g' ? (p.ga != null ? p.ga : p.g) : (p.aa != null ? p.aa : p.a), m = p.mn || p.starts * 90 || 0;
+    return (cnt + pr * 10) / (m / 90 + 10); };
+  const pickBy = (list, wf) => { const ws = list.map(wf), tot = ws.reduce((t, x) => t + x, 0); let x = MR() * tot; for (let i = 0; i < list.length; i++){ x -= ws[i]; if (x <= 0) return list[i]; } return list[list.length - 1]; };
+  const minute = () => { if (lo > 90 || !W.minCdf) return lo + Math.floor(MR() * (hi - lo + 1)); const u = MR(); let m = W.minCdf.findIndex(c => c >= u); return m < 0 ? 90 : m + 1; };
+  const LINE_OG = { GK: 0.3, DEF: 3, MID: 1, FWD: 0.4 };
   for (let i = 0; i < n; i++){
-    const sc = draw(ps, 'g'), rest = ps.filter(p => p !== sc), as = rest.length && MR() < 0.7 ? draw(rest, 'a') : null;
-    out.push([sc.id, as ? as.id : null, lo + Math.floor(MR() * (hi - lo + 1))]);
+    const m = minute();
+    if (opp && MR() < W.ogShare){   // own goal by the other side
+      const them = opp === 'YOU' ? S.run.picks.map(pick) : W.C[opp].squad.filter(id => !S.run.picks.includes(id)).map(pick);
+      const oMax = Math.max(1, ...them.map(p => p.mn || 0));
+      if (them.length){ const v = pickBy(them, p => (LINE_OG[p.line] || 1) * (opp === 'YOU' ? 1 : Math.min(1, (p.mn || 0) / oMax) + 0.02)); out.push([v.id, null, m, 1]); continue; }
+    }
+    const sc = pickBy(ps, p => rate(p, 'g') * share(p) + 1e-4), rest = ps.filter(p => p !== sc);
+    const as = rest.length && MR() < 0.7 ? pickBy(rest, p => rate(p, 'a') * share(p) + 1e-4) : null;
+    out.push([sc.id, as ? as.id : null, m]);
   }
   return out.sort((x, y) => x[2] - y[2]);
 }
@@ -979,13 +1005,13 @@ function buildCup(T){
   const rec = (x, gf, ga) => { const r = rows[x]; r.P++; r.GF += gf; r.GA += ga; if (gf > ga){ r.W++; r.Pts += 3; } else if (gf === ga){ r.D++; r.Pts++; } else r.L++; };
   const potOf = id => sch.pots.findIndex(p => p.includes(id)) + 1;
   // competition scorers and assists, every match
-  const G = {}, A = {}, tally = gl => { for (const [sc, as] of gl){ G[sc] = (G[sc] || 0) + 1; if (as) A[as] = (A[as] || 0) + 1; } return gl; };
-  const goals = (team, n, lo, hi) => tally(teamGoals(team, n, lo, hi));
+  const G = {}, A = {}, tally = gl => { for (const [sc, as, , og] of gl){ if (og) continue; G[sc] = (G[sc] || 0) + 1; if (as) A[as] = (A[as] || 0) + 1; } return gl; };
+  const goals = (team, n, lo, hi, opp) => tally(teamGoals(team, n, lo, hi, opp));
   rounds.forEach((rd, ri) => { const res = []; lg.push(res);
     for (const [a, b] of rd){
       const [ga, gb] = simMatch(a, b, T, false, a);   // first-named side is at home
       rec(a, ga, gb); rec(b, gb, ga); res.push([a, b, ga, gb]);
-      const la = goals(a, ga, 1, 90), lb = goals(b, gb, 1, 90);
+      const la = goals(a, ga, 1, 90, b), lb = goals(b, gb, 1, 90, a);
       if (a === 'YOU') ours.push({ opp: b, s: [ga, gb], pot: potOf(b), gl: la, og: lb, h: 1 });
       if (b === 'YOU') ours.push({ opp: a, s: [gb, ga], pot: potOf(a), gl: lb, og: la, h: 0 });
     }
@@ -1000,9 +1026,9 @@ function buildCup(T){
   const run = (round, a, b, legs, key) => {
     const t = playTie(a, b, legs, T);
     ko.push({ k: key, a: t.a, b: t.b, legs: t.legs, agg: t.agg, et: t.et || null, pens: t.pens ? [t.pens.a, t.pens.b] : null, w: t.winner });
-    const gA = t.legs.map(l => goals(t.a, l[0], 1, 90)), gB = t.legs.map(l => goals(t.b, l[1], 1, 90));
-    const eA = t.et ? goals(t.a, t.et[0], 91, 120) : [];
-    const eB = t.et ? goals(t.b, t.et[1], 91, 120) : [];
+    const gA = t.legs.map(l => goals(t.a, l[0], 1, 90, t.b)), gB = t.legs.map(l => goals(t.b, l[1], 1, 90, t.a));
+    const eA = t.et ? goals(t.a, t.et[0], 91, 120, t.b) : [];
+    const eB = t.et ? goals(t.b, t.et[1], 91, 120, t.a) : [];
     if (t.a === 'YOU'){
       if (legs === 2){
         ev.push({ k: 'leg', round, leg: 1, opp: t.b, s: t.legs[0], gl: gA[0], og: gB[0], h: t.home[0] === 'YOU' ? 1 : 0 });
@@ -1232,7 +1258,7 @@ function cardHTML(p){
   if (r.cup){
     const shown = r.phase === 'done' ? r.cup.ev : r.cup.ev.slice(0, r.cup.shown);
     let g = 0, a = 0, n = 0;
-    for (const e of shown) if (e.k === 'md' || e.k === 'leg' || e.k === 'final'){ n++; for (const [sc, as] of e.gl || []){ if (sc === p.id) g++; if (as === p.id) a++; } }
+    for (const e of shown) if (e.k === 'md' || e.k === 'leg' || e.k === 'final'){ n++; for (const [sc, as, , og] of e.gl || []){ if (!og && sc === p.id) g++; if (as === p.id) a++; } }
     if (n) season = `<div class="pc-sec pc-line"><span class="pc-h">This season</span><span><b>${n}</b> played · <b>${g}</b> G · <b>${a}</b> A</span></div>`;
   }
   return `${head}
@@ -1399,7 +1425,7 @@ const venue = h => h === 1 ? '<span class="ven" title="Home">🏠</span>vs' : h 
 function evHTML(e){
   const res = s => s[0] > s[1] ? 'W' : s[0] < s[1] ? 'L' : 'D';
   const opp = id => `${esc(nm(id))} ${gchip(id)}`;
-  const one = ([sc, as, m]) => `<span>⚽ ${m}' ${esc(short(W.P[sc].name))}${as ? ` <small>(${esc(short(W.P[as].name))})</small>` : ''}</span>`;
+  const one = ([sc, as, m, og]) => `<span>⚽ ${m}' ${esc(short(W.P[sc].name))}${og ? ' <small>(og)</small>' : as ? ` <small>(${esc(short(W.P[as].name))})</small>` : ''}</span>`;
   const col = l => (l || []).slice().sort((x, y) => x[2] - y[2]).map(one).join('');
   const gls = e => (e.gl && e.gl.length) || (e.og && e.og.length) ? `<div class="gls2"><div>${col(e.gl)}</div><div class="them">${col(e.og)}</div></div>` : '';
   const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
@@ -1561,7 +1587,7 @@ function campaign(r){
     GF += f; GA += ag; if (ag === 0) CS++;
     if (f > ag) W_++; else if (f < ag) L++; else D++;
     if (f > ag && (!big || f - ag > big.d || (f - ag === big.d && f > big.f))) big = { d: f - ag, f, ag, opp: m.opp };
-    for (const [sc, as] of m.gl || []){ g[sc] = (g[sc] || 0) + 1; if (as) a[as] = (a[as] || 0) + 1; }
+    for (const [sc, as, , og] of m.gl || []){ if (og) continue; g[sc] = (g[sc] || 0) + 1; if (as) a[as] = (a[as] || 0) + 1; }
   }
   return { ms, W_, D, L, GF, GA, CS, big, g, a };
 }
