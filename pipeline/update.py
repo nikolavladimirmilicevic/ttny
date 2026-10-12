@@ -666,9 +666,12 @@ def fix_text(t):
     t = html.unescape(t) if t else t   # 'O&apos;Reilly' -> "O'Reilly"
     if t and re.search('[ÃÄÅ][\x80-\xbf]', t):
         try:
-            return t.encode('latin-1').decode('utf-8')
+            t = t.encode('latin-1').decode('utf-8')
         except (UnicodeEncodeError, UnicodeDecodeError):
             pass
+    if t:   # stray escapes and double spaces from the API ('Yoram\\t Zague', 'John  McGinn')
+        t = re.sub(r'\\[tnr]|[\t\n\r]', ' ', t)
+        t = re.sub(r'\s{2,}', ' ', t).strip()
     return t
 
 
