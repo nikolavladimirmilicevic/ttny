@@ -20,7 +20,7 @@ Environment:
   TODAY                YYYY-MM-DD override, for testing
   API_BASE             override the API host, for testing
 """
-import csv, datetime as dt, difflib, html, json, math, os, re, sys, time, unicodedata, urllib.parse, urllib.request
+import bisect, statistics, csv, datetime as dt, difflib, html, json, math, os, re, sys, time, unicodedata, urllib.parse, urllib.request
 from collections import Counter, defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import model
@@ -687,6 +687,65 @@ DEF_POS = {'GK', 'CB', 'LB', 'RB', 'DMF'}
 MIN_STARTS = int(os.environ.get('MIN_STARTS', '1'))   # starts in the window a player needs to be rated and drafted
 
 
+def card_raw(pid, st, ap, late_n, pst, national):
+    """Raw numbers behind the card's extra A-E grades (for show: they do not feed the simulation)."""
+    mins = max(ap[1], 1)
+    rated = []   # (date, rating, opponent rank, at home) for his starts with a match rating
+    for s in st:
+        v = (pst.get(s[4]) or {}).get(str(pid))
+        if v and v[1] is not None:
+            rated.append((s[0], v[1], s[5], s[6]))
+    rs = [x[1] for x in rated]
+    mean = lambda xs: sum(xs) / len(xs) if xs else None
+    recent = [x[1] for x in rated if (TODAY - dt.date.fromisoformat(x[0])).days <= 90]
+    older = [x[1] for x in rated if (TODAY - dt.date.fromisoformat(x[0])).days > 90]
+    big = [x[1] for x in rated if 0 < x[2] <= 40]
+    away = [x[1] for x in rated if not x[3]]
+    n = len(st)
+    return {
+        'fin': (ap[4] - ap[5]) / max(mins, 1000) * 90,            # non-penalty goals per 90
+        'cre': ap[6] / max(mins, 1000) * 90,                      # assists per 90
+        'pen': ap[5],                                            # penalty goals
+        'clu': late_n / max(mins, 1000) * 90,                     # late goals and assists per 90
+        'big': (sum(big) + 3 * 6.7) / (len(big) + 3) if big else None,     # rating against top-40 UEFA clubs
+        'con': -statistics.pstdev(rs) if len(rs) >= 5 else None,           # steadiness of his match ratings
+        'fit': ap[1],                                            # minutes played
+        'int': sum(1 for s in st if s[8] in national),           # national team starts
+        'win': (sum(1 for s in st if s[1] > s[2]) + 2) / (n + 5),          # wins in his starts, shrunk
+        'def': (sum(1 for s in st if s[2] == 0) + 1) / (n + 4),            # clean sheets in his starts, shrunk
+        'ver': sum(1 for k, v in Counter(s[3] for s in st if s[3]).items() if v >= 2),   # positions with 2+ starts
+        'mom': (mean(recent) - mean(older)) if len(recent) >= 3 and len(older) >= 3 else None,   # rating trend
+        'awy': (sum(away) + 3 * 6.7) / (len(away) + 3) if away else None,  # rating away from home
+    }
+
+
+CARD_KEYS = ['fin', 'cre', 'pen', 'clu', 'big', 'con', 'fit', 'int', 'win', 'def', 'ver', 'mom', 'awy']
+COUNT_KEYS = {'pen', 'int'}   # counts where zero means none at all: zero stays at the bottom
+
+
+def card_grades(players):
+    """Percentile of each raw number within the player's line (goalkeepers, defenders, midfielders, forwards)."""
+    from model import LINE
+    by_line = defaultdict(list)
+    for p in players:
+        by_line[LINE.get(p['prim'], 'MID')].append(p)
+    for ps in by_line.values():
+        for k in CARD_KEYS:
+            vals = sorted(p['_raw'][k] for p in ps if p['_raw'][k] is not None)
+            for p in ps:
+                v = p['_raw'][k]
+                if v is None:
+                    q = 0.5
+                elif k in COUNT_KEYS and v == 0:
+                    q = 0.0
+                else:
+                    lo = bisect.bisect_left(vals, v); hi = bisect.bisect_right(vals, v)
+                    q = (lo + (hi - lo) / 2) / len(vals)
+                p.setdefault('gr', []).append(round(q, 2))
+    for p in players:
+        p.pop('_raw', None)
+
+
 def monthly(m, st, month):
     """[goals, assists, starts, clean sheets in goal] per month, newest first, trailing zeros dropped."""
     m = [r[:] for r in m]
@@ -760,6 +819,14 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                 if e[3] == 'p': apps[e[1]][5] += 1
             if e[3] != 'o' and e[2]:
                 apps[e[2]][6] += 1
+    late = Counter()   # goals and assists from the 76th minute on
+    for fid, f in fx.items():
+        if f['s'] not in FINISHED or not (SINCE.isoformat() <= f['d'] <= TODAY.isoformat()):
+            continue
+        for e in evs.get(fid) or []:
+            if e[3] != 'o' and (e[4] or 0) >= 76:
+                if e[1]: late[e[1]] += 1
+                if e[2]: late[e[2]] += 1
     out_players, seen = [], set()
     for tid, c in sorted(top.items(), key=lambda x: int(x[1]['rank'])):
         for pid in (squads.get(str(tid)) or {}).get('p', []):
@@ -769,11 +836,11 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             if len(st) < MIN_STARTS or not (people.get(str(pid)) or {}).get('nat'):   # a few starts, and a known nationality
                 continue
             seen.add(pid)
-            cnt = Counter(s[3] for s in st[:10] if s[3])   # positions from the same last 10 starts as the grades
-            # offered positions: every position he started in during those last 10, most frequent first;
+            cnt = Counter(s[3] for s in st if s[3])   # positions from every start in the window
+            # offered positions: every position he started in, most frequent first;
             # on a tie, the one he played most recently first (starts are newest first)
             last = {}
-            for i, s in enumerate(st[:10]):
+            for i, s in enumerate(st):
                 last.setdefault(s[3], i)
             pos = [k for k, _ in sorted(cnt.items(), key=lambda kv: (-kv[1], last[kv[0]]))]
             pos = pos or ['CMF']
@@ -803,7 +870,9 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                                 'csg': sum(1 for s in st if s[2] == 0 and s[3] == 'GK'),           # ... as goalkeeper
                                 'nt': sum(1 for s in st if s[8] in national),                      # starts for his national team
                                 'wdl': [sum(1 for s in st if s[1] > s[2]), sum(1 for s in st if s[1] == s[2]), sum(1 for s in st if s[1] < s[2])],
-                                'mo': monthly(mo[pid], st, month)})
+                                'mo': monthly(mo[pid], st, month),
+                                '_raw': card_raw(pid, st, apps[pid], late[pid], pst, national)})
+    card_grades(out_players)
     # names of the other teams players started for (national teams and clubs off the UEFA list)
     used = {t for p in out_players for t in p['tm']} - set(top)
     others = {str(t): [extra[str(t)].get('name'), extra[str(t)].get('kind')] for t in used if str(t) in extra}
