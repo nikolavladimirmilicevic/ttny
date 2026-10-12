@@ -16,7 +16,7 @@ FINISHED = {'FT', 'AET', 'PEN'}
 PRESTIGE = 0.20          # share of the UEFA seed kept in the final club rating
 K_BASE = 20              # Elo step
 HFA_ELO = 60             # home advantage inside the Elo updates
-SHARE = {'level': 0.45, 'role': 0.15, 'perf': 0.40}
+SHARE = {'level': 0.45, 'role': 0.15, 'perf': 0.30, 'form': 0.10}   # form: last 5 ratings, measured to predict the next 5
 OVR_MEAN, OVR_SD = 72, 7.5
 PERF_PRIOR = 10          # average matches of shrinkage toward his line's mean match rating
 EXPERIENCE_STARTS = 10   # starts for a full rating; fewer pull the score toward a squad player's
@@ -257,7 +257,7 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
     lz, rz = z('level'), z('role')
     starts_of = {p['id']: len(starts.get(p['id'], [])) for p in ok}
     def blended(i):
-        sc = SHARE['level'] * lz[i] + SHARE['role'] * rz[i] + SHARE['perf'] * perf_z[i]
+        sc = SHARE['level'] * lz[i] + SHARE['role'] * rz[i] + SHARE['perf'] * perf_z[i] + SHARE['form'] * form_z[i]
         e = min(1.0, starts_of[i] / EXPERIENCE_STARTS)   # 1 start = 10% of his own score, 10+ starts = all of it
         return e * sc + (1 - e) * SQUAD_Z
     score = {i: blended(i) for i in lz}
