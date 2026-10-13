@@ -32,7 +32,7 @@ h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.1;tex
 .mark{font:700 16px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
 .mark span{color:var(--gold)}
 .mark{display:flex;align-items:center;gap:8px}.mark .logo{width:34px;height:34px;flex:none}
-.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px}.hero .hlogo{align-self:end;width:0;height:0;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px}.hero .hlogo{align-self:start;width:0;height:0;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
 .hero h1 .hl{display:inline-block;white-space:nowrap}
 .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
 .chip.hot{border-color:var(--gold);color:var(--gold)}.chip .ico{display:none}
@@ -1924,7 +1924,7 @@ function drawLogo(x, X, Y, n){
   if (!logoImg.complete || !logoImg.naturalWidth) return;
   x.drawImage(logoImg, X, Y, n, n);   // transparent background
 }
-/* the logo on the home screen's grass: bottom right, as big as it can be (square) while "Eleven pots." and
+/* the logo on the home screen's grass: top right, as big as it can be (square) while "Eleven pots." and
    "One trophy." each still fit on one line beside it; refitted on every resize */
 function fitHeroLogo(){
   const hero = document.querySelector('.hero'), img = hero && hero.querySelector('.hlogo'); if (!img) return;
