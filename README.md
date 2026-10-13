@@ -1,33 +1,64 @@
 # This Time Next Year
 
-Draft one player from each of 11 pots of clubs on the UEFA 5-year ranking, then win the Euro Cup.
-A static web game (one `index.html`) served by GitHub Pages, with data refreshed daily by a GitHub Action.
+<img src="logo320.png" alt="This Time Next Year" width="200" align="right">
+
+A European football draft game. Draft one real player from each of 11 pots of clubs on the UEFA 5-year ranking, then take your XI through a full European season. Win and keep your best players for the next one, for a dynasty of up to ten seasons.
+
+One static page (`index.html`) plus one data file (`world.json`), refreshed every day by a GitHub Action from [API-Football](https://www.api-football.com).
+
+**Tracker:** defects, enhancements, feedback and questions go to [Issues](https://github.com/nikolavladimirmilicevic/ttny/issues). Pick one of the four forms; the priority you choose becomes a label automatically.
+
+## The game
+
+**A dynasty** starts with one choice, the difficulty:
+
+| Difficulty | Starts in | Clubs you draft from |
+|---|---|---|
+| Easy | Champions League | the top third of the UEFA ranking |
+| Medium | Europa League | the top two thirds |
+| Hard | Conference League | every ranked club |
+
+**The draft.** The pots are revealed one at a time in random order; from each you get one club and pick one player. You pick on name, nationality and positions only: no ratings during the draft. The list is sorted by main position, then second and third position, then name, and each position is coloured: main (green), also plays (yellow), rarely plays (red). Three helps, each once per run: **Redraw** (another club from the same pot), **Fifty-fifty** (rules out the weaker half) and **Scout's tip** (one standout player: his best run over his last 2, 5, 10, 20, 50 or 100 games, or what he did in a match in the past seven days).
+
+**The shape.** The draft starts in 4-2-2-2 and keeps that shape while it still works; when it stops working, another one that works is picked at random. Players are placed in the best positions automatically. At the end you choose the shape (all 14 PES 2021 formations, alphabetical) and confirm the XI with a second tap.
+
+**The season** follows the real formats: a 36-club league phase (eight matches in the Champions and Europa League, six in the Conference League), the play-off for places 9 to 24, then two-legged knockouts and a one-match final. You see the draw, the table after every matchday, the bracket, odds for your next match and every result.
+
+**Keeping players.** The further you go, the more you keep: league phase 5, play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11. A title moves the dynasty up a competition; missing the top 24 moves it down, and in the Conference League it ends the dynasty. A player who leaves never comes back.
+
+**Clocks.** 60 seconds per draft pick, 2 minutes to confirm the shape, 60 seconds per step of the season, 2 minutes to choose who stays, 10 minutes to start the next run. When a clock runs out the game decides: a random player, a random shape, the next step, nobody kept, the end of the dynasty.
+
+**After each season and after the dynasty** you get a summary screen and an image to share or save: the XI on the pitch with grades, goals and assists, the captain, the difficulty and the season's numbers; for the dynasty, trophies per competition, every season, top scorers, assists and the players who stayed longest. The captain is the player with the most seasons in the dynasty, then most goals, assists and clean sheets, then the best rating.
+
+**What you see of ratings.** Your players get a grade from A to E and a card with 14 more grades (finishing, creativity, big games, consistency and so on). Your team gets a rating from 40 to 99 and a chemistry bonus from A to E (2 per team-mate in your XI, 1 per compatriot, at most 3 per player). Opponents show no rating at all.
 
 ## How the data works
 
-`pipeline/update.py` calls [API-Football](https://www.api-football.com) and writes `world.json`:
+`pipeline/update.py` builds `world.json`. It only ever uses the last 365 days; the UEFA 5-year points are the one exception.
 
-- **Clubs:** every club on the UEFA 5-year club ranking, with its points, read once a week from the data service behind uefa.com. If that fails, the script keeps the last good list; with no list at all it falls back to `pipeline/clubs.csv`. Clubs are matched to API-Football by name. If one is matched wrongly or not found, add `name,api_id` to `pipeline/team_ids.csv` (the name as UEFA writes it).
-- **Players:** everyone on a ranked club's roster with **10+ starts against ranked clubs in the last 365 days** (friendlies count, matches without line-up positions do not) and a known nationality. Every such start is kept with the opponent, venue, score, his goals and assists, his position and the club he played for.
-- **Clubs' results:** every match against another ranked club in the same window, under the same positions rule.
-- **Match model:** the base home/draw/away rates, the real scorelines behind each result and the fitted tilt `k`, all from matches between ranked clubs.
+- **Clubs:** every club on the UEFA 5-year club ranking, read weekly from the service behind uefa.com (fallback: the last good list, then `pipeline/clubs.csv`). Clubs are matched to API-Football by name; fix a wrong or missing match in `pipeline/team_ids.csv`.
+- **Players:** every current member of those clubs with at least one start in the window and a known nationality.
+- **Matches:** all their matches in the window: their clubs, their national teams, friendlies, and the clubs they played for before a transfer (only for the stretch they were there). Line-ups, goals, assists, minutes and match ratings come with them.
 
-Everything fetched is cached in `data/cache/`, so each run only asks for what is new.
-If no `world.json` exists, the game runs on generated demo data.
+Everything fetched is cached in `data/cache/`, so each run only asks for what is new. `world.json` is published only when results, line-ups and rosters are complete and all nine credibility tests pass; otherwise the run writes `world.partial.json` and the game keeps the last good data.
+
+### The model (`pipeline/model.py`)
+
+- **Club strength:** Elo over every match in the window (K 20, friendlies at half weight, home advantage 60), seeded from UEFA points and blended 80/20 with that seed.
+- **Goals:** a Poisson model with a draw correction, fitted on matches between ranked clubs.
+- **Player overall:** 45% the strength of his clubs, 15% playing time, 30% performance (his match ratings, adjusted for opponent strength, shrunk toward his line's average), 10% form (last 5 ratings). Performance and form count by rank within his line, so a player dominating a weak league cannot outweigh the rest. Players with few starts lean toward a squad player's score. The result is placed on a 45-97 scale (A from 82).
+- **Positions:** from every start in the window. Away from his main position a player loses 1 point where he plays often and 2 where he rarely plays.
+- **Your XI:** rated like a club's own eleven, plus a lift for strong XIs and the chemistry bonus; the lift is calibrated with draft bots so a sharp drafter wins about 13% / 10% / 8% of titles on Easy / Medium / Hard.
+- **Credibility tests:** the big clubs on top, the best players from the best clubs, realistic title odds per competition, no position overrepresented among the top 300, and more. Results go to `data/cache/model_report.json`.
 
 ## Setup
 
 1. Get an API key at [dashboard.api-football.com](https://dashboard.api-football.com).
-2. In this repo: **Settings → Secrets and variables → Actions**
-   - Secret `API_FOOTBALL_KEY` = your key
-   - Variable `MAX_REQUESTS` = `90` on the free plan, `7000` on Pro
-3. **Actions → Update data → Run workflow** for the first load. On the free plan the first full load takes about 10 daily runs; on Pro it finishes in one.
-4. **Settings → Pages →** deploy from the `main` branch, root folder.
+2. **Settings → Secrets and variables → Actions:** secret `API_FOOTBALL_KEY`; variable `MAX_REQUESTS` (`90` on the free plan, `7000` on Pro).
+3. **Actions → Update data → Run workflow** for the first load. It then runs every day at 05:17 UTC and rebases onto `main` before pushing, so a code push during a run is safe.
+4. **Settings → Pages:** deploy from `main`, root folder.
 
-## After the first full run
-
-- Open `data/cache/teams.json` and check every club was matched to the right API team. Wrong or missing ones go into `pipeline/team_ids.csv`.
-- Open `data/cache/position_check.txt`. If left-backs show up as RB and right wingers as LW, set the Actions variable `GRID_COL1_IS_RIGHT` to `1`, delete `data/cache/lineups.json` and run again.
+After the first full run, check `data/cache/teams.json` (every club matched to the right team) and `data/cache/position_check.txt` (if left-backs show up as RB, set the variable `GRID_COL1_IS_RIGHT` to `1`, delete `data/cache/lineups.json` and run again).
 
 ## Run locally
 
@@ -38,3 +69,4 @@ python3 -m http.server   # then open http://localhost:8000
 
 Offline test against a fake API: `python3 pipeline/mock_api.py 8765` and
 `API_BASE=http://127.0.0.1:8765 API_FOOTBALL_KEY=x SLEEP=0 MAX_REQUESTS=5000 python3 pipeline/update.py`.
+Difficulty calibration: serve the game on port 8830 and run `node pipeline/tools/draft_bots.js 300`.
