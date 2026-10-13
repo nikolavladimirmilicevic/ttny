@@ -686,11 +686,14 @@ def fetch_arrivals(top_ids, extra, meta, squads):
 def fix_text(t):
     """Repair names that arrive double-encoded from the API ('CvetkoviÄ\x87' -> 'Cvetković')."""
     t = html.unescape(t) if t else t   # 'O&apos;Reilly' -> "O'Reilly"
-    if t and re.search('[ÃÄÅ][\x80-\xbf]', t):
-        try:
-            t = t.encode('latin-1').decode('utf-8')
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            pass
+    if t and re.search('[\xc2-\xf4][\x80-\xbf]', t):
+        # piece by piece, so a name mixing real letters and broken ones ('Vukašin KrstiÄ\x87') is repaired too
+        def one(m):
+            try:
+                return m.group(0).encode('latin-1').decode('utf-8')
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                return m.group(0)
+        t = re.sub('[\xc2-\xf4][\x80-\xbf]+', one, t)
     if t:   # stray escapes and double spaces from the API ('Yoram\\t Zague', 'John  McGinn')
         t = re.sub(r'\\[tnr]|[\t\n\r]', ' ', t)
         t = re.sub(r'\s{2,}', ' ', t).strip()
