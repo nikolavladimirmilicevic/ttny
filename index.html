@@ -1180,7 +1180,7 @@ function choose(pid){
   const r = S.run; if (!r || r.phase !== 'draft' || !visible(r).includes(pid)) return;
   r.picks.push(pid); r.step++; r.tried = []; r.cut = []; r.tip = null;
   r.sel = null;
-  if (r.picks.length === 11){ r.phase = 'lineup'; r.manual = null; r.form = randomForm(r.picks); }
+  if (r.picks.length === 11){ r.phase = 'lineup'; r.manual = null; if (!feasible(r.picks).includes(r.form)) r.form = randomForm(r.picks); }
   else drawClub();
   save(); render();
 }
@@ -1537,7 +1537,7 @@ function viewDraft(){
         <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)}${posChips(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
-  if (r.picks.length && r.formAt !== r.picks.length){ r.form = randomForm(r.picks); r.formAt = r.picks.length; }   // a random shape that works, after every pick
+  // the shape stays while it still works; only when it stops working, another one that works, at random
   if (!shp.includes(r.form)) r.form = randomForm(r.picks);
   const anim = r.anim !== r.club; r.anim = r.club;
   return `
