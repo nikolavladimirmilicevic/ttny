@@ -1333,10 +1333,10 @@ function stepChip(r){
 const gBadge = (g, lbl) => `<span class="g g${g}" title="${lbl} ${g}"><small>${lbl}</small>${g}</span>`;
 // positions, most played first: the main one bold, the other strong ones plain, the weak ones faded
 function posText(p){ return p.pos.map(x => x === p.prim ? `<b>${x}</b>` : isWeak(p, x) ? `<span class="wk">${x}</span>` : x).join(' · '); }
-// the draft list: one chip per position, coloured like the pitch: main (green), strong other, -1 (yellow), weak, -2 (red)
-const PT_TITLE = ['Main position', 'Strong position: -1', 'Weak position: -2'];
+// the draft list: one chip per position, coloured like the pitch: main (green), also plays (yellow), rarely plays (red); the penalties stay hidden
+const PT_TITLE = ['Main position', 'Also plays here', 'Rarely plays here'];
 function posChips(p){ return `<span class="pts">${p.pos.map(x => { const t = Math.min(2, fitTier(p, x)); return `<i class="pt f${t}" title="${PT_TITLE[t]}">${x}</i>`; }).join('')}</span>`; }
-const ptLegend = '<div class="ptleg"><i class="pt f0">Main</i><i class="pt f1">−1</i><i class="pt f2">−2</i></div>';
+const ptLegend = '<div class="ptleg"><i class="pt f0">Main position</i><i class="pt f1">Also plays</i><i class="pt f2">Rarely plays</i></div>';
 const LINES = ['GK', 'DEF', 'MID', 'FWD'];
 // the draft list: by main position, then second, third and so on (fewer positions first on a tie), then by name
 const DRAFT_POS = ['GK', 'CB', 'RB', 'LB', 'DMF', 'CMF', 'RMF', 'LMF', 'AMF', 'RWF', 'LWF', 'CF'];
