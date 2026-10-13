@@ -666,7 +666,7 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, lg: p.lg, gr: p.gr,
+    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, lg: p.lg, lgd: p.lgd, gr: p.gr,
       ap: p.ap, mn: p.mn, ga: p.ga, pk: p.pk, aa: p.aa, rt: p.rt, csy: p.csy, csg: p.csg, nt: p.nt, wdl: p.wdl };
     club.squad.push(pid);
   }
@@ -1212,7 +1212,8 @@ function useHelp(k){
     const ids = visible(r); if (!ids.length) return;
     // two kinds of tip, in random order: (1) a stat over his last M games, the shortest run with the most
     // (n / M^0.8 from 3 games up, so 3 in 3 beats 5 in 8; starts by plain rate, the longest run on a tie); (2) what he did in his last match,
-    // if it was in the past 7 days and he scored, assisted or, in goal, kept a clean sheet
+    // if it was in the past 7 days and he scored, assisted or, in goal, kept a clean sheet. A game is any match he played
+    // a minute in; clean sheets count only when he started in goal; the runs only for players who played in the last 30 days
     const BIT = { g: v => v & 7, a: v => (v >> 3) & 7, cs: v => (v >> 6) & 1, st: v => (v >> 7) & 1 };
     const games = p => (p.lg || []).map(v => ({ g: BIT.g(v), a: BIT.a(v), cs: p.prim === 'GK' ? BIT.cs(v) : 0, st: BIT.st(v) }));
     const lastC = ids.map(id => W.P[id]).filter(p => { const l = p.lm; return l && daysAgo(l[0]) <= 7 && (l[2] || l[3] || l[4] === 0); });
@@ -1224,7 +1225,8 @@ function useHelp(k){
         tip = { pid: p.id, kind: 'last', d: p.lm[0], opp: p.lm[1], g: p.lm[2], a: p.lm[3], cs: p.lm[4] === 0 }; break;
       }
       let best = null;
-      for (const id of ids){ const gs = games(W.P[id]); let n = 0;
+      for (const id of ids){ const P_ = W.P[id]; if (!P_.lgd || daysAgo(P_.lgd) > 30) continue;   // only players who played in the last 30 days
+        const gs = games(P_); let n = 0;
         for (let m = 1; m <= gs.length; m++){ n += gs[m - 1][t]; if (m < 3 || !n) continue; const sc = n / Math.pow(m, t === 'st' ? 1 : 0.8);
           if (!best || sc > best.sc + 1e-9 || (Math.abs(sc - best.sc) < 1e-9 && (t === 'st' ? m > best.m : m < best.m))) best = { pid: id, n, m, sc }; } }
       if (best){ tip = { pid: best.pid, kind: t, n: best.n, m: best.m }; break; }

@@ -853,55 +853,49 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             if e[3] != 'o' and (e[4] or 0) >= 76:
                 if e[1]: late[e[1]] += 1
                 if e[2]: late[e[2]] += 1
-    # the last match each player played, start or from the bench, for the scout ("on Tuesday he scored against ...")
+    # for the scout: every match he played at least a minute in (in the starting XI, with or without positions; from the
+    # bench by the API's minutes; or seen in a goal), and only matches whose goals and assists we have
     tname = lambda t: (top[t]['name'] if t in top else (extra.get(str(t)) or {}).get('name'))
-    last_seen = {}
-    def seen_in(pid, d, fid, side):
-        if pid not in last_seen or d > last_seen[pid][0]:
-            last_seen[pid] = (d, fid, side)
+    played = defaultdict(dict)   # pid -> fid -> [date, team, started]
     for fid, f in window:
+        if fid not in evs:
+            continue
+        for side in (f['h'], f['a']):
+            xi = (lu.get(fid) or {}).get(str(side))
+            for e in (xi.get('xi') or []) if isinstance(xi, dict) else []:
+                played[e[0]][fid] = [f['d'], side, True]
         for pid, v in (pst.get(fid) or {}).items():
-            if v[2] in (f['h'], f['a']):
-                seen_in(int(pid), f['d'], fid, v[2])
-    for pid, st_ in starts.items():
-        for s_ in st_:
-            seen_in(pid, s_[0], s_[4], s_[8])
-    # every appearance (start, from the bench, or seen in a goal), for the scout's "N goals in his last M games"
-    appeared = defaultdict(dict)   # pid -> fid -> date
-    for fid, f in window:
-        for pid in (pst.get(fid) or {}):
-            appeared[int(pid)][fid] = f['d']
-        for e in evs.get(fid) or []:
-            if e[3] != 'o':
+            if (v[0] or 0) > 0 and v[2] in (f['h'], f['a']):
+                played[int(pid)].setdefault(fid, [f['d'], v[2], False])
+        for e in evs[fid]:
+            if e[3] != 'o' and e[0] in (f['h'], f['a']):
                 for q in (e[1], e[2]):
-                    if q: appeared[q][fid] = f['d']
-    for pid, st_ in starts.items():
-        for s_ in st_:
-            appeared[pid][s_[4]] = s_[0]
-    def last_games(pid, n=40):
+                    if q: played[q].setdefault(fid, [f['d'], e[0], False])
+    def game(pid, fid, gk):
+        d, side, started = played[pid][fid]; f = fx[fid]
+        g = sum(1 for e in evs[fid] if e[3] != 'o' and e[1] == pid)
+        a = sum(1 for e in evs[fid] if e[3] != 'o' and e[2] == pid)
+        conceded = (f['ag'] if side == f['h'] else f['hg']) if started and gk else None   # clean sheets: starting goalkeepers only
+        return d, side, started, g, a, conceded
+    def history(pid):
+        return sorted(played.get(pid, {}), key=lambda fid: played[pid][fid][0], reverse=True)
+    def last_games(pid, gk, n=40):
         """His last n games, newest first, one number each: goals | assists << 3 | clean sheet in goal << 6 | started << 7."""
-        mine = {s_[4]: s_ for s_ in starts.get(pid, [])}
         out = []
-        for fid, d in sorted(appeared.get(pid, {}).items(), key=lambda kv: kv[1], reverse=True)[:n]:
-            g = min(7, sum(1 for e in evs.get(fid) or [] if e[3] != 'o' and e[1] == pid))
-            a = min(7, sum(1 for e in evs.get(fid) or [] if e[3] != 'o' and e[2] == pid))
-            s_ = mine.get(fid)
-            out.append(g | a << 3 | (1 if s_ and s_[3] == 'GK' and s_[2] == 0 else 0) << 6 | (1 if s_ else 0) << 7)
+        for fid in history(pid)[:n]:
+            d, side, started, g, a, conceded = game(pid, fid, gk)
+            out.append(min(7, g) | min(7, a) << 3 | (1 if conceded == 0 else 0) << 6 | (1 if started else 0) << 7)
         return out
     recent = (TODAY - dt.timedelta(days=10)).isoformat()
-    def last_match(pid):
-        if pid not in last_seen or last_seen[pid][0] < recent:
+    def last_match(pid, gk):
+        h = history(pid)
+        if not h or played[pid][h[0]][0] < recent:
             return None
-        d, fid, side = last_seen[pid]; f = fx[fid]; home = side == f['h']
+        d, side, started, g, a, conceded = game(pid, h[0], gk); f = fx[h[0]]; home = side == f['h']
         opp = f['a'] if home else f['h']
         name = tname(opp) or (f.get('an') if home else f.get('hn'))
-        if not name:
-            return None
-        g = sum(1 for e in evs.get(fid) or [] if e[3] != 'o' and e[1] == pid)
-        a = sum(1 for e in evs.get(fid) or [] if e[3] != 'o' and e[2] == pid)
-        gk = next((s_ for s_ in starts.get(pid, []) if s_[4] == fid and s_[3] == 'GK'), None)
         # [date, opponent, goals, assists, conceded as the starting goalkeeper (None otherwise), at home]
-        return [d, fix_text(name), g, a, gk[2] if gk else None, int(home)]
+        return [d, fix_text(name), g, a, conceded, int(home)] if name else None
     out_players, seen = [], set()
     for tid, c in sorted(top.items(), key=lambda x: int(x[1]['rank'])):
         for pid in (squads.get(str(tid)) or {}).get('p', []):
@@ -946,7 +940,8 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                                 'nt': sum(1 for s in st if s[8] in national),                      # starts for his national team
                                 'wdl': [sum(1 for s in st if s[1] > s[2]), sum(1 for s in st if s[1] == s[2]), sum(1 for s in st if s[1] < s[2])],
                                 'mo': monthly(mo[pid], st, month),
-                                'lm': last_match(pid), 'lg': last_games(pid),
+                                'lm': last_match(pid, pos[0] == 'GK'), 'lg': last_games(pid, pos[0] == 'GK'),
+                                'lgd': played[pid][history(pid)[0]][0] if played.get(pid) else None,   # date of his last game
                                 '_raw': card_raw(pid, st, apps[pid], late[pid], pst, national)})
     card_grades(out_players)
     # when goals fall (share per minute of the 90) and how many are own goals: for the match reports in the game
