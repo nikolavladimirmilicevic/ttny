@@ -879,7 +879,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
         return d, side, started, g, a, conceded
     def history(pid):
         return sorted(played.get(pid, {}), key=lambda fid: played[pid][fid][0], reverse=True)
-    def last_games(pid, gk, n=40):
+    def last_games(pid, gk, n=100):
         """His last n games, newest first, one number each: goals | assists << 3 | clean sheet in goal << 6 | started << 7."""
         out = []
         for fid in history(pid)[:n]:
