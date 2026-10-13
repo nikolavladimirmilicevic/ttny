@@ -127,6 +127,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
   background:repeating-linear-gradient(180deg,var(--grass) 0 11.1%,var(--grass-2) 11.1% 22.2%);border:2px solid var(--chalk)}
 .pitch::before{content:"";position:absolute;left:22%;right:22%;bottom:-2px;height:15%;border:2px solid var(--chalk);border-bottom:0}
 .pitch::after{content:"";position:absolute;left:30%;right:30%;top:-24%;height:34%;border:2px solid var(--chalk);border-radius:50%}
+.slot .cap{position:absolute;top:-6px;left:calc(50% + 10px);z-index:2;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#0B1626;color:#F2C14E;font:700 11px/1 var(--display);border:2px solid #F2C14E}
 .slot{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;width:84px;z-index:1}
 .dot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:600 12px var(--display);letter-spacing:.04em}
 .slot.empty .dot{border:2px dashed var(--chalk);color:var(--chalk)}
@@ -1414,18 +1415,26 @@ function chemCard(p){
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
 
+/* the captain, just for show: most seasons in the dynasty, then most goals, assists and clean sheets in it,
+   then the best rating. Counted over the seasons already played, so he stays the same all season. */
+function captainOf(pids, hist){
+  const st = {}; pids.forEach(id => st[id] = [0, 0, 0, 0]);
+  for (const h of hist || []) for (const x of h.xi || []) if (st[x.id]){ const v = st[x.id]; v[0]++; v[1] += x.g; v[2] += x.a; v[3] += h.cs || 0; }
+  return [...pids].sort((a, b) => { for (let i = 0; i < 4; i++) if (st[b][i] !== st[a][i]) return st[b][i] - st[a][i]; return W.P[b].ovr - W.P[a].ovr; })[0];
+}
 function pitch(pids, form, kept, rated, editable, fit){
   const f = form || feasible(pids)[0] || FORM_ORDER[0];
   const a = (pids.length ? arrangement(pids, f) : null) || Array(11).fill(null);
   const sel = editable && S.run.sel != null && a[S.run.sel] ? S.run.sel : null;
   const act = j => editable ? ` data-act="slot" data-j="${j}"` : '';
+  const cap = pids.length === 11 && S.run ? captainOf(pids, S.run.hist) : null;
   const cls = j => (j === sel ? ' sel' : '') + (sel != null && canMove(a, f, sel, j) ? ' target' : '') + (editable ? ' edit' : '');
   return `<div class="pitch" role="img" aria-label="Formation ${f}">` + FORMS[f].map(([code, x, y], j) => {
     const pid = a[j];
     if (!pid) return `<div class="slot empty${cls(j)}"${act(j)} style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
     const p = W.P[pid];
     const rt = rated ? playerRating(pid) : null;
-    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${rt ? ovDot(rt, p) : `<div class="dot">${code}</div>`}<div class="lbl${fit ? ' fit' + Math.min(2, fitTier(p, code)) : ''}">${esc(short(p.name))}</div></div>`;
+    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${pid === cap ? '<span class="cap" title="Captain">C</span>' : ''}${rt ? ovDot(rt, p) : `<div class="dot">${code}</div>`}<div class="lbl${fit ? ' fit' + Math.min(2, fitTier(p, code)) : ''}">${esc(short(p.name))}</div></div>`;
   }).join('') + `</div>`;
 }
 function shapes(pids, active, clickable){
@@ -1835,8 +1844,9 @@ const STAGE_SHORT = { league: 'League phase', playoff: 'Play-off', r16: 'Round o
 // everything worth keeping about a season, with names stored so later data updates cannot break the history
 function seasonSummary(r){
   const c = r.cup, k = campaign(r), arr = arrangement(r.picks, r.form) || [], t = teamRating(r.picks, r.form);
+  const cap = captainOf(arr.filter(Boolean), r.hist);
   const xi = arr.map((id, j) => { if (!id) return null; const p = W.P[id], s = FORMS[r.form][j];
-    return { id, n: p.name, nat: p.nat, code: s[0], x: s[1], y: s[2], g: k.g[id] || 0, a: k.a[id] || 0, gr: ovGrade(playerRating(id).ov), fit: fitTier(p, s[0]) }; }).filter(Boolean);
+    return { id, n: p.name, nat: p.nat, code: s[0], x: s[1], y: s[2], g: k.g[id] || 0, a: k.a[id] || 0, gr: ovGrade(playerRating(id).ov), fit: fitTier(p, s[0]), cap: id === cap }; }).filter(Boolean);
   const lt = c.top && c.top.g[0];
   return { season: r.season || 1, comp: r.comp || 'cl', diff: r.diff || 'medium', stage: c.stage, pos: c.pos, champ: c.champ === 'YOU' ? 'YOU' : nm(c.champ),
     w: k.W_, d: k.D, l: k.L, gf: k.GF, ga: k.GA, cs: k.CS, big: k.big ? [k.big.f, k.big.ag, nm(k.big.opp)] : null,
@@ -1941,14 +1951,16 @@ async function seasonImage(h){
       const room = Math.min(left, right, 230) - 10; // the label never reaches past half way to a neighbour
       x.beginPath(); x.arc(cx, cy, 32, 0, 2 * Math.PI); x.fillStyle = GC[p.gr] || '#888'; x.fill(); x.lineWidth = 4; x.strokeStyle = '#0B1626'; x.stroke();
       txt(x, p.gr, cx, cy + 12, '700 34px Oswald, "Arial Narrow", Arial, sans-serif', p.gr === 'C' ? '#0B1626' : '#fff', 'center');
+      if (p.cap){ x.beginPath(); x.arc(cx + 27, cy - 22, 14, 0, 2 * Math.PI); x.fillStyle = '#0B1626'; x.fill(); x.lineWidth = 3; x.strokeStyle = '#F2C14E'; x.stroke();
+        txt(x, 'C', cx + 27, cy - 15, '700 19px Oswald, "Arial Narrow", Arial, sans-serif', '#F2C14E', 'center'); }
       const nm_ = surname(p.n), nf = fit(nm_, room - 20, 500, 24, 17), tw = Math.min(room, x.measureText(nm_).width + 20);
       rrect(x, cx - tw / 2, cy + 38, tw, 32, 8); x.fillStyle = 'rgba(11,22,38,.85)'; x.fill();
       txt(x, nm_, cx, cy + 62, nf, white, 'center', room - 20);
       const bits = [p.code, p.g ? `⚽${p.g}` : '', p.a ? `🅰${p.a}` : ''].filter(Boolean).join('  ');
       const bf = fit(bits, room, 500, 20, 15);
       txt(x, bits, cx, cy + 92, bf, FITC[Math.min(2, p.fit || 0)], 'center', room);
-      const bw = Math.max(64, tw, Math.min(room, x.measureText(bits).width));
-      boxes.push({ n: p.n, x0: cx - bw / 2, x1: cx + bw / 2, y0: cy - 34, y1: cy + 100 });
+      const bw = Math.max(p.cap ? 84 : 64, tw, Math.min(room, x.measureText(bits).width));
+      boxes.push({ n: p.n, x0: cx - bw / 2, x1: cx + bw / 2, y0: cy - (p.cap ? 39 : 34), y1: cy + 100 });
     });
   });
   cv._boxes = boxes; cv._pitch = { x0: PX, x1: PX + PW, y0: PY, y1: PY + PH }; cv._lines = [PY + PH - 175, PY + PH - 28];
