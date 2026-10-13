@@ -313,7 +313,8 @@ def build(world, fx, lu, evs, pst, top_clubs, since, until, log=print, national=
     log(f"  goals model on {len(rows)} matches: {G}")
 
     ranked_r = sorted(rating[t] for t in top_pts if t in rating)
-    cap = ranked_r[len(ranked_r) // 4] if ranked_r else None
+    # no cap on clubs off the UEFA list: measured, it changed nothing for the better (national-team check 0.471 vs 0.473)
+    cap = None
     world['_ranked'] = list(top_pts)
     ratings, pinfo = player_ratings(world, fx, lu, evs, pst, rating, since, until, national, cap)
     world.pop('_ranked', None)

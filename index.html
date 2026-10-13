@@ -503,9 +503,8 @@ for (const [f, rows] of Object.entries(FORM_DEF)){
   });
   FORMS[f] = out;
 }
-// sorted by players per line, from the back: 3-2-2-3, 3-2-3-2 ... 5-3-2
-const FORM_ORDER = Object.keys(FORMS).sort((a, b) => { const x = a.split('-').map(Number), y = b.split('-').map(Number);
-  for (let i = 0; i < Math.max(x.length, y.length); i++){ const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; });
+// alphabetical: 3-2-2-3, 3-2-3-2 ... 5-3-2
+const FORM_ORDER = Object.keys(FORMS).sort();
 
 function buildWorld(){
   const r = mulberry32(20261008);
@@ -770,8 +769,10 @@ const chemNum = c => Math.round(40 + 59 * Math.min(33, c) / 33);
 // chemistry shown as what it adds: team-rating points on top of the players (already inside the team rating)
 const chemBonus = total => { const T = window.__YB || {}, ce = T.chem != null ? T.chem : CHEM_ELO; return ce * Math.min(33, total) / (W.xi.beta || 20); };
 const bonusTxt = b => '+' + b.toFixed(1);
-const chemBar = picks => { const b = chemBonus(chemOf(picks).total);
-  return `<div class="chembar"><span>Chemistry bonus</span><b class="tnum bonus" title="Added to your team rating">${bonusTxt(b)}</b></div>`; };
+// ... and shown as a letter: A 27+ of 33 chemistry points, B 20+, C 13+, D 7+, E below
+const chemGrade = total => total >= 27 ? 'A' : total >= 20 ? 'B' : total >= 13 ? 'C' : total >= 7 ? 'D' : 'E';
+const chemBar = picks => { const g = chemGrade(chemOf(picks).total);
+  return `<div class="chembar"><span>Chemistry bonus</span><b class="tnum g${g}" title="A bonus on top of your team rating">${g}</b></div>`; };
 /* Your XI's strength: the clubs' line from its overall, a lift that grows with how good the XI is (no weak bench, no
    rotation; bigger where the field is stronger) and its chemistry. Calibrated with draft bots (pipeline/tools/draft_bots.js). */
 const LIFT = { cl: 11.5, el: 4, ecl: 1 }, LIFT_FROM = 68, CHEM_ELO = 3;
@@ -846,9 +847,11 @@ function bestAssign(pids, form){
 // how good a formation is for these players, by the same rules (higher is better)
 function formScore(pids, form){ const a = bestAssign(pids, form); if (!a) return -1;
   return a.reduce((t, id, j) => t + (id ? fitWeight(W.P[id], FORMS[form][j][0]) : 0), 0); }
-// formations that work, always in FORM_ORDER (fewest in the back line first, then the next line, and so on)
+// formations that work, always in FORM_ORDER (alphabetical)
 const feasible = pids => FORM_ORDER.filter(f => assign(pids, f));
 // the formation that suits these players best (ties keep FORM_ORDER)
+// the shape offered by default: any that works, at random (never the best on purpose)
+const randomForm = pids => { const ok = feasible(pids); return ok.length ? pick(ok) : FORM_ORDER[0]; };
 const bestForm = pids => { const ok = feasible(pids); if (!pids.length) return ok[0];
   let best = ok[0], bs = -Infinity; for (const f of ok){ const s = formScore(pids, f); if (s > bs){ bs = s; best = f; } } return best; };
 const fits = pids => FORM_ORDER.some(f => assign(pids, f));
@@ -1144,10 +1147,10 @@ function newRun(diff){
   const potCount = 11 - kept.length;
   // a dynasty remembers everyone who has played in it: whoever was let go cannot come back
   const ever = S.dyn && S.dyn.ever ? S.dyn.ever : [], gone = ever.filter(id => !kept.includes(id));
-  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null, diff, comp, season: (S.dyn && S.dyn.season) || 1, hist: (S.dyn && S.dyn.hist) || [] };
+  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: pick(FORM_ORDER), cup: null, diff, comp, season: (S.dyn && S.dyn.season) || 1, hist: (S.dyn && S.dyn.hist) || [] };
   S.dyn = null;
   // champions keep the whole XI: straight to the line-up
-  if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; S.run.form = bestForm(S.run.picks); }
+  if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; S.run.form = randomForm(S.run.picks); }
   else drawClub();
   save(); render(); scrollTo(0, 0);
 }
@@ -1177,7 +1180,7 @@ function choose(pid){
   const r = S.run; if (!r || r.phase !== 'draft' || !visible(r).includes(pid)) return;
   r.picks.push(pid); r.step++; r.tried = []; r.cut = []; r.tip = null;
   r.sel = null;
-  if (r.picks.length === 11){ r.phase = 'lineup'; r.manual = null; r.form = bestForm(r.picks); }
+  if (r.picks.length === 11){ r.phase = 'lineup'; r.manual = null; r.form = randomForm(r.picks); }
   else drawClub();
   save(); render();
 }
@@ -1534,8 +1537,8 @@ function viewDraft(){
         <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)}${posChips(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
-  if (r.picks.length && r.formAt !== r.picks.length){ r.form = bestForm(r.picks); r.formAt = r.picks.length; }   // the best shape after every pick
-  if (!shp.includes(r.form)) r.form = bestForm(r.picks);
+  if (r.picks.length && r.formAt !== r.picks.length){ r.form = randomForm(r.picks); r.formAt = r.picks.length; }   // a random shape that works, after every pick
+  if (!shp.includes(r.form)) r.form = randomForm(r.picks);
   const anim = r.anim !== r.club; r.anim = r.club;
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center">${stepChip(r)}${quitBtn()}</div></header>
@@ -1642,7 +1645,7 @@ function pendCard(e){
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
-  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r bonusrow"><span>Chemistry bonus</span><b class="num tnum bonus" title="Added to your team rating">${bonusTxt(chemBonus(t.chem))}</b></div></div></div></section>`;
+  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r bonusrow"><span>Chemistry bonus</span><b class="num tnum g${chemGrade(t.chem)}" title="A bonus on top of your team rating">${chemGrade(t.chem)}</b></div></div></div></section>`;
 }
 /* ================= THE SEASON, SCREEN BY SCREEN =================
    team -> draw -> league phase (table after every matchday) -> knockouts (bracket after every match)
@@ -1858,7 +1861,7 @@ function seasonSummary(r){
   const lt = c.top && c.top.g[0];
   return { season: r.season || 1, comp: r.comp || 'cl', diff: r.diff || 'medium', stage: c.stage, pos: c.pos, champ: c.champ === 'YOU' ? 'YOU' : nm(c.champ),
     w: k.W_, d: k.D, l: k.L, gf: k.GF, ga: k.GA, cs: k.CS, big: k.big ? [k.big.f, k.big.ag, nm(k.big.opp)] : null,
-    team: Math.round(Math.min(99, t.ov)), chem: chemNum(t.chem), chemB: +chemBonus(t.chem).toFixed(1), form: r.form, xi, top: lt ? [W.P[lt[0]].name, lt[1], r.picks.includes(lt[0])] : null };
+    team: Math.round(Math.min(99, t.ov)), chem: chemNum(t.chem), chemB: +chemBonus(t.chem).toFixed(1), chemG: chemGrade(t.chem), form: r.form, xi, top: lt ? [W.P[lt[0]].name, lt[1], r.picks.includes(lt[0])] : null };
 }
 const stageWord = h => h.stage === 'champion' ? 'Champions' : h.stage === 'final' ? 'Lost the final' : h.stage === 'league' ? `League phase · ${ord(h.pos)}` : 'Out in the ' + STAGE_SHORT[h.stage].toLowerCase();
 function dynastyStats(hist){
@@ -1973,7 +1976,7 @@ async function seasonImage(h){
   });
   cv._boxes = boxes; cv._pitch = { x0: PX, x1: PX + PW, y0: PY, y1: PY + PH }; cv._lines = [PY + PH - 175, PY + PH - 28];
   // stats
-  const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Clean sheets', h.cs], ...(h.chemB != null ? [['Chem bonus', bonusTxt(h.chemB)]] : [['Chemistry', h.chem]])];
+  const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Clean sheets', h.cs], ['Chem bonus', h.chemG || (h.chemB != null ? bonusTxt(h.chemB) : h.chem)]];
   const SY = 1060, cw = (W_ - 120) / stats.length;
   stats.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, SY, cw - 12, 120, 16); x.fillStyle = '#1A2E4A'; x.fill();
     let vf = 46; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; while (vf > 26 && x.measureText(String(v)).width > cw - 32){ vf -= 2; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; }
