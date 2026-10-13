@@ -127,6 +127,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
   background:repeating-linear-gradient(180deg,var(--grass) 0 11.1%,var(--grass-2) 11.1% 22.2%);border:2px solid var(--chalk)}
 .pitch::before{content:"";position:absolute;left:22%;right:22%;bottom:-2px;height:15%;border:2px solid var(--chalk);border-bottom:0}
 .pitch::after{content:"";position:absolute;left:30%;right:30%;top:-24%;height:34%;border:2px solid var(--chalk);border-radius:50%}
+.bonus{color:#5CC08A!important}.bonusrow{border-top:1px dashed var(--line)!important}
 .slot .cap{position:absolute;top:-6px;left:calc(50% + 10px);z-index:2;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#0B1626;color:#F2C14E;font:700 11px/1 var(--display);border:2px solid #F2C14E}
 .slot{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;width:84px;z-index:1}
 .dot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:600 12px var(--display);letter-spacing:.04em}
@@ -766,8 +767,11 @@ function chemOf(picks){
 }
 // shown only once the XI is complete, on the same 40-99 scale as the other team numbers
 const chemNum = c => Math.round(40 + 59 * Math.min(33, c) / 33);
-const chemBar = picks => { const n = chemNum(chemOf(picks).total);
-  return `<div class="chembar"><span>Chemistry</span><b class="tnum g${ovGrade(n)}">${n}</b></div>`; };
+// chemistry shown as what it adds: team-rating points on top of the players (already inside the team rating)
+const chemBonus = total => { const T = window.__YB || {}, ce = T.chem != null ? T.chem : CHEM_ELO; return ce * Math.min(33, total) / (W.xi.beta || 20); };
+const bonusTxt = b => '+' + b.toFixed(1);
+const chemBar = picks => { const b = chemBonus(chemOf(picks).total);
+  return `<div class="chembar"><span>Chemistry bonus</span><b class="tnum bonus" title="Added to your team rating">${bonusTxt(b)}</b></div>`; };
 /* Your XI's strength: the clubs' line from its overall, a lift that grows with how good the XI is (no weak bench, no
    rotation; bigger where the field is stronger) and its chemistry. Calibrated with draft bots (pipeline/tools/draft_bots.js). */
 const LIFT = { cl: 11.5, el: 4, ecl: 1 }, LIFT_FROM = 68, CHEM_ELO = 3;
@@ -779,7 +783,8 @@ function youElo(picks, form){
 const strength = id => id === 'YOU' ? youElo(S.run.picks, S.run.form) : W.C[id].elo;
 const clubOv = id => eloOv(strength(id));
 // opponents show only a letter, never a 40-99 number
-const gchip = id => { const g = ovGrade(clubOv(id)); return `<span class="cg g${g}" title="Club strength">${g}</span>`; };
+// opponents show no rating at all
+const gchip = () => '';
 const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${ovGrade(r.ov)}</div>` : `<div class="ovdot big g${ovGrade(r.ov)}">${teamNum(r.ov)}</div>`;
 const partRows = r => [['Club strength', 'pe'], ['Playing time', 'ro'], ['Performance', 'pf'], ['Form', 'fo']]
   .map(([k, f]) => `<div class="r"><span>${k}</span><b class="num tnum g${qGrade(r.q[f])}">${R(r.q[f])}</b></div>`).join('');
@@ -1637,7 +1642,7 @@ function pendCard(e){
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
-  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r"><span>Chemistry</span><b class="num tnum g${ovGrade(chemNum(t.chem))}">${chemNum(t.chem)}</b></div></div></div></section>`;
+  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r bonusrow"><span>Chemistry bonus</span><b class="num tnum bonus" title="Added to your team rating">${bonusTxt(chemBonus(t.chem))}</b></div></div></div></section>`;
 }
 /* ================= THE SEASON, SCREEN BY SCREEN =================
    team -> draw -> league phase (table after every matchday) -> knockouts (bracket after every match)
@@ -1853,7 +1858,7 @@ function seasonSummary(r){
   const lt = c.top && c.top.g[0];
   return { season: r.season || 1, comp: r.comp || 'cl', diff: r.diff || 'medium', stage: c.stage, pos: c.pos, champ: c.champ === 'YOU' ? 'YOU' : nm(c.champ),
     w: k.W_, d: k.D, l: k.L, gf: k.GF, ga: k.GA, cs: k.CS, big: k.big ? [k.big.f, k.big.ag, nm(k.big.opp)] : null,
-    team: Math.round(Math.min(99, t.ov)), chem: chemNum(t.chem), form: r.form, xi, top: lt ? [W.P[lt[0]].name, lt[1], r.picks.includes(lt[0])] : null };
+    team: Math.round(Math.min(99, t.ov)), chem: chemNum(t.chem), chemB: +chemBonus(t.chem).toFixed(1), form: r.form, xi, top: lt ? [W.P[lt[0]].name, lt[1], r.picks.includes(lt[0])] : null };
 }
 const stageWord = h => h.stage === 'champion' ? 'Champions' : h.stage === 'final' ? 'Lost the final' : h.stage === 'league' ? `League phase · ${ord(h.pos)}` : 'Out in the ' + STAGE_SHORT[h.stage].toLowerCase();
 function dynastyStats(hist){
@@ -1968,7 +1973,7 @@ async function seasonImage(h){
   });
   cv._boxes = boxes; cv._pitch = { x0: PX, x1: PX + PW, y0: PY, y1: PY + PH }; cv._lines = [PY + PH - 175, PY + PH - 28];
   // stats
-  const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Clean sheets', h.cs], ['Chemistry', h.chem]];
+  const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Clean sheets', h.cs], ...(h.chemB != null ? [['Chem bonus', bonusTxt(h.chemB)]] : [['Chemistry', h.chem]])];
   const SY = 1060, cw = (W_ - 120) / stats.length;
   stats.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, SY, cw - 12, 120, 16); x.fillStyle = '#1A2E4A'; x.fill();
     let vf = 46; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; while (vf > 26 && x.measureText(String(v)).width > cw - 32){ vf -= 2; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; }
