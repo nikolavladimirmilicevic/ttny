@@ -34,4 +34,6 @@ jobs:
           git config user.email "ttny-data-bot@users.noreply.github.com"
           git add -A
           git diff --cached --quiet || git commit -m "Data update $(date -u +%F)"
+          # code may have been pushed while the run was fetching: put the data on top of it
+          git pull --rebase origin main
           git push
