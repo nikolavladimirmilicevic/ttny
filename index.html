@@ -32,7 +32,7 @@ h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.1;tex
 .mark{font:700 16px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
 .mark span{color:var(--gold)}
 .mark{display:flex;align-items:center;gap:8px}.mark .logo{width:34px;height:34px;flex:none}
-.hero .hlogo{width:120px;height:120px;float:right;margin:-6px -6px 8px 12px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
+.hero{position:relative}.hero .hlogo{position:absolute;right:14px;bottom:14px;width:0;height:0;pointer-events:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
 .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
 .chip.hot{border-color:var(--gold);color:var(--gold)}.chip .ico{display:none}
 .chip.warn{border-color:var(--loss);color:var(--loss)}
@@ -1921,6 +1921,20 @@ function drawLogo(x, X, Y, n){
   if (!logoImg.complete || !logoImg.naturalWidth) return;
   x.drawImage(logoImg, X, Y, n, n);   // transparent background
 }
+/* the logo on the home screen's grass: anchored bottom right, as big as it gets (square) without touching any text */
+function fitHeroLogo(){
+  const hero = document.querySelector('.hero'), img = hero && hero.querySelector('.hlogo'); if (!img) return;
+  const H = hero.getBoundingClientRect(), PAD = 14, GAP = 8, rects = [];
+  const walk = document.createTreeWalker(hero, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()){ if (!n.textContent.trim()) continue; const rg = document.createRange(); rg.selectNodeContents(n); for (const r of rg.getClientRects()) rects.push(r); }
+  const right = H.right - PAD, bottom = H.bottom - PAD;
+  const clear = s => rects.every(r => r.right + GAP <= right - s || r.bottom + GAP <= bottom - s);
+  let lo = 0, hi = Math.max(0, Math.min(H.width, H.height) - 2 * PAD);
+  while (hi - lo > 1){ const m = (lo + hi) / 2; if (clear(m)) lo = m; else hi = m; }
+  const s = Math.floor(lo); img.style.width = img.style.height = s + 'px'; img.style.display = s >= 24 ? '' : 'none';
+}
+addEventListener('resize', () => requestAnimationFrame(fitHeroLogo));
+if (document.fonts) document.fonts.ready.then(() => fitHeroLogo());
 function canvasBase(w, h, acc){
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d');
   const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0B1626'); g.addColorStop(1, '#13233A'); x.fillStyle = g; x.fillRect(0, 0, w, h);
@@ -2128,6 +2142,7 @@ function render(){
     syncStep();
     requestAnimationFrame(() => document.querySelectorAll('.bracket-wrap[data-focus]').forEach(el => { el.scrollLeft = +el.dataset.focus; }));
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
+    fitHeroLogo();
   } catch (e) {
     // a saved run that no longer fits the data (new ratings, new positions): drop it rather than show a blank page
     console.error(e);
