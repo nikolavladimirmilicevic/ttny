@@ -841,8 +841,11 @@ function bestAssign(pids, form){
 // how good a formation is for these players, by the same rules (higher is better)
 function formScore(pids, form){ const a = bestAssign(pids, form); if (!a) return -1;
   return a.reduce((t, id, j) => t + (id ? fitWeight(W.P[id], FORMS[form][j][0]) : 0), 0); }
-// formations that work, best first
-const feasible = pids => { const ok = FORM_ORDER.filter(f => assign(pids, f)); return pids.length ? ok.map(f => [f, formScore(pids, f)]).sort((a, b) => b[1] - a[1]).map(x => x[0]) : ok; };
+// formations that work, always in FORM_ORDER (fewest in the back line first, then the next line, and so on)
+const feasible = pids => FORM_ORDER.filter(f => assign(pids, f));
+// the formation that suits these players best (ties keep FORM_ORDER)
+const bestForm = pids => { const ok = feasible(pids); if (!pids.length) return ok[0];
+  let best = ok[0], bs = -Infinity; for (const f of ok){ const s = formScore(pids, f); if (s > bs){ bs = s; best = f; } } return best; };
 const fits = pids => FORM_ORDER.some(f => assign(pids, f));
 /* The arrangement the player sees and plays with: his manual moves for this formation are kept
    where still valid, new picks fill the free compatible slots; otherwise fall back to auto. */
@@ -1139,7 +1142,7 @@ function newRun(diff){
   S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null, diff, comp, season: (S.dyn && S.dyn.season) || 1, hist: (S.dyn && S.dyn.hist) || [] };
   S.dyn = null;
   // champions keep the whole XI: straight to the line-up
-  if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; S.run.form = feasible(S.run.picks)[0]; }
+  if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; S.run.form = bestForm(S.run.picks); }
   else drawClub();
   save(); render(); scrollTo(0, 0);
 }
@@ -1169,7 +1172,7 @@ function choose(pid){
   const r = S.run; if (!r || r.phase !== 'draft' || !visible(r).includes(pid)) return;
   r.picks.push(pid); r.step++; r.tried = []; r.cut = []; r.tip = null;
   r.sel = null;
-  if (r.picks.length === 11){ r.phase = 'lineup'; r.manual = null; r.form = feasible(r.picks)[0]; }
+  if (r.picks.length === 11){ r.phase = 'lineup'; r.manual = null; r.form = bestForm(r.picks); }
   else drawClub();
   save(); render();
 }
@@ -1423,7 +1426,7 @@ function captainOf(pids, hist){
   return [...pids].sort((a, b) => { for (let i = 0; i < 4; i++) if (st[b][i] !== st[a][i]) return st[b][i] - st[a][i]; return W.P[b].ovr - W.P[a].ovr; })[0];
 }
 function pitch(pids, form, kept, rated, editable, fit){
-  const f = form || feasible(pids)[0] || FORM_ORDER[0];
+  const f = form || bestForm(pids) || FORM_ORDER[0];
   const a = (pids.length ? arrangement(pids, f) : null) || Array(11).fill(null);
   const sel = editable && S.run.sel != null && a[S.run.sel] ? S.run.sel : null;
   const act = j => editable ? ` data-act="slot" data-j="${j}"` : '';
@@ -1526,8 +1529,8 @@ function viewDraft(){
         <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)}${posChips(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
-  if (r.picks.length && r.formAt !== r.picks.length){ r.form = shp[0]; r.formAt = r.picks.length; }   // the best shape after every pick
-  if (!shp.includes(r.form)) r.form = shp[0];
+  if (r.picks.length && r.formAt !== r.picks.length){ r.form = bestForm(r.picks); r.formAt = r.picks.length; }   // the best shape after every pick
+  if (!shp.includes(r.form)) r.form = bestForm(r.picks);
   const anim = r.anim !== r.club; r.anim = r.club;
   return `
   <header class="topbar"><div class="mark">This Time <span>Next Year</span></div><div style="display:flex;gap:8px;align-items:center">${stepChip(r)}${quitBtn()}</div></header>
