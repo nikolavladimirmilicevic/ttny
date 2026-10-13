@@ -1,0 +1,24 @@
+name: Issue priority label
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            // the issue forms ask for a priority; turn the answer into a "prio: ..." label
+            const m = (context.payload.issue.body || '').match(/### Priority\s+(High|Medium|Low)/i);
+            if (!m) return;
+            const want = 'prio: ' + m[1].toLowerCase();
+            const issue = { owner: context.repo.owner, repo: context.repo.repo, issue_number: context.payload.issue.number };
+            const have = context.payload.issue.labels.map(l => l.name);
+            for (const l of have) if (l.startsWith('prio: ') && l !== want) await github.rest.issues.removeLabel({ ...issue, name: l });
+            if (!have.includes(want)) await github.rest.issues.addLabels({ ...issue, labels: [want] });

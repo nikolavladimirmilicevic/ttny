@@ -1,0 +1,22 @@
+name: Question
+description: Something to discuss or decide
+title: "[Question] "
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: The question
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Medium
+        - High
+        - Low
+      default: 0
+    validations:
+      required: true

@@ -1,0 +1,37 @@
+name: Defect
+description: Something is broken or wrong
+title: "[Defect] "
+labels: ["defect"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Where in the game, what you saw
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      placeholder: "1. Start a run on Hard\n2. ..."
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+  - type: textarea
+    id: shots
+    attributes:
+      label: Screenshots
+      description: Paste or drag images here
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Medium
+        - High
+        - Low
+      default: 0
+    validations:
+      required: true

@@ -1,0 +1,26 @@
+name: Enhancement
+description: Make something better or add something new
+title: "[Enhancement] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it would make the game better
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Medium
+        - High
+        - Low
+      default: 0
+    validations:
+      required: true

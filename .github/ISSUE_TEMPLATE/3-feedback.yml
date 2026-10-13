@@ -1,0 +1,22 @@
+name: Feedback
+description: Impressions and opinions from playing
+title: "[Feedback] "
+labels: ["feedback"]
+body:
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Your feedback
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Medium
+        - High
+        - Low
+      default: 0
+    validations:
+      required: true
