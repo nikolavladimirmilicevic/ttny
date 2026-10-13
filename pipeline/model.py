@@ -247,13 +247,15 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
         rated = [raw[i]['perf'] for i in pids if raw[i]['perf'][1] >= 5]
         m0 = sum(s for s, n in rated) / max(1, sum(n for s, n in rated)) if rated else 6.8
         vals = {i: (raw[i]['perf'][0] + PERF_PRIOR * m0) / (raw[i]['perf'][1] + PERF_PRIOR) for i in pids}
-        mu, sd = statistics.mean(vals.values()), statistics.pstdev(vals.values()) or 1
+        # by rank within his line, on the normal scale: the best gets about +3, never +5, so a player who dominates a
+        # weak league cannot outweigh everything else (measured: the national-team check stays the same, 9 of 9 tests)
+        rk = pct_ranks(vals)
         for i in pids:
-            perf_z[i] = (vals[i] - mu) / sd
+            perf_z[i] = ND.inv_cdf(min(0.999, max(0.001, rk[i])))
         fv = {i: (sum(raw[i]['form']) + 2 * m0) / (len(raw[i]['form']) + 2) for i in pids}
-        fm, fs = statistics.mean(fv.values()), statistics.pstdev(fv.values()) or 1
+        frk = pct_ranks(fv)
         for i in pids:
-            form_z[i] = (fv[i] - fm) / fs
+            form_z[i] = ND.inv_cdf(min(0.999, max(0.001, frk[i])))
     z = lambda key: zscores({p['id']: raw[p['id']][key] for p in ok})
     lz, rz = z('level'), z('role')
     starts_of = {p['id']: len(starts.get(p['id'], [])) for p in ok}

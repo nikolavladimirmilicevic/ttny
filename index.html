@@ -770,7 +770,7 @@ const chemBar = picks => { const n = chemNum(chemOf(picks).total);
   return `<div class="chembar"><span>Chemistry</span><b class="tnum g${ovGrade(n)}">${n}</b></div>`; };
 /* Your XI's strength: the clubs' line from its overall, a lift that grows with how good the XI is (no weak bench, no
    rotation; bigger where the field is stronger) and its chemistry. Calibrated with draft bots (pipeline/tools/draft_bots.js). */
-const LIFT = { cl: 14.5, el: 8, ecl: 4.5 }, LIFT_FROM = 68, CHEM_ELO = 3;
+const LIFT = { cl: 11.5, el: 4, ecl: 1 }, LIFT_FROM = 68, CHEM_ELO = 3;
 function youElo(picks, form){
   const T = window.__YB || {}, lift = T.lift || LIFT, ce = T.chem != null ? T.chem : CHEM_ELO;
   const ov = teamOvr(picks, form), comp = (S.run && S.run.comp) || 'el';
