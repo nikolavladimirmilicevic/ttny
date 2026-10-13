@@ -1193,6 +1193,7 @@ function choose(pid){
   if (r.picks.length === 11){ r.phase = 'lineup'; r.manual = null; if (!feasible(r.picks).includes(r.form)) r.form = randomForm(r.picks); }
   else drawClub();
   save(); render();
+  scrollTo({ top: 0, behavior: 'smooth' });   // every new round (and the line-up) starts at the top of the page
 }
 /* ================= HELP (three lifelines, each once per run) =================
    1 Redraw: swap the club for another from the same pot.
