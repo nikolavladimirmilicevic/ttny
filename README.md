@@ -55,7 +55,7 @@ Everything fetched is cached in `data/cache/`, so each run only asks for what is
 
 1. Get an API key at [dashboard.api-football.com](https://dashboard.api-football.com).
 2. **Settings → Secrets and variables → Actions:** secret `API_FOOTBALL_KEY`; variable `MAX_REQUESTS` (`90` on the free plan, `7000` on Pro).
-3. **Actions → Update data → Run workflow** for the first load. It then runs every day at 05:17 UTC and rebases onto `main` before pushing, so a code push during a run is safe.
+3. **Actions → Update data → Run workflow** for the first load. It then runs three times a day (05:17, 11:17 and 17:17 UTC; GitHub sometimes delays or skips a scheduled run, so the later ones are the backup) and rebases onto `main` before pushing, so a code push during a run is safe.
 4. **Settings → Pages:** deploy from `main`, root folder.
 
 After the first full run, check `data/cache/teams.json` (every club matched to the right team) and `data/cache/position_check.txt` (if left-backs show up as RB, set the variable `GRID_COL1_IS_RIGHT` to `1`, delete `data/cache/lineups.json` and run again).
