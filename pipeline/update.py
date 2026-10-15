@@ -625,6 +625,53 @@ def fetch_profiles(top_ids, squads, people, meta):
         done[str(tid)] = TODAY.isoformat()
 
 
+def fetch_missing_nat(squads, people, lu, fx):
+    """Squad members the club listing gave no nationality (often a club whose league the API has no player stats for):
+    ask for each player on his own. Starters first, most starts first; a miss is retried after 30 days."""
+    since = SINCE.isoformat()
+    starts = Counter()
+    for fid, sides in lu.items():
+        f = fx.get(fid)
+        if not f or f['d'] < since or not isinstance(sides, dict):
+            continue
+        for v in sides.values():
+            if isinstance(v, dict):
+                for e in v.get('xi') or []:
+                    starts[e[0]] += 1
+    todo = sorted({pid for sq in squads.values() if isinstance(sq, dict) for pid in sq.get('p', [])
+                   if not (people.get(str(pid)) or {}).get('nat') and days_old((people.get(str(pid)) or {}).get('natTried')) >= 30},
+                  key=lambda pid: -starts[pid])
+    todo = [pid for pid in todo if starts[pid] > 0] + [pid for pid in todo if starts[pid] == 0]
+    if todo:
+        log(f'  nationality missing for {len(todo)} squad members ({sum(1 for p in todo if starts[p])} with starts)')
+    for pid in todo:
+        e = people.setdefault(str(pid), {})
+        e['natTried'] = TODAY.isoformat()
+        hit = None
+        try:
+            hit = ((api('players/profiles', player=pid).get('response') or [{}])[0] or {}).get('player')
+        except OutOfBudget:
+            raise
+        except Exception:
+            hit = None
+        if not (hit and hit.get('nationality')):
+            for season in (current_season(), current_season() - 1):
+                try:
+                    r = api('players', id=pid, season=season).get('response') or []
+                except OutOfBudget:
+                    raise
+                except Exception:
+                    r = []
+                if r and r[0]['player'].get('nationality'):
+                    hit = r[0]['player']; break
+        if hit and hit.get('nationality'):
+            e['nat'] = hit['nationality']
+            if hit.get('firstname') is not None: e['fn'] = hit.get('firstname') or ''
+            if hit.get('age'): e['age'] = hit['age']
+            first = (hit.get('firstname') or '').split(' ')[0]; last = hit.get('lastname') or ''
+            if first and last and len(first + last) < 26: e['n'] = f'{first} {last}'
+
+
 def read_players(tid, season, people):
         page, total = 1, 1
         while page <= total:
@@ -1031,6 +1078,7 @@ def main():
         fetch_squads(top_ids, squads, people)
         log('6/6 Nationality and age')
         fetch_profiles(top_ids, squads, people, meta)
+        fetch_missing_nat(squads, people, lu, fx)
         log('7/7 National teams and the clubs players came from')
         fetch_nations(people, squads, extra, meta)
         fetch_arrivals(top_ids, extra, meta, squads)
