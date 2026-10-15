@@ -1161,7 +1161,9 @@ function buildCup(T){
   const champ = run(STAGE_NAME.final, sf[0], sf[1], 1, 'final');
   if (pos > 24) stage = 'league';
   ev.push({ k: 'end', stage, champ });
-  const top = M => Object.entries(M).sort((x, y) => y[1] - x[1] || W.P[x[0]].name.localeCompare(W.P[y[0]].name)).slice(0, 10);
+  // ties: your players first, the one drafted later in the dynasty ahead; then everyone else by name
+  const pickNo = id => (S.run && S.run.picks ? S.run.picks.indexOf(id) : -1);
+  const top = M => Object.entries(M).sort((x, y) => y[1] - x[1] || pickNo(y[0]) - pickNo(x[0]) || W.P[x[0]].name.localeCompare(W.P[y[0]].name)).slice(0, 10);
   const tb = {}; teams.forEach(t => tb[t] = rows[t].tb);
   return { ev, shown: 0, stage, champ, pos, myPot, top: { g: top(G), a: top(A) }, ko, lg, tb, pots: sch.pots };
 }
@@ -1917,9 +1919,10 @@ function dynastyStats(hist){
     for (const p of h.xi){ names[p.id] = p.n; G[p.id] = (G[p.id] || 0) + p.g; A[p.id] = (A[p.id] || 0) + p.a; seasons[p.id] = (seasons[p.id] || 0) + 1;
       if (!(p.id in drafted)) drafted[p.id] = h.season * 100 + (p.o != null && p.o >= 0 ? p.o : 50); }
   }
-  // ties: the player drafted earlier in the dynasty first (the captain's rule)
-  const top = (M, min) => Object.entries(M).filter(([, v]) => v >= (min || 1)).sort((x, y) => y[1] - x[1] || drafted[x[0]] - drafted[y[0]]).slice(0, 5).map(([id, v]) => [names[id], v]);
-  return { cups, finals, titles: cups.cl + cups.el + cups.ecl, w, d, l, gf, ga, cs, big, best, scorers: top(G), assists: top(A), legends: top(seasons, 2), n: hist.length };
+  // ties: legends, the player drafted earlier in the dynasty first (the captain's rule); scorers and assists, the one drafted later
+  const top = (M, min, later) => Object.entries(M).filter(([, v]) => v >= (min || 1))
+    .sort((x, y) => y[1] - x[1] || (later ? drafted[y[0]] - drafted[x[0]] : drafted[x[0]] - drafted[y[0]])).slice(0, 5).map(([id, v]) => [names[id], v]);
+  return { cups, finals, titles: cups.cl + cups.el + cups.ecl, w, d, l, gf, ga, cs, big, best, scorers: top(G, 1, true), assists: top(A, 1, true), legends: top(seasons, 2), n: hist.length };
 }
 function viewDynasty(){
   const r = S.run, hist = r.hist || [], s = dynastyStats(hist), done = r.dynEnd === 'complete';
@@ -2044,7 +2047,7 @@ async function seasonImage(h){
   stats.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, SY, cw - 12, 120, 16); x.fillStyle = '#1A2E4A'; x.fill();
     let vf = 46; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; while (vf > 26 && x.measureText(String(v)).width > cw - 32){ vf -= 2; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; }
     txt(x, v, X + cw / 2, SY + 70, x.font, white, 'center', cw - 28); txt(x, l.toUpperCase(), X + cw / 2, SY + 103, '500 18px Rubik, Arial, sans-serif', muted, 'center', cw - 24); });
-  const best = [...h.xi].sort((a, b) => b.g - a.g)[0], F26 = '500 26px Rubik, Arial, sans-serif';
+  const best = [...h.xi].sort((a, b) => b.g - a.g || (b.o != null ? b.o : -1) - (a.o != null ? a.o : -1))[0], F26 = '500 26px Rubik, Arial, sans-serif';
   if (best && best.g) txt(x, `Top scorer: ${best.n} (${best.g})`, 60, 1220, F26, white, 'left', W_ - 120);
   if (h.big) txt(x, `Biggest win: ${h.big[0]}:${h.big[1]} v ${h.big[2]}`, 60, 1254, F26, white, 'left', W_ - 120);
   if (h.top) txt(x, `Competition top scorer: ${h.top[0]} (${h.top[1]})${h.top[2] ? ' · yours' : ''}`, 60, 1286, '400 22px Rubik, Arial, sans-serif', muted, 'left', W_ - 120);
