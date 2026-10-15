@@ -28,7 +28,7 @@ One static page (`index.html`) plus one data file (`world.json`), refreshed ever
 
 **Clocks.** 60 seconds per draft pick, 2 minutes to confirm the shape, 60 seconds per step of the season, 2 minutes to choose who stays, 10 minutes to start the next run. When a clock runs out the game decides: a random player, a random shape, the next step, nobody kept, the end of the dynasty.
 
-**After each season and after the dynasty** you get a summary screen and an image to share or save: the XI on the pitch with grades, goals and assists, the captain, the difficulty and the season's numbers; for the dynasty, trophies per competition, every season, top scorers, assists and the players who stayed longest. The captain is the player with the most seasons in the dynasty, then most goals, assists and clean sheets, then the best rating.
+**After each season and after the dynasty** you get a summary screen and an image to share or save: the XI on the pitch with grades, goals and assists, the captain, the difficulty and the season's numbers; for the dynasty, trophies per competition, every season, top scorers, assists and the players who stayed longest. The captain is always the player drafted earliest in the dynasty.
 
 **What you see of ratings.** Your players get a grade from A to E and a card with 14 more grades (finishing, creativity, big games, consistency and so on). Your team gets a rating from 40 to 99 and a chemistry bonus from A to E (2 per team-mate in your XI, 1 per compatriot, at most 3 per player). Opponents show no rating at all.
 

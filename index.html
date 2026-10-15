@@ -1307,7 +1307,7 @@ const dynComp = r => { const c = r.comp || 'cl', st = r.cup && r.cup.stage;
   return { season: (r.season || 1) + 1, hist: r.hist || [], diff: r.diff || 'medium', comp: st === 'champion' ? NEXT_COMP[c] : st === 'league' ? (PREV_COMP[c] || c) : c }; };
 function continueDynasty(){
   const r = S.run;
-  S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, streak: S.stats.streak, ever: everOf(r), ...dynComp(r) } : null;
+  S.dyn = r.keepN > 0 ? { kept: keptInOrder(r), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, streak: S.stats.streak, ever: everOf(r), ...dynComp(r) } : null;
   S.run = null; save();
   newRun();
 }
@@ -1444,19 +1444,20 @@ function chemCard(p){
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
 
-/* the captain, just for show: most seasons in the dynasty, then most goals, assists and clean sheets in it,
-   then the best rating. Counted over the seasons already played, so he stays the same all season. */
-function captainOf(pids, hist){
-  const st = {}; pids.forEach(id => st[id] = [0, 0, 0, 0]);
-  for (const h of hist || []) for (const x of h.xi || []) if (st[x.id]){ const v = st[x.id]; v[0]++; v[1] += x.g; v[2] += x.a; v[3] += h.cs || 0; }
-  return [...pids].sort((a, b) => { for (let i = 0; i < 4; i++) if (st[b][i] !== st[a][i]) return st[b][i] - st[a][i]; return W.P[b].ovr - W.P[a].ovr; })[0];
+/* the captain, just for show: the player picked earliest in the dynasty. r.picks keeps that order (the kept players
+   first, in the order they were first drafted, then this run's picks), so he is always the first of them. */
+function captainOf(pids){
+  const order = (S.run && S.run.picks) || [];
+  return [...pids].sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99))[0];
 }
+// the players who stay, in the order they were first drafted (not the order they were ticked)
+const keptInOrder = r => r.keepSel.slice(0, r.keepN).sort((a, b) => r.picks.indexOf(a) - r.picks.indexOf(b));
 function pitch(pids, form, kept, rated, editable, fit){
   const f = form || bestForm(pids) || FORM_ORDER[0];
   const a = (pids.length ? arrangement(pids, f) : null) || Array(11).fill(null);
   const sel = editable && S.run.sel != null && a[S.run.sel] ? S.run.sel : null;
   const act = j => editable ? ` data-act="slot" data-j="${j}"` : '';
-  const cap = pids.length === 11 && S.run ? captainOf(pids, S.run.hist) : null;
+  const cap = pids.length && S.run ? captainOf(pids) : null;
   const cls = j => (j === sel ? ' sel' : '') + (sel != null && canMove(a, f, sel, j) ? ' target' : '') + (editable ? ' edit' : '');
   return `<div class="pitch" role="img" aria-label="Formation ${f}">` + FORMS[f].map(([code, x, y], j) => {
     const pid = a[j];
@@ -1876,7 +1877,7 @@ const STAGE_SHORT = { league: 'League phase', playoff: 'Play-off', r16: 'Round o
 // everything worth keeping about a season, with names stored so later data updates cannot break the history
 function seasonSummary(r){
   const c = r.cup, k = campaign(r), arr = arrangement(r.picks, r.form) || [], t = teamRating(r.picks, r.form);
-  const cap = captainOf(arr.filter(Boolean), r.hist);
+  const cap = captainOf(arr.filter(Boolean));
   const xi = arr.map((id, j) => { if (!id) return null; const p = W.P[id], s = FORMS[r.form][j];
     return { id, n: p.name, nat: p.nat, code: s[0], x: s[1], y: s[2], g: k.g[id] || 0, a: k.a[id] || 0, gr: ovGrade(playerRating(id).ov), fit: fitTier(p, s[0]), cap: id === cap }; }).filter(Boolean);
   const lt = c.top && c.top.g[0];
@@ -2217,7 +2218,7 @@ document.addEventListener('click', e => {
   else if (a === 'fresh2'){ S.run = null; S.dyn = null; save(); render(); }
   else if (a === 'home'){
     const r = S.run;
-    if (r && r.phase === 'done'){ S.dyn = r.keepN > 0 ? { kept: r.keepSel.slice(0, r.keepN), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, ever: everOf(r), ...dynComp(r) } : null; S.run = null; }
+    if (r && r.phase === 'done'){ S.dyn = r.keepN > 0 ? { kept: keptInOrder(r), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, ever: everOf(r), ...dynComp(r) } : null; S.run = null; }
     save(); render(); scrollTo(0, 0);
   }
 });
