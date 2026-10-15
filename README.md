@@ -30,7 +30,7 @@ One static page (`index.html`) plus one data file (`world.json`), refreshed ever
 
 **After each season and after the dynasty** you get a summary screen and an image to share or save: the XI on the pitch with grades, goals and assists, the captain, the difficulty and the season's numbers; for the dynasty, trophies per competition, every season, top scorers, assists and the players who stayed longest. The captain is always the player drafted earliest in the dynasty.
 
-**What you see of ratings.** Your players get a grade from A to E and a card with 14 more grades (finishing, creativity, big games, consistency and so on). Your team gets a rating from 40 to 99 and a chemistry bonus from A to E (2 per team-mate in your XI, 1 per compatriot, at most 3 per player). Opponents show no rating at all.
+**What you see of ratings.** Your players get a grade from A to E and a card with 14 more grades (finishing, creativity, big games, consistency and so on). Your team's rating is the average of your 11 (a little lower for anyone away from his main position) plus the chemistry bonus, graded A to E: 2 per player who played with him in the last year, 1 per compatriot, 1 per player from a club in the same league, at most 3 per player. Opponents show no rating at all.
 
 ## How the data works
 

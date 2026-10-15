@@ -762,22 +762,29 @@ function teamOvr(picks, form){
 }
 function teamRating(picks, form){
   const rs = picks.map(playerRating), m = k => rs.reduce((t, r) => t + r.q[k], 0) / rs.length;
-  // the number shown is how strong your XI plays in this competition, on the clubs' scale, so it matches the odds
-  const ov = eloOv(youElo(picks, form)), D = W.teamDist;
+  // the number shown is on the players' own scale, like FIFA: the average of your 11 (each in his slot, so a player away
+  // from his main position counts a little lower) plus the chemistry bonus. The match engine still uses youElo().
+  const chem = chemOf(picks).total, ov = teamOvr(picks, form) + chemBonus(chem);
   // the parts: the plain average of your 11 players on the players' own scale (not ranked against club XIs, which
   // put any good draft at 99)
   const q = k => m(k);
-  return { ov, elo: xiElo(ov), q: { pe: q('pe'), ro: q('ro'), pf: q('pf'), fo: q('fo') }, chem: chemOf(picks).total };
+  return { ov, elo: youElo(picks, form), q: { pe: q('pe'), ro: q('ro'), pf: q('pf'), fo: q('fo') }, chem };
 }
 /* Chemistry, per player as in FIFA: 2 links for every team-mate (same club, or started for the same team, club or
    national, in the last year), 1 for every compatriot who is not also a team-mate; at most 3 per player, 33 per XI. */
+// same league: their clubs are in the same country
+const sameLeague = (p, q) => { const a = W.C[p.club], b = W.C[q.club]; return !!(a && b && a.ctry && a.ctry === b.ctry); };
 const mates = (p, q) => p.club === q.club || (p.tm || []).some(t => (q.tm || []).includes(t));
 function chemOf(picks){
   const ps = picks.map(id => W.P[id]), per = {}; let total = 0;
   for (const p of ps){
-    const tm = [], cp = [];
-    for (const q of ps) if (q !== p){ if (mates(p, q)) tm.push(q.id); else if (p.nat && p.nat === q.nat) cp.push(q.id); }
-    const pts = Math.min(3, 2 * tm.length + cp.length); per[p.id] = { pts, tm, cp }; total += pts;
+    const tm = [], cp = [], lg = [];
+    for (const q of ps) if (q !== p){
+      if (mates(p, q)){ tm.push(q.id); continue; }
+      if (p.nat && p.nat === q.nat) cp.push(q.id);
+      if (sameLeague(p, q)) lg.push(q.id);
+    }
+    const pts = Math.min(3, 2 * tm.length + cp.length + lg.length); per[p.id] = { pts, tm, cp, lg }; total += pts;
   }
   return { total, per };
 }
@@ -786,13 +793,13 @@ const chemNum = c => Math.round(40 + 59 * Math.min(33, c) / 33);
 // chemistry shown as what it adds: team-rating points on top of the players (already inside the team rating)
 const chemBonus = total => { const T = window.__YB || {}, ce = T.chem != null ? T.chem : CHEM_ELO; return ce * Math.min(33, total) / (W.xi.beta || 20); };
 const bonusTxt = b => '+' + b.toFixed(1);
-// ... and shown as a letter: A 27+ of 33 chemistry points, B 20+, C 13+, D 7+, E below
-const chemGrade = total => total >= 27 ? 'A' : total >= 20 ? 'B' : total >= 13 ? 'C' : total >= 7 ? 'D' : 'E';
+// ... and shown as a letter, on what a draft can really reach (measured): A 22+ of 33, B 16+, C 10+, D 5+, E below
+const chemGrade = total => total >= 22 ? 'A' : total >= 16 ? 'B' : total >= 10 ? 'C' : total >= 5 ? 'D' : 'E';
 const chemBar = picks => { const g = chemGrade(chemOf(picks).total);
   return `<div class="chembar"><span>Chemistry bonus</span><b class="tnum g${g}" title="A bonus on top of your team rating">${g}</b></div>`; };
 /* Your XI's strength: the clubs' line from its overall, a lift that grows with how good the XI is (no weak bench, no
    rotation; bigger where the field is stronger) and its chemistry. Calibrated with draft bots (pipeline/tools/draft_bots.js). */
-const LIFT = { cl: 11.5, el: 4, ecl: 1 }, LIFT_FROM = 68, CHEM_ELO = 3;
+const LIFT = { cl: 10.5, el: 5, ecl: 1.5 }, LIFT_FROM = 68, CHEM_ELO = 3;
 function youElo(picks, form){
   const T = window.__YB || {}, lift = T.lift || LIFT, ce = T.chem != null ? T.chem : CHEM_ELO;
   const ov = teamOvr(picks, form), comp = (S.run && S.run.comp) || 'el';
@@ -1459,9 +1466,9 @@ function cardHTML(p){
 function chemCard(p){
   const r = S.run; if (!r || !r.picks || !r.picks.includes(p.id) || r.picks.length < 11 || r.phase === 'draft') return '';
   const c = chemOf(r.picks).per[p.id], names = ids => ids.map(id => esc(short(W.P[id].name))).join(', ');
-  if (!c.tm.length && !c.cp.length) return '';
+  if (!c.tm.length && !c.cp.length && !c.lg.length) return '';
   return `<div class="pc-sec pc-chem"><div class="pc-h">Chemistry</div>
-    ${c.tm.length ? `<div><span class="ci">🤝</span>Played with <b>${names(c.tm)}</b></div>` : ''}${c.cp.length ? `<div><span class="ci">${flagOf(natInfo(p.nat)[0]) || '🏳️'}</span>Compatriots: ${names(c.cp)}</div>` : ''}</div>`;
+    ${c.tm.length ? `<div><span class="ci">🤝</span>Played with <b>${names(c.tm)}</b></div>` : ''}${c.cp.length ? `<div><span class="ci">${flagOf(natInfo(p.nat)[0]) || '🏳️'}</span>Compatriots: ${names(c.cp)}</div>` : ''}${c.lg.length ? `<div><span class="ci">🏟️</span>Same league: ${names(c.lg)}</div>` : ''}</div>`;
 }
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
@@ -1543,11 +1550,11 @@ function viewHome(){
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>A new dynasty starts with one choice, the difficulty. It sets where you start (Easy in the Champions League, Medium in the Europa League, Hard in the Conference League) and how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots. Win a competition and the next run moves up a level.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for club strength, playing time, performance and form. Your team gets a rating from 40 to 99; opponents show no rating at all. Away from his main position a player plays a little below his level: a bit less in a position he plays often, a bit more in a weak one (started in at most half as often as his main one). Weak positions are faded on his card.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for club strength, playing time, performance and form. Your team's rating is the average of your 11 (a little lower for anyone away from his main position) plus the chemistry bonus; opponents show no rating at all. Away from his main position a player plays a little below his level: a bit less in a position he plays often, a bit more in a weak one (started in at most half as often as his main one). Weak positions are faded on his card.</li>
         <li>The draft starts in 4-2-2-2 and keeps that shape while it still works; when it stops working, another one that works is picked at random. A player can only be picked if he still fits one of the 14 formations. At the end you choose the shape yourself.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>The further you go, the more players you keep: out in the league phase 5 (in the Conference League that ends the dynasty), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
-        <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) and 1 for each compatriot, at most 3 each. It makes your XI play stronger. You see it as a bonus from A to E once your XI is complete.</li>
+        <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) 1 for each compatriot and 1 for each player from a club in the same league, at most 3 each. It makes your XI play stronger. You see it as a bonus from A to E once your XI is complete.</li>
         <li>A dynasty lasts up to ten seasons. After each season and at the end you get a summary and an image to share. A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
