@@ -217,6 +217,22 @@ def _video_code(formation, grid, pos):
 WIDE = {'LB', 'RB', 'LMF', 'RMF', 'LWF', 'RWF'}
 
 
+def lateral(formation, grid):
+    """Where across his line a starter stood: -1 the left edge, 0 the middle, +1 the right edge (None without data)."""
+    try:
+        lines = [int(x) for x in formation.split('-')]
+        row, col = (int(x) for x in grid.split(':'))
+    except Exception:
+        return None
+    if row == 1 or row - 2 >= len(lines):
+        return 0.0 if row == 1 else None
+    n = lines[row - 2]
+    if n < 2:
+        return 0.0
+    k = (n - col) if GRID_COL1_IS_RIGHT else (col - 1)
+    return round(2 * max(0, min(n - 1, k)) / (n - 1) - 1, 3)
+
+
 def slot_code(formation, grid, pos):
     """PES 2021 position: the video-based mapping above, with two changes:
     nothing is guessed across the width (all central players in one line share one position,
@@ -800,6 +816,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
               if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat() and f['hg'] is not None]
     club_res = defaultdict(list)
     starts = defaultdict(list)
+    lats = defaultdict(list)   # where across the pitch he started: -1 left edge of his line ... +1 right edge
     for fid, f in window:
         h, a = f['h'], f['a']
         sides = lu.get(fid) or {}
@@ -807,6 +824,10 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             lineup = sides.get(str(side))
             lineup = lineup if isinstance(lineup, dict) else None
             codes = [(e[0], slot_code(lineup['f'], e[1], '')) for e in lineup['xi']] if lineup else []
+            if lineup and codes and all(c for _, c in codes):
+                for e in lineup['xi']:
+                    lv = lateral(lineup['f'], e[1])
+                    if lv is not None: lats[e[0]].append(lv)
             # every match counts, friendlies included, but only for a side whose line-up came with all positions
             if not (codes and all(c for _, c in codes)):
                 continue
@@ -945,6 +966,8 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                                 'mo': monthly(mo[pid], st, month),
                                 'lm': last_match(pid, pos[0] == 'GK'), 'lg': last_games(pid, pos[0] == 'GK'),
                                 'lgd': played[pid][history(pid)[0]][0] if played.get(pid) else None,   # date of his last game
+                                # his usual side, from every start: the game puts the left one of two CBs (or DMFs, CFs) on the left
+                                'lat': round(sum(lats[pid]) / len(lats[pid]), 2) if lats.get(pid) else None,
                                 '_raw': card_raw(pid, st, apps[pid], late[pid], pst, national)})
     card_grades(out_players)
     # when goals fall (share per minute of the 90) and how many are own goals: for the match reports in the game

@@ -684,7 +684,7 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, lg: p.lg, lgd: p.lgd, gr: p.gr,
+    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, lg: p.lg, lgd: p.lgd, lat: p.lat, gr: p.gr,
       ap: p.ap, mn: p.mn, ga: p.ga, pk: p.pk, aa: p.aa, rt: p.rt, csy: p.csy, csg: p.csg, nt: p.nt, wdl: p.wdl };
     club.squad.push(pid);
   }
@@ -885,7 +885,27 @@ function arrangement(pids, form){
       return false; };
     if (bt(0)) return a;
   }
-  return bestAssign(pids, form);
+  return sideBySide(bestAssign(pids, form), form);
+}
+/* two or more players in the same position (two CBs, two DMFs, two CFs): left to right by where they really play.
+   His side: where across his line he started (from every start), else his positions (LB, LMF, LWF pull left,
+   RB, RMF, RWF pull right, weighted by how often he started there). */
+const SIDE = { LB: -1, LMF: -1, LWF: -1, RB: 1, RMF: 1, RWF: 1 };
+function sideOf(p){
+  const n = (p.pc || []).reduce((t, x) => t + x, 0) || p.pos.length;
+  const byPos = p.pos.reduce((t, c, i) => t + (SIDE[c] || 0) * ((p.pc && p.pc[i]) || 1), 0) / n;
+  return p.lat != null ? p.lat + byPos * 0.25 : byPos;
+}
+function sideBySide(a, form){
+  if (!a) return a;
+  const slots = FORMS[form], groups = {};
+  slots.forEach((s, j) => { if (a[j]) (groups[s[0]] = groups[s[0]] || []).push(j); });
+  for (const js of Object.values(groups)){
+    if (js.length < 2) continue;
+    const ps = js.map(j => a[j]).sort((x, y) => sideOf(W.P[x]) - sideOf(W.P[y]));
+    [...js].sort((i, j) => slots[i][1] - slots[j][1]).forEach((j, k) => { a[j] = ps[k]; });
+  }
+  return a;
 }
 const canMove = (a, form, from, to) => { const slots = FORMS[form], p = W.P[a[from]], q = a[to] && W.P[a[to]];
   return from !== to && p.pos.includes(slots[to][0]) && (!q || q.pos.includes(slots[from][0])); };
@@ -1879,7 +1899,7 @@ function seasonSummary(r){
   const c = r.cup, k = campaign(r), arr = arrangement(r.picks, r.form) || [], t = teamRating(r.picks, r.form);
   const cap = captainOf(arr.filter(Boolean));
   const xi = arr.map((id, j) => { if (!id) return null; const p = W.P[id], s = FORMS[r.form][j];
-    return { id, n: p.name, nat: p.nat, code: s[0], x: s[1], y: s[2], g: k.g[id] || 0, a: k.a[id] || 0, gr: ovGrade(playerRating(id).ov), fit: fitTier(p, s[0]), cap: id === cap }; }).filter(Boolean);
+    return { id, n: p.name, nat: p.nat, code: s[0], x: s[1], y: s[2], g: k.g[id] || 0, a: k.a[id] || 0, gr: ovGrade(playerRating(id).ov), fit: fitTier(p, s[0]), cap: id === cap, o: r.picks.indexOf(id) }; }).filter(Boolean);
   const lt = c.top && c.top.g[0];
   return { season: r.season || 1, comp: r.comp || 'cl', diff: r.diff || 'medium', stage: c.stage, pos: c.pos, champ: c.champ === 'YOU' ? 'YOU' : nm(c.champ),
     w: k.W_, d: k.D, l: k.L, gf: k.GF, ga: k.GA, cs: k.CS, big: k.big ? [k.big.f, k.big.ag, nm(k.big.opp)] : null,
@@ -1887,16 +1907,18 @@ function seasonSummary(r){
 }
 const stageWord = h => h.stage === 'champion' ? 'Champions' : h.stage === 'final' ? 'Lost the final' : h.stage === 'league' ? `League phase · ${ord(h.pos)}` : 'Out in the ' + STAGE_SHORT[h.stage].toLowerCase();
 function dynastyStats(hist){
-  const cups = { cl: 0, el: 0, ecl: 0 }, finals = { cl: 0, el: 0, ecl: 0 }, G = {}, A = {}, seasons = {}, names = {};
+  const cups = { cl: 0, el: 0, ecl: 0 }, finals = { cl: 0, el: 0, ecl: 0 }, G = {}, A = {}, seasons = {}, names = {}, drafted = {};
   let w = 0, d = 0, l = 0, gf = 0, ga = 0, cs = 0, big = null, best = null;
   for (const h of hist){
     if (h.stage === 'champion') cups[h.comp]++; if (h.stage === 'final') finals[h.comp]++;
     w += h.w; d += h.d; l += h.l; gf += h.gf; ga += h.ga; cs += h.cs || 0;
     if (h.big && (!big || h.big[0] - h.big[1] > big[0] - big[1])) big = [...h.big, h.season];
     if (!best || h.team > best.team) best = h;
-    for (const p of h.xi){ names[p.id] = p.n; G[p.id] = (G[p.id] || 0) + p.g; A[p.id] = (A[p.id] || 0) + p.a; seasons[p.id] = (seasons[p.id] || 0) + 1; }
+    for (const p of h.xi){ names[p.id] = p.n; G[p.id] = (G[p.id] || 0) + p.g; A[p.id] = (A[p.id] || 0) + p.a; seasons[p.id] = (seasons[p.id] || 0) + 1;
+      if (!(p.id in drafted)) drafted[p.id] = h.season * 100 + (p.o != null && p.o >= 0 ? p.o : 50); }
   }
-  const top = (M, min) => Object.entries(M).filter(([, v]) => v >= (min || 1)).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([id, v]) => [names[id], v]);
+  // ties: the player drafted earlier in the dynasty first (the captain's rule)
+  const top = (M, min) => Object.entries(M).filter(([, v]) => v >= (min || 1)).sort((x, y) => y[1] - x[1] || drafted[x[0]] - drafted[y[0]]).slice(0, 5).map(([id, v]) => [names[id], v]);
   return { cups, finals, titles: cups.cl + cups.el + cups.ecl, w, d, l, gf, ga, cs, big, best, scorers: top(G), assists: top(A), legends: top(seasons, 2), n: hist.length };
 }
 function viewDynasty(){
