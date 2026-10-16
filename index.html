@@ -794,14 +794,15 @@ function chemOf(picks){
   return { total, per };
 }
 // shown only once the XI is complete, on the same 40-99 scale as the other team numbers
-const chemNum = c => Math.round(40 + 59 * Math.min(33, c) / 33);
+// chemistry as a number like the other parts: it only ever adds, so no chemistry is 70 and a full one 99
+const chemNum = c => Math.round(70 + 29 * Math.min(33, c) / 33);
 // chemistry shown as what it adds: team-rating points on top of the players (already inside the team rating)
 const chemBonus = total => { const T = window.__YB || {}, ce = T.chem != null ? T.chem : CHEM_ELO; return ce * Math.min(33, total) / (W.xi.beta || 20); };
 const bonusTxt = b => '+' + b.toFixed(1);
 // ... and shown as a letter, on what a draft can really reach (measured): A 22+ of 33, B 16+, C 10+, D 5+, E below
 const chemGrade = total => total >= 22 ? 'A' : total >= 16 ? 'B' : total >= 10 ? 'C' : total >= 5 ? 'D' : 'E';
 const chemBar = picks => { const g = chemGrade(chemOf(picks).total);
-  return `<div class="chembar"><span>Chemistry bonus</span><b class="tnum g${g}" title="A bonus on top of your team rating">${g}</b></div>`; };
+  return `<div class="chembar"><span>Chemistry</span><b class="tnum g${g}" title="Added on top of your team rating">${chemNum(chemOf(picks).total)}</b></div>`; };
 /* Your XI's strength: the clubs' line from its overall, a lift that grows with how good the XI is (no weak bench, no
    rotation; bigger where the field is stronger) and its chemistry. Calibrated with draft bots (pipeline/tools/draft_bots.js). */
 const LIFT = { cl: 10.15, el: 5.35, ecl: 3.2 }, LIFT_FROM = 68, CHEM_ELO = 3;
@@ -1716,7 +1717,7 @@ function pendCard(e){
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
-  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r bonusrow"><span>Chemistry bonus<small>Added on top: team-mates, compatriots, same league</small></span><b class="num tnum g${chemGrade(t.chem)}" title="A bonus on top of your team rating">${chemGrade(t.chem)}</b></div></div></div></section>`;
+  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r bonusrow"><span>Chemistry<small>Added on top: team-mates, compatriots, same league</small></span><b class="num tnum g${chemGrade(t.chem)}" title="Added on top of your team rating">${chemNum(t.chem)}</b></div></div></div></section>`;
 }
 /* ================= THE SEASON, SCREEN BY SCREEN =================
    team -> draw -> league phase (table after every matchday) -> knockouts (bracket after every match)
@@ -1932,7 +1933,7 @@ function seasonSummary(r){
   const lt = c.top && c.top.g[0];
   return { season: r.season || 1, comp: r.comp || 'cl', diff: r.diff || 'medium', stage: c.stage, pos: c.pos, champ: c.champ === 'YOU' ? 'YOU' : nm(c.champ),
     w: k.W_, d: k.D, l: k.L, gf: k.GF, ga: k.GA, cs: k.CS, big: k.big ? [k.big.f, k.big.ag, nm(k.big.opp)] : null,
-    team: Math.round(Math.min(99, t.ov)), chem: chemNum(t.chem), chemB: +chemBonus(t.chem).toFixed(1), chemG: chemGrade(t.chem), form: r.form, xi, top: lt ? [W.P[lt[0]].name, lt[1], r.picks.includes(lt[0])] : null };
+    team: Math.round(Math.min(99, t.ov)), chem: chemNum(t.chem), chemB: +chemBonus(t.chem).toFixed(1), chemG: chemGrade(t.chem), chemN: chemNum(t.chem), form: r.form, xi, top: lt ? [W.P[lt[0]].name, lt[1], r.picks.includes(lt[0])] : null };
 }
 const stageWord = h => h.stage === 'champion' ? 'Champions' : h.stage === 'final' ? 'Lost the final' : h.stage === 'league' ? `League phase · ${ord(h.pos)}` : 'Out in the ' + STAGE_SHORT[h.stage].toLowerCase();
 function dynastyStats(hist){
@@ -2075,7 +2076,7 @@ async function seasonImage(h){
   const PX = 60, PY = 245, PW = W_ - 120, PH = 790, boxes = drawPitch(x, h.xi, PX, PY, PW, PH);
   cv._boxes = boxes; cv._pitch = { x0: PX, x1: PX + PW, y0: PY, y1: PY + PH }; cv._lines = [PY + PH - 175, PY + PH - 28];
   // stats
-  const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Clean sheets', h.cs], ['Chem bonus', h.chemG || (h.chemB != null ? bonusTxt(h.chemB) : h.chem)]];
+  const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Clean sheets', h.cs], ['Chemistry', h.chemN != null ? h.chemN : h.chemG || (h.chemB != null ? bonusTxt(h.chemB) : h.chem)]];
   const SY = 1060, cw = (W_ - 120) / stats.length;
   stats.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, SY, cw - 12, 120, 16); x.fillStyle = '#1A2E4A'; x.fill();
     let vf = 46; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; while (vf > 26 && x.measureText(String(v)).width > cw - 32){ vf -= 2; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; }

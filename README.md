@@ -30,7 +30,7 @@ One static page (`index.html`) plus one data file (`world.json`), refreshed ever
 
 **After each run and after the challenge** you get a summary screen (with your XI, or the best XI of the challenge, on the pitch as in the image) and an image to share or save: the XI on the pitch with grades, goals and assists, the captain, the difficulty and the run's numbers; for the challenge, trophies per competition, the best XI of the challenge (most runs, then goals, assists, clean sheets for keepers, then who was drafted earlier), every run, top scorers, assists and the players who stayed longest. The captain is the player drafted earliest; in the best XI of the challenge, the one with the most runs, then the one drafted earliest.
 
-**What you see of ratings.** Your players get a grade from A to E and a card with 14 more grades (finishing, creativity, big games, consistency and so on). Your team's rating is the average of your 11 (a little lower for anyone away from his main position) plus the chemistry bonus, graded A to E: 2 per player who played with him in the last year, 1 per compatriot, 1 per player from a club in the same league, at most 3 per player. Opponents show no rating at all.
+**What you see of ratings.** Your players get a grade from A to E and a card with 14 more grades (finishing, creativity, big games, consistency and so on). Your team's rating is the average of your 11 (a little lower for anyone away from his main position; shown as level, performance, experience and form) plus a bonus for chemistry, shown from 70 (none) to 99 (full): 2 per player who played with him in the last year, 1 per compatriot, 1 per player from a club in the same league, at most 3 per player. Opponents show no rating at all.
 
 ## How the data works
 
