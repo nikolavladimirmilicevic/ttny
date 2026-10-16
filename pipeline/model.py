@@ -16,6 +16,8 @@ FINISHED = {'FT', 'AET', 'PEN'}
 PRESTIGE = 0.20          # share of the UEFA seed kept in the final club rating
 K_BASE = 20              # Elo step
 HFA_ELO = 60             # home advantage inside the Elo updates
+K_NEW, NEW_GAMES = 60, 20  # clubs off the UEFA list and national teams start from a rough guess: a bigger step for their
+                           # first 20 matches (measured on later results: better for every kind of match)
 SHARE = {'level': 0.45, 'role': 0.15, 'perf': 0.30, 'form': 0.10}   # form: last 5 ratings, measured to predict the next 5
 OVR_MEAN, OVR_SD = 72, 7.5
 HALF_LIFE_DAYS = 90      # a match rating counts half after 90 days, a quarter after 180
@@ -45,7 +47,7 @@ def run_elo(fx, top_pts, until, national=frozenset(), since=''):
     """Chronological Elo over every finished match. Returns current ratings and the pre-match ratings per fixture.
     National teams form their own pool, starting at 1500; other clubs off the UEFA list start a notch below the first
     rated side they meet (or at 1450 when neither side is rated yet)."""
-    R, pre = {}, {}
+    R, pre, seen = {}, {}, Counter()
     for tid, pts in top_pts.items():
         R[tid] = seed(pts)
     games = sorted((f['d'], fid, f) for fid, f in fx.items() if f['s'] in FINISHED and f['hg'] is not None and since <= f['d'] <= until)   # the last 365 days only
@@ -58,9 +60,11 @@ def run_elo(fx, top_pts, until, national=frozenset(), since=''):
         pre[fid] = (rh, ra)
         we = 1 / (10 ** (-(rh + HFA_ELO - ra) / 400) + 1)
         w = 1 if f['hg'] > f['ag'] else 0.5 if f['hg'] == f['ag'] else 0
-        k = K_BASE * (0.5 if 'friendl' in (f.get('lg') or '').lower() else 1) * g_mult(f['hg'] - f['ag'])
-        R[h] = rh + k * (w - we)
-        R[a] = ra - k * (w - we)
+        k = (0.5 if 'friendl' in (f.get('lg') or '').lower() else 1) * g_mult(f['hg'] - f['ag'])
+        for t, sgn, r in ((h, 1, rh), (a, -1, ra)):
+            step = K_NEW if t not in top_pts and seen[t] < NEW_GAMES else K_BASE
+            R[t] = r + sgn * step * k * (w - we)
+            seen[t] += 1
     return R, pre
 
 

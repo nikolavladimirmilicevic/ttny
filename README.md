@@ -44,7 +44,7 @@ Everything fetched is cached in `data/cache/`, so each run only asks for what is
 
 ### The model (`pipeline/model.py`)
 
-- **Club strength:** Elo over every match in the window (K 20, friendlies at half weight, home advantage 60), seeded from UEFA points and blended 80/20 with that seed.
+- **Club strength:** Elo over every match in the window (K 20, friendlies at half weight, home advantage 60), seeded from UEFA points and blended 80/20 with that seed. Clubs off the UEFA list and national teams start from a rough guess, so for their first 20 matches they move three times as fast (K 60).
 - **Goals:** a Poisson model with a draw correction, fitted on matches between ranked clubs.
 - **Player overall:** 45% the strength of his clubs, 15% playing time, 30% performance (his match ratings, adjusted for opponent strength, shrunk toward his line's average), 10% form (last 5 ratings from the last 60 days). Older matches count less (a rating counts half after 90 days), and appearances from the bench of 30+ minutes count toward performance and playing time. Performance and form count by rank within his line, so a player dominating a weak league cannot outweigh the rest. Players with few starts lean toward a squad player's score. The result is placed on a 45-97 scale (A from 82).
 - **Positions:** from every start in the window. Away from his main position a player loses 1 point where he plays often and 2 where he rarely plays.
