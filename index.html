@@ -817,9 +817,9 @@ const clubOv = id => eloOv(strength(id));
 const gchip = () => '';
 const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${ovGrade(r.ov)}</div>` : `<div class="ovdot big g${ovGrade(r.ov)}">${teamNum(r.ov)}</div>`;
 // what each part says about your XI and why it matters, most important first (no weights shown)
-const PARTS = [['Club level', 'pe', 'Players from stronger clubs are used to a higher level'],
-  ['Match ratings', 'pf', 'How well they have played, weighed by the opposition'],
-  ['Regular starters', 'ro', 'Players who start every week are trusted and match-fit'],
+const PARTS = [['Level', 'pe', 'Players from stronger clubs are used to a higher level'],
+  ['Performance', 'pf', 'How well they have played, weighed by the opposition'],
+  ['Experience', 'ro', 'Players who start every week are trusted and match-fit'],
   ['Form', 'fo', 'How they have played lately']];
 const partRows = r => PARTS.map(([k, f, why]) => `<div class="r"><span>${k}<small>${why}</small></span><b class="num tnum g${qGrade(r.q[f])}">${R(r.q[f])}</b></div>`).join('');
 const locked = () => S.run && (S.run.phase === 'cup' || S.run.phase === 'done');
