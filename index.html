@@ -356,7 +356,8 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .cupbox b{font:700 40px/1 var(--display);color:var(--best,#F2C14E)}.cupbox span{font:600 14px var(--display);letter-spacing:.06em;margin-top:4px}
 .cupbox.c-cl span{color:#3D7BFF}.cupbox.c-el span{color:#FC9529}.cupbox.c-ecl span{color:#48D75D}.cupbox small{color:var(--muted);font-size:11px;margin-top:2px}
 .imgov{position:fixed;inset:0;z-index:60;background:rgba(5,10,20,.88);display:grid;place-items:center;padding:16px}
-.imgbox{max-width:520px;width:100%}.imgbox img{width:100%;border-radius:12px;display:block;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.imgbox{max-width:520px;width:100%;display:flex;flex-direction:column;align-items:center}.imgbox img{max-width:100%;max-height:calc(100vh - 150px);width:auto;height:auto;object-fit:contain;border-radius:12px;display:block;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.imgbox .btnrow,.imgbox .muted{width:100%}
 .imgbox .btnrow{margin-top:12px}.imgbox a.btn{text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}
 </style>
 
@@ -2002,20 +2003,11 @@ function diffPill(x, diff, R, base){
   txt(x, t, R - w / 2, base - 4, f, '#0B1626', 'center'); return w;
 }
 const surname = n => { const s = n.split(' '); return s.length > 1 ? s.slice(1).join(' ') : n; };
-async function seasonImage(h){
-  await fontsReady();
-  const W_ = 1080, H = 1350, acc = ACCENT[h.comp], [cv, x] = canvasBase(W_, H, acc), white = '#F4F1EA', muted = '#9AA8BD';
-  drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
-  txt(x, `SEASON ${h.season} · ${COMPS[h.comp].short.toUpperCase()}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
-  const head = h.stage === 'champion' ? (h.comp === 'cl' ? 'CHAMPIONS OF EUROPE' : CUP[h.comp] + ' WINNERS') : stageWord(h).toUpperCase();
-  const pw = diffPill(x, h.diff, W_ - 60, 160) + 24;
-  let fs = 76; x.font = `700 ${fs}px Oswald, "Arial Narrow", Arial, sans-serif`; while (fs > 40 && x.measureText(head).width > W_ - 120 - pw){ fs -= 2; x.font = `700 ${fs}px Oswald, "Arial Narrow", Arial, sans-serif`; }
-  txt(x, head, 60, 170, x.font, h.stage === 'champion' ? '#F2C14E' : white);
-  txt(x, h.stage === 'champion' ? `${h.form} · team ${h.team}` : `${h.champ === 'YOU' ? '' : h.champ + ' won the ' + COMPS[h.comp].short + ' · '}${h.form} · team ${h.team}`, 60, 215, '400 28px Rubik, Arial, sans-serif', muted, 'left', W_ - 120);
-  // pitch
-  const PX = 60, PY = 245, PW = W_ - 120, PH = 790;
+/* the XI on a pitch, for the images: rows by formation line, labels that never overlap (each fits its own room) */
+function drawPitch(x, xi, PX, PY, PW, PH){
+  const white = '#F4F1EA';
   // rows: cluster the formation lines (small nudges stay on one row), back line at the bottom
-  const sorted = [...h.xi].sort((p, q) => p.y - q.y), rows = [];
+  const sorted = [...xi].sort((p, q) => p.y - q.y), rows = [];
   for (const p of sorted){ const r = rows[rows.length - 1]; if (r && p.y - r[0].y <= 8) r.push(p); else rows.push([p]); }
   rrect(x, PX, PY, PW, PH, 24); x.fillStyle = '#16432F'; x.fill();
   x.save(); rrect(x, PX, PY, PW, PH, 24); x.clip(); for (let i = 0; i < 8; i++) if (i % 2){ x.fillStyle = 'rgba(255,255,255,.035)'; x.fillRect(PX, PY + i * PH / 8, PW, PH / 8); } x.restore();
@@ -2047,6 +2039,20 @@ async function seasonImage(h){
       boxes.push({ n: p.n, x0: cx - bw / 2, x1: cx + bw / 2, y0: cy - (p.cap ? 39 : 34), y1: cy + 100 });
     });
   });
+  return boxes;
+}
+async function seasonImage(h){
+  await fontsReady();
+  const W_ = 1080, H = 1350, acc = ACCENT[h.comp], [cv, x] = canvasBase(W_, H, acc), white = '#F4F1EA', muted = '#9AA8BD';
+  drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
+  txt(x, `SEASON ${h.season} · ${COMPS[h.comp].short.toUpperCase()}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
+  const head = h.stage === 'champion' ? (h.comp === 'cl' ? 'CHAMPIONS OF EUROPE' : CUP[h.comp] + ' WINNERS') : stageWord(h).toUpperCase();
+  const pw = diffPill(x, h.diff, W_ - 60, 160) + 24;
+  let fs = 76; x.font = `700 ${fs}px Oswald, "Arial Narrow", Arial, sans-serif`; while (fs > 40 && x.measureText(head).width > W_ - 120 - pw){ fs -= 2; x.font = `700 ${fs}px Oswald, "Arial Narrow", Arial, sans-serif`; }
+  txt(x, head, 60, 170, x.font, h.stage === 'champion' ? '#F2C14E' : white);
+  txt(x, h.stage === 'champion' ? `${h.form} · team ${h.team}` : `${h.champ === 'YOU' ? '' : h.champ + ' won the ' + COMPS[h.comp].short + ' · '}${h.form} · team ${h.team}`, 60, 215, '400 28px Rubik, Arial, sans-serif', muted, 'left', W_ - 120);
+  // pitch
+  const PX = 60, PY = 245, PW = W_ - 120, PH = 790, boxes = drawPitch(x, h.xi, PX, PY, PW, PH);
   cv._boxes = boxes; cv._pitch = { x0: PX, x1: PX + PW, y0: PY, y1: PY + PH }; cv._lines = [PY + PH - 175, PY + PH - 28];
   // stats
   const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Clean sheets', h.cs], ['Chem bonus', h.chemG || (h.chemB != null ? bonusTxt(h.chemB) : h.chem)]];
@@ -2062,10 +2068,30 @@ async function seasonImage(h){
   txt(x, 'This Time Next Year', W_ - 60, 1328, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   return cv;
 }
+/* the best XI of the dynasty: everyone who played in it, ranked by seasons, then goals, assists, clean sheets (keepers
+   only, the seasons he started in goal) and finally who was drafted earlier; the first 11 who still fit a formation.
+   The captain is the one drafted earliest, as always. */
+function dynastyBestXI(hist){
+  const st = {};
+  for (const h of hist) for (const p of h.xi || []){
+    const v = st[p.id] = st[p.id] || { id: p.id, n: p.n, s: 0, g: 0, a: 0, cs: 0, d: h.season * 100 + (p.o != null && p.o >= 0 ? p.o : 50) };
+    v.s++; v.g += p.g || 0; v.a += p.a || 0; if (p.code === 'GK') v.cs += h.cs || 0;
+  }
+  const ranked = Object.values(st).filter(v => W.P[v.id]).sort((a, b) => b.s - a.s || b.g - a.g || b.a - a.a || b.cs - a.cs || a.d - b.d);
+  let picks = [];
+  for (const v of ranked){ if (picks.length === 11) break; const t = [...picks, v.id]; if (FORM_ORDER.some(f => assign(t, f))) picks = t; }
+  if (picks.length < 11) return null;
+  const form = bestForm(picks), arr = sideBySide(bestAssign(picks, form), form); if (!arr) return null;
+  const cap = picks.slice().sort((a, b) => st[a].d - st[b].d)[0];
+  const xi = arr.map((id, j) => { if (!id) return null; const p = W.P[id], sl = FORMS[form][j], v = st[id];
+    return { id, n: v.n, code: sl[0], x: sl[1], y: sl[2], g: v.g, a: v.a, gr: ovGrade(playerRating(id).ov), fit: fitTier(p, sl[0]), cap: id === cap, s: v.s }; }).filter(Boolean);
+  return { form, xi };
+}
 async function dynastyImage(hist, ended){
   await fontsReady();
   const s = dynastyStats(hist), last = hist[hist.length - 1] || { comp: 'cl', diff: 'medium' }, acc = ACCENT[last.comp];
-  const W_ = 1080, H = 1350, [cv, x] = canvasBase(W_, H, acc), white = '#F4F1EA', muted = '#9AA8BD';
+  const best = dynastyBestXI(hist), PH = 790, OFF = best ? PH + 110 : 0;   // the best XI pushes the rest down
+  const W_ = 1080, H = 1350 + OFF, [cv, x] = canvasBase(W_, H, acc), white = '#F4F1EA', muted = '#9AA8BD';
   drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
   const dpw = diffPill(x, hist[0] ? hist[0].diff : 'medium', W_ - 60, 160) + 24;
   txt(x, `${s.n} SEASON${s.n > 1 ? 'S' : ''}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
@@ -2076,9 +2102,15 @@ async function dynastyImage(hist, ended){
   ['cl', 'el', 'ecl'].forEach((c, i) => { const X = 60 + i * 330, Y = 210; rrect(x, X, Y, 300, 170, 20); x.fillStyle = '#1A2E4A'; x.fill(); x.strokeStyle = ACCENT[c]; x.lineWidth = 3; rrect(x, X, Y, 300, 170, 20); x.stroke();
     txt(x, s.cups[c], X + 150, Y + 100, '700 84px Oswald, "Arial Narrow", Arial, sans-serif', s.cups[c] ? '#F2C14E' : muted, 'center'); txt(x, CUP[c], X + 150, Y + 140, '600 28px Oswald, "Arial Narrow", Arial, sans-serif', ACCENT[c], 'center');
     if (s.finals[c]) txt(x, `+${s.finals[c]} final${s.finals[c] > 1 ? 's' : ''}`, X + 150, Y + 163, '400 18px Rubik, Arial, sans-serif', muted, 'center'); });
+  // the best XI of the dynasty
+  if (best){
+    txt(x, 'BEST XI OF THE DYNASTY', 60, 440, '600 26px Oswald, "Arial Narrow", Arial, sans-serif', acc);
+    txt(x, best.form, W_ - 60, 440, '500 22px Rubik, Arial, sans-serif', muted, 'right');
+    cv._boxes = drawPitch(x, best.xi, 60, 460, W_ - 120, PH); cv._pitch = { x0: 60, x1: W_ - 60, y0: 460, y1: 460 + PH };
+  }
   // season by season
-  txt(x, 'SEASON BY SEASON', 60, 440, '600 26px Oswald, "Arial Narrow", Arial, sans-serif', acc);
-  hist.slice(0, 10).forEach((h, i) => { const Y = 470 + i * 44;
+  txt(x, 'SEASON BY SEASON', 60, 440 + OFF, '600 26px Oswald, "Arial Narrow", Arial, sans-serif', acc);
+  hist.slice(0, 10).forEach((h, i) => { const Y = 470 + OFF + i * 44;
     if (i % 2 === 0){ x.fillStyle = 'rgba(255,255,255,.04)'; x.fillRect(60, Y, W_ - 120, 44); }
     txt(x, `S${h.season}`, 76, Y + 31, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', muted);
     txt(x, CUP[h.comp], 150, Y + 31, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', ACCENT[h.comp]);
@@ -2086,13 +2118,13 @@ async function dynastyImage(hist, ended){
     txt(x, `${h.w}-${h.d}-${h.l}`, W_ - 200, Y + 31, '500 24px Rubik, Arial, sans-serif', muted, 'right');
     txt(x, h.team, W_ - 80, Y + 31, '700 26px Oswald, "Arial Narrow", Arial, sans-serif', white, 'right'); });
   // totals and people
-  const Y0 = 470 + Math.min(10, hist.length) * 44 + 40;
+  const Y0 = 470 + OFF + Math.min(10, hist.length) * 44 + 40;
   const tot = [['Matches', s.w + s.d + s.l], ['W-D-L', `${s.w}-${s.d}-${s.l}`], ['Goals', `${s.gf}:${s.ga}`], ['Win %', (s.w + s.d + s.l ? Math.round(100 * s.w / (s.w + s.d + s.l)) : 0) + '%']], cw = (W_ - 120) / tot.length;
   tot.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, Y0, cw - 12, 104, 16); x.fillStyle = '#1A2E4A'; x.fill();
     txt(x, v, X + cw / 2, Y0 + 60, '700 40px Oswald, "Arial Narrow", Arial, sans-serif', white, 'center'); txt(x, l.toUpperCase(), X + cw / 2, Y0 + 90, '500 18px Rubik, Arial, sans-serif', muted, 'center'); });
   const col = (title, L, unit, X) => { txt(x, title, X, Y0 + 160, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc); L.slice(0, 3).forEach(([n, v], i) => txt(x, `${i + 1}. ${surname(n)} · ${v} ${unit}`, X, Y0 + 198 + i * 34, '500 23px Rubik, Arial, sans-serif', i ? white : '#F2C14E', 'left', 300)); };
   col('TOP SCORERS', s.scorers, 'g', 60); col('TOP ASSISTS', s.assists, 'a', 400); col('LEGENDS', s.legends, 'seasons', 740);
-  txt(x, 'This Time Next Year', W_ - 60, 1310, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
+  txt(x, 'This Time Next Year', W_ - 60, H - 40, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   return cv;
 }
 // show the image in an overlay: share it (phones), save it, or long-press it
