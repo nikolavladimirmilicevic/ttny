@@ -9,7 +9,7 @@
 4. Your XI: the line that maps a club's own best XI to its rating maps yours to a rating too.
 5. Credibility tests and an out-of-sample backtest, written to a report.
 """
-import math, random, statistics
+import datetime as _dt, math, random, statistics
 from collections import defaultdict, Counter
 
 FINISHED = {'FT', 'AET', 'PEN'}
@@ -18,6 +18,8 @@ K_BASE = 20              # Elo step
 HFA_ELO = 60             # home advantage inside the Elo updates
 SHARE = {'level': 0.45, 'role': 0.15, 'perf': 0.30, 'form': 0.10}   # form: last 5 ratings, measured to predict the next 5
 OVR_MEAN, OVR_SD = 72, 7.5
+HALF_LIFE_DAYS = 90      # a match rating counts half after 90 days, a quarter after 180
+FORM_DAYS = 60           # form: the last 5 ratings, only from the last 60 days
 PERF_PRIOR = 10          # average matches of shrinkage toward his line's mean match rating
 EXPERIENCE_STARTS = 10   # starts for a full rating; fewer pull the score toward a squad player's
 SQUAD_Z = -0.5           # the score a player with almost no starts is pulled toward (a squad player, about a D)
@@ -160,6 +162,12 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
     players = world['players']
     ids = {p['id'] for p in players}
     starts = defaultdict(list)       # pid -> [(date, team, opp, gf, ga, minutes, api rating, g+a, clean sheet in a defensive slot)]
+    subs = defaultdict(list)         # pid -> [(date, team, opp, minutes, api rating)]
+    # measured on the next 60 days' match ratings and on national teams: older matches count less (half after 90 days),
+    # form is only the last 60 days, and appearances from the bench (30+ minutes) count too
+    HALF, FORMDAYS, BENCH = HALF_LIFE_DAYS, FORM_DAYS, True
+    U = _dt.date.fromisoformat(until); age = lambda d: (U - _dt.date.fromisoformat(d)).days
+    W_ = lambda d: 0.5 ** (age(d) / HALF) if HALF else 1.0
     team_games = defaultdict(list)   # team -> dates of its matches with a line-up
     for fid, f in fx.items():
         if f['s'] not in FINISHED or f['hg'] is None or not (since <= f['d'] <= until):
@@ -176,13 +184,20 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
             if not isinstance(l, dict) or not l.get('xi'):
                 continue
             team_games[side].append(f['d'])
+            xi_ids = set()
             for e in l['xi']:
-                pid = e[0]
+                pid = e[0]; xi_ids.add(pid)
                 if pid not in ids:
                     continue
                 st = ps.get(str(pid)) or [90, None, side]
                 rt = st[1] if st[1] and 3 <= st[1] <= 10 else None   # the API sometimes sends 0 for a missing rating
                 starts[pid].append((f['d'], side, opp, gf, gc, st[0] or 90, rt, ga_by[pid] + as_by[pid]))
+            if BENCH:
+                for spid, v in ps.items():
+                    q = int(spid)
+                    if q in ids and q not in xi_ids and v[2] == side and (v[0] or 0) > 0:
+                        rt = v[1] if v[1] and 3 <= v[1] <= 10 else None
+                        subs[q].append((f['d'], side, opp, v[0] or 0, rt))
     R = lambda t: rating_now.get(t, 1400.0)
     nat_vals = [rating_now[t] for t in national if t in rating_now]
     nat_mean = statistics.mean(nat_vals) if nat_vals else 1500.0
@@ -217,19 +232,27 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
         # a stint runs from his first start for a club until his first start for another club after it (or today),
         # so a long injury or a place on the bench counts against him
         firsts = sorted((min(ds), t) for t, ds in by_team.items())
+        sb = sorted(subs.get(p['id'], []), reverse=True) if BENCH else []
+        sbc = [s for s in sb if s[1] not in national]
+        cnt = Counter(s[1] for s in cl)
+        for s in sbc: cnt[s[1]] += s[3] / 90
         role = 0
         for k, (lo, t) in enumerate(firsts):
             lo = since if k == 0 else lo   # his first club counts from the start of the window: time out injured counts too
             hi = firsts[k + 1][0] if k + 1 < len(firsts) else until
             n = sum(1 for d in team_games[t] if lo <= d <= hi) or len(by_team[t])
-            role += len(by_team[t]) * min(1.0, len(by_team[t]) / n)
-        role = role / len(cl) if cl else 0.0
-        rated = [(s[6] - slope * OPP(s[2])) for s in ss if s[6] is not None and s[5] >= 30]
-        form = [s[6] for s in ss[:5] if s[6] is not None]
+            role += cnt[t] * min(1.0, cnt[t] / n)
+        role = role / sum(cnt[t] for t in by_team) if cl else 0.0
+        pool = [(s[0], s[6] - slope * OPP(s[2])) for s in ss if s[6] is not None and s[5] >= 30]
+        pool += [(s[0], s[4] - slope * OPP(s[2])) for s in sb if s[4] is not None and s[3] >= 30]
+        rated = [(v, W_(d)) for d, v in pool]
+        fpool = sorted([(s[0], s[6]) for s in ss if s[6] is not None] + [(s[0], s[4]) for s in sb if s[4] is not None and s[3] >= 30], reverse=True)
+        if FORMDAYS: fpool = [x for x in fpool if age(x[0]) <= FORMDAYS]
+        form = [v for _, v in fpool[:5]]
         ga90 = sum(s[7] for s in ss) / sum(max(30, s[5]) for s in ss) * 90
         cs = sum(1 for s in ss if s[4] == 0) / len(ss)
         conc = sum(s[4] / max(0.3, math.exp(0)) for s in ss) / len(ss)
-        raw[p['id']] = {'level': level, 'role': role, 'perf': (sum(rated), len(rated)), 'form': form, 'ga90': ga90,
+        raw[p['id']] = {'level': level, 'role': role, 'perf': (sum(v * w for v, w in rated), sum(w for _, w in rated)), 'nsub': len(sb), 'form': form, 'ga90': ga90,
                         'cs': cs, 'conc': conc, 'line': LINE.get(p['prim'], 'MID')}
 
     # a player seen only with his national team: his current club stands in for his level
@@ -258,7 +281,7 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
             form_z[i] = ND.inv_cdf(min(0.999, max(0.001, frk[i])))
     z = lambda key: zscores({p['id']: raw[p['id']][key] for p in ok})
     lz, rz = z('level'), z('role')
-    starts_of = {p['id']: len(starts.get(p['id'], [])) for p in ok}
+    starts_of = {p['id']: len(starts.get(p['id'], [])) + 0.5 * raw[p['id']].get('nsub', 0) for p in ok}
     def blended(i):
         sc = SHARE['level'] * lz[i] + SHARE['role'] * rz[i] + SHARE['perf'] * perf_z[i] + SHARE['form'] * form_z[i]
         e = min(1.0, starts_of[i] / EXPERIENCE_STARTS)   # 1 start = 10% of his own score, 10+ starts = all of it
