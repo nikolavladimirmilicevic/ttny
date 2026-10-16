@@ -349,6 +349,9 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .btn.primary.warn{background:var(--loss);color:#fff}
 /* on a phone the player sheet sits above the bottom buttons, so they stay tappable */
 @media (pointer:coarse){body:has(.dock) .pcard.sheet{bottom:calc(68px + env(safe-area-inset-bottom,0px));border-radius:16px;border-width:1px;max-height:calc(62vh - 68px)}}
+.ovdot.gr{color:#0B1626}.ovdot.gr.gA,.ovdot.gr.gE{color:#fff}.ovdot.gr.gA{background:var(--gA)}.ovdot.gr.gB{background:var(--gB)}.ovdot.gr.gC{background:var(--gC)}.ovdot.gr.gD{background:var(--gD)}.ovdot.gr.gE{background:var(--gE)}
+.pitch.tall{aspect-ratio:68/118}
+.slot .sub{font-size:10px;line-height:1.1;font-weight:600;white-space:nowrap}.slot .sub.fit0{color:#5CC08A}.slot .sub.fit1{color:#F2C14E}.slot .sub.fit2{color:#E8604C}
 .slot .lbl.fit0{color:#5CC08A}.slot .lbl.fit1{color:#F2C14E}.slot .lbl.fit2{color:#E8604C}
 .slot .lbl.fit0,.slot .lbl.fit1,.slot .lbl.fit2{font-weight:600}
 .cups{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
@@ -1510,6 +1513,14 @@ function shapes(pids, active, clickable){
   }).join('') + `</div>`;
 }
 
+/* the XI as on the images: grade, captain, name, and the position with his goals and assists (coloured by fit) */
+function xiPitch(xi, form){
+  return `<div class="pitch tall" role="img" aria-label="Formation ${form}">` + xi.map(p => {
+    const bits = [p.code, p.g ? '⚽' + p.g : '', p.a ? '🅰' + p.a : ''].filter(Boolean).join(' ');
+    return `<div class="slot full"${W.P[p.id] ? ` data-pid="${p.id}"` : ''} style="left:${p.x}%;top:${p.y}%">${p.cap ? '<span class="cap" title="Captain">C</span>' : ''}<div class="ovdot gr g${p.gr}">${p.gr}</div><div class="lbl">${esc(short(p.n))}</div><div class="sub fit${Math.min(2, p.fit || 0)}">${bits}</div></div>`;
+  }).join('') + `</div>`;
+}
+const xiBox = (title, xi, form) => `<section class="card"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">${title}</div><span class="muted" style="font-size:13px">${form}</span></div>${xiPitch(xi, form)}</section>`;
 function viewHome(){
   const st = S.stats, d = S.dyn;
   const best = st.bestStage ? STAGE_NAME[st.bestStage] : 'None yet';
@@ -1956,6 +1967,7 @@ function viewDynasty(){
       <div class="stat"><span>Biggest win</span><b class="num">${s.big ? s.big[0] + ':' + s.big[1] : '-'}</b><small>${s.big ? 'v ' + esc(s.big[2]) + ' · S' + s.big[3] : ''}</small></div>
       <div class="stat"><span>Win rate</span><b class="num">${s.w + s.d + s.l ? Math.round(100 * s.w / (s.w + s.d + s.l)) : 0}%</b></div>
     </div>
+    ${(b => b ? xiBox('Best XI of the dynasty', b.xi, b.form) : '')(dynastyBestXI(hist))}
     <section class="card"><div class="eyebrow" style="margin-bottom:10px">Season by season</div><div class="tblwrap"><table class="tbl matches"><tbody>${hist.map(row).join('')}</tbody></table></div></section>
     <div class="toplists">${list('Top scorers', s.scorers, 'goals')}${list('Top assists', s.assists, 'assists')}</div>
     ${s.legends.length ? list('Legends: most seasons in your XI', s.legends, 'seasons') : ''}
@@ -2173,7 +2185,7 @@ function viewSeason(){
     </section>
     <div class="endgrid">
       <div class="stack">${seasonBox(r)}</div>
-      <div class="stack">${teamBox(r)}${playersBox(r)}</div>
+      <div class="stack">${(h => xiBox('Your XI', h.xi, h.form))(seasonSummary(r))}${teamBox(r)}${playersBox(r)}</div>
     </div>
   </div>
   ${dock('<button class="btn primary" data-act="scr" data-to="comp">The competition</button>')}`;
