@@ -528,18 +528,23 @@ def wanted(f, until):
 wanted.base = set()
 
 
-def fetch_lineups(top, fx, lu, evs, pst=None, first=frozenset(), until=None):
+def fetch_lineups(top, fx, lu, evs, pst=None, first=frozenset(), until=None, subs=None, backfill=False):
     pst = {} if pst is None else pst
+    subs = {} if subs is None else subs
     """Starting XIs and goals (scorer, assist) for every finished fixture in the window that involves a ranked club."""
     need = [fid for fid, f in fx.items()
             if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat()
             and (f['h'] in top or f['a'] in top)
             and (until is None or wanted(f, until))
             and (fid not in lu or (not lu[fid] and days_old(f['d']) <= 3) or any(isinstance(v, list) for v in lu[fid].values())
-                 or (lu[fid] and fid not in evs) or fid not in pst)]   # older fixtures fetched before goals or player stats were kept
+                 or (lu[fid] and fid not in evs) or fid not in pst
+                 # matches without the API's player stats, fetched before substitutions were kept: who came off the bench
+                 or (backfill and not pst.get(fid) and fid not in subs))]
     need.sort(key=lambda fid: fx[fid]['d'], reverse=True)
     # national-team matches before the (many) matches of clubs players came from, newest first within each
     need.sort(key=lambda fid: not (fx[fid]['h'] in first or fx[fid]['a'] in first))
+    # ... and the substitution backfill last, so it never holds up anything new
+    need.sort(key=lambda fid: fid in lu and fid in evs and fid in pst)
     log(f'  {len(need)} fixtures need line-ups')
     for i in range(0, len(need), 20):
         batch = need[i:i + 20]
@@ -566,6 +571,10 @@ def fetch_lineups(top, fx, lu, evs, pst=None, first=frozenset(), until=None):
                 goals.append([(e.get('team') or {}).get('id'), (e.get('player') or {}).get('id'), (e.get('assist') or {}).get('id'),
                               kind, (e.get('time') or {}).get('elapsed')])
             evs[fid] = goals
+            # substitutions: [team, player, other player, minute]; which one came on is decided against the XI later
+            subs[fid] = [[(e.get('team') or {}).get('id'), (e.get('player') or {}).get('id'), (e.get('assist') or {}).get('id'),
+                          (e.get('time') or {}).get('elapsed')] for e in item.get('events') or []
+                         if (e.get('type') or '').lower() == 'subst']
             # per player: [minutes, match rating, team id] from the API's own player statistics
             ps = {}
             for side in item.get('players') or []:
@@ -851,7 +860,8 @@ def monthly(m, st, month):
     return out
 
 
-def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=None):
+def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=None, subs=None):
+    subs = load('subs', {}) if subs is None else subs
     evs = evs or {}; pst = pst or {}; extra = extra or {}
     national = {int(k) for k, v in extra.items() if v.get('kind') == 'nat'}
     top = {}
@@ -861,6 +871,22 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             top[t['id']] = c
     window = [(fid, f) for fid, f in fx.items()
               if f['s'] in FINISHED and SINCE.isoformat() <= f['d'] <= TODAY.isoformat() and f['hg'] is not None]
+    # who came off the bench in each match: from the substitutions, the one of the pair who was not in the XI
+    # (only where the API has no player stats; where it has them, its minutes already say who played)
+    bench_in = {}
+    for fid, f in window:
+        if pst.get(fid) or not subs.get(fid):
+            continue
+        ins = []
+        for t, p1, p2, mn in subs[fid]:
+            L = (lu.get(fid) or {}).get(str(t))
+            xi = {e[0] for e in L.get('xi') or []} if isinstance(L, dict) else set()
+            if not xi:
+                continue
+            came = [q for q in (p1, p2) if q and q not in xi]
+            if len(came) == 1 and (p1 in xi or p2 in xi):
+                ins.append((came[0], t))
+        bench_in[fid] = ins
     club_res = defaultdict(list)
     starts = defaultdict(list)
     lats = defaultdict(list)   # where across the pitch he started: -1 left edge of his line ... +1 right edge
@@ -905,6 +931,8 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
         for pid, v in (pst.get(fid) or {}).items():
             a = apps[int(pid)]; a[0] += 1; a[1] += v[0] or 0
             if v[1] and 3 <= v[1] <= 10: a[2] += v[1]; a[3] += 1   # 0 means no rating
+        for pid, t in bench_in.get(fid, []):
+            apps[pid][0] += 1   # off the bench in a match without player stats (minutes unknown)
         k = month(f['d'])
         for e in evs.get(fid) or []:
             if e[3] != 'o' and e[1]:
@@ -938,6 +966,8 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
         for pid, v in (pst.get(fid) or {}).items():
             if (v[0] or 0) > 0 and v[2] in (f['h'], f['a']):
                 played[int(pid)].setdefault(fid, [f['d'], v[2], False])
+        for pid, t in bench_in.get(fid, []):
+            played[pid].setdefault(fid, [f['d'], t, False])
         for e in evs[fid]:
             if e[3] != 'o' and e[0] in (f['h'], f['a']):
                 for q in (e[1], e[2]):
@@ -1074,6 +1104,7 @@ def main():
     lu = load('lineups', {})
     pst = load('pstats', {})
     evs = load('events', {})
+    subs = load('subs', {})
     squads = load('squads', {})
     people = load('people', {})
     extra = load('extra_teams', {})   # national teams and non-ranked clubs players came from
@@ -1090,7 +1121,7 @@ def main():
         log('3/6 Latest results')
         fetch_recent_days(top | {int(k) for k in extra}, fx, meta)
         log('4/6 Line-ups')
-        fetch_lineups(top, fx, lu, evs, pst)
+        fetch_lineups(top, fx, lu, evs, pst, subs=subs)
         core_done = True
         log('5/6 Rosters')
         fetch_squads(top_ids, squads, people)
@@ -1103,12 +1134,12 @@ def main():
         ext_ids = [int(k) for k in extra]
         keep = top | set(ext_ids)   # drop matches of clubs no longer followed (the first version took too many)
         for fid in [k for k, f in fx.items() if f['h'] not in keep and f['a'] not in keep]:
-            fx.pop(fid, None); lu.pop(fid, None); evs.pop(fid, None); pst.pop(fid, None)
+            fx.pop(fid, None); lu.pop(fid, None); evs.pop(fid, None); pst.pop(fid, None); subs.pop(fid, None)
         fetch_team_seasons(ext_ids, fx, meta, tolerant=True)
         nat_ids = {int(k) for k, v in extra.items() if v.get('kind') == 'nat'}
         until = {int(k): (v.get('from') or SINCE.isoformat(), v['until']) for k, v in extra.items() if v.get('kind') == 'club' and v.get('until')}
         wanted.base = top | nat_ids   # ranked clubs and national teams: every match in the window
-        fetch_lineups(top | set(ext_ids), fx, lu, evs, pst, first=nat_ids, until=until)
+        fetch_lineups(top | set(ext_ids), fx, lu, evs, pst, first=nat_ids, until=until, subs=subs, backfill=True)
     except OutOfBudget:
         stopped = f'Stopped after {used} calls (MAX_REQUESTS={BUDGET}). The next run continues from here.'
         log(stopped)
@@ -1119,9 +1150,10 @@ def main():
             lu.pop(fid, None)
             evs.pop(fid, None)
             pst.pop(fid, None)
-        for name, obj in (('teams', teams), ('fixtures', fx), ('lineups', lu), ('events', evs), ('pstats', pst), ('squads', squads), ('people', people), ('meta', meta), ('extra_teams', extra)):
+            subs.pop(fid, None)
+        for name, obj in (('teams', teams), ('fixtures', fx), ('lineups', lu), ('events', evs), ('pstats', pst), ('subs', subs), ('squads', squads), ('people', people), ('meta', meta), ('extra_teams', extra)):
             save(name, obj)
-    world = build_world(clubs, teams, fx, lu, squads, people, evs, pst, load('extra_teams', {}))
+    world = build_world(clubs, teams, fx, lu, squads, people, evs, pst, load('extra_teams', {}), subs)
     world['complete'] = stopped is None
     # the rating model (pipeline/model.py): club Elo, the goals model, player overalls, credibility tests
     top_map = {t['id']: c for c in clubs for t in [teams.get(tkey(c)) or {}] if t.get('id')}

@@ -38,7 +38,7 @@ One static page (`index.html`) plus one data file (`world.json`), refreshed ever
 
 - **Clubs:** every club on the UEFA 5-year club ranking, read weekly from the service behind uefa.com (fallback: the last good list, then `pipeline/clubs.csv`). Clubs are matched to API-Football by name; fix a wrong or missing match in `pipeline/team_ids.csv`.
 - **Players:** every current member of those clubs with at least one start in the window and a known nationality.
-- **Matches:** all their matches in the window: their clubs, their national teams, friendlies, and the clubs they played for before a transfer (only for the stretch they were there). Line-ups, goals, assists, minutes and match ratings come with them.
+- **Matches:** all their matches in the window: their clubs, their national teams, friendlies, and the clubs they played for before a transfer (only for the stretch they were there). Line-ups, goals, assists, substitutions, minutes and match ratings come with them. Where the API has no player statistics for a match (many smaller leagues), appearances from the bench come from the substitutions.
 
 Everything fetched is cached in `data/cache/`, so each run only asks for what is new. `world.json` is published only when results, line-ups and rosters are complete and all nine credibility tests pass; otherwise the run writes `world.partial.json` and the game keeps the last good data.
 

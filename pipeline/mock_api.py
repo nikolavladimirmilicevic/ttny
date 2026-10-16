@@ -56,6 +56,9 @@ def fx_item(f, with_lineups=False):
                 sq = PL[tid][:11]
                 it['events'].append({'type': 'Goal', 'detail': 'Normal Goal', 'time': {'elapsed': 10 + 8 * k}, 'team': {'id': tid},
                                      'player': {'id': sq[(f['id'] + k) % 11]['id']}, 'assist': {'id': sq[(f['id'] + k + 3) % 11]['id'] if k % 2 == 0 else None}})
+            # one substitution per side: the API gives the player going off and the one coming on
+            it['events'].append({'type': 'subst', 'detail': 'Substitution 1', 'time': {'elapsed': 60}, 'team': {'id': tid},
+                                 'player': {'id': PL[tid][10]['id']}, 'assist': {'id': PL[tid][11]['id']}})
     return it
 
 
