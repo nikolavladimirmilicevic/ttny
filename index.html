@@ -801,7 +801,7 @@ const chemBonus = total => { const T = window.__YB || {}, ce = T.chem != null ? 
 const bonusTxt = b => '+' + b.toFixed(1);
 // ... and shown as a letter, on what a draft can really reach (measured): A 22+ of 33, B 16+, C 10+, D 5+, E below
 const chemGrade = total => total >= 22 ? 'A' : total >= 16 ? 'B' : total >= 10 ? 'C' : total >= 5 ? 'D' : 'E';
-const chemBar = picks => { const g = chemGrade(chemOf(picks).total);
+const chemBar = picks => { const g = ovGrade(chemNum(chemOf(picks).total));   // coloured like every other number
   return `<div class="chembar"><span>Chemistry</span><b class="tnum g${g}" title="Added on top of your team rating">${chemNum(chemOf(picks).total)}</b></div>`; };
 /* Your XI's strength: the clubs' line from its overall, a lift that grows with how good the XI is (no weak bench, no
    rotation; bigger where the field is stronger) and its chemistry. Calibrated with draft bots (pipeline/tools/draft_bots.js). */
@@ -822,7 +822,7 @@ const PARTS = [['Level', 'pe', 'Players from stronger clubs are used to a higher
   ['Performance', 'pf', 'How well they have played, weighed by the opposition'],
   ['Experience', 'ro', 'Players who start every week are trusted and match-fit'],
   ['Form', 'fo', 'How they have played lately']];
-const partRows = r => PARTS.map(([k, f, why]) => `<div class="r"><span>${k}<small>${why}</small></span><b class="num tnum g${qGrade(r.q[f])}">${R(r.q[f])}</b></div>`).join('');
+const partRows = r => PARTS.map(([k, f, why]) => `<div class="r"><span>${k}<small>${why}</small></span><b class="num tnum g${ovGrade(R(r.q[f]))}">${R(r.q[f])}</b></div>`).join('');
 const locked = () => S.run && (S.run.phase === 'cup' || S.run.phase === 'done');
 function roleOf(pid){ const r = S.run, a = arrangement(r.picks, r.form); return FORMS[r.form][a.indexOf(pid)][3]; }
 
@@ -1717,7 +1717,7 @@ function pendCard(e){
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
-  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r bonusrow"><span>Chemistry<small>Added on top: team-mates, compatriots, same league</small></span><b class="num tnum g${chemGrade(t.chem)}" title="Added on top of your team rating">${chemNum(t.chem)}</b></div></div></div></section>`;
+  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r bonusrow"><span>Chemistry<small>Added on top: team-mates, compatriots, same league</small></span><b class="num tnum g${ovGrade(chemNum(t.chem))}" title="Added on top of your team rating">${chemNum(t.chem)}</b></div></div></div></section>`;
 }
 /* ================= THE SEASON, SCREEN BY SCREEN =================
    team -> draw -> league phase (table after every matchday) -> knockouts (bracket after every match)
