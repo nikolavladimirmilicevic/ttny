@@ -952,10 +952,21 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                 if all(c for _, c in cs):
                     for pid, c in cs: usual[pid][c] += 1
     ROUGH = {'G': 'GK', 'D': 'CB', 'M': 'CMF', 'F': 'CF'}
+    LETTER = {'GK': 'G', 'CB': 'D', 'LB': 'D', 'RB': 'D', 'DMF': 'M', 'CMF': 'M', 'LMF': 'M', 'RMF': 'M', 'AMF': 'M',
+              'LWF': 'F', 'RWF': 'F', 'CF': 'F'}
+    letters = defaultdict(Counter)   # the API's rough position (G, D, M, F) in every line-up that has it
+    for fid, f in window:
+        for L in (lu.get(fid) or {}).values():
+            if isinstance(L, dict):
+                for e in L.get('xi') or []:
+                    if len(e) > 3 and e[3]: letters[e[0]][e[3]] += 1
     def rough_codes(L):
         out = []
         for e in L['xi']:
-            c = usual[e[0]].most_common(1)[0][0] if usual.get(e[0]) else ROUGH.get(e[3] if len(e) > 3 else '')
+            lt = e[3] if len(e) > 3 else ''
+            # his usual position in that line (the API's letter), else his usual position, else the line's plain one
+            same = [(n, c) for c, n in usual[e[0]].items() if LETTER.get(c) == lt] if usual.get(e[0]) else []
+            c = max(same)[1] if same else usual[e[0]].most_common(1)[0][0] if usual.get(e[0]) else ROUGH.get(lt)
             if not c:
                 return []
             out.append((e[0], c))
@@ -975,8 +986,9 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                     lv = lateral(lineup['f'], e[1])
                     if lv is not None: lats[e[0]].append(lv)
             # every match counts, friendlies included, but only for a side whose line-up came with all positions
+            rough = False
             if lineup and not (codes and all(c for _, c in codes)) and not lineup.get('f'):
-                codes = rough_codes(lineup)
+                codes, rough = rough_codes(lineup), True
             if not (codes and all(c for _, c in codes)):
                 continue
             if side in top and opp in top:
@@ -984,7 +996,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             # a player's starts: every match with positions, ranked opponent or not (opponent rank 0 = off the list)
             for pid, code in codes:
                 starts[pid].append((f['d'], sc, co, code, fid, int(top[opp]['rank']) if opp in top else 0, side == h,
-                                    int(top[side]['rank']) if side in top else 0, side))
+                                    int(top[side]['rank']) if side in top else 0, side, rough))
     out_clubs = []
     for tid, c in top.items():
         res = sorted(club_res[tid], reverse=True)
@@ -1111,13 +1123,15 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             if len(st) < MIN_STARTS or not (people.get(str(pid)) or {}).get('nat'):   # a few starts, and a known nationality
                 continue
             seen.add(pid)
-            cnt = Counter(s[3] for s in st if s[3])   # positions from every start in the window
+            # positions from every start in the window with a formation (rough ones only for a player who has none)
+            cnt = Counter(s[3] for s in st if s[3] and not s[9]) or Counter(s[3] for s in st if s[3])
             # offered positions: every position he started in, most frequent first;
             # on a tie, the one he played most recently first (starts are newest first)
             last = {}
             for i, s in enumerate(st):
                 last.setdefault(s[3], i)
-            pos = [k for k, _ in sorted(cnt.items(), key=lambda kv: (-kv[1], last[kv[0]]))]
+            # on a tie, the one in the line the API most often lists him in (G, D, M, F), then the most recent
+            pos = [k for k, _ in sorted(cnt.items(), key=lambda kv: (-kv[1], -letters[pid][LETTER.get(kv[0], '')], last[kv[0]]))]
             pos = pos or ['CMF']
             # goals and assists per start (own goals and missed penalties do not count)
             g = a = 0
