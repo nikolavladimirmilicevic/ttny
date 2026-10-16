@@ -2085,7 +2085,7 @@ async function seasonImage(h){
 }
 /* the best XI of the dynasty: everyone who played in it, ranked by seasons, then goals, assists, clean sheets (keepers
    only, the seasons he started in goal) and finally who was drafted earlier; the first 11 who still fit a formation.
-   The captain is the one drafted earliest, as always. */
+   The captain: the most seasons in the XI, then the one drafted earliest. */
 function dynastyBestXI(hist){
   const st = {};
   for (const h of hist) for (const p of h.xi || []){
@@ -2097,7 +2097,7 @@ function dynastyBestXI(hist){
   for (const v of ranked){ if (picks.length === 11) break; const t = [...picks, v.id]; if (FORM_ORDER.some(f => assign(t, f))) picks = t; }
   if (picks.length < 11) return null;
   const form = bestForm(picks), arr = sideBySide(bestAssign(picks, form), form); if (!arr) return null;
-  const cap = picks.slice().sort((a, b) => st[a].d - st[b].d)[0];
+  const cap = picks.slice().sort((a, b) => st[b].s - st[a].s || st[a].d - st[b].d)[0];   // most seasons, then drafted earliest
   const xi = arr.map((id, j) => { if (!id) return null; const p = W.P[id], sl = FORMS[form][j], v = st[id];
     return { id, n: v.n, code: sl[0], x: sl[1], y: sl[2], g: v.g, a: v.a, gr: ovGrade(playerRating(id).ov), fit: fitTier(p, sl[0]), cap: id === cap, s: v.s }; }).filter(Boolean);
   return { form, xi };
