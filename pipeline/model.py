@@ -22,6 +22,8 @@ SHARE = {'level': 0.45, 'role': 0.15, 'perf': 0.30, 'form': 0.10}   # form: last
 OVR_MEAN, OVR_SD = 72, 7.5
 HALF_LIFE_DAYS = 90      # a match rating counts half after 90 days, a quarter after 180
 FORM_DAYS = 60           # form: the last 5 ratings, only from the last 60 days
+SUBS = {}                # fixture -> substitutions [team, player, other player, minute], set by the pipeline
+SUB_BENCH, SUB_MIN = False, False   # experiments: bench appearances / minutes of starters from the substitutions
 PERF_PRIOR = 10          # average matches of shrinkage toward his line's mean match rating
 EXPERIENCE_STARTS = 10   # starts for a full rating; fewer pull the score toward a squad player's
 SQUAD_Z = -0.5           # the score a player with almost no starts is pulled toward (a squad player, about a D)
@@ -178,6 +180,14 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
             continue
         sides = lu.get(fid) or {}
         ps = pst.get(fid) or {}
+        # where the API has no player stats: who came on (and when) and when starters went off, from the substitutions
+        on_at, off_at = {}, {}
+        if not ps and (SUB_BENCH or SUB_MIN):
+            for t, p1, p2, mn in SUBS.get(fid) or []:
+                L = sides.get(str(t)); xi = {e[0] for e in L.get('xi') or []} if isinstance(L, dict) else set()
+                if not xi or mn is None: continue
+                if p1 in xi and p2 and p2 not in xi: on_at[p2] = (t, mn); off_at[p1] = mn
+                elif p2 in xi and p1 and p1 not in xi: on_at[p1] = (t, mn); off_at[p2] = mn
         ga_by = Counter(); as_by = Counter()
         for e in evs.get(fid) or []:
             if e[3] != 'o':
@@ -193,9 +203,13 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
                 pid = e[0]; xi_ids.add(pid)
                 if pid not in ids:
                     continue
-                st = ps.get(str(pid)) or [90, None, side]
+                st = ps.get(str(pid)) or [min(90, off_at[pid]) if SUB_MIN and pid in off_at else 90, None, side]
                 rt = st[1] if st[1] and 3 <= st[1] <= 10 else None   # the API sometimes sends 0 for a missing rating
                 starts[pid].append((f['d'], side, opp, gf, gc, st[0] or 90, rt, ga_by[pid] + as_by[pid]))
+            if SUB_BENCH:
+                for q, (t, mn) in on_at.items():
+                    if t == side and q in ids:
+                        subs[q].append((f['d'], side, opp, max(1, 90 - mn), None))
             if BENCH:
                 for spid, v in ps.items():
                     q = int(spid)
@@ -238,7 +252,8 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
         firsts = sorted((min(ds), t) for t, ds in by_team.items())
         sb = sorted(subs.get(p['id'], []), reverse=True) if BENCH else []
         sbc = [s for s in sb if s[1] not in national]
-        cnt = Counter(s[1] for s in cl)
+        cnt = Counter()
+        for s in cl: cnt[s[1]] += min(1.0, s[5] / 90) if SUB_MIN else 1
         for s in sbc: cnt[s[1]] += s[3] / 90
         role = 0
         for k, (lo, t) in enumerate(firsts):
