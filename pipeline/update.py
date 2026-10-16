@@ -942,6 +942,23 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             if e[3] != 'o' and e[0] in (f['h'], f['a']):
                 for q in (e[1], e[2]):
                     if q: played[q].setdefault(fid, [f['d'], e[0], False])
+    # for the scout: each club's matches with a known line-up, newest first, and who started them
+    team_xi = defaultdict(list)   # team -> [(date, set of starters)]
+    for fid, f in window:
+        for side in (f['h'], f['a']):
+            xi = (lu.get(fid) or {}).get(str(side))
+            if isinstance(xi, dict) and xi.get('xi'):
+                team_xi[side].append((f['d'], {e[0] for e in xi['xi']}))
+    for v in team_xi.values():
+        v.sort(key=lambda x: x[0], reverse=True)
+    def start_run(pid, tid):
+        """How many of his club's last matches in a row he started (0 if he missed the latest)."""
+        n = 0
+        for _, xi in team_xi.get(tid, []):
+            if pid not in xi:
+                break
+            n += 1
+        return n
     def game(pid, fid, gk):
         d, side, started = played[pid][fid]; f = fx[fid]
         g = sum(1 for e in evs[fid] if e[3] != 'o' and e[1] == pid)
@@ -1013,6 +1030,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                                 'mo': monthly(mo[pid], st, month),
                                 'lm': last_match(pid, pos[0] == 'GK'), 'lg': last_games(pid, pos[0] == 'GK'),
                                 'lgd': played[pid][history(pid)[0]][0] if played.get(pid) else None,   # date of his last game
+                                'sr': start_run(pid, tid),   # his club's last matches in a row he started
                                 # his usual side, from every start: the game puts the left one of two CBs (or DMFs, CFs) on the left
                                 'lat': round(sum(lats[pid]) / len(lats[pid]), 2) if lats.get(pid) else None,
                                 '_raw': card_raw(pid, st, apps[pid], late[pid], pst, national)})
