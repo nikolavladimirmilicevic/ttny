@@ -1462,7 +1462,7 @@ function cardHTML(p){
     const shown = r.phase === 'done' ? r.cup.ev : r.cup.ev.slice(0, r.cup.shown);
     let g = 0, a = 0, n = 0;
     for (const e of shown) if (e.k === 'md' || e.k === 'leg' || e.k === 'final'){ n++; for (const [sc, as, , og] of e.gl || []){ if (!og && sc === p.id) g++; if (as === p.id) a++; } }
-    if (n) season = `<div class="pc-sec pc-line"><span class="pc-h">This season</span><span><b>${n}</b> played · <b>${g}</b> G · <b>${a}</b> A</span></div>`;
+    if (n) season = `<div class="pc-sec pc-line"><span class="pc-h">This run</span><span><b>${n}</b> played · <b>${g}</b> G · <b>${a}</b> A</span></div>`;
   }
   return `${head}
     <div class="pc-sec pc-grid">${grades}</div>
@@ -1570,7 +1570,7 @@ function viewHome(){
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>The further you go, the more players you keep: out in the league phase 5 (in the Conference League that ends the dynasty), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
         <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) 1 for each compatriot and 1 for each player from a club in the same league, at most 3 each. It makes your XI play stronger. You see it as a bonus from A to E once your XI is complete.</li>
-        <li>A dynasty lasts up to ten seasons. After each season and at the end you get a summary and an image to share. A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
+        <li>A dynasty lasts up to ten runs, all in this one season. After each run and at the end you get a summary and an image to share. A dynasty never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
         <li>Every decision has a clock: 60 seconds for each draft pick (then a random player is picked), 2 minutes to confirm your shape (then a random one is locked in), 60 seconds for each step of the season (then it moves on) and 2 minutes to choose who stays (then nobody carries over). Between runs you have 10 minutes to start the next one, or the dynasty ends. Missing the top 24 of the league phase drops the dynasty a level, from the Champions League to the Europa League or from the Europa League to the Conference League, keeping 5 players; in the Conference League it ends the dynasty.</li>
@@ -1718,7 +1718,7 @@ function teamBox(r){
    -> your season -> the competition -> who stays */
 const cupTop = r => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${stepChip(r)}${quitBtn()}</div></header>`;
 // which season of the dynasty this is
-const seasonTag = () => 'Season ' + ((S.run && S.run.season) || 1);
+const seasonTag = () => 'Run ' + ((S.run && S.run.season) || 1);
 const cupHead = (eyebrow, title, side) => `<div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">${eyebrow} · ${seasonTag()}</div><h2>${title}</h2></div>${side ? `<span class="muted" style="font-size:13px">${side}</span>` : ''}</div>`;
 const dock = (main, ghost) => `<div class="dock"><div class="btnrow">${main}${ghost || ''}</div></div>`;
 const skipBtn = '<button class="btn ghost" data-act="all">Skip to the end</button>';
@@ -1767,7 +1767,7 @@ function tableHTML(rows, title, sub){
     ${rows.map((t, i) => `<tr class="${i < 8 ? 'z1' : i < 24 ? 'z2' : ''}${t.id === 'YOU' ? ' me' : ''}${i === 0 && t.P ? ' best' : ''}"><td>${i === 0 && t.P ? '<span class="medal">1</span>' : i + 1}</td><td>${esc(nm(t.id))}</td><td>${t.P}</td><td>${t.W}</td><td>${t.D}</td><td>${t.L}</td><td>${t.GF - t.GA > 0 ? '+' : ''}${t.GF - t.GA}</td><td>${t.Pts}</td></tr>`).join('')}
     </tbody></table></div></section>`;
 }
-const nextLabel = e => !e ? '' : e.k === 'md' ? 'Play matchday ' + e.n : e.k === 'table' ? 'Final table' : e.k === 'podone' ? 'Play the knockout play-off' : e.k === 'end' ? 'Season summary' : e.k === 'final' ? 'Play the final' : 'Play ' + e.round.toLowerCase() + ', leg ' + e.leg;
+const nextLabel = e => !e ? '' : e.k === 'md' ? 'Play matchday ' + e.n : e.k === 'table' ? 'Final table' : e.k === 'podone' ? 'Play the knockout play-off' : e.k === 'end' ? 'Run summary' : e.k === 'final' ? 'Play the final' : 'Play ' + e.round.toLowerCase() + ', leg ' + e.leg;
 function viewLeague(){
   const r = S.run, c = r.cup, evs = c.ev.slice(0, c.shown), next = c.ev[c.shown];
   const played = evs.filter(e => e.k === 'md'), k = played.length, N = r.comp === 'ecl' ? 6 : 8;
@@ -1948,13 +1948,13 @@ function dynastyStats(hist){
 }
 function viewDynasty(){
   const r = S.run, hist = r.hist || [], s = dynastyStats(hist), done = r.dynEnd === 'complete';
-  const row = h => `<tr class="${h.stage === 'champion' ? 'best' : ''}"><td class="rd">S${h.season}</td><td class="op">${COMPS[h.comp].short}<small>${esc(stageWord(h))}${h.stage !== 'champion' && h.champ ? ' · ' + esc(h.champ === 'YOU' ? 'you' : h.champ) + ' won' : ''}</small></td><td class="sc">${h.w}-${h.d}-${h.l}</td><td><span class="cg g${ovGrade(h.team)}">${h.team}</span></td></tr>`;
+  const row = h => `<tr class="${h.stage === 'champion' ? 'best' : ''}"><td class="rd">R${h.season}</td><td class="op">${COMPS[h.comp].short}<small>${esc(stageWord(h))}${h.stage !== 'champion' && h.champ ? ' · ' + esc(h.champ === 'YOU' ? 'you' : h.champ) + ' won' : ''}</small></td><td class="sc">${h.w}-${h.d}-${h.l}</td><td><span class="cg g${ovGrade(h.team)}">${h.team}</span></td></tr>`;
   const list = (title, L, unit) => `<div class="card"><div class="eyebrow" style="margin-bottom:8px">${title}</div><div class="tblwrap"><table class="tbl num toplist"><tbody>
     ${L.length ? L.map(([n, v], i) => `<tr class="${i === 0 ? 'best' : ''}"><td>${i === 0 ? '<span class="medal">1</span>' : i + 1}</td><td>${esc(n)}</td><td>${v}${unit ? ' <small style="display:inline">' + unit + '</small>' : ''}</td></tr>`).join('') : '<tr><td>None</td></tr>'}</tbody></table></div></div>`;
   return `${doneTop()}
   <div class="stack">
     <section class="card verdict${s.titles ? ' champ' : ''}">
-      <div class="eyebrow">${done ? 'Dynasty complete' : 'Dynasty over'} · ${DIFF[hist[0] ? hist[0].diff : 'medium'].label} · ${s.n} season${s.n > 1 ? 's' : ''}</div>
+      <div class="eyebrow">${done ? 'Dynasty complete' : 'Dynasty over'} · ${DIFF[hist[0] ? hist[0].diff : 'medium'].label} · ${s.n} run${s.n > 1 ? 's' : ''}</div>
       <h1 style="margin-top:8px">${s.titles ? `${s.titles} trophy${s.titles > 1 ? ' haul' : ''}` : 'No trophies'}</h1>
       <div class="cups">${['cl', 'el', 'ecl'].map(c => `<div class="cupbox c-${c}"><b>${s.cups[c]}</b><span>${CUP[c]}</span>${s.finals[c] ? `<small>${s.finals[c]} lost final${s.finals[c] > 1 ? 's' : ''}</small>` : ''}</div>`).join('')}</div>
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="dynasty" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button></div>
@@ -1963,14 +1963,14 @@ function viewDynasty(){
       <div class="stat"><span>Matches</span><b class="num">${s.w + s.d + s.l}</b><small>${s.w}-${s.d}-${s.l}</small></div>
       <div class="stat"><span>Goals</span><b class="num">${s.gf}:${s.ga}</b></div>
       <div class="stat"><span>Clean sheets</span><b class="num">${s.cs}</b></div>
-      <div class="stat"><span>Best team</span><b class="num">${s.best ? s.best.team : '-'}</b><small>${s.best ? 'Season ' + s.best.season : ''}</small></div>
+      <div class="stat"><span>Best team</span><b class="num">${s.best ? s.best.team : '-'}</b><small>${s.best ? 'Run ' + s.best.season : ''}</small></div>
       <div class="stat"><span>Biggest win</span><b class="num">${s.big ? s.big[0] + ':' + s.big[1] : '-'}</b><small>${s.big ? 'v ' + esc(s.big[2]) + ' · S' + s.big[3] : ''}</small></div>
       <div class="stat"><span>Win rate</span><b class="num">${s.w + s.d + s.l ? Math.round(100 * s.w / (s.w + s.d + s.l)) : 0}%</b></div>
     </div>
     ${(b => b ? xiBox('Best XI of the dynasty', b.xi, b.form) : '')(dynastyBestXI(hist))}
-    <section class="card"><div class="eyebrow" style="margin-bottom:10px">Season by season</div><div class="tblwrap"><table class="tbl matches"><tbody>${hist.map(row).join('')}</tbody></table></div></section>
+    <section class="card"><div class="eyebrow" style="margin-bottom:10px">Run by run</div><div class="tblwrap"><table class="tbl matches"><tbody>${hist.map(row).join('')}</tbody></table></div></section>
     <div class="toplists">${list('Top scorers', s.scorers, 'goals')}${list('Top assists', s.assists, 'assists')}</div>
-    ${s.legends.length ? list('Legends: most seasons in your XI', s.legends, 'seasons') : ''}
+    ${s.legends.length ? list('Legends: most runs in your XI', s.legends, 'runs') : ''}
   </div>
   ${dock('<button class="btn primary" data-act="cont">New dynasty</button>', '<button class="btn ghost" data-act="home">Home</button>')}`;
 }
@@ -2060,7 +2060,7 @@ async function seasonImage(h){
   await fontsReady();
   const W_ = 1080, H = 1350, acc = ACCENT[h.comp], [cv, x] = canvasBase(W_, H, acc), white = '#F4F1EA', muted = '#9AA8BD';
   drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
-  txt(x, `SEASON ${h.season} · ${COMPS[h.comp].short.toUpperCase()}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
+  txt(x, `RUN ${h.season} · ${COMPS[h.comp].short.toUpperCase()}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   const head = h.stage === 'champion' ? (h.comp === 'cl' ? 'CHAMPIONS OF EUROPE' : CUP[h.comp] + ' WINNERS') : stageWord(h).toUpperCase();
   const pw = diffPill(x, h.diff, W_ - 60, 160) + 24;
   let fs = 76; x.font = `700 ${fs}px Oswald, "Arial Narrow", Arial, sans-serif`; while (fs > 40 && x.measureText(head).width > W_ - 120 - pw){ fs -= 2; x.font = `700 ${fs}px Oswald, "Arial Narrow", Arial, sans-serif`; }
@@ -2109,7 +2109,7 @@ async function dynastyImage(hist, ended){
   const W_ = 1080, H = 1350 + OFF, [cv, x] = canvasBase(W_, H, acc), white = '#F4F1EA', muted = '#9AA8BD';
   drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
   const dpw = diffPill(x, hist[0] ? hist[0].diff : 'medium', W_ - 60, 160) + 24;
-  txt(x, `${s.n} SEASON${s.n > 1 ? 'S' : ''}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
+  txt(x, `${s.n} RUN${s.n > 1 ? 'S' : ''}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   const dh = ended === 'complete' ? 'DYNASTY COMPLETE' : 'DYNASTY OVER';
   let dfs = 80; x.font = `700 ${dfs}px Oswald, "Arial Narrow", Arial, sans-serif`; while (dfs > 40 && x.measureText(dh).width > W_ - 120 - dpw){ dfs -= 2; x.font = `700 ${dfs}px Oswald, "Arial Narrow", Arial, sans-serif`; }
   txt(x, dh, 60, 170, x.font, white);
@@ -2124,10 +2124,10 @@ async function dynastyImage(hist, ended){
     cv._boxes = drawPitch(x, best.xi, 60, 460, W_ - 120, PH); cv._pitch = { x0: 60, x1: W_ - 60, y0: 460, y1: 460 + PH };
   }
   // season by season
-  txt(x, 'SEASON BY SEASON', 60, 440 + OFF, '600 26px Oswald, "Arial Narrow", Arial, sans-serif', acc);
+  txt(x, 'RUN BY RUN', 60, 440 + OFF, '600 26px Oswald, "Arial Narrow", Arial, sans-serif', acc);
   hist.slice(0, 10).forEach((h, i) => { const Y = 470 + OFF + i * 44;
     if (i % 2 === 0){ x.fillStyle = 'rgba(255,255,255,.04)'; x.fillRect(60, Y, W_ - 120, 44); }
-    txt(x, `S${h.season}`, 76, Y + 31, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', muted);
+    txt(x, `R${h.season}`, 76, Y + 31, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', muted);
     txt(x, CUP[h.comp], 150, Y + 31, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', ACCENT[h.comp]);
     txt(x, stageWord(h), 260, Y + 31, '500 24px Rubik, Arial, sans-serif', h.stage === 'champion' ? '#F2C14E' : white, 'left', 470);
     txt(x, `${h.w}-${h.d}-${h.l}`, W_ - 200, Y + 31, '500 24px Rubik, Arial, sans-serif', muted, 'right');
@@ -2138,7 +2138,7 @@ async function dynastyImage(hist, ended){
   tot.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, Y0, cw - 12, 104, 16); x.fillStyle = '#1A2E4A'; x.fill();
     txt(x, v, X + cw / 2, Y0 + 60, '700 40px Oswald, "Arial Narrow", Arial, sans-serif', white, 'center'); txt(x, l.toUpperCase(), X + cw / 2, Y0 + 90, '500 18px Rubik, Arial, sans-serif', muted, 'center'); });
   const col = (title, L, unit, X) => { txt(x, title, X, Y0 + 160, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc); L.slice(0, 3).forEach(([n, v], i) => txt(x, `${i + 1}. ${surname(n)} · ${v} ${unit}`, X, Y0 + 198 + i * 34, '500 23px Rubik, Arial, sans-serif', i ? white : '#F2C14E', 'left', 300)); };
-  col('TOP SCORERS', s.scorers, 'g', 60); col('TOP ASSISTS', s.assists, 'a', 400); col('LEGENDS', s.legends, 'seasons', 740);
+  col('TOP SCORERS', s.scorers, 'g', 60); col('TOP ASSISTS', s.assists, 'a', 400); col('LEGENDS', s.legends, 'runs', 740);
   txt(x, 'This Time Next Year', W_ - 60, H - 40, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   return cv;
 }
@@ -2146,7 +2146,7 @@ async function dynastyImage(hist, ended){
 async function showImage(kind){
   const r = S.run; if (!r) return;
   const hist = r.hist || [], cv = kind === 'dynasty' ? await dynastyImage(hist, r.dynEnd) : await seasonImage(hist[hist.length - 1] || seasonSummary(r));
-  const url = cv.toDataURL('image/png'), name = kind === 'dynasty' ? 'ttny-dynasty.png' : `ttny-season-${r.season || 1}.png`;
+  const url = cv.toDataURL('image/png'), name = kind === 'dynasty' ? 'ttny-dynasty.png' : `ttny-run-${r.season || 1}.png`;
   const ov = document.createElement('div'); ov.className = 'imgov';
   ov.innerHTML = `<div class="imgbox"><img src="${url}" alt="Your ${kind} as an image"><div class="btnrow"><button class="btn primary" data-img="share">Share</button><button class="btn ghost" data-img="save">Save</button><button class="btn ghost" data-img="close">Close</button></div><div class="muted" style="font-size:12px;text-align:center;margin-top:8px">On a phone you can also press and hold the image to save it.</div></div>`;
   document.body.appendChild(ov);
@@ -2179,7 +2179,7 @@ function viewSeason(){
   return `${doneTop()}
   <div class="stack">
     <section class="card verdict${champ ? ' champ' : ''}">
-      <div class="eyebrow">${champ ? 'Champions' : 'Season over'} · Your season</div>
+      <div class="eyebrow">${champ ? 'Champions' : 'Run over'} · Your run</div>
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="season" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button></div>
     </section>
@@ -2202,7 +2202,7 @@ function viewComp(){
     ${topBox(r)}
     ${t ? tableHTML(tableAfter(c, (c.lg || []).length), 'League phase table', `You finished ${ord(t.pos)}`) : ''}
   </div>
-  ${dock(r.dynEnd ? '<button class="btn primary" data-act="scr" data-to="dynasty">Dynasty review</button>' : '<button class="btn primary" data-act="scr" data-to="keep">' + (r.keepN ? 'Choose who stays' : 'Continue') + '</button>', '<button class="btn ghost" data-act="scr" data-to="season">Your season</button>')}`;
+  ${dock(r.dynEnd ? '<button class="btn primary" data-act="scr" data-to="dynasty">Dynasty review</button>' : '<button class="btn primary" data-act="scr" data-to="keep">' + (r.keepN ? 'Choose who stays' : 'Continue') + '</button>', '<button class="btn ghost" data-act="scr" data-to="season">Your run</button>')}`;
 }
 /* who stays for the next run */
 function viewKeep(){
@@ -2276,7 +2276,7 @@ document.addEventListener('click', e => {
   }
   else if (a === 'kickoff'){   // a second tap confirms: shape and positions are final for the season
     if (S.armed === 'kickoff'){ S.armed = null; kickoff(); }
-    else { S.armed = 'kickoff'; render(); toast('Shape and positions are final for the whole season. Tap again to confirm.'); }
+    else { S.armed = 'kickoff'; render(); toast('Shape and positions are final for the whole run. Tap again to confirm.'); }
   }
   else if (a === 'scr'){ const r = S.run; if (r.phase === 'done') r.dscr = b.dataset.to; else r.scr = b.dataset.to; S.armed = null; save(); render(); scrollTo(0, 0); }
   else if (a === 'next') step(false);
