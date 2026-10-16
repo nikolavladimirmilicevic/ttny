@@ -2,7 +2,7 @@
 
 <img src="logo320.png" alt="This Time Next Year" width="200" align="right">
 
-A European football draft game. Draft one real player from each of 11 pots of clubs on the UEFA 5-year ranking, then take your XI through a full European season. Win and keep your best players for the next run, for a dynasty of up to ten runs, all in this one season.
+A European football draft game. Draft one real player from each of 11 pots of clubs on the UEFA 5-year ranking, then take your XI through a full European season. Win and keep your best players for the next run, for a challenge of up to ten runs, all in this one season.
 
 One static page (`index.html`) plus one data file (`world.json`), refreshed every day by a GitHub Action from [API-Football](https://www.api-football.com).
 
@@ -10,7 +10,7 @@ One static page (`index.html`) plus one data file (`world.json`), refreshed ever
 
 ## The game
 
-**A dynasty** starts with one choice, the difficulty:
+**A challenge** starts with one choice, the difficulty:
 
 | Difficulty | Starts in | Clubs you draft from |
 |---|---|---|
@@ -24,11 +24,11 @@ One static page (`index.html`) plus one data file (`world.json`), refreshed ever
 
 **The season** follows the real formats: a 36-club league phase (eight matches in the Champions and Europa League, six in the Conference League), the play-off for places 9 to 24, then two-legged knockouts and a one-match final. You see the draw, the table after every matchday, the bracket, odds for your next match and every result.
 
-**Keeping players.** The further you go, the more you keep: league phase 5, play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11. A title moves the dynasty up a competition; missing the top 24 moves it down, and in the Conference League it ends the dynasty. A player who leaves never comes back.
+**Keeping players.** The further you go, the more you keep: league phase 5, play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11. A title moves the challenge up a competition; missing the top 24 moves it down, and in the Conference League it ends the challenge. A player who leaves never comes back.
 
-**Clocks.** 60 seconds per draft pick, 2 minutes to confirm the shape, 60 seconds per step of the season, 2 minutes to choose who stays, 10 minutes to start the next run. When a clock runs out the game decides: a random player, a random shape, the next step, nobody kept, the end of the dynasty.
+**Clocks.** 60 seconds per draft pick, 2 minutes to confirm the shape, 60 seconds per step of the season, 2 minutes to choose who stays, 10 minutes to start the next run. When a clock runs out the game decides: a random player, a random shape, the next step, nobody kept, the end of the challenge.
 
-**After each run and after the dynasty** you get a summary screen (with your XI, or the best XI of the dynasty, on the pitch as in the image) and an image to share or save: the XI on the pitch with grades, goals and assists, the captain, the difficulty and the run's numbers; for the dynasty, trophies per competition, the best XI of the dynasty (most runs, then goals, assists, clean sheets for keepers, then who was drafted earlier), every run, top scorers, assists and the players who stayed longest. The captain is the player drafted earliest; in the best XI of the dynasty, the one with the most runs, then the one drafted earliest.
+**After each run and after the challenge** you get a summary screen (with your XI, or the best XI of the challenge, on the pitch as in the image) and an image to share or save: the XI on the pitch with grades, goals and assists, the captain, the difficulty and the run's numbers; for the challenge, trophies per competition, the best XI of the challenge (most runs, then goals, assists, clean sheets for keepers, then who was drafted earlier), every run, top scorers, assists and the players who stayed longest. The captain is the player drafted earliest; in the best XI of the challenge, the one with the most runs, then the one drafted earliest.
 
 **What you see of ratings.** Your players get a grade from A to E and a card with 14 more grades (finishing, creativity, big games, consistency and so on). Your team's rating is the average of your 11 (a little lower for anyone away from his main position) plus the chemistry bonus, graded A to E: 2 per player who played with him in the last year, 1 per compatriot, 1 per player from a club in the same league, at most 3 per player. Opponents show no rating at all.
 
