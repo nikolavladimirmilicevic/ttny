@@ -407,7 +407,7 @@ UEFA_ALIAS = {
     'pusk akademia': 'Puskas', 'd 1904': 'Dunajska Streda',   # keys as norm() leaves them
     'dynamo brest': 'Dinamo Brest', 'breidablik': 'Breidablik', 'lillestrom': 'Lillestrom', 'brondby': 'Brondby', 'sumqayit': 'Sumgayit',
 }
-NOT_FIRST_TEAM = re.compile(r'(\bW\b|\bU1\d\b|\bU2\d\b|\bII\b|\bB\b|women|youth|reserves|femenino|feminin|\bF\b)\s*$', re.I)
+NOT_FIRST_TEAM = re.compile(r'(\bW\b|\bU1\d\b|\bU2\d\b|\bII\b|\bIII\b|\bB\b|\b2\b|\b3\b|women|youth|reserves?|res\.?|juniors?|amateurs?|femenino|feminin|\bF\b)\s*$', re.I)
 
 
 def first_team(t):
@@ -443,16 +443,68 @@ def search_terms(c):
     return out[:2]
 
 
-def resolve_teams(clubs, teams):
-    """Map every ranked club to an API team id (once per club; cached by name)."""
+MATCH_V = 2   # bump to match every club again
+
+
+def uefa_pool(meta):
+    """Every team that played in the Champions, Europa or Conference League (qualifiers included) in the last six
+    seasons: a club on the UEFA ranking earned its points there, so this is where its API team is. Refreshed monthly."""
+    pool = meta.get('uefa_pool') or {}
+    if pool.get('t') and days_old(pool.get('f')) < 30:
+        return pool['t']
+    t = {}
+    for league in (2, 3, 848):
+        for season in range(current_season() - 5, current_season() + 1):
+            for x in api('teams', league=league, season=season).get('response', []):
+                tm = x.get('team') or {}
+                if tm.get('id') and not tm.get('national'):
+                    t[str(tm['id'])] = [tm.get('name'), tm.get('country')]
+    if t:
+        meta['uefa_pool'] = {'f': TODAY.isoformat(), 't': t}
+    return t
+
+
+def _toks(s):
+    s = ''.join(ch if ch.isalnum() else ' ' for ch in ascii_name(s or '').lower())
+    return [w for w in s.split() if w not in ('fc', 'afc', 'cf', 'sc', 'fk', 'sk', 'ac', 'as', 'ssc', 'rcd', 'kv', 'club', 'nk', 'hnk', 'gnk', 'cd', 'sv', 'vfb', 'vfl')]
+
+
+def name_score(name, c, terms):
+    a = _toks(name)
+    sc = max(difflib.SequenceMatcher(None, ' '.join(a), ' '.join(_toks(x))).ratio() for x in [c['name']] + terms)
+    # every word of the UEFA name starting a word of the API name (Malmö in Malmö FF, Hearts in Heart of Midlothian)
+    # counts as a near match
+    words = [w for w in _toks(c['name']) if len(w) > 2]
+    if words and all(any(v.startswith(w[:5]) or w.startswith(v) and len(v) > 3 for v in a) for w in words):
+        sc = max(sc, 0.85 + 0.1 * sc)
+    return sc
+
+
+def resolve_teams(clubs, teams, meta=None):
+    """Map every ranked club to an API team id (once per club; cached by name). First among the teams that played in
+    UEFA competitions (same country, best name), then by the API's name search."""
     fixes = manual_ids()
+    pool = None
     for c in clubs:
         key = tkey(c)
         if norm(c['name']) in fixes:
             teams[key] = {'id': fixes[norm(c['name'])], 'name': c['name'], 'how': 'manual'}
             continue
-        if key in teams and ((teams[key].get('id') and first_team(teams[key])) or days_old(teams[key].get('tried')) < 7):
+        if key in teams and teams[key].get('v') == MATCH_V and ((teams[key].get('id') and first_team(teams[key])) or days_old(teams[key].get('tried')) < 7):
             continue
+        if pool is None:
+            pool = uefa_pool(meta if meta is not None else {})
+        terms = search_terms(c)
+        cands = [(name_score(nm, c, terms), int(tid), nm, ct) for tid, (nm, ct) in pool.items()
+                 if norm(ct) == norm(c['country']) and first_team({'name': nm})]
+        if cands:
+            sc, tid, nm, ct = max(cands)
+            if sc >= 0.6:
+                old = (teams.get(key) or {}).get('id')
+                teams[key] = {'id': tid, 'name': nm, 'country': ct, 'how': 'uefa', 'uefa': c['name'], 'v': MATCH_V}
+                if old != tid:
+                    log(f"  {c['rank']:>3} {c['name']} -> {nm} ({ct}) id {tid}" + (f' (was {old})' if old else ''))
+                continue
         best = None
         for term in search_terms(c):
             data = api('teams', search=term)
@@ -465,9 +517,9 @@ def resolve_teams(clubs, teams):
                 break
         if not best:
             log(f"  could not find {c['name']} ({c['country']}); add it to pipeline/team_ids.csv")
-            teams[key] = {'id': None, 'name': None, 'how': 'missing', 'tried': TODAY.isoformat()}
+            teams[key] = {'id': None, 'name': None, 'how': 'missing', 'tried': TODAY.isoformat(), 'v': MATCH_V}
             continue
-        teams[key] = {'id': best['id'], 'name': best['name'], 'country': best.get('country'), 'how': 'search', 'uefa': c['name']}
+        teams[key] = {'id': best['id'], 'name': best['name'], 'country': best.get('country'), 'how': 'search', 'uefa': c['name'], 'v': MATCH_V}
         log(f"  {c['rank']:>3} {c['name']} -> {best['name']} ({best.get('country')}) id {best['id']}")
 
 
@@ -539,7 +591,10 @@ def fetch_lineups(top, fx, lu, evs, pst=None, first=frozenset(), until=None, sub
             and (fid not in lu or (not lu[fid] and days_old(f['d']) <= 3) or any(isinstance(v, list) for v in lu[fid].values())
                  or (lu[fid] and fid not in evs) or fid not in pst
                  # matches without the API's player stats, fetched before substitutions were kept: who came off the bench
-                 or (backfill and not pst.get(fid) and fid not in subs))]
+                 or (backfill and not pst.get(fid) and fid not in subs)
+                 # line-ups without a formation, fetched before the API's rough position (G, D, M, F) was kept
+                 or (backfill and any(isinstance(v, dict) and v.get('xi') and not v.get('f') and len(v['xi'][0]) < 4
+                                      for v in lu[fid].values())))]
     need.sort(key=lambda fid: fx[fid]['d'], reverse=True)
     # national-team matches before the (many) matches of clubs players came from, newest first within each
     need.sort(key=lambda fid: not (fx[fid]['h'] in first or fx[fid]['a'] in first))
@@ -559,7 +614,7 @@ def fetch_lineups(top, fx, lu, evs, pst=None, first=frozenset(), until=None, sub
                 for e in side.get('startXI') or []:
                     p = e.get('player') or {}
                     if p.get('id'):
-                        xi.append([p['id'], p.get('grid') or '', p.get('name')])
+                        xi.append([p['id'], p.get('grid') or '', p.get('name'), p.get('pos') or ''])   # pos: G, D, M or F
                 if xi:   # raw formation + grid, so the position model can change without refetching
                     sides[str(side['team']['id'])] = {'f': side.get('formation') or '', 'xi': xi}
             lu[fid] = sides
@@ -887,6 +942,24 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             if len(came) == 1 and (p1 in xi or p2 in xi):
                 ins.append((came[0], t))
         bench_in[fid] = ins
+    # line-ups without a formation (many smaller leagues): a player's usual position from the line-ups that have one,
+    # else the API's rough one (G, D, M, F as GK, CB, CMF, CF)
+    usual = defaultdict(Counter)
+    for fid, f in window:
+        for side, L in (lu.get(fid) or {}).items():
+            if isinstance(L, dict) and L.get('xi'):
+                cs = [(e[0], slot_code(L['f'], e[1], '')) for e in L['xi']]
+                if all(c for _, c in cs):
+                    for pid, c in cs: usual[pid][c] += 1
+    ROUGH = {'G': 'GK', 'D': 'CB', 'M': 'CMF', 'F': 'CF'}
+    def rough_codes(L):
+        out = []
+        for e in L['xi']:
+            c = usual[e[0]].most_common(1)[0][0] if usual.get(e[0]) else ROUGH.get(e[3] if len(e) > 3 else '')
+            if not c:
+                return []
+            out.append((e[0], c))
+        return out if sum(1 for _, c in out if c == 'GK') == 1 else []
     club_res = defaultdict(list)
     starts = defaultdict(list)
     lats = defaultdict(list)   # where across the pitch he started: -1 left edge of his line ... +1 right edge
@@ -902,6 +975,8 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                     lv = lateral(lineup['f'], e[1])
                     if lv is not None: lats[e[0]].append(lv)
             # every match counts, friendlies included, but only for a side whose line-up came with all positions
+            if lineup and not (codes and all(c for _, c in codes)) and not lineup.get('f'):
+                codes = rough_codes(lineup)
             if not (codes and all(c for _, c in codes)):
                 continue
             if side in top and opp in top:
@@ -957,7 +1032,8 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
     tname = lambda t: (top[t]['name'] if t in top else (extra.get(str(t)) or {}).get('name'))
     played = defaultdict(dict)   # pid -> fid -> [date, team, started]
     for fid, f in window:
-        if fid not in evs:
+        # only matches whose goals we have in full (the API sends no events for some): otherwise who scored is unknown
+        if fid not in evs or len(evs[fid]) < (f['hg'] or 0) + (f['ag'] or 0):
             continue
         for side in (f['h'], f['a']):
             xi = (lu.get(fid) or {}).get(str(side))
@@ -1014,6 +1090,18 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
         name = tname(opp) or (f.get('an') if home else f.get('hn'))
         # [date, opponent, goals, assists, conceded as the starting goalkeeper (None otherwise), at home]
         return [d, fix_text(name), g, a, conceded, int(home)] if name else None
+    # a nationality the API does not know, from the national team he started for
+    nt_nat = defaultdict(Counter)
+    for fid, f in window:
+        for side in (f['h'], f['a']):
+            L = (lu.get(fid) or {}).get(str(side))
+            if side in national and isinstance(L, dict) and (extra.get(str(side)) or {}).get('name'):
+                for e in L.get('xi') or []:
+                    nt_nat[e[0]][extra[str(side)]['name']] += 1
+    for pid, cnt in nt_nat.items():
+        e = people.get(str(pid))
+        if e is not None and not e.get('nat'):
+            e['nat'] = cnt.most_common(1)[0][0]
     out_players, seen = [], set()
     for tid, c in sorted(top.items(), key=lambda x: int(x[1]['rank'])):
         for pid in (squads.get(str(tid)) or {}).get('p', []):
@@ -1113,7 +1201,7 @@ def main():
     top_ids = []
     try:
         log('1/6 Matching clubs to API teams')
-        resolve_teams(clubs, teams)
+        resolve_teams(clubs, teams, meta)
         top = {teams[tkey(c)]['id'] for c in clubs if teams.get(tkey(c), {}).get('id')}
         top_ids = [teams[tkey(c)]['id'] for c in clubs if teams.get(tkey(c), {}).get('id')]
         log('2/6 Season fixtures (first run only)')
