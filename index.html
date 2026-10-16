@@ -186,6 +186,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .ovdot.big{width:84px;height:84px;font-size:36px;color:#0B1626}.ovdot.big.gA,.ovdot.big.gE{color:#fff}.ovdot.big.gA{background:var(--gA)}.ovdot.big.gB{background:var(--gB)}.ovdot.big.gC{background:var(--gC)}.ovdot.big.gD{background:var(--gD)}.ovdot.big.gE{background:var(--gE)}
 .trows .r b.tnum{background:none!important;min-width:34px;text-align:right}.tnum.gA{color:var(--gA)!important}.tnum.gB{color:var(--gB)!important}.tnum.gC{color:var(--gC)!important}.tnum.gD{color:var(--gD)!important}.tnum.gE{color:var(--gE)!important}
 .trows{flex:1;min-width:0}.trows .r{display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.trows .r{align-items:center;gap:10px}.trows .r small{display:block;font-size:11px;line-height:1.3;color:var(--muted);opacity:.85;margin-top:1px}.trows .r span{color:var(--text)}
 .trows .r:first-child{border-top:0}.trows .r b{color:var(--text);font:600 16px var(--display)}
 .stats.s3{grid-template-columns:repeat(3,1fr)}.card .stat{background:var(--panel-2)}.card .stat b{font-size:22px}
 .toplists{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.toplists{grid-template-columns:1fr}}
@@ -815,8 +816,12 @@ const clubOv = id => eloOv(strength(id));
 // opponents show no rating at all
 const gchip = () => '';
 const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${ovGrade(r.ov)}</div>` : `<div class="ovdot big g${ovGrade(r.ov)}">${teamNum(r.ov)}</div>`;
-const partRows = r => [['Club strength', 'pe'], ['Playing time', 'ro'], ['Performance', 'pf'], ['Form', 'fo']]
-  .map(([k, f]) => `<div class="r"><span>${k}</span><b class="num tnum g${qGrade(r.q[f])}">${R(r.q[f])}</b></div>`).join('');
+// what each part says about your XI and why it matters, most important first (no weights shown)
+const PARTS = [['Club level', 'pe', 'Players from stronger clubs are used to a higher level'],
+  ['Match ratings', 'pf', 'How well they have played, weighed by the opposition'],
+  ['Regular starters', 'ro', 'Players who start every week are trusted and match-fit'],
+  ['Form', 'fo', 'How they have played lately']];
+const partRows = r => PARTS.map(([k, f, why]) => `<div class="r"><span>${k}<small>${why}</small></span><b class="num tnum g${qGrade(r.q[f])}">${R(r.q[f])}</b></div>`).join('');
 const locked = () => S.run && (S.run.phase === 'cup' || S.run.phase === 'done');
 function roleOf(pid){ const r = S.run, a = arrangement(r.picks, r.form); return FORMS[r.form][a.indexOf(pid)][3]; }
 
@@ -1711,7 +1716,7 @@ function pendCard(e){
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
-  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r bonusrow"><span>Chemistry bonus</span><b class="num tnum g${chemGrade(t.chem)}" title="A bonus on top of your team rating">${chemGrade(t.chem)}</b></div></div></div></section>`;
+  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r bonusrow"><span>Chemistry bonus<small>Added on top: team-mates, compatriots, same league</small></span><b class="num tnum g${chemGrade(t.chem)}" title="A bonus on top of your team rating">${chemGrade(t.chem)}</b></div></div></div></section>`;
 }
 /* ================= THE SEASON, SCREEN BY SCREEN =================
    team -> draw -> league phase (table after every matchday) -> knockouts (bracket after every match)
