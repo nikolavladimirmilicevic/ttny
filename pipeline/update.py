@@ -654,17 +654,20 @@ def fetch_squads(top_ids, squads, people):
     stale = sorted(top_ids, key=lambda t: squads.get(str(t), {}).get('f', ''))
     for tid in stale:
         s = squads.get(str(tid))
-        if s and days_old(s['f']) < SQUAD_MAX_AGE:
+        if s and days_old(s['f']) < SQUAD_MAX_AGE and s.get('v') == 2:   # v2: the squad's positions are kept too
             continue
         data = api('players/squads', team=tid)
         players = (data.get('response') or [{}])[0].get('players', []) if data.get('response') else []
-        squads[str(tid)] = {'f': TODAY.isoformat(), 'p': [p['id'] for p in players]}
+        squads[str(tid)] = {'f': TODAY.isoformat(), 'p': [p['id'] for p in players], 'v': 2}
         for p in players:
             e = people.setdefault(str(p['id']), {})
             e['sq'] = p.get('name')
             e['n'] = e.get('n') or p.get('name')
             if p.get('age'):
                 e['age'] = p['age']
+            sp = {'Goalkeeper': 'G', 'Defender': 'D', 'Midfielder': 'M', 'Attacker': 'F'}.get(p.get('position'))
+            if sp:
+                e['sp'] = sp   # his rough position on the club's squad list
 
 
 def current_season():
@@ -960,17 +963,20 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             if isinstance(L, dict):
                 for e in L.get('xi') or []:
                     if len(e) > 3 and e[3]: letters[e[0]][e[3]] += 1
+    for pid_s, e in people.items():   # ... else the squad list's
+        if e.get('sp') and int(pid_s) not in letters:
+            letters[int(pid_s)][e['sp']] += 1
     def rough_codes(L):
         out = []
         for e in L['xi']:
-            lt = e[3] if len(e) > 3 else ''
+            lt = (e[3] if len(e) > 3 else '') or (letters[e[0]].most_common(1)[0][0] if letters.get(e[0]) else '')
             # his usual position in that line (the API's letter), else his usual position, else the line's plain one
             same = [(n, c) for c, n in usual[e[0]].items() if LETTER.get(c) == lt] if usual.get(e[0]) else []
             c = max(same)[1] if same else usual[e[0]].most_common(1)[0][0] if usual.get(e[0]) else ROUGH.get(lt)
-            if not c:
-                return []
-            out.append((e[0], c))
-        return out if sum(1 for _, c in out if c == 'GK') == 1 else []
+            if c:
+                out.append((e[0], c))
+        # a player we know nothing about (gone since, say) is left out; the rest of the line-up still counts
+        return out if len(out) >= 9 and sum(1 for _, c in out if c == 'GK') <= 1 else []
     club_res = defaultdict(list)
     starts = defaultdict(list)
     lats = defaultdict(list)   # where across the pitch he started: -1 left edge of his line ... +1 right edge
