@@ -2095,16 +2095,17 @@ async function seasonImage(h){
   txt(x, 'This Time Next Year', W_ - 60, 1328, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   return cv;
 }
-/* the best XI of the challenge: everyone who played in it, ranked by seasons, then goals, assists, clean sheets (keepers
+/* the best XI of the challenge: everyone who played in it, ranked by runs, then Champions, Europa and Conference League titles, then goals, assists, clean sheets (keepers
    only, the seasons he started in goal) and finally who was drafted earlier; the first 11 who still fit a formation.
    The captain: the most seasons in the XI, then the one drafted earliest. */
 function dynastyBestXI(hist){
   const st = {};
   for (const h of hist) for (const p of h.xi || []){
-    const v = st[p.id] = st[p.id] || { id: p.id, n: p.n, s: 0, g: 0, a: 0, cs: 0, d: h.season * 100 + (p.o != null && p.o >= 0 ? p.o : 50) };
+    const v = st[p.id] = st[p.id] || { id: p.id, n: p.n, s: 0, cl: 0, el: 0, ecl: 0, g: 0, a: 0, cs: 0, d: h.season * 100 + (p.o != null && p.o >= 0 ? p.o : 50) };
     v.s++; v.g += p.g || 0; v.a += p.a || 0; if (p.code === 'GK') v.cs += h.cs || 0;
+    if (h.stage === 'champion' && v[h.comp] != null) v[h.comp]++;   // titles he won: Champions, Europa, Conference League
   }
-  const ranked = Object.values(st).filter(v => W.P[v.id]).sort((a, b) => b.s - a.s || b.g - a.g || b.a - a.a || b.cs - a.cs || a.d - b.d);
+  const ranked = Object.values(st).filter(v => W.P[v.id]).sort((a, b) => b.s - a.s || b.cl - a.cl || b.el - a.el || b.ecl - a.ecl || b.g - a.g || b.a - a.a || b.cs - a.cs || a.d - b.d);
   let picks = [];
   for (const v of ranked){ if (picks.length === 11) break; const t = [...picks, v.id]; if (FORM_ORDER.some(f => assign(t, f))) picks = t; }
   if (picks.length < 11) return null;
