@@ -1215,14 +1215,17 @@ function pickable(cid){
   return W.C[cid].elig.filter(p => !r.picks.includes(p) && !gone.includes(p) && fits([...r.picks, p]));
 }
 const everOf = r => [...new Set([...(r.ever || []), ...r.picks])];
+// one club per country in a run: a country already drafted from is skipped (only if no other club is left, it comes back)
+const freshCtry = (r, c) => !(r.usedC || []).includes(W.C[c].ctry);
 function drawClub(){
   const r = S.run, pot = r.order[r.step];
-  const pickedClubs = new Set();
-  let cand = runPots(r)[pot].filter(c => !r.tried.includes(c) && !pickedClubs.has(c));
+  const all = runPots(r)[pot].filter(c => !r.tried.includes(c));
+  let cand = all.filter(c => freshCtry(r, c) && pickable(c).length).length ? all.filter(c => freshCtry(r, c)) : all;
   r.note = ''; r.cut = []; r.tip = null;
   while (true){
     if (!cand.length){ // whole pot exhausted: fall back to any pot
-      cand = poolOf(r.diff).filter(c => !r.tried.includes(c));
+      const any = poolOf(r.diff).filter(c => !r.tried.includes(c));
+      cand = any.some(c => freshCtry(r, c) && pickable(c).length) ? any.filter(c => freshCtry(r, c)) : any;
       if (!cand.length){ r.club = null; return; }
       r.note = 'No club in pot ' + (pot + 1) + ' had a player who fits. Drawn from another pot.';
     }
@@ -1234,7 +1237,7 @@ function drawClub(){
 }
 function choose(pid){
   const r = S.run; if (!r || r.phase !== 'draft' || !visible(r).includes(pid)) return;
-  r.picks.push(pid); r.step++; r.tried = []; r.cut = []; r.tip = null;
+  r.picks.push(pid); r.usedC = [...(r.usedC || []), W.C[r.club].ctry]; r.step++; r.tried = []; r.cut = []; r.tip = null;
   r.sel = null;
   if (r.picks.length === 11){ r.phase = 'lineup'; r.manual = null; if (!feasible(r.picks).includes(r.form)) r.form = randomForm(r.picks); }
   else drawClub();
@@ -1269,7 +1272,7 @@ const tipText = t => t.kind === 'last' ? lastTipText(t) : t.kind === 'st' ? `Sta
 const csOf = p => p.m.reduce((t, r) => t + (r[5] && r[3] === 0 ? 1 : 0), 0);
 const helpUsed = k => !!(S.run.help && S.run.help[k]);
 const visible = r => pickable(r.club).filter(id => !(r.cut || []).includes(id));
-function swapOk(r){ const pot = r.order[r.step]; return runPots(r)[pot].some(c => c !== r.club && !r.tried.includes(c) && pickable(c).length); }
+function swapOk(r){ const pot = r.order[r.step]; return runPots(r)[pot].some(c => c !== r.club && !r.tried.includes(c) && freshCtry(r, c) && pickable(c).length); }
 function useHelp(k){
   const r = S.run; if (!r || r.phase !== 'draft' || !r.club || helpUsed(k)) return;
   if (k === 'swap'){
@@ -1601,8 +1604,9 @@ function viewDraft(){
     return `<div class="pot${off ? ' off' : done ? ' done' : now ? ' now' : ''}" title="Pot ${i + 1}">${i + 1}</div>`;
   }).join('');
   const ok = new Set(visible(r)), cut = new Set(r.cut || []), gone = new Set(r.gone || []);
-  const why = id => gone.has(id) ? ' · left your squad' : cut.has(id) ? ' · fifty-fifty' : ' · no slot left';
-  const rows = club.elig.filter(p => !r.picks.includes(p)).map(pid => W.P[pid])
+  const kept = new Set(r.kept || []);
+  const why = id => kept.has(id) ? ' · already in your squad' : gone.has(id) ? ' · left your squad' : cut.has(id) ? ' · fifty-fifty' : ' · no slot left';
+  const rows = club.elig.filter(p => !r.picks.includes(p) || kept.has(p)).map(pid => W.P[pid])
     .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || byPositions(a, b) || a.name.localeCompare(b.name))
     .sort((a, b) => (r.tip && b.id === r.tip.pid) - (r.tip && a.id === r.tip.pid))
     .map(p => `<button class="prow kitcard${r.tip && r.tip.pid === p.id ? ' tipped' : ''}" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
