@@ -6,14 +6,17 @@ const { chromium } = require('playwright');
    const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
    function draft(diff, noise){
      const pots = splitPots(poolOf(diff), 11), picks = [];
-     S.run = { picks, diff, potsN: 11, gone: [], form: '4-2-2-2' };
+     S.run = { picks, diff, potsN: 11, gone: [], form: '4-2-2-2', usedC: [] };
      for (const pot of shuffle([...Array(11).keys()])){
        const cands = shuffle([...pots[pot]]); let club = null;
-       for (const c of cands){ if (pickable(c).length){ club = c; break; } }
+       // one club per country in a run, as in the game (only if no other club is left, a country comes back)
+       for (const c of cands){ if (!S.run.usedC.includes(W.C[c].ctry) && pickable(c).length){ club = c; break; } }
+       if (!club) for (const c of cands){ if (pickable(c).length){ club = c; break; } }
        if (!club){ const any = shuffle([...poolOf(diff)]).find(c => pickable(c).length); if (!any) return null; club = any; }
        const opts = pickable(club);
        const val = id => noise == null ? Math.random() : W.P[id].ovr + noise * gauss();
        picks.push(opts.map(id => [id, val(id)]).sort((a, b) => b[1] - a[1])[0][0]);
+       S.run.usedC.push(W.C[club].ctry);
      }
      const forms = feasible(picks); S.run.form = forms.map(f => [f, teamOvr(picks, f)]).sort((a, b) => b[1] - a[1])[0][0];
      return picks;
