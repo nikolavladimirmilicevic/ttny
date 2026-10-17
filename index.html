@@ -1448,7 +1448,9 @@ const CARD_GRADES = [['Finishing', 'Goals per 90 minutes, penalties left out', 1
 const teamName = id => (W.C['t' + id] || {}).name || (TEAMS[id] || [])[0] || null;
 function cardHTML(p){
   const r = S.run, c = W.C[p.club], mine = r && r.picks && r.picks.includes(p.id);
-  const rated = locked() && mine, rt = rated ? playerRating(p.id) : null;
+  // after the draft his grades show for your players, and for anyone who played in your challenge (the best XI of it)
+  const wasMine = r && (r.hist || []).some(h => (h.xi || []).some(x => x.id === p.id));
+  const rated = locked() && (mine || wasMine), rt = rated ? playerRating(p.id) : null;
   let slot = null;
   if (mine && r.form && r.picks.length === 11){ const a = arrangement(r.picks, r.form); const j = a ? a.indexOf(p.id) : -1; if (j > -1) slot = FORMS[r.form][j][0]; }
   const weakHere = slot && isWeak(p, slot), offHere = slot && slot !== p.prim && !weakHere;
@@ -1460,14 +1462,14 @@ function cardHTML(p){
   if (!rt) return head;
   // every A-E grade in one list, alphabetical (the overall stays on its own at the top)
   const gk = p.prim === 'GK';
-  const all = [['Club strength', rt.q.pe, 'How strong the clubs he started for are'], ['Playing time', rt.q.ro, 'How often he started while he was at them'],
+  const all = [['Level', rt.q.pe, 'How strong the clubs he started for are'], ['Experience', rt.q.ro, 'How often he started while he was at them'],
     ['Performance', rt.q.pf, 'Match ratings, adjusted for the opponent'], ['Form', rt.q.fo, 'Match ratings in his last 5 starts'],
     ...(p.gr || []).map((q, i) => CARD_GRADES[i] && !(gk && CARD_GRADES[i][2]) ? [CARD_GRADES[i][0], q, CARD_GRADES[i][1]] : null).filter(Boolean)]
     .sort((x, y) => x[0].localeCompare(y[0]));
   const grades = all.map(([n, q, t]) => { const l = qGrade(q); return `<div class="pc-g" title="${t}"><span>${n}</span><b class="gt g${l}">${l}</b></div>`; }).join('');
   // this season so far (only what you have already seen)
   let season = '';
-  if (r.cup){
+  if (r.cup && mine){
     const shown = r.phase === 'done' ? r.cup.ev : r.cup.ev.slice(0, r.cup.shown);
     let g = 0, a = 0, n = 0;
     for (const e of shown) if (e.k === 'md' || e.k === 'leg' || e.k === 'final'){ n++; for (const [sc, as, , og] of e.gl || []){ if (!og && sc === p.id) g++; if (as === p.id) a++; } }
