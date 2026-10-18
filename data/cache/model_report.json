@@ -2,7 +2,7 @@
  "big12_in_top15": 11,
  "top25_players_from_top10_clubs": 23,
  "best_forward_rank": 3,
- "line_share_gap": 0.034,
+ "line_share_gap": 0.0338,
  "top10_players": [
   "Joshua Kimmich 96.7",
   "Michael Olise 96.7",
@@ -29,51 +29,51 @@
  ],
  "competitions": {
   "cl": {
-   "title_share_top8_of_field": 0.848,
-   "title_share_bottom_half": 0.028,
+   "title_share_top8_of_field": 0.844,
+   "title_share_bottom_half": 0.021,
    "favourites": [
-    "Bayern München 26.7%",
-    "Barcelona 14.1%",
-    "Arsenal 12.0%",
-    "Man City 10.3%",
-    "Paris 6.6%",
-    "Real Madrid 6.5%"
+    "Bayern München 27.6%",
+    "Barcelona 12.2%",
+    "Arsenal 11.3%",
+    "Man City 10.7%",
+    "Real Madrid 7.7%",
+    "Paris 6.6%"
    ]
   },
   "el": {
-   "title_share_top8_of_field": 0.718,
+   "title_share_top8_of_field": 0.739,
    "title_share_bottom_half": 0.05,
    "favourites": [
-    "Man Utd 4.4%",
-    "Aston Villa 4.2%",
-    "Union SG 3.0%",
-    "Chelsea 2.9%",
-    "Sporting CP 2.8%",
-    "Man City 2.8%"
+    "Bodø/Glimt 4.4%",
+    "Aston Villa 4.4%",
+    "Union SG 4.1%",
+    "Porto 3.6%",
+    "Man Utd 3.5%",
+    "Club Brugge 3.4%"
    ]
   },
   "ecl": {
    "title_share_top8_of_field": 0.767,
-   "title_share_bottom_half": 0.023,
+   "title_share_bottom_half": 0.037,
    "favourites": [
-    "Stuttgart 2.8%",
-    "Freiburg 2.8%",
-    "Union SG 2.5%",
-    "Fenerbahçe 2.4%",
-    "AEK Athens 2.3%",
-    "Omonia 2.2%"
+    "Brighton 3.4%",
+    "AEK Athens 2.5%",
+    "Monaco 2.3%",
+    "Slavia Praha 2.3%",
+    "Union SG 2.2%",
+    "Stuttgart 2.1%"
    ]
   }
  },
- "title_share_top8_of_field": 0.848,
- "max_title_share_outside_top30": 0.0045,
+ "title_share_top8_of_field": 0.844,
+ "max_title_share_outside_top30": 0.0025,
  "title_favourites": [
-  "Bayern München 26.7%",
-  "Barcelona 14.1%",
-  "Arsenal 12.0%",
-  "Man City 10.3%",
-  "Paris 6.6%",
-  "Real Madrid 6.5%"
+  "Bayern München 27.6%",
+  "Barcelona 12.2%",
+  "Arsenal 11.3%",
+  "Man City 10.7%",
+  "Real Madrid 7.7%",
+  "Paris 6.6%"
  ],
  "pass": {
   "big12_in_top15": true,
@@ -88,20 +88,20 @@
  },
  "backtest": {
   "train": 3910,
-  "test": 1402,
+  "test": 1404,
   "base_rates": {
-   "logloss": 1.057,
+   "logloss": 1.0569,
    "brier": 0.6385,
    "hit": 0.463
   },
   "uefa_only": {
-   "logloss": 1.0045,
-   "brier": 0.601,
+   "logloss": 1.0043,
+   "brier": 0.6009,
    "hit": 0.511
   },
   "model": {
-   "logloss": 0.9814,
-   "brier": 0.5848,
+   "logloss": 0.9811,
+   "brier": 0.5845,
    "hit": 0.536
   }
  }
