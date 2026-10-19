@@ -422,6 +422,28 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .imgbox .btnrow,.imgbox .muted{width:100%}
 .imgbox .btnrow{margin-top:12px}.imgbox a.btn{text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}
 
+
+/* round 5: tags, knockout draw, the final, named penalties, veterans, the draft's mini pitch */
+.tags{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{font:600 11px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:999px;background:rgba(242,193,78,.13);color:#F2C14E;border:1px solid rgba(242,193,78,.35)}
+.ev.live .tags{visibility:hidden}.ev.live.over .tags{visibility:visible;animation:rise .3s ease-out}
+.drawn.spinning{opacity:.75;filter:blur(.4px)}.drawn.landed{display:inline-block;animation:goalin .4s cubic-bezier(.2,1.4,.4,1)}
+.ev.fin{border:2px solid #F2C14E;background:radial-gradient(ellipse 55% 75% at 10% -15%,rgba(255,244,214,.17),transparent 70%),radial-gradient(ellipse 55% 75% at 90% -15%,rgba(255,244,214,.17),transparent 70%),var(--panel);box-shadow:0 0 0 1px rgba(242,193,78,.2),0 10px 30px rgba(0,0,0,.35)}
+.ev.fin .rd{color:#F2C14E}
+.ev.fin.live{animation:floodlights 1.3s ease-out}
+@keyframes floodlights{0%{filter:brightness(.3)}25%{filter:brightness(1.3)}40%{filter:brightness(.75)}55%{filter:brightness(1.15)}100%{filter:brightness(1)}}
+.ev.fin .lclock{color:#F2C14E}.ev.fin .lclock i b{background:#F2C14E}
+.pkline{grid-column:1/-1;font:600 14px/1.2 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--text);margin-top:6px;animation:rise .25s ease-out}
+.pkline.them{color:var(--muted)}
+.slot .vet{position:absolute;top:-6px;right:calc(50% + 10px);z-index:2;min-width:20px;height:18px;padding:0 4px;border-radius:9px;display:grid;place-items:center;background:#F2C14E;color:#0B1626;font:700 10px/1 var(--display);border:2px solid #0B1626}
+.strip.hasmini{display:none}
+@media(max-width:819px){.strip.hasmini{display:flex;gap:10px;align-items:stretch}}
+.strip .sbody{flex:1;min-width:0}
+.mini{position:relative;flex:none;width:44px;border-radius:5px;background:var(--grass);border:1px solid rgba(243,239,230,.18)}
+.mini i{position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;border:1px dashed rgba(243,239,230,.35)}
+.mini i.on{background:var(--kit);border:1px solid rgba(11,22,38,.6)}
+.mini i.pop{animation:minipop .6s cubic-bezier(.2,1.4,.4,1)}
+@keyframes minipop{0%{transform:scale(3.2);box-shadow:0 0 0 3px #F2C14E}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(242,193,78,0)}}
 /* round 4: card reveal, path, player of the run, crests, last seconds, sound */
 .fd{background:repeating-linear-gradient(45deg,#22395A 0 5px,#182A44 5px 10px)!important;color:transparent!important;border-color:rgba(242,193,78,.55)!important}
 .flip{animation:flip .45s ease-out}
@@ -1599,6 +1621,8 @@ function captainOf(pids){
 }
 // the players who stay, in the order they were first drafted (not the order they were ticked)
 const keptInOrder = r => r.keepSel.slice(0, r.keepN).sort((a, b) => r.picks.indexOf(a) - r.picks.indexOf(b));
+// how many runs a player has been with you, this one included
+const vetRuns = pid => { const r = S.run; if (!r) return 0; return (r.hist || []).filter(h => h.xi && h.xi.some(x => x.id === pid)).length + (r.phase === 'done' ? 0 : 1); };
 function pitch(pids, form, kept, rated, editable, fit){
   const f = form || bestForm(pids) || FORM_ORDER[0];
   const a = (pids.length ? arrangement(pids, f) : null) || Array(11).fill(null);
@@ -1618,7 +1642,8 @@ function pitch(pids, form, kept, rated, editable, fit){
     if (!pid) return `<div class="slot empty${cls(j)}"${act(j)} style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
     const p = W.P[pid];
     const rt = rated ? playerRating(pid) : null;
-    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${pid === cap ? '<span class="cap" title="Captain">C</span>' : ''}${rt ? ovDot(rt, p) : `<div class="dot">${code}</div>`}<div class="lbl${fit ? ' fit' + Math.min(2, fitTier(p, code)) : ''}">${esc(short(p.name))}</div></div>`;
+    const vn = kept && kept.includes(pid) ? vetRuns(pid) : 0;
+    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${pid === cap ? '<span class="cap" title="Captain">C</span>' : ''}${vn > 1 ? `<span class="vet" title="${vn} runs with you">×${vn}</span>` : ''}${rt ? ovDot(rt, p) : `<div class="dot">${code}</div>`}<div class="lbl${fit ? ' fit' + Math.min(2, fitTier(p, code)) : ''}">${esc(short(p.name))}</div></div>`;
   }).join('') + `</div>`;
 }
 function shapes(pids, active, clickable){
@@ -1708,8 +1733,15 @@ function viewHome(){
 
 /* phone only: a sticky strip above the club with the shape and which spots are filled, so the pitch below need not be scrolled to */
 function shapeStrip(r, cells, nP){
-  return `<div class="strip"><div class="sh"><b>Pick ${r.picks.length + 1} of 11</b><span>${r.form}</span></div>
-    <div class="pots mini" style="grid-template-columns:repeat(${nP},1fr)">${cells}</div></div>`;
+  return `<div class="strip hasmini"><div class="sbody"><div class="sh"><b>Pick ${r.picks.length + 1} of 11</b><span>${r.form}</span></div>
+    <div class="pots mini" style="grid-template-columns:repeat(${nP},1fr)">${cells}</div></div>${miniPitch(r)}</div>`;
+}
+// on a phone the pitch is far below the list: a small one in the bar, where the player you just picked drops into his place
+function miniPitch(r){
+  const f = r.form, a = (r.picks.length ? arrangement(r.picks, f) : null) || Array(11).fill(null);
+  const last = r.picks[r.picks.length - 1], pop = last && r.popd !== last; r.popd = last;
+  return `<div class="mini" aria-hidden="true">` + FORMS[f].map(([, x, y], j) => { const pid = a[j];
+    return pid ? `<i class="on${pid === last && pop ? ' pop' : ''}" style="left:${x}%;top:${y}%;${kit(W.P[pid])}"></i>` : `<i style="left:${x}%;top:${y}%"></i>`; }).join('') + `</div>`;
 }
 function viewDraft(){
   const r = S.run;
@@ -1783,13 +1815,32 @@ function motm(e){
 // the first leg's score, for the second leg's card
 const firstLeg = e => { const c = S.run && S.run.cup; const f = c && c.ev.find(x => x.k === 'leg' && x.leg === 1 && x.round === e.round && x.opp === e.opp); return f ? `First leg ${f.s[0]}:${f.s[1]}` : ''; };
 // penalties kick by kick: you and them in turn (your kicks first in the list), green scored, red missed
-function pensHTML(p){
+function pensHTML(p, opp){
   if (!p || !p.kicks) return '';
   const mine = [], theirs = [];
   p.kicks.forEach((k, i) => (i % 2 ? theirs : mine).push(k));
-  const row = (ks, off) => ks.map((k, j) => `<span class="k ${k ? 's' : 'm'}" data-i="${2 * j + off}">${k ? '✓' : '✕'}</span>`).join('');
+  const us = takers(S.run.picks), them = opp && W.C[opp] ? takers(W.C[opp].squad.filter(id => W.P[id] && !S.run.picks.includes(id)).sort((x, y) => W.P[y].ovr - W.P[x].ovr).slice(0, 11)) : [];
+  const who = (off, j) => { const L = off ? them : us; return L.length ? L[j % L.length] : ''; };
+  const row = (ks, off) => ks.map((k, j) => `<span class="k ${k ? 's' : 'm'}" data-i="${2 * j + off}" data-n="${esc(who(off, j))}" title="${esc(who(off, j))}: ${k ? 'scored' : 'missed'}">${k ? '✓' : '✕'}</span>`).join('');
   return `<div class="pens"><span class="who">Your XI</span><span class="ks">${row(mine, 0)}</span><span class="who">Them</span><span class="ks">${row(theirs, 1)}</span></div>`;
 }
+/* short labels on a played match: hat-trick, comeback, clean sheet, the biggest win of the run */
+function tagsHTML(e){
+  const c = S.run && S.run.cup; if (!c) return '';
+  const f = m => m.s[0] + (m.et ? m.et[0] : 0), a = m => m.s[1] + (m.et ? m.et[1] : 0), out = [];
+  const by = {}; for (const [sc, , , og] of e.gl || []) if (!og) by[sc] = (by[sc] || 0) + 1;
+  for (const id in by) if (by[id] >= 3 && W.P[id]) out.push(`${by[id] > 3 ? by[id] + ' goals' : 'Hat-trick'} ${esc(short(W.P[id].name))}`);
+  const tl = [...(e.gl || []).map(g => [g[2], 1]), ...(e.og || []).map(g => [g[2], -1])].sort((x, y) => x[0] - y[0] || y[1] - x[1]);
+  let d = 0, low = 0; for (const [, v] of tl){ d += v; low = Math.min(low, d); }
+  if (low < 0 && f(e) > a(e)) out.push('Comeback');
+  const i = c.ev.indexOf(e), prev = c.ev.slice(0, i).filter(m => m.k === 'md' || m.k === 'leg' || m.k === 'final'), mg = f(e) - a(e);
+  if (prev.length && mg >= 3 && mg > Math.max(0, ...prev.map(m => f(m) - a(m)))) out.push('Biggest win of the run');
+  if (a(e) === 0) out.push('Clean sheet');
+  return out.length ? `<div class="tags">${out.map(t => `<span class="tag">${t}</span>`).join('')}</div>` : '';
+}
+// penalty takers: forwards first, then midfielders, defenders, the keeper last
+const PEN_ORDER = { CF: 0, LWF: 1, RWF: 1, AMF: 2, CMF: 3, LMF: 3, RMF: 3, DMF: 4, LB: 5, RB: 5, CB: 6, GK: 7 };
+const takers = ids => ids.map(id => W.P[id]).filter(Boolean).sort((x, y) => (PEN_ORDER[x.prim] ?? 6) - (PEN_ORDER[y.prim] ?? 6) || y.ovr - x.ovr).map(p => short(p.name));
 function evHTML(e){
   const res = s => s[0] > s[1] ? 'W' : s[0] < s[1] ? 'L' : 'D';
   const opp = id => `${crest(id)}${esc(nm(id))}`;
@@ -1799,7 +1850,7 @@ function evHTML(e){
   const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
   const score = (s, r) => `<div class="score num"><span class="sh">${s[0]}</span><span class="muted" style="font-size:16px">:</span><span class="sa">${s[1]}</span>${r ? `<span class="res ${r}">${r}</span>` : ''}</div>`;
   const live = e === (S.run && S.run.cup && S.run.cup.ev[S.run.cup.live]) ? ' live' : '';
-  if (e.k === 'md') return `<div class="ev${live}"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}</div>`;
+  if (e.k === 'md') return `<div class="ev${live}"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}${tagsHTML(e)}</div>`;
   if (e.k === 'table'){
     const z = e.pos <= 8 ? 'Straight into the Round of 16.' : e.pos <= 24 ? 'Into the knockout play-off.' : 'Out in the league phase.';
     return `<div class="ev big" style="display:block"><div class="rd">League phase final table</div>
@@ -1817,12 +1868,12 @@ function evHTML(e){
     if (e.won !== undefined) bits.push(e.won ? '<b style="color:var(--win)">Through</b>' : '<b style="color:var(--loss)">Out</b>');
     return bits.length ? `<div class="extra">${bits.join(' · ')}</div>` : '';
   };
-  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}${live}"><div class="rd">${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? pensHTML(e.pens) + tail(e) : ''}</div>`;
-  if (e.k === 'final') return `<div class="ev big${live}"${e.won ? ' data-won="1"' : ''}><div class="rd">Final</div><div class="opp">${venue(null)} ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${pensHTML(e.pens)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
+  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}${live}"><div class="rd">${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${tagsHTML(e)}${e.leg === 2 ? pensHTML(e.pens, e.opp) + tail(e) : ''}</div>`;
+  if (e.k === 'final') return `<div class="ev big fin${live}"${e.won ? ' data-won="1"' : ''}><div class="rd">Final</div><div class="opp">${venue(null)} ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tagsHTML(e)}${pensHTML(e.pens, e.opp)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
   if (e.k === 'podone'){
     const tie = t => `<tr class="${t[0] === e.opp || t[1] === e.opp ? 'me' : ''}"><td style="text-align:left">${t[3] === t[0] ? `<b>${esc(nm(t[0]))}</b>` : esc(nm(t[0]))}</td><td class="sc">${t[2][0]}:${t[2][1]}${t[4] === 1 ? ' <small>p</small>' : t[4] === 2 ? ' <small>aet</small>' : ''}</td><td style="text-align:right">${t[3] === t[1] ? `<b>${esc(nm(t[1]))}</b>` : esc(nm(t[1]))}</td></tr>`;
     return `<div class="ev big" style="display:block"><div class="rd">Knockout play-off · Done</div>
-      <div class="opp" style="margin:4px 0 8px">Your Round of 16 opponent: <b>${crest(e.opp)}${esc(nm(e.opp))}</b></div>
+      <div class="opp" style="margin:4px 0 8px">Your Round of 16 opponent: <b class="drawn" data-spin="${STAGE_NAME.r16}|${e.opp}">${crest(e.opp)}${esc(nm(e.opp))}</b></div>
       <div class="tblwrap"><table class="tbl num"><tbody>${e.ties.map(tie).join('')}</tbody></table></div></div>`;
   }
   if (e.k === 'end') return `<div class="ev" style="display:block"><div class="rd">Full time</div>${e.champ !== 'YOU' ? `<div><b>${esc(nm(e.champ))}</b> won the ${compOf(S.run).short}.</div>` : `<div><b>You</b> won the ${compOf(S.run).short}.</div>`}</div>`;
@@ -1878,11 +1929,18 @@ function runLive(){
     SND.play(x.ours ? 'roar' : 'groan'); f.className = 'gflash' + (x.ours ? '' : ' them'); f.textContent = x.ours ? `Goal! ${who}` : `Conceded · ${who}`; el.appendChild(f); setTimeout(() => f.remove(), 1300); };
   const kicks = [...el.querySelectorAll('.pens .k')].sort((x, y) => x.dataset.i - y.dataset.i);
   const finishLive = (skip) => { if (done) return; done = true; goals.forEach(x => x.g.classList.add('in')); sh.textContent = fh; sa.textContent = fa;
-    const whistle = () => { el.classList.add('over'); if (el.dataset.won) confetti(); else if (skip !== true) SND.play('whistle'); };
+    const whistle = () => { if (el.dataset.blown) return; el.dataset.blown = 1; el.classList.add('over'); if (el.dataset.won) confetti(); else if (skip !== true) SND.play('whistle'); };
     if (!kicks.length || skip === true){ kicks.forEach(k => k.classList.add('in')); whistle(); return; }
     // the shootout, kick by kick
-    let j = 0; const next = () => { if (!el.isConnected) return; if (j < kicks.length){ kicks[j++].classList.add('in'); setTimeout(next, 650); } else whistle(); };
-    el.addEventListener('click', () => { kicks.forEach(k => k.classList.add('in')); j = kicks.length; }, { once: true });
+    // who steps up, a beat, then the kick
+    const pk = document.createElement('div'); pk.className = 'pkline'; el.querySelector('.pens').before(pk);
+    let j = 0; const next = () => { if (!el.isConnected) return;
+      if (j >= kicks.length){ pk.remove(); whistle(); return; }
+      const k = kicks[j++], n = k.dataset.n || (k.dataset.i % 2 ? 'Them' : 'Your XI'), ours = k.dataset.i % 2 === 0;
+      pk.className = 'pkline' + (ours ? '' : ' them'); pk.textContent = `${n} steps up…`;
+      setTimeout(() => { if (!el.isConnected || j > kicks.length) return; k.classList.add('in'); const sc = k.classList.contains('s');
+        pk.textContent = `${n} ${sc ? 'scores' : 'misses'}`; if (ours === sc) SND.play('roar'); setTimeout(next, 650); }, 650); };
+    el.addEventListener('click', () => { kicks.forEach(k => k.classList.add('in')); j = kicks.length + 1; pk.remove(); whistle(); }, { once: true });
     setTimeout(next, 400); };
   el.addEventListener('click', () => finishLive(true), { once: true });
   document.addEventListener('click', e => { if (e.target.closest('[data-act]:not([data-act=snd])')) finishLive(true); }, { once: true, capture: true });
@@ -1913,6 +1971,24 @@ function runSpin(){
     setTimeout(tick, 35 + i * i * 1.6);   // slows down like a wheel, about a second
   };
   tick();
+}
+/* a new knockout opponent comes out of a spinning draw, once per tie */
+function runKoSpin(){
+  const c = S.run && S.run.cup; if (!c) return;
+  const els = [...document.querySelectorAll('.drawn[data-spin]')]; if (!els.length) return;
+  c.spun = c.spun || {};
+  const keys = [...new Set(els.map(x => x.dataset.spin))].filter(k => !c.spun[k]); if (!keys.length) return;
+  keys.forEach(k => c.spun[k] = 1); save();
+  if (toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const pool = (c.pots || []).flat().filter(id => id !== 'YOU' && W.C[id]); if (pool.length < 3) return;
+  for (const k of keys){
+    const group = els.filter(x => x.dataset.spin === k), finals = group.map(x => x.innerHTML); let i = 0;
+    group.forEach(x => x.classList.add('spinning'));
+    const tick = () => { if (!group[0].isConnected) return;
+      if (i >= 12){ group.forEach((x, n) => { x.innerHTML = finals[n]; x.classList.remove('spinning'); x.classList.add('landed'); }); return; }
+      const id = pool[Math.floor(Math.random() * pool.length)]; group.forEach(x => x.innerHTML = crest(id) + esc(nm(id))); i++; setTimeout(tick, 40 + i * i * 1.6); };
+    setTimeout(tick, 250);
+  }
 }
 /* confetti in the competition's colours, two seconds */
 function confetti(){
@@ -1953,9 +2029,10 @@ function pendCard(e){
   // straight into the Round of 16: the opponent comes out of the play-offs, so he is not known yet
   const tbd = e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
   const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}` : 'Final';
-  const who = tbd ? '<span class="muted">Play-off winner</span>' : `${crest(e.opp)}${esc(nm(e.opp))}`;
+  const draw = (e.k === 'leg' && e.leg === 1) || e.k === 'final';
+  const who = tbd ? '<span class="muted">Play-off winner</span>' : `<span class="drawn"${draw ? ` data-spin="${esc(e.round || 'Final')}|${e.opp}"` : ''}>${crest(e.opp)}${esc(nm(e.opp))}</span>`;
   const right = tbd ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
-  return `<div class="ev pend"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}</div>`;
+  return `<div class="ev pend${e.k === 'final' ? ' fin' : ''}"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}</div>`;
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
@@ -2577,7 +2654,7 @@ function render(){
     const app = $('#app'), fresh = key !== render.key; if (fresh){ app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); render.key = key; }
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
     fitHeroLogo();
-    runLive(); runSpin();
+    runLive(); runSpin(); runKoSpin();
     if (!runReveal() && fresh) countUp(app);
     if (r && r.phase === 'done' && r.celebrate){ r.celebrate = false; save(); confetti(); }
   } catch (e) {
