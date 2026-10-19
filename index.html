@@ -999,6 +999,7 @@ function initials(name){
 }
 const CREST_SVG = t => `<svg viewBox="0 0 20 22" width="17" height="19"><path d="M10 1 19 4.5V11c0 5.2-4 8.8-9 10C5 19.8 1 16.2 1 11V4.5Z"/><text x="10" y="${t.length > 2 ? 13.4 : 14}" text-anchor="middle" font-size="${t.length > 3 ? 4.8 : t.length > 2 ? 6 : 7.6}">${esc(t)}</text></svg>`;
 function crest(id){
+  return '';   // shields switched off; the helper stays so a later design can bring them back in one place
   if (id === 'YOU') return `<span class="crest me" aria-hidden="true">${CREST_SVG('XI')}</span>`;
   const c = W.C[id]; return c ? `<span class="crest" style="${clubKit(c)}" aria-hidden="true">${CREST_SVG(initials(c.name))}</span>` : '';
 }
@@ -2982,7 +2983,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261019231555';
+const BUILD = '20261019231712';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
