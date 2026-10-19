@@ -427,6 +427,9 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 body.matchon .stack > .feed:has(.ev.live) ~ *{opacity:0;pointer-events:none}
 .stack > .feed ~ *{transition:opacity .35s ease-out}
 .ev.drawing .odds,.ev.drawing .watch{visibility:hidden}
+.aggline{grid-column:1/-1;font:600 13px/1.2 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.aggline b{font-size:20px;letter-spacing:.02em;color:var(--text);margin-left:6px}.aggline span{display:inline-block}.aggline .pop{animation:pop .5s ease-out}
+body.matchon .ev.live:not(.over) .aggline{text-align:center;font-size:18px}body.matchon .ev.live:not(.over) .aggline b{font-size:40px;margin-left:10px}
 .ev.live:not(.over) .pens:not(.go){visibility:hidden}   /* no hint of a shootout before it starts */
 .stack > .feed:has(.drawn.spinning) ~ *{opacity:0;pointer-events:none}
 /* the match being played out takes the whole screen (top bar and buttons stay) */
@@ -441,7 +444,7 @@ body.matchon .ev.live:not(.over) .lclock{font-size:16px}body.matchon .ev.live:no
 body.matchon .ev.live:not(.over) .gls2{font-size:15px;gap:18px}body.matchon .ev.live:not(.over) .gls2 small{font-size:13px}
 body.matchon .ev.live:not(.over) .pens{justify-content:center;font-size:14px}body.matchon .ev.live:not(.over) .pens .k{width:24px;height:24px;font-size:13px}
 body.matchon .ev.live:not(.over) .pkline{text-align:center;font-size:20px}
-body.matchon .ev.live:not(.over) .gflash{top:14%;font-size:24px}
+body.matchon .ev.live:not(.over) .gflash{top:auto;bottom:6%;font-size:24px}
 @keyframes liveup{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
 /* round 6: watch out, achievements, the run's title card */
 .ev .watch{grid-column:1/-1;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ev .watch b{color:var(--text);font-weight:500}
@@ -1914,7 +1917,9 @@ function evHTML(e){
     if (e.won !== undefined) bits.push(e.won ? '<b style="color:var(--win)">Through</b>' : '<b style="color:var(--loss)">Out</b>');
     return bits.length ? `<div class="extra">${bits.join(' · ')}</div>` : '';
   };
-  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}${live}"><div class="rd">${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${tagsHTML(e)}${e.leg === 2 ? pensHTML(e.pens, e.opp) + tail(e) : ''}</div>`;
+  const aggLine = e => { const c = S.run.cup, f = c.ev.find(x => x.k === 'leg' && x.leg === 1 && x.round === e.round && x.opp === e.opp); if (!f || !e.agg) return '';
+    return `<div class="aggline" data-f="${f.s[0]}:${f.s[1]}">Aggregate <b class="num"><span class="ah">${e.agg[0]}</span>:<span class="aa">${e.agg[1]}</span></b></div>`; };
+  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}${live}"><div class="rd">${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${e.leg === 2 ? aggLine(e) : ''}${gls(e)}${tagsHTML(e)}${e.leg === 2 ? pensHTML(e.pens, e.opp) + tail({ ...e, agg: null }) : ''}</div>`;
   if (e.k === 'final') return `<div class="ev big fin${live}"${e.won ? ' data-won="1"' : ''}><div class="rd">Final</div><div class="opp">${venue(null)} ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tagsHTML(e)}${pensHTML(e.pens, e.opp)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
   if (e.k === 'podone'){
     const tie = t => `<tr class="${t[0] === e.opp || t[1] === e.opp ? 'me' : ''}"><td style="text-align:left">${t[3] === t[0] ? `<b>${esc(nm(t[0]))}</b>` : esc(nm(t[0]))}</td><td class="sc">${t[2][0]}:${t[2][1]}${t[4] === 1 ? ' <small>p</small>' : t[4] === 2 ? ' <small>aet</small>' : ''}</td><td style="text-align:right">${t[3] === t[1] ? `<b>${esc(nm(t[1]))}</b>` : esc(nm(t[1]))}</td></tr>`;
@@ -1966,6 +1971,9 @@ function runLive(){
   const sh = el.querySelector('.score .sh'), sa = el.querySelector('.score .sa'); if (!sh || !sa) return;
   const fh = +sh.textContent, fa = +sa.textContent, end = Math.max(90, ...goals.map(x => x.m)) > 90 || el.querySelector('.extra') && /Extra time/.test(el.textContent) ? 120 : 90;
   sh.textContent = 0; sa.textContent = 0;
+  const ag = el.querySelector('.aggline'), ah = ag && ag.querySelector('.ah'), aa = ag && ag.querySelector('.aa'), agF = ag ? [+ah.textContent, +aa.textContent] : null;
+  if (ag){ const [x, y] = ag.dataset.f.split(':').map(Number); ah.textContent = x; aa.textContent = y; }
+  const bump = n => { n.textContent = +n.textContent + 1; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); };
   const clk = document.createElement('div'); clk.className = 'lclock'; clk.innerHTML = `<span>0'</span><i><b></b></i><small>Tap to skip</small>`;
   el.querySelector('.score').after(clk);
   const D = end === 120 ? 5200 : 4000, t0 = performance.now(); let h = 0, a = 0, k = 0, done = false, skipPens = null;
@@ -1974,8 +1982,8 @@ function runLive(){
     const who = (x.g.textContent.replace(/^⚽\s*\d+'\s*/, '').split('(')[0] || '').replace('★', '').trim();
     SND.play(x.ours ? 'roar' : 'groan'); f.className = 'gflash' + (x.ours ? '' : ' them'); f.textContent = x.ours ? `Goal! ${who}` : `Conceded · ${who}`; el.appendChild(f); setTimeout(() => f.remove(), 1300); };
   const kicks = [...el.querySelectorAll('.pens .k')].sort((x, y) => x.dataset.i - y.dataset.i);
-  const finishLive = (skip) => { if (done) return; done = true; goals.forEach(x => x.g.classList.add('in')); sh.textContent = fh; sa.textContent = fa;
-    const whistle = () => { if (el.dataset.blown) return; el.dataset.blown = 1; if (runLive.cur && runLive.cur.el === el) runLive.cur.over(); el.classList.add('over'); if (el.dataset.won) confetti(); else if (skip !== true) SND.play('whistle'); };
+  const finishLive = (skip) => { if (done) return; done = true; goals.forEach(x => x.g.classList.add('in')); sh.textContent = fh; sa.textContent = fa; if (ag){ ah.textContent = agF[0]; aa.textContent = agF[1]; }
+    const whistle = () => { if (el.dataset.blown) return; el.dataset.blown = 1; el.querySelectorAll('.gflash').forEach(f => f.remove()); if (runLive.cur && runLive.cur.el === el) runLive.cur.over(); el.classList.add('over'); if (el.dataset.won) confetti(); else if (skip !== true) SND.play('whistle'); };
     if (!kicks.length || skip === true){ kicks.forEach(k => k.classList.add('in')); whistle(); return; }
     // the shootout, kick by kick
     // who steps up, a beat, then the kick
@@ -2005,7 +2013,7 @@ function runLive(){
     if (done || !el.isConnected) return;
     const m = Math.min(end, (now - t0) / D * end);
     clk.querySelector('span').textContent = Math.floor(m) + "'"; clk.querySelector('b').style.width = (100 * m / end) + '%';
-    while (k < goals.length && goals[k].m <= m){ const x = goals[k++]; x.g.classList.add('in'); flash(x);
+    while (k < goals.length && goals[k].m <= m){ const x = goals[k++]; x.g.classList.add('in'); flash(x); if (ag) bump(x.ours ? ah : aa);
       // the 90-minute score counts goals up to 90'; extra time is in the line under it
       if (x.m <= 90 || end === 90){ if (x.ours && h < fh){ sh.textContent = ++h; sh.classList.remove('pop'); void sh.offsetWidth; sh.classList.add('pop'); }
         else if (!x.ours && a < fa){ sa.textContent = ++a; sa.classList.remove('pop'); void sa.offsetWidth; sa.classList.add('pop'); } } }
@@ -2905,7 +2913,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261019180724';
+const BUILD = '20261019221423';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
