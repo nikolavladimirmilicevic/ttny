@@ -100,7 +100,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .strip .sc{flex:1 1 0;min-width:0;overflow:hidden;font:600 9.5px/1 var(--display);letter-spacing:0;padding:5px 1px;text-align:center;border-radius:5px;border:1px dashed rgba(255,255,255,.25);color:var(--muted)}
 .strip .sc.on{background:var(--gold);border:1px solid var(--gold);color:#0B1626}
 @media(min-width:820px){.grid2{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}.sticky{position:sticky;top:12px}}
-.reveal{animation:flip .5s ease-out}
+.reveal{animation:fadein .3s ease-out}
 .loader{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:var(--muted);font-size:14px}
 .ld-logo{width:120px;height:154px;background:center/contain no-repeat;animation:breathe 1.6s ease-in-out infinite}
 .ld-bar{width:min(260px,70vw);height:6px;border-radius:3px;background:var(--line);overflow:hidden}.ld-bar b{display:block;height:100%;width:4%;background:var(--gold);border-radius:3px;transition:width .2s}
@@ -109,7 +109,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 @media (prefers-reduced-motion: reduce){#app.enter,.ld-logo{animation:none}}
 .clubcard.spinning h2{opacity:.55;filter:blur(.6px)}.clubcard.spinning .meta,.clubcard.spinning .note{visibility:hidden}body.spin .prow{opacity:0}.prow{transition:opacity .25s}.clubcard.landed h2{animation:land .45s cubic-bezier(.2,1.5,.4,1)}
 @keyframes land{0%{transform:scale(.85);opacity:.4}60%{transform:scale(1.06);opacity:1}100%{transform:none}}
-@keyframes flip{from{transform:rotateX(70deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
 .clubcard h2{font-size:clamp(30px,8vw,44px);font-weight:700}
 .clubcard .meta{margin-top:6px;color:var(--muted);font-size:14px}
 .note{margin-top:10px;font-size:13px;color:var(--gold)}
@@ -456,16 +456,16 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .strip.hasmini{display:none}
 @media(max-width:819px){.strip.hasmini{display:flex;gap:10px;align-items:stretch}}
 .strip .sbody{flex:1;min-width:0}
-.mini{position:relative;flex:none;width:44px;border-radius:5px;background:var(--grass);border:1px solid rgba(243,239,230,.18)}
-.mini i{position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;border:1px dashed rgba(243,239,230,.35)}
-.mini i.on{background:var(--kit);border:1px solid rgba(11,22,38,.6)}
-.mini i.pop{animation:minipop .6s cubic-bezier(.2,1.4,.4,1)}
+.minipitch{position:relative;flex:none;width:44px;border-radius:5px;background:var(--grass);border:1px solid rgba(243,239,230,.18)}
+.minipitch i{position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;border:1px dashed rgba(243,239,230,.35)}
+.minipitch i.on{background:var(--kit);border:1px solid rgba(11,22,38,.6)}
+.minipitch i.pop{animation:minipop .6s cubic-bezier(.2,1.4,.4,1)}
 @keyframes minipop{0%{transform:scale(3.2);box-shadow:0 0 0 3px #F2C14E}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(242,193,78,0)}}
 /* round 4: card reveal, path, player of the run, crests, last seconds, sound */
 .fd{background:repeating-linear-gradient(45deg,#22395A 0 5px,#182A44 5px 10px)!important;color:transparent!important;border-color:rgba(242,193,78,.55)!important}
-.flip{animation:flip .45s ease-out}
-.flip.star{animation:flip .45s ease-out,starburst 1.3s ease-out}
-@keyframes flip{0%{transform:perspective(200px) rotateY(90deg)}100%{transform:perspective(200px) rotateY(0)}}
+.flip{animation:gradeflip .45s ease-out}
+.flip.star{animation:gradeflip .45s ease-out,starburst 1.3s ease-out}
+@keyframes gradeflip{0%{transform:perspective(200px) rotateY(90deg)}100%{transform:perspective(200px) rotateY(0)}}
 @keyframes starburst{0%,35%{box-shadow:0 0 0 0 rgba(242,193,78,.95)}100%{box-shadow:0 0 0 22px rgba(242,193,78,0)}}
 #app.revealing .teambox .ovdot.big,#app.revealing .teambox .tnum{color:transparent;filter:grayscale(1)}
 .revhint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px;letter-spacing:.04em}
@@ -1774,7 +1774,7 @@ function shapeStrip(r, cells, nP){
 function miniPitch(r){
   const f = r.form, a = (r.picks.length ? arrangement(r.picks, f) : null) || Array(11).fill(null);
   const last = r.picks[r.picks.length - 1], pop = last && r.popd !== last; r.popd = last;
-  return `<div class="mini" aria-hidden="true">` + FORMS[f].map(([, x, y], j) => { const pid = a[j];
+  return `<div class="minipitch" aria-hidden="true">` + FORMS[f].map(([, x, y], j) => { const pid = a[j];
     return pid ? `<i class="on${pid === last && pop ? ' pop' : ''}" style="left:${x}%;top:${y}%;${kit(W.P[pid])}"></i>` : `<i style="left:${x}%;top:${y}%"></i>`; }).join('') + `</div>`;
 }
 function viewDraft(){
