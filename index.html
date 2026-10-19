@@ -424,8 +424,8 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 
 
 /* while your match is played out, what comes after it (next opponent, odds, table, bracket) waits for the whistle */
-body.matchon .stack > .feed:has(.ev.live) ~ *{opacity:0;pointer-events:none}
-.stack > .feed ~ *{transition:opacity .35s ease-out}
+body.matchon .stack > *:not(.allwrap),body.matchon .allwrap > .eyebrow,body.matchon .allwrap .feed > *:not(.live){opacity:0;pointer-events:none}
+.stack > *,.allwrap .feed > *{transition:opacity .35s ease-out}
 .ev.drawing .odds,.ev.drawing .watch{visibility:hidden}
 .speed{display:flex;align-items:center;gap:10px;max-width:980px;margin:0 auto 8px;font-size:12px;color:var(--muted)}
 .speed input{flex:1;accent-color:var(--gold);min-width:0}.speed b{min-width:34px;text-align:right;color:var(--text);font:600 14px var(--display)}
@@ -1156,8 +1156,11 @@ function teamGoals(team, n, lo, hi, opp){
   const pickBy = (list, wf) => { const ws = list.map(wf), tot = ws.reduce((t, x) => t + x, 0); let x = MR() * tot; for (let i = 0; i < list.length; i++){ x -= ws[i]; if (x <= 0) return list[i]; } return list[list.length - 1]; };
   const minute = () => { if (lo > 90 || !W.minCdf) return lo + Math.floor(MR() * (hi - lo + 1)); const u = MR(); let m = W.minCdf.findIndex(c => c >= u); return m < 0 ? 90 : m + 1; };
   const LINE_OG = { GK: 0.3, DEF: 3, MID: 1, FWD: 0.4 };
+  const used = new Set(), top = lo > 90 ? hi : 90;
   for (let i = 0; i < n; i++){
-    const m = minute();
+    let m = minute();
+    while (used.has(m) && used.size < top) m = m < top ? m + 1 : (lo > 90 ? lo : 1);   // one goal per minute per side: no twin 52' lines
+    used.add(m);
     if (opp && MR() < W.ogShare){   // own goal by the other side
       const them = opp === 'YOU' ? S.run.picks.map(pick) : W.C[opp].squad.filter(id => !S.run.picks.includes(id)).map(pick);
       const oMax = Math.max(1, ...them.map(p => p.mn || 0));
@@ -2145,6 +2148,17 @@ function watchOut(opp){
   const top = c.squad.filter(id => W.P[id] && !S.run.picks.includes(id)).sort((x, y) => W.P[y].ovr - W.P[x].ovr).slice(0, 3);
   return top.length ? `<div class="watch">Watch out: <b>${top.map(id => esc(short(W.P[id].name))).join(', ')}</b></div>` : '';
 }
+// straight into the Round of 16: the opponent is the winner of a play-off not yet played
+const tbdOf = (c, e) => e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
+/* every match of the run, in order: the played ones in full, then the ones whose opponent is already known */
+function matchList(c){
+  const done = c.ev.slice(0, c.shown).filter(e => isMatch(e) || e.k === 'podone');
+  const ahead = c.ev.slice(c.shown).filter(isMatch), known = [];
+  for (const e of ahead){ if (e.k === 'md') known.push(e); else break; }
+  if (!known.length && ahead[0] && !tbdOf(c, ahead[0])){ known.push(ahead[0]); if (ahead[1] && ahead[1].k === 'leg' && ahead[1].round === ahead[0].round) known.push(ahead[1]); }
+  if (!done.length && !known.length) return '';
+  return `<div class="allwrap"><div class="eyebrow">All matches</div><div class="feed">${done.map(evHTML).join('')}${known.map(e => pendCard(e, true)).join('')}</div></div>`;
+}
 /* the match ribbon at the top of every match screen: previous -> current -> next */
 const isMatch = e => e.k === 'md' || e.k === 'leg' || e.k === 'final';
 const rdShort = e => e.k === 'md' ? `Matchday ${e.n}` : e.k === 'final' ? 'Final' : `${RD_SHORT[e.round] || e.round} · leg ${e.leg}`;
@@ -2306,11 +2320,8 @@ function viewLeague(){
   return `${cupTop(r)}${cupHead(compOf(r).short, 'League phase', fin ? `Finished ${ord(fin.pos)}` : k ? `Matchday ${k} of ${N}` : `${N} matchdays`)}
   <div class="stack">
     ${ribbon(c)}
-    ${fin ? `<section class="card verdict"><div class="eyebrow">League phase over</div><h1 style="margin-top:8px">You finished ${ord(fin.pos)}</h1><p style="margin:8px 0 0">${z}</p></section>` : ''}
-    ${last && !fin ? `<div class="feed">${evHTML(last)}</div>` : ''}
-    ${k ? tableHTML(tableAfter(c, k), fin ? 'Final table' : `Table after matchday ${k}`, '', k > 1 && !fin ? tableAfter(c, k - 1) : null) : ''}
-    ${upcoming.length > 1 ? `<div class="eyebrow">Still to play</div><div class="feed">${upcoming.slice(1).map(e => pendCard(e, true)).join('')}</div>` : ''}
-    ${played.length > (fin ? 0 : 1) ? `<div class="eyebrow">Results</div><div class="feed">${played.slice(0, fin ? played.length : -1).reverse().map(evHTML).join('')}</div>` : ''}
+    ${k ? tableHTML(tableAfter(c, k), fin ? 'Final table' : `Table after matchday ${k}`, fin ? `You finished ${ord(fin.pos)}. ${z}` : '', k > 1 && !fin ? tableAfter(c, k - 1) : null) : ''}
+    ${matchList(c)}
   </div>
   ${dock(main, next && next.k !== 'end' ? skipBtn : '')}`;
 }
@@ -2322,8 +2333,8 @@ function viewKO(){
   return `${cupTop(r)}${cupHead(compOf(r).short, stage, '')}
   <div class="stack">
     ${ribbon(c)}
-    ${last ? `<div class="feed">${evHTML(last)}</div>` : ''}
     ${koBox(c, koState(c))}
+    ${matchList(c)}
   </div>
   ${dock(next ? `<button class="btn primary" data-act="next">${nextLabel(next)}</button>` : '', next && next.k !== 'end' ? skipBtn : '')}`;
 }
@@ -2983,7 +2994,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261019231712';
+const BUILD = '20261019232554';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
