@@ -62,6 +62,8 @@ Everything fetched is cached in `data/cache/`, so each run only asks for what is
 
 After the first full run, check `data/cache/teams.json` (every club matched to the right team) and `data/cache/position_check.txt` (if left-backs show up as RB, set the variable `GRID_COL1_IS_RIGHT` to `1`, delete `data/cache/lineups.json` and run again).
 
+**Updating the game:** run `python3 pipeline/tools/stamp.py` before committing a change to `index.html`. It writes a new build id into the page and into `version.json`; an open copy of the game checks `version.json` every minute and reloads itself (never in the middle of a live match), and the run carries on.
+
 ## Run locally
 
 ```

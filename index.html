@@ -2880,12 +2880,25 @@ function catchUp(){
   setTimeout(() => toast(ended ? 'The clock ran out while you were away, so the challenge is over.' : 'The clock moved the game on while you were away.'), 300);
   return true;
 }
+// a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
+const BUILD = '20261019162328';
+async function checkBuild(){
+  try {
+    const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
+    const v = await r.json(); if (!v.build || v.build === BUILD || BUILD === 'dev') return;
+    if (runLive.cur || document.getElementById('intro')){ setTimeout(checkBuild, 8000); return; }
+    save(); try { sessionStorage.setItem('ttny-updated', '1'); } catch (e) {} location.reload();
+  } catch (e) {}
+}
+setInterval(checkBuild, 60 * 1000);
+try { if (sessionStorage.getItem('ttny-updated')){ sessionStorage.removeItem('ttny-updated'); setTimeout(() => toast('The game was updated. Your run carries on.'), 800); } } catch (e) {}
 // back after a while: after 10 minutes away, load the page again (the newest data); clocks that ran out are played out
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
   if (document.hidden){ hiddenAt = Date.now(); return; }
   if (hiddenAt && Date.now() - hiddenAt > 10 * 60 * 1000){ save(); location.reload(); return; }
   if (W) catchUp();
+  checkBuild();
 });
 addEventListener('pageshow', e => { if (e.persisted) location.reload(); });   // a page restored from the back-forward cache
 boot();
