@@ -779,7 +779,7 @@ function teamRating(picks, form){
 }
 /* Chemistry, per player as in FIFA: 2 links for every team-mate (same club, or started for the same team, club or
    national, in the last year), 1 for every compatriot who is not also a team-mate; at most 3 per player, 33 per XI. */
-// same league: their clubs are in the same country
+// (same league no longer counts: measured on national teams, only team-mates carry chemistry; compatriots stay)
 const sameLeague = (p, q) => { const a = W.C[p.club], b = W.C[q.club]; return !!(a && b && a.ctry && a.ctry === b.ctry); };
 const mates = (p, q) => p.club === q.club || (p.tm || []).some(t => (q.tm || []).includes(t));
 function chemOf(picks){
@@ -789,7 +789,6 @@ function chemOf(picks){
     for (const q of ps) if (q !== p){
       if (mates(p, q)){ tm.push(q.id); continue; }
       if (p.nat && p.nat === q.nat) cp.push(q.id);
-      if (sameLeague(p, q)) lg.push(q.id);
     }
     const pts = Math.min(3, 2 * tm.length + cp.length + lg.length); per[p.id] = { pts, tm, cp, lg }; total += pts;
   }
@@ -1582,7 +1581,7 @@ function viewHome(){
         <li>The draft starts in 4-2-2-2 and keeps that shape while it still works; when it stops working, another one that works is picked at random. A player can only be picked if he still fits one of the 14 formations. At the end you choose the shape yourself.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>The further you go, the more players you keep: out in the league phase 5 (in the Conference League that ends the challenge), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
-        <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) 1 for each compatriot and 1 for each player from a club in the same league, at most 3 each. It makes your XI play stronger. You see it as a bonus from A to E once your XI is complete.</li>
+        <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) and 1 for each compatriot, at most 3 each. It makes your XI play stronger. You see it as a number from 70 (none) to 99 (full) once your XI is complete.</li>
         <li>A challenge is up to ten runs at this one season. After each run and at the end you get a summary and an image to share. A challenge never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
@@ -1725,7 +1724,7 @@ function pendCard(e){
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
-  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r bonusrow"><span>Chemistry<small>Added on top: team-mates, compatriots, same league</small></span><b class="num tnum g${ovGrade(chemNum(t.chem))}" title="Added on top of your team rating">${chemNum(t.chem)}</b></div></div></div></section>`;
+  return `<section class="teambox"><div class="eyebrow" style="margin-bottom:10px">Team rating</div><div class="tq">${ovDot(t)}<div class="trows">${partRows(t)}<div class="r bonusrow"><span>Chemistry<small>Added on top: team-mates and compatriots</small></span><b class="num tnum g${ovGrade(chemNum(t.chem))}" title="Added on top of your team rating">${chemNum(t.chem)}</b></div></div></div></section>`;
 }
 /* ================= THE SEASON, SCREEN BY SCREEN =================
    team -> draw -> league phase (table after every matchday) -> knockouts (bracket after every match)
