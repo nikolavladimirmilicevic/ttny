@@ -22,7 +22,7 @@ SHARE = {'level': 0.45, 'role': 0.15, 'perf': 0.30, 'form': 0.10}   # form: last
 OVR_MEAN, OVR_SD = 72, 7.5
 HALF_LIFE_DAYS = 90      # a match rating counts half after 90 days, a quarter after 180
 FORM_DAYS = 60           # form: the last 5 ratings, only from the last 60 days
-V2 = False               # the player overall from player strength learned from results (below); False: the old blend
+V2 = True                # the player overall from player strength learned from results (below); False: the old blend
 P_K, P_KNEW, P_NEW = 24, 60, 15   # player strength: Elo step, and a bigger one for a player's first 15 matches
 P_REL = 300              # plus his match ratings against his team-mates' in the same matches (Elo points per rating point)
 P_REL_PRIOR = 5          # ... shrunk toward 0 by 5 matches
@@ -368,7 +368,12 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
         g = statistics.mean(sv.values())
         cen = {i: sv[i] - lm[raw[i]['line']] + g for i in sv}
         m, sd = statistics.mean(cen.values()), statistics.pstdev(cen.values()) or 1
-        v2 = {i: OVR_MEAN + OVR_SD * (cen[i] - m) / sd for i in cen}
+        # a player with few starts leans toward a squad player's level (as before: full weight from 10 starts), so a
+        # club's third goalkeeper or a youngster with two games does not inherit the whole club's strength
+        def zz(i):
+            e = min(1.0, starts_of[i] / EXPERIENCE_STARTS)
+            return e * (cen[i] - m) / sd + (1 - e) * SQUAD_Z
+        v2 = {i: OVR_MEAN + OVR_SD * zz(i) for i in cen}
     else:
         v2 = {}
     out = {}
