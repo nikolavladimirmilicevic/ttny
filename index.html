@@ -1948,7 +1948,7 @@ function runLive(){
   sh.textContent = 0; sa.textContent = 0;
   const clk = document.createElement('div'); clk.className = 'lclock'; clk.innerHTML = `<span>0'</span><i><b></b></i><small>Tap to skip</small>`;
   el.querySelector('.score').after(clk);
-  const D = end === 120 ? 5200 : 4000, t0 = performance.now(); let h = 0, a = 0, k = 0, done = false;
+  const D = end === 120 ? 5200 : 4000, t0 = performance.now(); let h = 0, a = 0, k = 0, done = false, skipPens = null;
   // a short line when a goal goes in: yours in the competition's colour, theirs plain
   const flash = x => { el.querySelectorAll('.gflash').forEach(f => f.remove()); const f = document.createElement('div');
     const who = (x.g.textContent.replace(/^⚽\s*\d+'\s*/, '').split('(')[0] || '').replace('★', '').trim();
@@ -1966,10 +1966,18 @@ function runLive(){
       pk.className = 'pkline' + (ours ? '' : ' them'); pk.textContent = `${n} steps up…`;
       setTimeout(() => { if (!el.isConnected || j > kicks.length) return; k.classList.add('in'); const sc = k.classList.contains('s');
         pk.textContent = `${n} ${sc ? 'scores' : 'misses'}`; if (ours === sc) SND.play('roar'); setTimeout(next, 650); }, 650); };
-    el.addEventListener('click', () => { kicks.forEach(k => k.classList.add('in')); j = kicks.length + 1; pk.remove(); whistle(); }, { once: true });
+    skipPens = () => { kicks.forEach(k => k.classList.add('in')); j = kicks.length + 1; pk.remove(); whistle(); };
+    el.addEventListener('click', () => skipPens(), { once: true });
     setTimeout(next, 400); };
   el.addEventListener('click', () => finishLive(true), { once: true });
-  document.addEventListener('click', e => { if (e.target.closest('[data-act]:not([data-act=snd])')) finishLive(true); }, { once: true, capture: true });
+  // a button pressed while the match is still on: this click only ends the match (score, penalties, whistle); the next click moves on
+  const endNow = () => { if (!done) finishLive(true); else if (skipPens) skipPens(); };
+  const onAct = e => { const b = e.target.closest('[data-act]'); if (!b || b.dataset.act === 'snd') return;
+    document.removeEventListener('click', onAct, true);
+    if (!el.isConnected || el.dataset.blown) return;
+    if (b.dataset.act === 'next' || b.dataset.act === 'all' || b.dataset.act === 'scr'){ e.preventDefault(); e.stopImmediatePropagation(); }
+    endNow(); };
+  document.addEventListener('click', onAct, true);
   const frame = now => {
     if (done || !el.isConnected) return;
     const m = Math.min(end, (now - t0) / D * end);
