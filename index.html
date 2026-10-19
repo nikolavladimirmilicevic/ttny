@@ -410,7 +410,6 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .ovdot.gr{color:#0B1626}.ovdot.gr.gA,.ovdot.gr.gE{color:#fff}.ovdot.gr.gA{background:var(--gA)}.ovdot.gr.gB{background:var(--gB)}.ovdot.gr.gC{background:var(--gC)}.ovdot.gr.gD{background:var(--gD)}.ovdot.gr.gE{background:var(--gE)}
 .pitch.tall{aspect-ratio:68/118}
 .slot .sub{font-size:10px;line-height:1.1;font-weight:600;white-space:nowrap}.slot .sub.fit0{color:#5CC08A}.slot .sub.fit1{color:#F2C14E}.slot .sub.fit2{color:#E8604C}
-.chemlines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}.chemlines line{stroke:#5CC08A;stroke-width:2.5;stroke-opacity:.7;stroke-linecap:round;vector-effect:non-scaling-stroke}.chemlines line.cp{stroke-width:1.5;stroke-opacity:.45;stroke-dasharray:3 4}
 .slot .lbl.fit0{color:#5CC08A}.slot .lbl.fit1{color:#F2C14E}.slot .lbl.fit2{color:#E8604C}
 .slot .lbl.fit0,.slot .lbl.fit1,.slot .lbl.fit2{font-weight:600}
 .cups{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
@@ -1648,14 +1647,7 @@ function pitch(pids, form, kept, rated, editable, fit){
   const act = j => editable ? ` data-act="slot" data-j="${j}"` : '';
   const cap = pids.length && S.run ? captainOf(pids) : null;
   const cls = j => (j === sel ? ' sel' : '') + (sel != null && canMove(a, f, sel, j) ? ' target' : '') + (editable ? ' edit' : '');
-  // chemistry made visible: a solid line between team-mates of the last year, a dotted one between compatriots
-  let links = '';
-  if (pids.length === 11 && S.run){
-    const per = chemOf(pids).per, at = {}; a.forEach((pid, j) => { if (pid) at[pid] = FORMS[f][j]; });
-    for (const p of pids) for (const [k, cl] of [['cp', ' class="cp"'], ['tm', '']]) for (const q of (per[p] && per[p][k]) || [])
-      if (p < q && at[p] && at[q] && !(k === 'cp' && per[p].tm.includes(q))) links += `<line${cl} x1="${at[p][1]}" y1="${at[p][2]}" x2="${at[q][1]}" y2="${at[q][2]}"/>`;
-  }
-  return `<div class="pitch" role="img" aria-label="Formation ${f}">` + (links ? `<svg class="chemlines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${links}</svg>` : '') + FORMS[f].map(([code, x, y], j) => {
+  return `<div class="pitch" role="img" aria-label="Formation ${f}">` + FORMS[f].map(([code, x, y], j) => {
     const pid = a[j];
     if (!pid) return `<div class="slot empty${cls(j)}"${act(j)} style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
     const p = W.P[pid];
