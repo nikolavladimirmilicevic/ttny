@@ -427,13 +427,15 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 body.matchon .stack > .feed:has(.ev.live) ~ *{opacity:0;pointer-events:none}
 .stack > .feed ~ *{transition:opacity .35s ease-out}
 .ev.drawing .odds,.ev.drawing .watch{visibility:hidden}
+.speed{display:flex;align-items:center;gap:10px;max-width:980px;margin:0 auto 8px;font-size:12px;color:var(--muted)}
+.speed input{flex:1;accent-color:var(--gold);min-width:0}.speed b{min-width:34px;text-align:right;color:var(--text);font:600 14px var(--display)}
 .aggline{grid-column:1/-1;font:600 13px/1.2 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .aggline b{font-size:20px;letter-spacing:.02em;color:var(--text);margin-left:6px}.aggline span{display:inline-block}.aggline .pop{animation:pop .5s ease-out}
 body.matchon .ev.live:not(.over) .aggline{text-align:center;font-size:18px}body.matchon .ev.live:not(.over) .aggline b{font-size:40px;margin-left:10px}
 .ev.live:not(.over) .pens:not(.go){visibility:hidden}   /* no hint of a shootout before it starts */
 .stack > .feed:has(.drawn.spinning) ~ *{opacity:0;pointer-events:none}
 /* the match being played out takes the whole screen (top bar and buttons stay) */
-body.matchon .ev.live:not(.over){position:fixed;left:12px;right:12px;top:72px;bottom:92px;max-width:760px;margin:0 auto;z-index:4;display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:16px;padding:24px 20px;
+body.matchon .ev.live:not(.over){position:fixed;left:12px;right:12px;top:72px;bottom:128px;max-width:760px;margin:0 auto;z-index:4;display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:16px;padding:24px 20px;
   box-shadow:0 0 0 100vmax rgba(11,22,38,.88),0 20px 60px rgba(0,0,0,.6);animation:liveup .3s ease-out;overflow:auto}
 body.matchon .topbar{position:relative;z-index:6}
 body.matchon .ev.live:not(.over) .rd{text-align:center;font-size:13px}
@@ -1586,7 +1588,10 @@ function byPositions(a, b){
   return 0;
 }
 const POS_ORDER = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'CF'];
-const quitBtn = () => `<button class="chip quit${S.armed === 'quit' ? ' warn' : ''}" data-act="quit">${S.armed === 'quit' ? (S.run && S.run.kept.length ? 'Tap again: challenge ends' : 'Tap again to quit') : 'Quit run'}</button>`;
+// leave from any screen: during a run it counts as a loss; after a run it ends the challenge (or just leaves, once it is over)
+const quitBtn = () => { const r = S.run, done = r && r.phase === 'done', over = done && r.dynEnd, armed = S.armed === 'quit';
+  const lbl = armed ? (over ? 'Tap again to leave' : done || (r && r.kept.length) ? 'Tap again: challenge ends' : 'Tap again to quit') : over ? 'Leave' : done ? 'Quit challenge' : 'Quit run';
+  return `<button class="chip quit${armed ? ' warn' : ''}" data-act="quit">${lbl}</button>`; };
 const kit = p => { const n = natInfo(p.nat); return `--kit:${n[1]};--kit-ink:${n[2]}`; };
 const ISO = {'Chad':'TD','Niger':'NE','Gibraltar':'GI','Liechtenstein':'LI','Grenada':'GD','Pakistan':'PK','Mauritius':'MU','San Marino':'SM','England':'gb-eng','Scotland':'gb-sct','Wales':'gb-wls','Spain':'ES','Germany':'DE','Italy':'IT','France':'FR','Portugal':'PT','Netherlands':'NL','Belgium':'BE','Türkiye':'TR','Greece':'GR','Czechia':'CZ','Norway':'NO','Denmark':'DK','Sweden':'SE','Ukraine':'UA','Austria':'AT','Switzerland':'CH','Croatia':'HR','Serbia':'RS','Azerbaijan':'AZ','Hungary':'HU','Poland':'PL','Romania':'RO','Slovenia':'SI','Slovakia':'SK','Bulgaria':'BG','Cyprus':'CY','Israel':'IL','Brazil':'BR','Argentina':'AR','Uruguay':'UY','Colombia':'CO','Senegal':'SN','Nigeria':'NG','Ghana':'GH','Ivory Coast':'CI','Cameroon':'CM','Morocco':'MA','Japan':'JP','South Korea':'KR','USA':'US','Algeria':'DZ','Mali':'ML','Guinea':'GN','Egypt':'EG','Tunisia':'TN','Ecuador':'EC','Paraguay':'PY','Chile':'CL','Mexico':'MX','Canada':'CA','Australia':'AU','Republic of Ireland':'IE','Ireland':'IE','Georgia':'GE','Albania':'AL','Kosovo':'XK','Bosnia and Herzegovina':'BA','North Macedonia':'MK','Montenegro':'ME','Iceland':'IS','Finland':'FI','Burkina Faso':'BF','Gabon':'GA','Congo DR':'CD','Angola':'AO','Cape Verde Islands':'CV','Jamaica':'JM','Venezuela':'VE','Peru':'PE','Iran':'IR','Armenia':'AM','Russia':'RU','Lithuania':'LT','Luxembourg':'LU','Zambia':'ZM','Zimbabwe':'ZW','Gambia':'GM','Togo':'TG','Benin':'BJ','Equatorial Guinea':'GQ','Suriname':'SR','Curaçao':'CW','Haiti':'HT','China':'CN','Uzbekistan':'UZ','New Zealand':'NZ','South Africa':'ZA','Kenya':'KE','Estonia':'EE','Latvia':'LV','Belarus':'BY','Moldova':'MD','Costa Rica':'CR','Honduras':'HN','Panama':'PA','Bolivia':'BO','Sierra Leone':'SL','Mozambique':'MZ','Comoros':'KM','Iraq':'IQ','Liberia':'LR','Central African Republic':'CF','Jordan':'JO','Saudi Arabia':'SA','Congo':'CG','Guinea-Bissau':'GW','Qatar':'QA','Syria':'SY','Lebanon':'LB','Palestine':'PS','Faroe Islands':'FO','Malta':'MT','Andorra':'AD','Kazakhstan':'KZ','Trinidad and Tobago':'TT','Guadeloupe':'GP','Martinique':'MQ','French Guiana':'GF','Madagascar':'MG','Mauritania':'MR','Sudan':'SD','Tanzania':'TZ','Uganda':'UG','Rwanda':'RW','Burundi':'BI','Ethiopia':'ET','Libya':'LY','Philippines':'PH','Indonesia':'ID','Thailand':'TH','Vietnam':'VN','India':'IN','Cuba':'CU','Dominican Republic':'DO','El Salvador':'SV','Guatemala':'GT','Belize':'BZ','Korea Republic':'KR',"Côte d'Ivoire":'CI','Czech Republic':'CZ','Turkey':'TR','Cape Verde':'CV','Kyrgyz Republic':'KG','Kyrgyzstan':'KG','St. Kitts and Nevis':'KN','Saint Kitts and Nevis':'KN','St. Lucia':'LC','Saint Lucia':'LC','St. Vincent and the Grenadines':'VC','Saint Vincent and the Grenadines':'VC','Antigua and Barbuda':'AG','Barbados':'BB','Bermuda':'BM','Bahamas':'BS','Aruba':'AW','Montserrat':'MS','Dominica':'DM','Cayman Islands':'KY','Puerto Rico':'PR','Nicaragua':'NI','Guyana':'GY','Korea DPR':'KP','North Korea':'KP','Chinese Taipei':'TW','Hong Kong':'HK','Singapore':'SG','Malaysia':'MY','Oman':'OM','Bahrain':'BH','Kuwait':'KW','United Arab Emirates':'AE','Yemen':'YE','Afghanistan':'AF','Tajikistan':'TJ','Turkmenistan':'TM','Sri Lanka':'LK','Bangladesh':'BD','Nepal':'NP','Mongolia':'MN','Eswatini':'SZ','Namibia':'NA','Botswana':'BW','Lesotho':'LS','Malawi':'MW','Eritrea':'ER','Somalia':'SO','Djibouti':'DJ','South Sudan':'SS','Seychelles':'SC','São Tomé and Príncipe':'ST','Sao Tome and Principe':'ST','Cabo Verde':'CV','Fiji':'FJ','Papua New Guinea':'PG','New Caledonia':'NC','Tahiti':'PF','Solomon Islands':'SB','Vanuatu':'VU','Samoa':'WS','Réunion':'RE','Reunion':'RE','Mayotte':'YT','Bosnia':'BA','Macedonia':'MK','FYR Macedonia':'MK','Moldova Republic':'MD','Republic of Moldova':'MD','United States':'US','DR Congo':'CD','Iran IR':'IR','Holland':'NL','Great Britain':'GB','United Kingdom':'GB','Monaco':'MC','Vatican':'VA'};
 // Northern Ireland has no emoji flag: the Ulster Banner its football team plays under, drawn small
@@ -1976,7 +1981,7 @@ function runLive(){
   const bump = n => { n.textContent = +n.textContent + 1; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); };
   const clk = document.createElement('div'); clk.className = 'lclock'; clk.innerHTML = `<span>0'</span><i><b></b></i><small>Tap to skip</small>`;
   el.querySelector('.score').after(clk);
-  const D = end === 120 ? 5200 : 4000, t0 = performance.now(); let h = 0, a = 0, k = 0, done = false, skipPens = null;
+  const D = end === 120 ? 5200 : 4000, t0 = performance.now(); let m = 0, lastT = t0, h = 0, a = 0, k = 0, done = false, skipPens = null;
   // a short line when a goal goes in: yours in the competition's colour, theirs plain
   const flash = x => { el.querySelectorAll('.gflash').forEach(f => f.remove()); const f = document.createElement('div');
     const who = (x.g.textContent.replace(/^⚽\s*\d+'\s*/, '').split('(')[0] || '').replace('★', '').trim();
@@ -1993,10 +1998,10 @@ function runLive(){
       const k = kicks[j++], n = k.dataset.n || (k.dataset.i % 2 ? 'Them' : 'Your XI'), ours = k.dataset.i % 2 === 0;
       pk.className = 'pkline' + (ours ? '' : ' them'); pk.textContent = `${n} steps up…`;
       setTimeout(() => { if (!el.isConnected || j > kicks.length) return; k.classList.add('in'); const sc = k.classList.contains('s');
-        pk.textContent = `${n} ${sc ? 'scores' : 'misses'}`; if (ours === sc) SND.play('roar'); setTimeout(next, 650); }, 650); };
+        pk.textContent = `${n} ${sc ? 'scores' : 'misses'}`; if (ours === sc) SND.play('roar'); setTimeout(next, 650 / simSpeed()); }, 650 / simSpeed()); };
     skipPens = () => { kicks.forEach(k => k.classList.add('in')); j = kicks.length + 1; pk.remove(); whistle(); };
     el.addEventListener('click', () => skipPens(), { once: true });
-    setTimeout(next, 400); };
+    setTimeout(next, 400 / simSpeed()); };
   el.addEventListener('click', () => finishLive(true), { once: true });
   // a button pressed while the match is still on: this click only ends the match (score, penalties, whistle); the next click moves on
   const endNow = () => { if (!done) finishLive(true); else if (skipPens) skipPens(); };
@@ -2011,7 +2016,7 @@ function runLive(){
   document.addEventListener('click', onAct, true);
   const frame = now => {
     if (done || !el.isConnected) return;
-    const m = Math.min(end, (now - t0) / D * end);
+    m = Math.min(end, m + (now - lastT) / D * end * simSpeed()); lastT = now;
     clk.querySelector('span').textContent = Math.floor(m) + "'"; clk.querySelector('b').style.width = (100 * m / end) + '%';
     while (k < goals.length && goals[k].m <= m){ const x = goals[k++]; x.g.classList.add('in'); flash(x); if (ag) bump(x.ours ? ah : aa);
       // the 90-minute score counts goals up to 90'; extra time is in the line under it
@@ -2135,7 +2140,14 @@ const cupTop = r => `<header class="topbar">${MARK}<div style="display:flex;gap:
 // which season of the challenge this is
 const seasonTag = () => 'Run ' + ((S.run && S.run.season) || 1);
 const cupHead = (eyebrow, title, side) => { const f = S.run && S.run.cup ? formDots(S.run.cup) : ''; return `<div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">${eyebrow} · ${seasonTag()}</div><h2>${title}</h2></div>${side || f ? `<span class="muted" style="font-size:13px;text-align:right">${side || ''}${f ? `<br>Form ${f}` : ''}</span>` : ''}</div>`; };
-const dock = (main, ghost) => `<div class="dock"><div class="btnrow">${main}${ghost || ''}</div></div>`;
+// match speed, any time during the season: a slider above the buttons (half speed to three times as fast)
+const SPEEDS = [0.5, 1, 1.5, 2, 3];
+const simSpeed = () => SPEEDS[S.pref && S.pref.speed != null ? S.pref.speed : 1] || 1;
+const speedRow = () => { const i = S.pref && S.pref.speed != null ? S.pref.speed : 1;
+  return `<label class="speed"><span>Match speed</span><input type="range" min="0" max="${SPEEDS.length - 1}" step="1" value="${i}" data-speed aria-label="Match speed"><b class="num">${SPEEDS[i]}×</b></label>`; };
+const dock = (main, ghost) => `<div class="dock">${S.run && S.run.phase === 'cup' ? speedRow() : ''}<div class="btnrow">${main}${ghost || ''}</div></div>`;
+document.addEventListener('input', e => { if (!e.target.matches('[data-speed]')) return;
+  S.pref = S.pref || {}; S.pref.speed = +e.target.value; save(); const b = e.target.parentNode.querySelector('b'); if (b) b.textContent = SPEEDS[S.pref.speed] + '×'; });
 const skipBtn = '<button class="btn ghost" data-act="all">Skip to the end</button>';
 function viewCup(){
   const r = S.run, c = r.cup;
@@ -2638,7 +2650,7 @@ function viewDone(){
   const r = S.run, d = r.dscr || 'season';
   return d === 'comp' ? viewComp() : d === 'keep' ? viewKeep() : d === 'dynasty' ? viewDynasty() : viewSeason();
 }
-const doneTop = () => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${sndBtn()}${stepChip(S.run)}${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}<span class="chip">${seasonTag()}</span></div></header>`;
+const doneTop = () => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${sndBtn()}${stepChip(S.run)}${S.stats.streak > 1 ? `<span class="chip hot wide-only">${S.stats.streak} titles in a row</span>` : ''}<span class="chip wide-only">${seasonTag()}</span>${quitBtn()}</div></header>`;
 const verdictHead = r => { const st = r.cup.stage; return st === 'champion' ? (r.comp === 'cl' || !r.comp ? 'Champions of Europe' : `${compOf(r).short} winners`) : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase(); };
 /* your season: the verdict, every match you played, your players */
 /* the run in one sentence, from what happened: the league phase, every knockout tie, the final */
@@ -2770,7 +2782,8 @@ document.addEventListener('click', e => {
     if (S.pref.sound) SND.play('whistle', true); return;
   }
   if (a === 'quit'){
-    if (S.armed === 'quit'){ S.armed = null; S.run = null; S.dyn = null; S.stats.runs++; S.stats.streak = 0; save(); render(); scrollTo(0, 0); toast('Run abandoned. It counts as a loss.'); }
+    if (S.armed === 'quit' && S.run && S.run.phase === 'done'){ const over = S.run.dynEnd; S.armed = null; S.run = null; S.dyn = null; if (!over) S.stats.streak = 0; save(); render(); scrollTo(0, 0); if (!over) toast('Challenge ended.'); }
+    else if (S.armed === 'quit'){ S.armed = null; S.run = null; S.dyn = null; S.stats.runs++; S.stats.streak = 0; save(); render(); scrollTo(0, 0); toast('Run abandoned. It counts as a loss.'); }
     else {   // update the button in place so the draft card does not replay its reveal
       S.armed = 'quit'; b.outerHTML = quitBtn();
       setTimeout(() => { if (S.armed === 'quit'){ S.armed = null; const q = document.querySelector('[data-act=quit]'); if (q) q.outerHTML = quitBtn(); } }, 4000);
@@ -2913,7 +2926,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261019221423';
+const BUILD = '20261019221815';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
