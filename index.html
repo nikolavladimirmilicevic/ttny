@@ -1190,7 +1190,7 @@ function buildCup(T){
 let S = { run: null, dyn: null, stats: { runs: 0, titles: 0, streak: 0, best: 0, bestStage: null }, armed: null };
 function load(){ try { const s = JSON.parse(localStorage.getItem(CFG.STORE) || 'null'); if (s && s.stats) S = Object.assign(S, s); } catch (e) {} }
 function save(){ try { localStorage.setItem(CFG.STORE, JSON.stringify({ run: S.run, dyn: S.dyn, stats: S.stats, pref: S.pref })); } catch (e) {} }
-function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 3200); }
+function toast(msg){ if (toast.quiet) return; const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 3200); }
 const fmt = ms => { ms = Math.max(0, ms); const m = Math.floor(ms / 60000), s = Math.floor(ms % 60000 / 1000); return m + ':' + String(s).padStart(2, '0'); };
 const nm = id => id === 'YOU' ? 'Your XI' : W.C[id].name;
 const STAGE_RANK = ['league', 'playoff', 'r16', 'qf', 'sf', 'final', 'champion'];
@@ -2366,26 +2366,39 @@ async function boot(){
   // a run from before a data update whose players no longer fit together: start again
   if (S.run && S.run.picks && S.run.picks.length === 11 && !feasible(S.run.picks).length) S.run = null;
   if (S.dyn && S.dyn.kept) S.dyn.kept = S.dyn.kept.filter(id => !bad(id));
-  staleReset();
+  catchUp();
   render();
   setInterval(tick, 1000);
 }
-/* away too long: a clock that ran out more than two minutes ago (the phone slept, the tab was closed) does not play on
-   where it stopped; the run and the challenge start again from the beginning */
-function staleReset(){
-  const now = Date.now(), r = S.run;
-  const lost = (r && r.stepDl && now - r.stepDl > 120000) || (!r && S.dyn && now > S.dyn.deadline);
-  if (!lost) return false;
-  S.run = null; S.dyn = null; S.stats.streak = 0; S.armed = null; save();
-  setTimeout(() => toast('The clock ran out while you were away, so the challenge starts again.'), 300);
+/* away for a while (the phone slept, the tab was closed): every clock that ran out in the meantime is played out in
+   order, on the clock it would have had, as if the page had stayed open: random picks, a random shape, the next steps,
+   nobody kept, and after 10 minutes between runs the end of the challenge. Away a few minutes, you land where the
+   game would be by now; away for hours, the challenge is over. */
+function catchUp(){
+  const realNow = Date.now, start = realNow(); let moved = false, ended = false;
+  toast.quiet = true;
+  try {
+    for (let guard = 0; guard < 600; guard++){
+      const r = S.run;
+      if (r && r.stepDl && start > r.stepDl){
+        const t = r.stepDl; Date.now = () => t + 1;
+        render(); timeUp(); render(); moved = true; continue;
+      }
+      if (!r && S.dyn && start > S.dyn.deadline){ S.dyn = null; S.stats.streak = 0; save(); moved = true; ended = true; }
+      break;
+    }
+  } finally { Date.now = realNow; toast.quiet = false; }
+  if (!moved) return false;
+  save(); render();
+  setTimeout(() => toast(ended ? 'The clock ran out while you were away, so the challenge is over.' : 'The clock moved the game on while you were away.'), 300);
   return true;
 }
-// back after a while: after 10 minutes away, load the page again (the newest data); a clock that ran out resets the game
+// back after a while: after 10 minutes away, load the page again (the newest data); clocks that ran out are played out
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
   if (document.hidden){ hiddenAt = Date.now(); return; }
   if (hiddenAt && Date.now() - hiddenAt > 10 * 60 * 1000){ save(); location.reload(); return; }
-  if (W && staleReset()) render();
+  if (W) catchUp();
 });
 addEventListener('pageshow', e => { if (e.persisted) location.reload(); });   // a page restored from the back-forward cache
 boot();
