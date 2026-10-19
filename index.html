@@ -2089,15 +2089,16 @@ function watchOut(opp){
   const top = c.squad.filter(id => W.P[id] && !S.run.picks.includes(id)).sort((x, y) => W.P[y].ovr - W.P[x].ovr).slice(0, 3);
   return top.length ? `<div class="watch">Watch out: <b>${top.map(id => esc(short(W.P[id].name))).join(', ')}</b></div>` : '';
 }
-function pendCard(e){
+// only the very next match shows odds (and who to watch out for): later ones wait, as if form will still move them
+function pendCard(e, later){
   const c = S.run.cup;
   // straight into the Round of 16: the opponent comes out of the play-offs, so he is not known yet
   const tbd = e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
   const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}` : 'Final';
   const draw = (e.k === 'leg' && e.leg === 1) || e.k === 'final';
   const who = tbd ? '<span class="muted">Play-off winner</span>' : `<span class="drawn"${draw ? ` data-spin="${esc(e.round || 'Final')}|${e.opp}"` : ''}>${crest(e.opp)}${esc(nm(e.opp))}</span>`;
-  const right = tbd ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
-  return `<div class="ev pend${e.k === 'final' ? ' fin' : ''}"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}${tbd ? '' : watchOut(e.opp)}</div>`;
+  const right = tbd || later ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
+  return `<div class="ev pend${e.k === 'final' ? ' fin' : ''}"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}${tbd || later ? '' : watchOut(e.opp)}</div>`;
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
@@ -2173,7 +2174,7 @@ function viewDraw(){
   <div class="stack">${drawCard(c)}
     <div class="pots ${six ? 'p6' : 'p4'}">${pots.map(potCard).join('')}</div>
     <div class="eyebrow">Your league phase</div>
-    <div class="feed">${mds.map(pendCard).join('')}</div></div>
+    <div class="feed">${mds.map((e, i) => pendCard(e, i > 0)).join('')}</div></div>
   ${dock('<button class="btn primary" data-act="scr" data-to="league">Start the league phase</button>')}`;
 }
 /* the league table after k matchdays */
@@ -2215,7 +2216,7 @@ function viewLeague(){
     ${last && !fin ? `<div class="feed">${evHTML(last)}</div>` : ''}
     ${upcoming.length ? `<div class="feed">${pendCard(upcoming[0])}</div>` : ''}
     ${k ? tableHTML(tableAfter(c, k), fin ? 'Final table' : `Table after matchday ${k}`, '', k > 1 && !fin ? tableAfter(c, k - 1) : null) : ''}
-    ${upcoming.length > 1 ? `<div class="eyebrow">Still to play</div><div class="feed">${upcoming.slice(1).map(pendCard).join('')}</div>` : ''}
+    ${upcoming.length > 1 ? `<div class="eyebrow">Still to play</div><div class="feed">${upcoming.slice(1).map(e => pendCard(e, true)).join('')}</div>` : ''}
     ${played.length > (fin ? 0 : 1) ? `<div class="eyebrow">Results</div><div class="feed">${played.slice(0, fin ? played.length : -1).reverse().map(evHTML).join('')}</div>` : ''}
   </div>
   ${dock(main, next && next.k !== 'end' ? skipBtn : '')}`;
@@ -2228,7 +2229,7 @@ function viewKO(){
   return `${cupTop(r)}${cupHead(compOf(r).short, stage, '')}
   <div class="stack">
     ${last ? `<div class="feed">${evHTML(last)}</div>` : ''}
-    ${pend.length ? `<div class="feed">${pend.map(pendCard).join('')}</div>` : ''}
+    ${pend.length ? `<div class="feed">${pend.map((e, i) => pendCard(e, i > 0)).join('')}</div>` : ''}
     ${koBox(c, koState(c))}
   </div>
   ${dock(next ? `<button class="btn primary" data-act="next">${nextLabel(next)}</button>` : '', next && next.k !== 'end' ? skipBtn : '')}`;
@@ -2888,7 +2889,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261019173523';
+const BUILD = '20261019173827';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
