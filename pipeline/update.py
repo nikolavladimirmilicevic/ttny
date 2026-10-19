@@ -1279,6 +1279,14 @@ def main():
     have_rosters = all(str(t) in squads for t in top_ids)
     ready = core_done and have_rosters and world['players'] and not failed
     target = OUT if ready else OUT.replace('world.json', 'world.partial.json')
+    # the difficulty lift is calibrated once a day by draft bots (calibrate.yml): keep the last one
+    try:
+        with open(OUT, encoding='utf-8') as f:
+            old = (json.load(f).get('model') or {})
+        for k in ('lift', 'lift_log'):
+            if old.get(k): world.setdefault('model', {})[k] = old[k]
+    except (OSError, ValueError):
+        pass
     with open(target, 'w', encoding='utf-8') as f:
         json.dump(world, f, ensure_ascii=False, separators=(',', ':'))
     log(f'Wrote {os.path.basename(target)}')

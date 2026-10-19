@@ -731,6 +731,7 @@ function buildModel(w, elig){
   if (gs && gs.min && gs.min.length === 90){ const tot = gs.min.reduce((t, x) => t + x, 0); let c = 0; w.minCdf = gs.min.map(x => (c += x) / tot); }
   w.ogShare = gs && gs.own != null ? gs.own : 0.026;
   w.xi = M.xi || { alpha: 453, beta: 18.1 };
+  w.lift = M.lift && M.lift.cl != null ? M.lift : null;   // the strong-XI lift, calibrated every day by draft bots (pipeline/tools/calibrate.js)
   w.pen = M.secondary_penalty != null ? Math.min(2, M.secondary_penalty) : 2;
   w.pen2 = M.strong_penalty != null ? M.strong_penalty : 1;
   // each club's own XI (its 11 most-used rated players): the averages of the four parts, for placing your XI's
@@ -808,7 +809,7 @@ const chemBar = picks => { const g = ovGrade(chemNum(chemOf(picks).total));   //
    rotation; bigger where the field is stronger) and its chemistry. Calibrated with draft bots (pipeline/tools/draft_bots.js). */
 const LIFT = { cl: 11.8, el: 6.7, ecl: 4.7 }, LIFT_FROM = 68, CHEM_ELO = 3;
 function youElo(picks, form){
-  const T = window.__YB || {}, lift = T.lift || LIFT, ce = T.chem != null ? T.chem : CHEM_ELO;
+  const T = window.__YB || {}, lift = T.lift || W.lift || LIFT, ce = T.chem != null ? T.chem : CHEM_ELO;
   const ov = teamOvr(picks, form), comp = (S.run && S.run.comp) || 'el';
   return xiElo(ov) + lift[comp] * Math.max(0, ov - LIFT_FROM) + ce * chemOf(picks).total;
 }

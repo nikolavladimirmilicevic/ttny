@@ -22,6 +22,10 @@ SHARE = {'level': 0.45, 'role': 0.15, 'perf': 0.30, 'form': 0.10}   # form: last
 OVR_MEAN, OVR_SD = 72, 7.5
 HALF_LIFE_DAYS = 90      # a match rating counts half after 90 days, a quarter after 180
 FORM_DAYS = 60           # form: the last 5 ratings, only from the last 60 days
+V2 = False               # the player overall from player strength learned from results (below); False: the old blend
+P_K, P_KNEW, P_NEW = 24, 60, 15   # player strength: Elo step, and a bigger one for a player's first 15 matches
+P_REL = 300              # plus his match ratings against his team-mates' in the same matches (Elo points per rating point)
+P_REL_PRIOR = 5          # ... shrunk toward 0 by 5 matches
 SUBS = {}                # fixture -> substitutions [team, player, other player, minute], set by the pipeline
 SUB_BENCH, SUB_MIN = False, False   # experiments: bench appearances / minutes of starters from the substitutions
 PERF_PRIOR = 10          # average matches of shrinkage toward his line's mean match rating
@@ -163,7 +167,53 @@ def draw_score(G, gap, rnd, neutral=False):
 
 
 # ---------------- players ----------------
-def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=frozenset(), club_cap=None):
+def player_strength(fx, lu, pst, top_pts, national, since, until):
+    """Every starter's strength on the clubs' Elo scale, learned from results: in each match with both line-ups, a side's
+    strength is the mean of its 11 starters (plus home advantage); after the match all 22 move toward the result, as in
+    Elo. A player starts from the rating his club had when he first appears (clubs run their own Elo alongside, as the
+    prior). On top: his match ratings against his team-mates' in the same matches. Measured on the last 60 days' results
+    (held out): as good as club Elo for clubs, much better for national teams (XIs drawn from many clubs, like a draft)."""
+    Rc = {t: seed(pt) for t, pt in top_pts.items()}; seen = Counter()
+    P, n = {}, Counter()
+    games = sorted((f['d'], fid, f) for fid, f in fx.items() if f['s'] in FINISHED and f['hg'] is not None and since <= f['d'] <= until)
+    rel_s, rel_n = Counter(), Counter()
+    for d, fid, f in games:
+        h, a = f['h'], f['a']
+        for t, o in ((h, a), (a, h)):
+            if t not in Rc:
+                Rc[t] = 1500.0 if t in national else min(1500.0, Rc[o] - 150) if o in Rc else 1450.0
+        w = 1 if f['hg'] > f['ag'] else 0.5 if f['hg'] == f['ag'] else 0
+        k0 = (0.5 if 'friendl' in (f.get('lg') or '').lower() else 1) * g_mult(f['hg'] - f['ag'])
+        sides = lu.get(fid) or {}
+        xis = []
+        for t in (h, a):
+            L = sides.get(str(t))
+            xis.append([e[0] for e in L['xi']] if isinstance(L, dict) and L.get('xi') else [])
+        if len(xis[0]) >= 9 and len(xis[1]) >= 9:
+            for t, xi in ((h, xis[0]), (a, xis[1])):
+                for q in xi:
+                    if q not in P: P[q] = Rc[t]
+            sh = sum(P[q] for q in xis[0]) / len(xis[0]); sa = sum(P[q] for q in xis[1]) / len(xis[1])
+            we = 1 / (10 ** (-(sh + HFA_ELO - sa) / 400) + 1)
+            for xi, sg in ((xis[0], 1), (xis[1], -1)):
+                for q in xi:
+                    P[q] += sg * (P_KNEW if n[q] < P_NEW else P_K) * k0 * (w - we); n[q] += 1
+        # club Elo alongside, with the faster start for clubs off the UEFA list (as in run_elo)
+        wc = 1 / (10 ** (-(Rc[h] + HFA_ELO - Rc[a]) / 400) + 1)
+        for t, sg, r in ((h, 1, Rc[h]), (a, -1, Rc[a])):
+            Rc[t] = r + sg * (K_NEW if t not in top_pts and seen[t] < NEW_GAMES else K_BASE) * k0 * (w - wc); seen[t] += 1
+        # match ratings against the team-mates' (30+ minutes)
+        ps = pst.get(fid) or {}
+        for t in (h, a):
+            vals = {int(k): v[1] for k, v in ps.items() if v[2] == t and v[1] and 3 <= v[1] <= 10 and (v[0] or 0) >= 30}
+            if len(vals) >= 8:
+                m = sum(vals.values()) / len(vals)
+                for q, r in vals.items():
+                    rel_s[q] += r - m; rel_n[q] += 1
+    return {q: P[q] + P_REL * rel_s[q] / (rel_n[q] + P_REL_PRIOR) for q in P}
+
+
+def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=frozenset(), club_cap=None, strength=None):
     """Overall and the four shown parts for every rated player."""
     players = world['players']
     ids = {p['id'] for p in players}
@@ -310,9 +360,20 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
     # the parts shown on the card are the overall's own ingredients, as percentiles:
     # reputation (level) and role among all players, performance within his line; form (last 5) is shown beside them
     lvl_p, rol_p, prf_p, frm_p = pct_ranks({i: raw[i]['level'] for i in lz}), pct_ranks(rz), pct_ranks(perf_z), pct_ranks(form_z)
+    if V2 and strength:
+        # the overall is his strength on a straight line (so an XI's mean overall stays on the clubs' Elo scale), each
+        # line centred on the same mean (a goalkeeper and a forward of the same standing get the same overall)
+        sv = {i: strength[i] for i in score if i in strength}
+        lm = {l: statistics.mean(sv[i] for i in sv if raw[i]['line'] == l) for l in {raw[i]['line'] for i in sv}}
+        g = statistics.mean(sv.values())
+        cen = {i: sv[i] - lm[raw[i]['line']] + g for i in sv}
+        m, sd = statistics.mean(cen.values()), statistics.pstdev(cen.values()) or 1
+        v2 = {i: OVR_MEAN + OVR_SD * (cen[i] - m) / sd for i in cen}
+    else:
+        v2 = {}
     out = {}
     for i in score:
-        ovr = OVR_MEAN + OVR_SD * ND.inv_cdf(min(0.9995, max(0.0005, pct[i])))
+        ovr = v2[i] if i in v2 else OVR_MEAN + OVR_SD * ND.inv_cdf(min(0.9995, max(0.0005, pct[i])))
         out[i] = {'ovr': round(max(45, min(97, ovr)), 1), 'lvl': round(lvl_p[i], 3), 'rol': round(rol_p[i], 3),
                   'prf': round(prf_p[i], 3), 'frm': round(frm_p[i], 3)}
     return out, {'slope': round(slope, 4), 'rated_starts': len(xs)}
@@ -358,7 +419,8 @@ def build(world, fx, lu, evs, pst, top_clubs, since, until, log=print, national=
     # no cap on clubs off the UEFA list: measured, it changed nothing for the better (national-team check 0.471 vs 0.473)
     cap = None
     world['_ranked'] = list(top_pts)
-    ratings, pinfo = player_ratings(world, fx, lu, evs, pst, rating, since, until, national, cap)
+    strength = player_strength(fx, lu, pst, top_pts, national, since, until) if V2 else None
+    ratings, pinfo = player_ratings(world, fx, lu, evs, pst, rating, since, until, national, cap, strength)
     world.pop('_ranked', None)
     pinfo['foreign_club_cap'] = round(cap or 0)
     for p in world['players']:
