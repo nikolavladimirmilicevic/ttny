@@ -423,6 +423,10 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 
 
 
+/* while your match is played out, what comes after it (next opponent, odds, table, bracket) waits for the whistle */
+body.matchon .stack > .feed:has(.ev.live) ~ *{opacity:0;pointer-events:none}
+.stack > .feed ~ *{transition:opacity .35s ease-out}
+.ev.drawing .odds,.ev.drawing .watch{visibility:hidden}
 /* round 6: watch out, achievements, the run's title card */
 .ev .watch{grid-column:1/-1;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ev .watch b{color:var(--text);font-weight:500}
 .achs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
@@ -1975,7 +1979,8 @@ function runLive(){
   // the dock's buttons know about the match on screen (see the click handler): while it runs they read "Full time" and only end it
   const btns = [...document.querySelectorAll('.dock [data-act=next], .dock [data-act=all], .dock [data-act=scr]')], labels = btns.map(x => x.textContent);
   btns.forEach((x, n) => { if (n === 0) x.textContent = 'Full time'; });
-  runLive.cur = { el, endNow, over: () => { btns.forEach((x, n) => x.textContent = labels[n]); if (runLive.cur && runLive.cur.el === el) runLive.cur = null; } };
+  document.body.classList.add('matchon');
+  runLive.cur = { el, endNow, over: () => { btns.forEach((x, n) => x.textContent = labels[n]); if (runLive.cur && runLive.cur.el === el){ runLive.cur = null; document.body.classList.remove('matchon'); runKoSpin(); } } };
   // any other button pressed meanwhile (quit, sound aside) ends the match on its way
   const onAct = e => { const b = e.target.closest('[data-act]'); if (!b || ['snd', 'next', 'all', 'scr'].includes(b.dataset.act)) return;
     document.removeEventListener('click', onAct, true); if (el.isConnected && !el.dataset.blown) endNow(); };
@@ -2028,6 +2033,7 @@ function runIntro(){
 /* a new knockout opponent comes out of a spinning draw, once per tie */
 function runKoSpin(){
   const c = S.run && S.run.cup; if (!c) return;
+  if (runLive.cur && runLive.cur.el.isConnected && !runLive.cur.el.dataset.blown) return;   // after the whistle of the match on screen
   const els = [...document.querySelectorAll('.drawn[data-spin]')]; if (!els.length) return;
   c.spun = c.spun || {};
   const keys = [...new Set(els.map(x => x.dataset.spin))].filter(k => !c.spun[k]); if (!keys.length) return;
@@ -2036,9 +2042,9 @@ function runKoSpin(){
   const pool = (c.pots || []).flat().filter(id => id !== 'YOU' && W.C[id]); if (pool.length < 3) return;
   for (const k of keys){
     const group = els.filter(x => x.dataset.spin === k), finals = group.map(x => x.innerHTML); let i = 0;
-    group.forEach(x => x.classList.add('spinning'));
+    group.forEach(x => { x.classList.add('spinning'); const ev = x.closest('.ev'); if (ev) ev.classList.add('drawing'); });
     const tick = () => { if (!group[0].isConnected) return;
-      if (i >= 12){ group.forEach((x, n) => { x.innerHTML = finals[n]; x.classList.remove('spinning'); x.classList.add('landed'); }); return; }
+      if (i >= 12){ group.forEach((x, n) => { x.innerHTML = finals[n]; x.classList.remove('spinning'); x.classList.add('landed'); const ev = x.closest('.ev'); if (ev) ev.classList.remove('drawing'); }); return; }
       const id = pool[Math.floor(Math.random() * pool.length)]; group.forEach(x => x.innerHTML = crest(id) + esc(nm(id))); i++; setTimeout(tick, 40 + i * i * 1.6); };
     setTimeout(tick, 250);
   }
@@ -2712,6 +2718,7 @@ function render(){
     requestAnimationFrame(() => document.querySelectorAll('.bracket-wrap[data-focus]').forEach(el => { el.scrollLeft = +el.dataset.focus; }));
     const key = !r ? 'home' : r.phase + ':' + (r.phase === 'cup' ? r.scr : r.phase === 'done' ? r.dscr : '');
     const app = $('#app'), fresh = key !== render.key; if (fresh){ app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); render.key = key; }
+    document.body.classList.remove('matchon'); runLive.cur = null;
     const pl = document.querySelector('.plist'), prevList = r && r.phase === 'draft' && pl ? pl.innerHTML : null;   // the last club's players stay while the next is drawn
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
     fitHeroLogo();
@@ -2881,7 +2888,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261019162328';
+const BUILD = '20261019173523';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
