@@ -429,6 +429,32 @@ body.matchon .stack > .feed:has(.ev.live) ~ *{opacity:0;pointer-events:none}
 .ev.drawing .odds,.ev.drawing .watch{visibility:hidden}
 .speed{display:flex;align-items:center;gap:10px;max-width:980px;margin:0 auto 8px;font-size:12px;color:var(--muted)}
 .speed input{flex:1;accent-color:var(--gold);min-width:0}.speed b{min-width:34px;text-align:right;color:var(--text);font:600 14px var(--display)}
+.ribbon{display:grid;grid-template-columns:minmax(0,1fr) 10px minmax(0,1.35fr) 10px minmax(0,1fr);align-items:stretch}
+.rt{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;padding:10px 6px 9px;border-radius:12px;background:var(--panel);border-top:4px solid var(--line);min-width:0}
+.rt.rW{border-top-color:var(--win)}.rt.rD{border-top-color:var(--draw)}.rt.rL{border-top-color:var(--loss)}
+.rt.prev{opacity:.72;transform:scale(.94)}
+.rt.cur{background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 16%,var(--panel)),var(--panel));box-shadow:0 0 0 1px var(--gold),0 10px 24px rgba(0,0,0,.35);z-index:1}
+.rt.next{border:1px dashed rgba(243,239,230,.22);border-top:4px dashed rgba(243,239,230,.3);background:transparent}
+.rt.empty{opacity:.45}
+.rl{font:500 9.5px/1.2 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.rt.cur .rl{color:var(--gold)}
+.rteam{max-width:100%}.rteam .drawn{display:flex;flex-direction:column;align-items:center;gap:3px}
+.rteam .crest{margin:0}.rteam .crest svg{width:24px;height:27px}.rt.cur .rteam .crest svg{width:30px;height:33px}
+.rname{font:600 12.5px/1.15 var(--display);text-transform:uppercase;letter-spacing:.02em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
+.rt.cur .rname{font-size:15px}
+.rs{font:700 22px/1 var(--display);display:flex;align-items:baseline;justify-content:center;gap:3px;flex-wrap:wrap}.rs i{font-style:normal;opacity:.5;font-size:.7em}.rs small{flex-basis:100%;font:500 10px var(--body);color:var(--muted)}
+.rt.cur .rs{font-size:38px}
+.rv{font-size:10.5px;color:var(--muted);text-transform:none;letter-spacing:0;font-family:var(--body)}.rv b{color:var(--text);font-weight:600}
+.rt.rW .rv b{color:var(--win)}.rt.rL .rv b{color:var(--loss)}
+.rx{font:500 12px var(--body);color:var(--muted);padding:14px 0}
+.rt .odds{gap:2px;justify-self:auto;max-width:100%}.rt .odds span{min-width:0;padding:2px 3px;font-size:10.5px;border-radius:6px;letter-spacing:-.02em}.rt .odds small{font-size:8px}
+.rarr{align-self:center;justify-self:center;width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:6px solid var(--line)}
+.rwatch{margin-top:-8px;text-align:right;font-size:11.5px;color:var(--muted)}.rwatch .watch b{color:var(--text);font-weight:500}
+.rt.drawing .odds,.rt.drawing+.rwatch,.ribbon:has(.drawing)+.rwatch{visibility:hidden}
+.stack > .ribbon:has(.drawn.spinning) ~ *{opacity:0;pointer-events:none}
+body.matchon .ribbon,body.matchon .rwatch{opacity:0}
+.ribbon,.rwatch{transition:opacity .35s ease-out}
+@media(min-width:700px){.rname{font-size:14px}.rt.cur .rname{font-size:18px}.rl{font-size:10.5px}.rt .odds span{font-size:13px;padding:3px 7px}}
 .aggline{grid-column:1/-1;font:600 13px/1.2 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .aggline b{font-size:20px;letter-spacing:.02em;color:var(--text);margin-left:6px}.aggline span{display:inline-block}.aggline .pop{animation:pop .5s ease-out}
 body.matchon .ev.live:not(.over) .aggline{text-align:center;font-size:18px}body.matchon .ev.live:not(.over) .aggline b{font-size:40px;margin-left:10px}
@@ -2071,9 +2097,9 @@ function runKoSpin(){
   const pool = (c.pots || []).flat().filter(id => id !== 'YOU' && W.C[id]); if (pool.length < 3) return;
   for (const k of keys){
     const group = els.filter(x => x.dataset.spin === k), finals = group.map(x => x.innerHTML); let i = 0;
-    group.forEach(x => { x.classList.add('spinning'); const ev = x.closest('.ev'); if (ev) ev.classList.add('drawing'); });
+    group.forEach(x => { x.classList.add('spinning'); const ev = x.closest('.ev, .rt'); if (ev) ev.classList.add('drawing'); });
     const tick = () => { if (!group[0].isConnected) return;
-      if (i >= 12){ group.forEach((x, n) => { x.innerHTML = finals[n]; x.classList.remove('spinning'); x.classList.add('landed'); const ev = x.closest('.ev'); if (ev) ev.classList.remove('drawing'); }); return; }
+      if (i >= 12){ group.forEach((x, n) => { x.innerHTML = finals[n]; x.classList.remove('spinning'); x.classList.add('landed'); const ev = x.closest('.ev, .rt'); if (ev) ev.classList.remove('drawing'); }); return; }
       const id = pool[Math.floor(Math.random() * pool.length)]; group.forEach(x => x.innerHTML = crest(id) + esc(nm(id))); i++; setTimeout(tick, 40 + i * i * 1.6); };
     setTimeout(tick, 250);
   }
@@ -2117,6 +2143,28 @@ function watchOut(opp){
   const c = W.C[opp]; if (!c || !c.squad) return '';
   const top = c.squad.filter(id => W.P[id] && !S.run.picks.includes(id)).sort((x, y) => W.P[y].ovr - W.P[x].ovr).slice(0, 3);
   return top.length ? `<div class="watch">Watch out: <b>${top.map(id => esc(short(W.P[id].name))).join(', ')}</b></div>` : '';
+}
+/* the match ribbon at the top of every match screen: previous -> current -> next */
+const isMatch = e => e.k === 'md' || e.k === 'leg' || e.k === 'final';
+const rdShort = e => e.k === 'md' ? `Matchday ${e.n}` : e.k === 'final' ? 'Final' : `${RD_SHORT[e.round] || e.round} · leg ${e.leg}`;
+const resOf = m => { const f = m.s[0] + (m.et ? m.et[0] : 0), a = m.s[1] + (m.et ? m.et[1] : 0); return f > a ? 'W' : f < a ? 'L' : m.pens ? (m.won ? 'W' : 'L') : 'D'; };
+function ribbon(c){
+  const played = c.ev.slice(0, c.shown).filter(isMatch), cur = played[played.length - 1], prev = played[played.length - 2];
+  const next = c.ev.slice(c.shown).find(isMatch);
+  const where = e => e.k === 'final' ? 'Neutral' : e.h ? 'Home' : 'Away';
+  const team = (id, spin) => `<div class="rteam"><span class="drawn"${spin ? ` data-spin="${esc(spin)}"` : ''}>${crest(id)}<span class="rname">${esc(nm(id))}</span></span></div>`;
+  const done = (e, tag) => { const r = resOf(e), xt = e.pens ? `<small>pens ${e.pens.a}:${e.pens.b}</small>` : e.et ? '<small>aet</small>' : '';
+    return `<div class="rt ${tag} r${r}"><div class="rl">${tag === 'cur' ? 'Just played' : 'Previous'} · ${rdShort(e)}</div>${team(e.opp)}<div class="rs num">${e.s[0] + (e.et ? e.et[0] : 0)}<i>:</i>${e.s[1] + (e.et ? e.et[1] : 0)}${xt}</div><div class="rv">${where(e)} · <b>${r === 'W' ? 'Won' : r === 'L' ? 'Lost' : 'Drew'}</b></div></div>`; };
+  const empty = (tag, txt) => `<div class="rt ${tag} empty"><div class="rl">${tag === 'cur' ? 'Just played' : tag === 'prev' ? 'Previous' : 'Next'}</div><div class="rx">${txt}</div></div>`;
+  let nx = empty('next', 'Nothing left');
+  if (next){
+    const tbd = next.k === 'leg' && next.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
+    const spin = next.k === 'md' ? '' : `${next.round || 'Final'}|${next.opp}`;
+    nx = tbd ? `<div class="rt next"><div class="rl">Next · ${rdShort(next)}</div><div class="rx">Play-off winner</div></div>`
+      : `<div class="rt next"><div class="rl">Next · ${rdShort(next)}</div>${team(next.opp, spin)}${oddsHTML(next.opp, next.k === 'final' ? null : next.h)}<div class="rv">${where(next)}</div></div>`;
+  }
+  return `<div class="ribbon">${prev ? done(prev, 'prev') : empty('prev', '–')}<i class="rarr" aria-hidden="true"></i>${cur ? done(cur, 'cur') : empty('cur', 'Not started')}<i class="rarr" aria-hidden="true"></i>${nx}</div>
+    ${next && !(next.k === 'leg' && next.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone')) ? `<div class="rwatch">${watchOut(next.opp)}</div>` : ''}`;
 }
 // only the very next match shows odds (and who to watch out for): later ones wait, as if form will still move them
 function pendCard(e, later){
@@ -2248,9 +2296,9 @@ function viewLeague(){
   const z = fin ? (fin.pos <= 8 ? 'Straight into the Round of 16.' : fin.pos <= 24 ? 'Into the knockout play-off.' : 'Out in the league phase.') : '';
   return `${cupTop(r)}${cupHead(compOf(r).short, 'League phase', fin ? `Finished ${ord(fin.pos)}` : k ? `Matchday ${k} of ${N}` : `${N} matchdays`)}
   <div class="stack">
+    ${ribbon(c)}
     ${fin ? `<section class="card verdict"><div class="eyebrow">League phase over</div><h1 style="margin-top:8px">You finished ${ord(fin.pos)}</h1><p style="margin:8px 0 0">${z}</p></section>` : ''}
     ${last && !fin ? `<div class="feed">${evHTML(last)}</div>` : ''}
-    ${upcoming.length ? `<div class="feed">${pendCard(upcoming[0])}</div>` : ''}
     ${k ? tableHTML(tableAfter(c, k), fin ? 'Final table' : `Table after matchday ${k}`, '', k > 1 && !fin ? tableAfter(c, k - 1) : null) : ''}
     ${upcoming.length > 1 ? `<div class="eyebrow">Still to play</div><div class="feed">${upcoming.slice(1).map(e => pendCard(e, true)).join('')}</div>` : ''}
     ${played.length > (fin ? 0 : 1) ? `<div class="eyebrow">Results</div><div class="feed">${played.slice(0, fin ? played.length : -1).reverse().map(evHTML).join('')}</div>` : ''}
@@ -2264,8 +2312,8 @@ function viewKO(){
   const stage = next && next.k !== 'end' ? (next.k === 'podone' ? 'Knockout play-off' : next.k === 'final' ? 'Final' : next.round) : last ? (last.k === 'podone' ? 'Knockout play-off' : last.k === 'final' ? 'Final' : last.round) : 'Knockouts';
   return `${cupTop(r)}${cupHead(compOf(r).short, stage, '')}
   <div class="stack">
+    ${ribbon(c)}
     ${last ? `<div class="feed">${evHTML(last)}</div>` : ''}
-    ${pend.length ? `<div class="feed">${pend.map((e, i) => pendCard(e, i > 0)).join('')}</div>` : ''}
     ${koBox(c, koState(c))}
   </div>
   ${dock(next ? `<button class="btn primary" data-act="next">${nextLabel(next)}</button>` : '', next && next.k !== 'end' ? skipBtn : '')}`;
@@ -2926,7 +2974,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261019221815';
+const BUILD = '20261019223927';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
