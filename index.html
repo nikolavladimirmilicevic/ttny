@@ -250,6 +250,10 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .lclock small{color:var(--muted);font:400 11px var(--body,inherit);letter-spacing:0}
 .ev.live.over .lclock{display:none}
 .score .sh.pop,.score .sa.pop{display:inline-block;animation:pop .5s ease-out}
+.gflash{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);z-index:3;padding:8px 14px;border-radius:10px;white-space:nowrap;pointer-events:none;
+  font:700 18px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;background:var(--gold);color:var(--gold-ink);box-shadow:0 8px 24px rgba(0,0,0,.45);animation:gflash 1.3s ease-out forwards}
+.gflash.them{background:var(--panel-2);color:var(--text);border:1px solid var(--line)}
+@keyframes gflash{0%{opacity:0;transform:translate(-50%,-20%) scale(.6)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}25%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-90%)}}
 @keyframes goalin{from{opacity:0;transform:translateY(-6px) scale(.9)}to{opacity:1;transform:none}}
 @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.6);color:var(--gold)}100%{transform:scale(1)}}
 /* a title: the trophy and confetti */
@@ -295,7 +299,10 @@ tr.me.moved td{animation:rowflash 1.2s ease-out}@keyframes rowflash{0%{backgroun
 /* result */
 .verdict{text-align:center;padding:30px 18px}
 /* competition colours: the accent follows the competition you are in */
-body[data-comp="cl"]{--gold:#3D7BFF;--gold-ink:#06102A}
+body[data-comp="cl"]{--gold:#3D7BFF;--gold-ink:#06102A;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%27120%27%20height%3D%27120%27%3E%3Cg%20fill%3D%27white%27%20fill-opacity%3D%27.035%27%3E%3Cpath%20d%3D%27M30%2014l3%209h9l-7%206%203%209-8-6-8%206%203-9-7-6h9z%27/%3E%3Cpath%20d%3D%27M90%2074l2.2%206.6h6.8l-5.4%204%202%206.6-5.6-4-5.6%204%202-6.6-5.4-4h6.8z%27/%3E%3C/g%3E%3C/svg%3E")}
+body[data-comp="el"]{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%2780%27%20height%3D%2780%27%3E%3Cpath%20d%3D%27M-10%2070L70%20-10M10%2090L90%2010%27%20stroke%3D%27white%27%20stroke-opacity%3D%27.03%27%20stroke-width%3D%2710%27/%3E%3C/svg%3E")}
+body[data-comp="ecl"]{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%2784%27%20height%3D%2796%27%3E%3Cpath%20d%3D%27M42%204l36%2020v40L42%2084%206%2064V24z%27%20fill%3D%27none%27%20stroke%3D%27white%27%20stroke-opacity%3D%27.04%27%20stroke-width%3D%272%27/%3E%3C/svg%3E")}
+body[data-comp]{background-attachment:fixed}
 body[data-comp="el"]{--gold:#FC9529;--gold-ink:#1A0A00}
 body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .diffs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}@media(max-width:640px){.diffs{grid-template-columns:1fr}}
@@ -403,6 +410,7 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .ovdot.gr{color:#0B1626}.ovdot.gr.gA,.ovdot.gr.gE{color:#fff}.ovdot.gr.gA{background:var(--gA)}.ovdot.gr.gB{background:var(--gB)}.ovdot.gr.gC{background:var(--gC)}.ovdot.gr.gD{background:var(--gD)}.ovdot.gr.gE{background:var(--gE)}
 .pitch.tall{aspect-ratio:68/118}
 .slot .sub{font-size:10px;line-height:1.1;font-weight:600;white-space:nowrap}.slot .sub.fit0{color:#5CC08A}.slot .sub.fit1{color:#F2C14E}.slot .sub.fit2{color:#E8604C}
+.chemlines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}.chemlines line{stroke:#5CC08A;stroke-width:2.5;stroke-opacity:.7;stroke-linecap:round;vector-effect:non-scaling-stroke}.chemlines line.cp{stroke-width:1.5;stroke-opacity:.45;stroke-dasharray:3 4}
 .slot .lbl.fit0{color:#5CC08A}.slot .lbl.fit1{color:#F2C14E}.slot .lbl.fit2{color:#E8604C}
 .slot .lbl.fit0,.slot .lbl.fit1,.slot .lbl.fit2{font-weight:600}
 .cups{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
@@ -1559,7 +1567,14 @@ function pitch(pids, form, kept, rated, editable, fit){
   const act = j => editable ? ` data-act="slot" data-j="${j}"` : '';
   const cap = pids.length && S.run ? captainOf(pids) : null;
   const cls = j => (j === sel ? ' sel' : '') + (sel != null && canMove(a, f, sel, j) ? ' target' : '') + (editable ? ' edit' : '');
-  return `<div class="pitch" role="img" aria-label="Formation ${f}">` + FORMS[f].map(([code, x, y], j) => {
+  // chemistry made visible: a solid line between team-mates of the last year, a dotted one between compatriots
+  let links = '';
+  if (pids.length === 11 && S.run){
+    const per = chemOf(pids).per, at = {}; a.forEach((pid, j) => { if (pid) at[pid] = FORMS[f][j]; });
+    for (const p of pids) for (const [k, cl] of [['cp', ' class="cp"'], ['tm', '']]) for (const q of (per[p] && per[p][k]) || [])
+      if (p < q && at[p] && at[q] && !(k === 'cp' && per[p].tm.includes(q))) links += `<line${cl} x1="${at[p][1]}" y1="${at[p][2]}" x2="${at[q][1]}" y2="${at[q][2]}"/>`;
+  }
+  return `<div class="pitch" role="img" aria-label="Formation ${f}">` + (links ? `<svg class="chemlines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${links}</svg>` : '') + FORMS[f].map(([code, x, y], j) => {
     const pid = a[j];
     if (!pid) return `<div class="slot empty${cls(j)}"${act(j)} style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
     const p = W.P[pid];
@@ -1787,6 +1802,10 @@ function runLive(){
   const clk = document.createElement('div'); clk.className = 'lclock'; clk.innerHTML = `<span>0'</span><i><b></b></i><small>Tap to skip</small>`;
   el.querySelector('.score').after(clk);
   const D = end === 120 ? 5200 : 4000, t0 = performance.now(); let h = 0, a = 0, k = 0, done = false;
+  // a short line when a goal goes in: yours in the competition's colour, theirs plain
+  const flash = x => { el.querySelectorAll('.gflash').forEach(f => f.remove()); const f = document.createElement('div');
+    const who = (x.g.textContent.replace(/^⚽\s*\d+'\s*/, '').split('(')[0] || '').replace('★', '').trim();
+    f.className = 'gflash' + (x.ours ? '' : ' them'); f.textContent = x.ours ? `Goal! ${who}` : `Conceded · ${who}`; el.appendChild(f); setTimeout(() => f.remove(), 1300); };
   const kicks = [...el.querySelectorAll('.pens .k')].sort((x, y) => x.dataset.i - y.dataset.i);
   const finishLive = (skip) => { if (done) return; done = true; goals.forEach(x => x.g.classList.add('in')); sh.textContent = fh; sa.textContent = fa;
     const whistle = () => { el.classList.add('over'); if (el.dataset.won) confetti(); };
@@ -1801,7 +1820,7 @@ function runLive(){
     if (done || !el.isConnected) return;
     const m = Math.min(end, (now - t0) / D * end);
     clk.querySelector('span').textContent = Math.floor(m) + "'"; clk.querySelector('b').style.width = (100 * m / end) + '%';
-    while (k < goals.length && goals[k].m <= m){ const x = goals[k++]; x.g.classList.add('in');
+    while (k < goals.length && goals[k].m <= m){ const x = goals[k++]; x.g.classList.add('in'); flash(x);
       // the 90-minute score counts goals up to 90'; extra time is in the line under it
       if (x.m <= 90 || end === 90){ if (x.ours && h < fh){ sh.textContent = ++h; sh.classList.remove('pop'); void sh.offsetWidth; sh.classList.add('pop'); }
         else if (!x.ours && a < fa){ sa.textContent = ++a; sa.classList.remove('pop'); void sa.offsetWidth; sa.classList.add('pop'); } } }
@@ -2344,6 +2363,22 @@ function viewDone(){
 const doneTop = () => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${stepChip(S.run)}${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}<span class="chip">${seasonTag()}</span></div></header>`;
 const verdictHead = r => { const st = r.cup.stage; return st === 'champion' ? (r.comp === 'cl' || !r.comp ? 'Champions of Europe' : `${compOf(r).short} winners`) : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase(); };
 /* your season: the verdict, every match you played, your players */
+/* the run in one sentence, from what happened: the league phase, every knockout tie, the final */
+function runStory(r){
+  const c = r.cup, ev = c.ev, t = ev.find(e => e.k === 'table'), bits = [];
+  if (t) bits.push(`Finished ${ord(t.pos)} in the league phase`);
+  const ties = ev.filter(e => (e.k === 'leg' && e.leg === 2) || e.k === 'final');
+  const how = e => e.pens ? ' on penalties' : e.et ? ' after extra time' : '';
+  const won = ties.filter(e => e.won && e.k !== 'final'), lost = ties.find(e => !e.won);
+  if (won.length) bits.push('beat ' + won.map(e => esc(nm(e.opp)) + how(e)).join(', ').replace(/, ([^,]*)$/, ' and $1'));
+  const fin = ev.find(e => e.k === 'final');
+  if (fin && fin.won) bits.push(`won the final against ${esc(nm(fin.opp))} ${fin.s[0] + (fin.et ? fin.et[0] : 0)}:${fin.s[1] + (fin.et ? fin.et[1] : 0)}${how(fin)}`);
+  else if (lost) bits.push(`${won.length ? 'then ' : ''}went out to ${esc(nm(lost.opp))}${how(lost)} in the ${lost.k === 'final' ? 'final' : lost.round.toLowerCase()}`);
+  else if (t && t.pos > 24) bits.push('and that was it');
+  if (!bits.length) return '';
+  const txt = bits.length > 1 ? bits.slice(0, -1).join(', ') + ', ' + bits[bits.length - 1] : bits[0];
+  return txt.charAt(0).toUpperCase() + txt.slice(1) + '.';
+}
 function viewSeason(){
   const r = S.run, champ = r.cup.stage === 'champion';
   return `${doneTop()}
@@ -2351,6 +2386,7 @@ function viewSeason(){
     <section class="card verdict${champ ? ' champ' : ''}">
       ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · Your run</div>
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
+      ${runStory(r) ? `<p class="story" style="margin:10px 0 0;font-size:16px;line-height:1.45">${runStory(r)}</p>` : ''}
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="season" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button></div>
     </section>
     <div class="endgrid">
