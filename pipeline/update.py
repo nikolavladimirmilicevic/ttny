@@ -1128,9 +1128,12 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             st = sorted(starts.get(pid, []), reverse=True)
             if len(st) < MIN_STARTS or not (people.get(str(pid)) or {}).get('nat'):   # a few starts, and a known nationality
                 continue
+            # positions only from starts in a line-up with a formation: a player known only from line-ups without one
+            # (just goalkeeper, defender, midfielder or forward) is not offered; those starts still count for the others
+            cnt = Counter(s[3] for s in st if s[3] and not s[9])
+            if not cnt:
+                continue
             seen.add(pid)
-            # positions from every start in the window with a formation (rough ones only for a player who has none)
-            cnt = Counter(s[3] for s in st if s[3] and not s[9]) or Counter(s[3] for s in st if s[3])
             # offered positions: every position he started in, most frequent first;
             # on a tie, the one he played most recently first (starts are newest first)
             last = {}
