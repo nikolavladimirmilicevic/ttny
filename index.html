@@ -101,6 +101,14 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .strip .sc.on{background:var(--gold);border:1px solid var(--gold);color:#0B1626}
 @media(min-width:820px){.grid2{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}.sticky{position:sticky;top:12px}}
 .reveal{animation:flip .5s ease-out}
+.loader{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:var(--muted);font-size:14px}
+.ld-logo{width:120px;height:154px;background:center/contain no-repeat;animation:breathe 1.6s ease-in-out infinite}
+.ld-bar{width:min(260px,70vw);height:6px;border-radius:3px;background:var(--line);overflow:hidden}.ld-bar b{display:block;height:100%;width:4%;background:var(--gold);border-radius:3px;transition:width .2s}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.04);opacity:1}}
+#app.enter{animation:enter .22s ease-out}@keyframes enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){#app.enter,.ld-logo{animation:none}}
+.clubcard.spinning h2{opacity:.55;filter:blur(.6px)}.clubcard.spinning .meta,.clubcard.spinning .note{visibility:hidden}body.spin .prow{opacity:0}.prow{transition:opacity .25s}.clubcard.landed h2{animation:land .45s cubic-bezier(.2,1.5,.4,1)}
+@keyframes land{0%{transform:scale(.85);opacity:.4}60%{transform:scale(1.06);opacity:1}100%{transform:none}}
 @keyframes flip{from{transform:rotateX(70deg);opacity:0}to{transform:none;opacity:1}}
 .clubcard h2{font-size:clamp(30px,8vw,44px);font-weight:700}
 .clubcard .meta{margin-top:6px;color:var(--muted);font-size:14px}
@@ -154,6 +162,13 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .pcard .r span:first-child{color:var(--muted)}
 .pcard .poss{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 2px}
 .pc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.pc-top{display:flex;gap:12px;align-items:center;margin:-10px -12px 6px;padding:12px;border-radius:9px 9px 0 0;color:var(--kit-ink);
+  background:linear-gradient(135deg,var(--kit) 0%,color-mix(in srgb,var(--kit) 60%,#0B1626) 100%);position:relative;overflow:hidden}
+.pc-top::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.18) 50%,transparent 60%);pointer-events:none}
+.pc-badge{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:46px}
+.pc-prim{font:700 13px/1 var(--display);letter-spacing:.06em}
+.pc-id{min-width:0}.pc-id h4{color:var(--kit-ink)}.pc-top .pc-sub{color:var(--kit-ink);opacity:.85}
+.pc-top .pc-ov{box-shadow:0 2px 8px rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.6)}
 .pc-sub{color:var(--muted);margin-top:3px;display:flex;align-items:center}
 .pc-club{margin-top:6px;font-weight:500}
 .pc-ov{flex:none;width:44px;height:44px;border-radius:10px;display:grid;place-items:center;align-content:center;color:#0B1626}
@@ -226,6 +241,21 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .ev .gls small,.ev .gls2 small{color:var(--muted);font-size:12px}
 .ev .gls2{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12.5px}
 .ev .gls2>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+/* your match, live: the clock runs, goals drop in at their minute; tap to skip */
+.ev.live{cursor:pointer;position:relative}
+.ev.live .gls2 span[data-m]{display:none}.ev.live .gls2 span.in{display:block;animation:goalin .45s cubic-bezier(.2,1.4,.4,1)}
+.ev.live .res,.ev.live .extra{visibility:hidden}.ev.live.over .res,.ev.live.over .extra{visibility:visible;animation:rise .3s ease-out}
+.lclock{grid-column:1/-1;display:flex;align-items:center;gap:8px;font:600 12px/1 var(--display);letter-spacing:.08em;color:var(--gold)}
+.lclock i{flex:1;height:3px;border-radius:2px;background:var(--line);overflow:hidden}.lclock i b{display:block;height:100%;width:0;background:var(--gold)}
+.lclock small{color:var(--muted);font:400 11px var(--body,inherit);letter-spacing:0}
+.ev.live.over .lclock{display:none}
+.score .sh.pop,.score .sa.pop{display:inline-block;animation:pop .5s ease-out}
+@keyframes goalin{from{opacity:0;transform:translateY(-6px) scale(.9)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.6);color:var(--gold)}100%{transform:scale(1)}}
+/* a title: the trophy and confetti */
+.trophy{display:block;width:84px;height:84px;margin:0 auto 6px;filter:drop-shadow(0 6px 18px var(--gold));animation:lift .9s cubic-bezier(.2,1.3,.4,1)}
+@keyframes lift{from{opacity:0;transform:translateY(20px) scale(.6) rotate(-8deg)}to{opacity:1;transform:none}}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
 .ev .gls2 .them{text-align:right;color:var(--muted)}
 @media(max-width:520px){.ev .gls2{font-size:11.5px;gap:8px}.ev .gls2 small{font-size:10.5px}}
 .ev.pend{background:transparent;border:1px dashed rgba(255,255,255,.14);animation:none}
@@ -271,7 +301,8 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .narrow-only{display:none}@media(max-width:899px){.narrow-only{display:inline}.wide-only{display:none}}
 .bracket-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
 .bracket{position:relative}
-.bracket svg{position:absolute;left:0;top:0}.bracket path{fill:none;stroke:rgba(255,255,255,.18);stroke-width:1.5}.bracket path.hot{stroke:var(--gold);stroke-width:2}
+.bracket svg{position:absolute;left:0;top:0}.bracket path{fill:none;stroke:rgba(255,255,255,.18);stroke-width:1.5}.bracket path.hot{stroke:var(--gold);stroke-width:3.5;stroke-linecap:round;filter:drop-shadow(0 0 4px var(--gold))}
+.bl.beaten .bn{text-decoration:line-through;text-decoration-thickness:1.5px;opacity:.6}.bx.mine{box-shadow:0 0 0 1px var(--gold),0 0 12px -2px var(--gold)}
 .bh{position:absolute;top:0;font:600 11px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .bx{position:absolute;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;justify-content:center;padding:0 8px;font-size:12px;cursor:default}
 .bx.mine{border-color:var(--gold)}.bx.fin{box-shadow:0 0 0 1px rgba(227,179,65,.35)}
@@ -303,7 +334,7 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
     border-radius:16px 16px 0 0;border-width:1px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom));font-size:14px;
     box-shadow:0 -12px 32px rgba(0,0,0,.55);animation:sheetUp .18s ease-out}
   .pcard.sheet h4{font-size:20px;padding-right:36px}
-  .pcard.sheet .pc-ov{margin-right:34px}
+  .pcard.sheet .pc-top{padding-right:52px}
   .pcard.sheet .sheet-x{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:15px}
 }
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
@@ -366,7 +397,7 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .imgbox .btnrow{margin-top:12px}.imgbox a.btn{text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}
 </style>
 
-<div class="wrap" id="app"><p class="muted" style="text-align:center;margin-top:40vh">Loading the clubs and players…</p></div>
+<div class="wrap" id="app"><div class="loader"><div class="ld-logo"></div><div class="ld-bar"><b></b></div><p>Loading the clubs and players…</p></div></div>
 <div id="toast" class="toast" hidden></div>
 <div id="pcard" class="pcard" hidden></div>
 
@@ -1330,6 +1361,8 @@ const toTop = el => scrollTo({ top: Math.max(0, el.getBoundingClientRect().top +
 function step(all){
   const c = S.run.cup;
   c.shown = all ? c.ev.length : Math.min(c.ev.length, c.shown + 1);
+  const just = c.ev[c.shown - 1];
+  c.live = !all && just && (just.k === 'md' || just.k === 'leg' || just.k === 'final') ? c.shown - 1 : null;
   if (c.shown >= c.ev.length) finish();
   save(); render();
   requestAnimationFrame(() => scrollTo({ top: 0, behavior: 'smooth' }));
@@ -1341,7 +1374,7 @@ function finish(){
   st8.runs++;
   if (!st8.bestStage || STAGE_RANK.indexOf(st) > STAGE_RANK.indexOf(st8.bestStage)) st8.bestStage = st;
   if (st === 'champion'){ st8.titlesBy = st8.titlesBy || {}; st8.titlesBy[r.comp || 'cl'] = (st8.titlesBy[r.comp || 'cl'] || 0) + 1; st8.titles++; st8.streak++; st8.best = Math.max(st8.best, st8.streak); } else st8.streak = 0;
-  r.doneAt = Date.now(); r.dscr = 'season';
+  r.doneAt = Date.now(); r.dscr = 'season'; r.celebrate = st === 'champion';
   // the challenge's history; after ten seasons (or out of the Conference League) the challenge is over
   try { r.hist = [...(r.hist || []), seasonSummary(r)]; } catch (e) { r.hist = r.hist || []; }
   if ((r.season || 1) >= DYNASTY_SEASONS){ r.keepN = 0; r.dynEnd = 'complete'; } else if (!r.keepN) r.dynEnd = 'out';
@@ -1457,8 +1490,9 @@ function cardHTML(p){
   const weakHere = slot && isWeak(p, slot), offHere = slot && slot !== p.prim && !weakHere;
   const chip = (x, i) => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}</span>`;
   const tags = [r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : offHere ? `<span class="tag">Slightly below his level at ${slot}</span>` : ''].join('');
-  const head = `<div class="pc-head"><div style="min-width:0"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age} · ${esc(c.name)}</div></div>
-      ${rt ? `<div class="pc-ov g${ovGrade(rt.ov)}"><b>${ovGrade(rt.ov)}</b><small>Overall</small></div>` : ''}</div>
+  // the top of the card in his club's colours, like a collectible card: grade and main position on the left
+  const head = `<div class="pc-top" style="${clubKit(c)}"><div class="pc-badge">${rt ? `<div class="pc-ov g${ovGrade(rt.ov)}"><b>${ovGrade(rt.ov)}</b><small>Overall</small></div>` : ''}<span class="pc-prim">${p.prim}</span></div>
+      <div class="pc-id"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age} · ${esc(c.name)}</div></div></div>
     <div class="pc-pos">${p.pos.map(chip).join('')}</div>${tags ? `<div class="pc-tags">${tags}</div>` : ''}`;
   if (!rt) return head;
   // every A-E grade in one list, alphabetical (the overall stays on its own at the top)
@@ -1663,12 +1697,13 @@ const venue = h => h === 1 ? '<span class="ven" title="Home">🏠</span>vs' : h 
 function evHTML(e){
   const res = s => s[0] > s[1] ? 'W' : s[0] < s[1] ? 'L' : 'D';
   const opp = id => `${esc(nm(id))} ${gchip(id)}`;
-  const one = ([sc, as, m, og]) => `<span>⚽ ${m}' ${esc(short(W.P[sc].name))}${og ? ' <small>(og)</small>' : as ? ` <small>(${esc(short(W.P[as].name))})</small>` : ''}</span>`;
+  const one = ([sc, as, m, og]) => `<span data-m="${m}">⚽ ${m}' ${esc(short(W.P[sc].name))}${og ? ' <small>(og)</small>' : as ? ` <small>(${esc(short(W.P[as].name))})</small>` : ''}</span>`;
   const col = l => (l || []).slice().sort((x, y) => x[2] - y[2]).map(one).join('');
   const gls = e => (e.gl && e.gl.length) || (e.og && e.og.length) ? `<div class="gls2"><div>${col(e.gl)}</div><div class="them">${col(e.og)}</div></div>` : '';
   const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
-  const score = (s, r) => `<div class="score num">${s[0]}<span class="muted" style="font-size:16px">:</span>${s[1]}${r ? `<span class="res ${r}">${r}</span>` : ''}</div>`;
-  if (e.k === 'md') return `<div class="ev"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}</div>`;
+  const score = (s, r) => `<div class="score num"><span class="sh">${s[0]}</span><span class="muted" style="font-size:16px">:</span><span class="sa">${s[1]}</span>${r ? `<span class="res ${r}">${r}</span>` : ''}</div>`;
+  const live = e === (S.run && S.run.cup && S.run.cup.ev[S.run.cup.live]) ? ' live' : '';
+  if (e.k === 'md') return `<div class="ev${live}"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}</div>`;
   if (e.k === 'table'){
     const z = e.pos <= 8 ? 'Straight into the Round of 16.' : e.pos <= 24 ? 'Into the knockout play-off.' : 'Out in the league phase.';
     return `<div class="ev big" style="display:block"><div class="rd">League phase final table</div>
@@ -1686,8 +1721,8 @@ function evHTML(e){
     if (e.won !== undefined) bits.push(e.won ? '<b style="color:var(--win)">Through</b>' : '<b style="color:var(--loss)">Out</b>');
     return bits.length ? `<div class="extra">${bits.join(' · ')}</div>` : '';
   };
-  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}"><div class="rd">${e.round} · Leg ${e.leg}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? tail(e) : ''}</div>`;
-  if (e.k === 'final') return `<div class="ev big"><div class="rd">Final</div><div class="opp">${venue(null)} ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
+  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}${live}"><div class="rd">${e.round} · Leg ${e.leg}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? tail(e) : ''}</div>`;
+  if (e.k === 'final') return `<div class="ev big${live}"${e.won ? ' data-won="1"' : ''}><div class="rd">Final</div><div class="opp">${venue(null)} ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
   if (e.k === 'podone'){
     const tie = t => `<tr class="${t[0] === e.opp || t[1] === e.opp ? 'me' : ''}"><td style="text-align:left">${t[3] === t[0] ? `<b>${esc(nm(t[0]))}</b>` : esc(nm(t[0]))}</td><td class="sc">${t[2][0]}:${t[2][1]}${t[4] === 1 ? ' <small>p</small>' : t[4] === 2 ? ' <small>aet</small>' : ''}</td><td style="text-align:right">${t[3] === t[1] ? `<b>${esc(nm(t[1]))}</b>` : esc(nm(t[1]))}</td></tr>`;
     return `<div class="ev big" style="display:block"><div class="rd">Knockout play-off · Done</div>
@@ -1697,6 +1732,68 @@ function evHTML(e){
   if (e.k === 'end') return `<div class="ev" style="display:block"><div class="rd">Full time</div>${e.champ !== 'YOU' ? `<div><b>${esc(nm(e.champ))}</b> won the ${compOf(S.run).short}.</div>` : `<div><b>You</b> won the ${compOf(S.run).short}.</div>`}</div>`;
   return '';
 }
+/* your match, live: a clock from 0' to 90' (120' after extra time) in about four seconds, goals drop in at their
+   minute and the score ticks up; the result, aggregate and penalties show at the whistle. Tap the card to skip. */
+function runLive(){
+  const el = document.querySelector('.ev.live'); const c = S.run && S.run.cup; if (!el || !c) return;
+  c.live = null; save();   // played once, never again on a later render
+  if (toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches){ el.classList.add('over'); return; }
+  const goals = [...el.querySelectorAll('.gls2 span[data-m]')].map(g => ({ g, m: +g.dataset.m, ours: !g.closest('.them') })).sort((a, b) => a.m - b.m);
+  const sh = el.querySelector('.score .sh'), sa = el.querySelector('.score .sa'); if (!sh || !sa) return;
+  const fh = +sh.textContent, fa = +sa.textContent, end = Math.max(90, ...goals.map(x => x.m)) > 90 || el.querySelector('.extra') && /Extra time/.test(el.textContent) ? 120 : 90;
+  sh.textContent = 0; sa.textContent = 0;
+  const clk = document.createElement('div'); clk.className = 'lclock'; clk.innerHTML = `<span>0'</span><i><b></b></i><small>Tap to skip</small>`;
+  el.querySelector('.score').after(clk);
+  const D = end === 120 ? 5200 : 4000, t0 = performance.now(); let h = 0, a = 0, k = 0, done = false;
+  const finishLive = () => { if (done) return; done = true; goals.forEach(x => x.g.classList.add('in')); sh.textContent = fh; sa.textContent = fa; el.classList.add('over');
+    if (el.dataset.won) confetti(); };
+  el.addEventListener('click', finishLive, { once: true });
+  document.addEventListener('click', e => { if (e.target.closest('[data-act]')) finishLive(); }, { once: true, capture: true });
+  const frame = now => {
+    if (done || !el.isConnected) return;
+    const m = Math.min(end, (now - t0) / D * end);
+    clk.querySelector('span').textContent = Math.floor(m) + "'"; clk.querySelector('b').style.width = (100 * m / end) + '%';
+    while (k < goals.length && goals[k].m <= m){ const x = goals[k++]; x.g.classList.add('in');
+      // the 90-minute score counts goals up to 90'; extra time is in the line under it
+      if (x.m <= 90 || end === 90){ if (x.ours && h < fh){ sh.textContent = ++h; sh.classList.remove('pop'); void sh.offsetWidth; sh.classList.add('pop'); }
+        else if (!x.ours && a < fa){ sa.textContent = ++a; sa.classList.remove('pop'); void sa.offsetWidth; sa.classList.add('pop'); } } }
+    if (m >= end) finishLive(); else requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+/* the draw: names from the pot spin past, slowing down, before the club that was drawn (about a second) */
+function runSpin(){
+  const card = document.querySelector('.clubcard.reveal'), r = S.run; if (!card || !r || r.phase !== 'draft' || !r.club) return;
+  if (toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const h = card.querySelector('h2'), meta = card.querySelector('.meta'), final = h.textContent;
+  const pool = runPots(r)[r.order[r.step]].filter(c => c !== r.club).map(c => W.C[c].name);
+  if (pool.length < 2) return;
+  card.classList.add('spinning'); document.body.classList.add('spin'); let i = 0;
+  const steps = 10, tick = () => {
+    if (!h.isConnected){ document.body.classList.remove('spin'); return; }
+    if (i >= steps){ h.textContent = final; card.classList.remove('spinning'); card.classList.add('landed'); document.body.classList.remove('spin'); return; }
+    h.textContent = pool[Math.floor(Math.random() * pool.length)]; i++;
+    setTimeout(tick, 35 + i * i * 1.6);   // slows down like a wheel, about a second
+  };
+  tick();
+}
+/* confetti in the competition's colours, two seconds */
+function confetti(){
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = document.createElement('canvas'); cv.id = 'confetti'; document.body.appendChild(cv);
+  const x = cv.getContext('2d'), W2 = cv.width = innerWidth, H2 = cv.height = innerHeight;
+  const cols = [css('--gold'), '#F4F1EA', '#F2C14E', css('--gold')];
+  const ps = Array.from({ length: 160 }, () => ({ x: W2 / 2 + (Math.random() - .5) * W2 * .3, y: H2 * .35, vx: (Math.random() - .5) * 14, vy: -Math.random() * 14 - 4,
+    r: Math.random() * 6 + 3, a: Math.random() * 6, va: (Math.random() - .5) * .3, c: cols[Math.floor(Math.random() * cols.length)] }));
+  const t0 = performance.now();
+  const f = now => { const t = now - t0; x.clearRect(0, 0, W2, H2);
+    for (const p of ps){ p.vy += .35; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.a += p.va;
+      x.save(); x.translate(p.x, p.y); x.rotate(p.a); x.globalAlpha = Math.max(0, 1 - t / 2600); x.fillStyle = p.c; x.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2); x.restore(); }
+    if (t < 2600) requestAnimationFrame(f); else cv.remove(); };
+  requestAnimationFrame(f);
+}
+// the trophy, in the competition's colour
+const TROPHY = `<svg class="trophy" viewBox="0 0 64 64" aria-hidden="true"><path fill="var(--gold)" d="M18 6h28v6h8a2 2 0 0 1 2 2c0 9-5 15-12 16-2 5-5 8-9 9v7h8v6H21v-6h8v-7c-4-1-7-4-9-9-7-1-12-7-12-16a2 2 0 0 1 2-2h8V6zm-6 10c.6 5 3 8 6.5 9.3-.4-2-.5-4.1-.5-6.3v-3h-6zm34 0v3c0 2.2-.1 4.3-.5 6.3C49 24 51.4 21 52 16h-6z"/><rect x="17" y="52" width="30" height="6" rx="1.5" fill="var(--gold)" opacity=".8"/><path d="M26 12h4v18h-4z" fill="#fff" opacity=".25"/></svg>`;
 /* bookmaker-style odds for your next matches (fair odds, 1 / probability, over 90 minutes); h: 1 home, 0 away, null neutral */
 function oddsHTML(opp, h){
   const sY = strength('YOU'), sO = strength(opp);
@@ -1897,7 +1994,8 @@ function koBox(c, st){
     if (mode === 'names' || mode === 'leg1') return `<div class="bl${id === 'YOU' ? ' me' : ''}"><span class="bn">${esc(nm(id))}</span><span class="bs num">${mode === 'leg1' ? t.legs[0][i] : ''}</span></div>`;
     const sc = t.agg[i], won = id === t.w;
     const pen = t.pens ? `<small>${t.pens[i]}p</small>` : t.et ? (won ? '<small>aet</small>' : '') : '';
-    return `<div class="bl${won ? ' w' : ''}${id === 'YOU' ? ' me' : ''}"><span class="bn">${esc(nm(id))}</span><span class="bs num">${pen}${sc}</span></div>`;
+    const beaten = !won && t.w === 'YOU';
+    return `<div class="bl${won ? ' w' : ''}${id === 'YOU' ? ' me' : ''}${beaten ? ' beaten' : ''}"><span class="bn">${esc(nm(id))}</span><span class="bs num">${pen}${sc}</span></div>`;
   };
   const tip = t => t.legs.map(l => `${l[0]}:${l[1]}`).join(', ') + (t.et ? ` · aet ${t.et[0]}:${t.et[1]}` : '') + (t.pens ? ` · pens ${t.pens[0]}:${t.pens[1]}` : '');
   let boxes = '', paths = '';
@@ -2193,7 +2291,7 @@ function viewSeason(){
   return `${doneTop()}
   <div class="stack">
     <section class="card verdict${champ ? ' champ' : ''}">
-      <div class="eyebrow">${champ ? 'Champions' : 'Run over'} · Your run</div>
+      ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · Your run</div>
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="season" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button></div>
     </section>
@@ -2248,8 +2346,12 @@ function render(){
   try {
     syncStep();
     requestAnimationFrame(() => document.querySelectorAll('.bracket-wrap[data-focus]').forEach(el => { el.scrollLeft = +el.dataset.focus; }));
+    const key = !r ? 'home' : r.phase + ':' + (r.phase === 'cup' ? r.scr : r.phase === 'done' ? r.dscr : '');
+    const app = $('#app'); if (key !== render.key){ app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); render.key = key; }
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
     fitHeroLogo();
+    runLive(); runSpin();
+    if (r && r.phase === 'done' && r.celebrate){ r.celebrate = false; save(); confetti(); }
   } catch (e) {
     // a saved run that no longer fits the data (new ratings, new positions): drop it rather than show a blank page
     console.error(e);
@@ -2353,8 +2455,21 @@ document.addEventListener('click', e => {
 
 async function boot(){
   let raw = null;
-  try { const r = await fetch('world.json?t=' + Date.now(), { cache: 'no-store' });   // always the latest data, never a cached copy
-  if (r.ok) raw = await r.json(); } catch (e) {}
+  try {
+    const lg = document.querySelector('.ld-logo'); if (lg) lg.style.backgroundImage = `url(${LOGO})`;
+    const r = await fetch('world.json?t=' + Date.now(), { cache: 'no-store' });   // always the latest data, never a cached copy
+    if (r.ok){
+      // the data is a few MB: a progress bar while it arrives (the size is a guess when the server compresses it)
+      const bar = document.querySelector('.ld-bar b'), len = +r.headers.get('content-length') || 0;
+      const total = len && !r.headers.get('content-encoding') ? len : Math.max(len * 6, 7e6);
+      if (r.body && r.body.getReader && bar){
+        const rd = r.body.getReader(), parts = []; let got = 0;
+        for (;;){ const { done, value } = await rd.read(); if (done) break; parts.push(value); got += value.length; bar.style.width = Math.min(97, 4 + 93 * got / total) + '%'; }
+        bar.style.width = '100%';
+        raw = JSON.parse(new TextDecoder().decode(await new Blob(parts).arrayBuffer()));
+      } else raw = await r.json();
+    }
+  } catch (e) {}
   W = null;
   if (raw && raw.clubs){ const w = worldFromData(raw); if (w.draftable.length >= 11) W = w; }
   if (!W) W = buildWorld();
