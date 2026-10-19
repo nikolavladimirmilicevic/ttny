@@ -256,6 +256,24 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .trophy{display:block;width:84px;height:84px;margin:0 auto 6px;filter:drop-shadow(0 6px 18px var(--gold));animation:lift .9s cubic-bezier(.2,1.3,.4,1)}
 @keyframes lift{from{opacity:0;transform:translateY(20px) scale(.6) rotate(-8deg)}to{opacity:1;transform:none}}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
+/* penalties, kick by kick */
+.pens{grid-column:1/-1;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;font-size:12px;margin-top:4px}
+.pens .who{color:var(--muted);white-space:nowrap}.pens .ks{display:flex;gap:4px;flex-wrap:wrap}
+.pens .k{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font:700 11px/1 var(--display);background:var(--line);color:var(--muted)}
+.pens .k.s{background:var(--win);color:#06140B}.pens .k.m{background:var(--loss);color:#fff}
+.ev.live .pens .k{visibility:hidden}.ev.live .pens .k.in{visibility:visible;animation:goalin .35s cubic-bezier(.2,1.4,.4,1)}
+/* table: places moved, your form */
+.mv{font-size:10px;margin-left:5px;font-weight:600}.mv.up{color:var(--win)}.mv.dn{color:var(--loss)}
+tr.me.moved td{animation:rowflash 1.2s ease-out}@keyframes rowflash{0%{background:color-mix(in srgb,var(--gold) 40%,transparent)}100%{background:transparent}}
+.form5{display:inline-flex;gap:3px;vertical-align:middle;margin-left:6px}.form5 i{width:8px;height:8px;border-radius:50%;display:block}
+.form5 i.W{background:var(--win)}.form5 i.D{background:var(--muted)}.form5 i.L{background:var(--loss)}
+.motm{color:var(--gold);margin-left:3px}
+.boot{position:absolute;top:-8px;left:calc(50% - 30px);font-size:15px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+/* home: the trophy cabinet */
+.cabinet{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.cab{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:78px;padding:10px 8px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line)}
+.cab svg{width:34px;height:34px}.cab b{font:600 20px/1 var(--display)}.cab small{font-size:11px;color:var(--muted);letter-spacing:.08em}
+.cab.none{opacity:.45}
 .ev .gls2 .them{text-align:right;color:var(--muted)}
 @media(max-width:520px){.ev .gls2{font-size:11.5px;gap:8px}.ev .gls2 small{font-size:10.5px}}
 .ev.pend{background:transparent;border:1px dashed rgba(255,255,255,.14);animation:none}
@@ -1563,10 +1581,17 @@ function shapes(pids, active, clickable){
 function xiPitch(xi, form){
   return `<div class="pitch tall" role="img" aria-label="Formation ${form}">` + xi.map(p => {
     const bits = [p.code, p.g ? '⚽' + p.g : '', p.a ? '🅰' + p.a : ''].filter(Boolean).join(' ');
-    return `<div class="slot full"${W.P[p.id] ? ` data-pid="${p.id}"` : ''} style="left:${p.x}%;top:${p.y}%">${p.cap ? '<span class="cap" title="Captain">C</span>' : ''}<div class="ovdot gr g${p.gr}">${p.gr}</div><div class="lbl">${esc(short(p.n))}</div><div class="sub fit${Math.min(2, p.fit || 0)}">${bits}</div></div>`;
+    const boot = S.run && S.run.cup && S.run.phase === 'done' && S.run.cup.top && S.run.cup.top.g[0] && S.run.cup.top.g[0][0] === p.id && xi.length && !xi.dyn;
+    return `<div class="slot full"${W.P[p.id] ? ` data-pid="${p.id}"` : ''} style="left:${p.x}%;top:${p.y}%">${boot ? '<span class="boot" title="Top scorer of the competition">👟</span>' : ''}${p.cap ? '<span class="cap" title="Captain">C</span>' : ''}<div class="ovdot gr g${p.gr}">${p.gr}</div><div class="lbl">${esc(short(p.n))}</div><div class="sub fit${Math.min(2, p.fit || 0)}">${bits}</div></div>`;
   }).join('') + `</div>`;
 }
 const xiBox = (title, xi, form) => `<section class="card"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">${title}</div><span class="muted" style="font-size:13px">${form}</span></div>${xiPitch(xi, form)}</section>`;
+// the trophy cabinet: one trophy per competition in its colour, with how many you have won
+function cabinet(st){
+  const tb = st.titlesBy || {};
+  const cup = col => TROPHY.replace('class="trophy"', 'class="cabcup"').replace(/var\(--gold\)/g, col);
+  return `<div class="cabinet">${['cl', 'el', 'ecl'].map(k => `<div class="cab${tb[k] ? '' : ' none'}">${cup(ACCENT[k])}<b class="num">${tb[k] || 0}</b><small>${CUP[k]}</small></div>`).join('')}</div>`;
+}
 function viewHome(){
   const st = S.stats, d = S.dyn;
   const best = st.bestStage ? STAGE_NAME[st.bestStage] : 'None yet';
@@ -1597,6 +1622,7 @@ function viewHome(){
     ${dyn}
     ${picker}
     ${btns ? `<div class="btnrow">${btns}</div>` : ''}
+    ${cabinet(st)}
     <div class="stats">
       <div class="stat"><b class="num">${st.runs}</b><span>Runs</span></div>
       <div class="stat"><b class="num">${st.titles}</b><span>Titles${st.titlesBy ? ' · ' + ['cl', 'el', 'ecl'].filter(k => st.titlesBy[k]).map(k => ({ cl: 'UCL', el: 'UEL', ecl: 'UECL' }[k]) + ' ' + st.titlesBy[k]).join(', ') : ''}</span></div>
@@ -1694,10 +1720,26 @@ function viewLineup(){
 
 /* where a match is played: at home "vs", away "@", the final on neutral ground */
 const venue = h => h === 1 ? '<span class="ven" title="Home">🏠</span>vs' : h === 0 ? '<span class="ven" title="Away">✈️</span>@' : '<span class="ven" title="Neutral ground">🏟️</span>vs';
+// player of the match: your player with the most goals (assists break a tie), shown with a star
+function motm(e){
+  const pts = {}; for (const [sc, as, , og] of e.gl || []){ if (og) continue; pts[sc] = (pts[sc] || 0) + 1; if (as) pts[as] = (pts[as] || 0) + 0.4; }
+  let best = null; for (const k in pts) if (best == null || pts[k] > pts[best]) best = k;
+  return best != null && pts[best] >= 1 ? best : null;   // ids are strings ('p123')
+}
+// the first leg's score, for the second leg's card
+const firstLeg = e => { const c = S.run && S.run.cup; const f = c && c.ev.find(x => x.k === 'leg' && x.leg === 1 && x.round === e.round && x.opp === e.opp); return f ? `First leg ${f.s[0]}:${f.s[1]}` : ''; };
+// penalties kick by kick: you and them in turn (your kicks first in the list), green scored, red missed
+function pensHTML(p){
+  if (!p || !p.kicks) return '';
+  const mine = [], theirs = [];
+  p.kicks.forEach((k, i) => (i % 2 ? theirs : mine).push(k));
+  const row = (ks, off) => ks.map((k, j) => `<span class="k ${k ? 's' : 'm'}" data-i="${2 * j + off}">${k ? '✓' : '✕'}</span>`).join('');
+  return `<div class="pens"><span class="who">Your XI</span><span class="ks">${row(mine, 0)}</span><span class="who">Them</span><span class="ks">${row(theirs, 1)}</span></div>`;
+}
 function evHTML(e){
   const res = s => s[0] > s[1] ? 'W' : s[0] < s[1] ? 'L' : 'D';
   const opp = id => `${esc(nm(id))} ${gchip(id)}`;
-  const one = ([sc, as, m, og]) => `<span data-m="${m}">⚽ ${m}' ${esc(short(W.P[sc].name))}${og ? ' <small>(og)</small>' : as ? ` <small>(${esc(short(W.P[as].name))})</small>` : ''}</span>`;
+  const one = ([sc, as, m, og]) => `<span data-m="${m}">⚽ ${m}' ${esc(short(W.P[sc].name))}${String(sc) === String(motm(e)) && !og ? '<b class="motm" title="Player of the match">★</b>' : ''}${og ? ' <small>(og)</small>' : as ? ` <small>(${esc(short(W.P[as].name))})</small>` : ''}</span>`;
   const col = l => (l || []).slice().sort((x, y) => x[2] - y[2]).map(one).join('');
   const gls = e => (e.gl && e.gl.length) || (e.og && e.og.length) ? `<div class="gls2"><div>${col(e.gl)}</div><div class="them">${col(e.og)}</div></div>` : '';
   const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
@@ -1721,8 +1763,8 @@ function evHTML(e){
     if (e.won !== undefined) bits.push(e.won ? '<b style="color:var(--win)">Through</b>' : '<b style="color:var(--loss)">Out</b>');
     return bits.length ? `<div class="extra">${bits.join(' · ')}</div>` : '';
   };
-  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}${live}"><div class="rd">${e.round} · Leg ${e.leg}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? tail(e) : ''}</div>`;
-  if (e.k === 'final') return `<div class="ev big${live}"${e.won ? ' data-won="1"' : ''}><div class="rd">Final</div><div class="opp">${venue(null)} ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
+  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}${live}"><div class="rd">${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${gls(e)}${e.leg === 2 ? pensHTML(e.pens) + tail(e) : ''}</div>`;
+  if (e.k === 'final') return `<div class="ev big${live}"${e.won ? ' data-won="1"' : ''}><div class="rd">Final</div><div class="opp">${venue(null)} ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${pensHTML(e.pens)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
   if (e.k === 'podone'){
     const tie = t => `<tr class="${t[0] === e.opp || t[1] === e.opp ? 'me' : ''}"><td style="text-align:left">${t[3] === t[0] ? `<b>${esc(nm(t[0]))}</b>` : esc(nm(t[0]))}</td><td class="sc">${t[2][0]}:${t[2][1]}${t[4] === 1 ? ' <small>p</small>' : t[4] === 2 ? ' <small>aet</small>' : ''}</td><td style="text-align:right">${t[3] === t[1] ? `<b>${esc(nm(t[1]))}</b>` : esc(nm(t[1]))}</td></tr>`;
     return `<div class="ev big" style="display:block"><div class="rd">Knockout play-off · Done</div>
@@ -1745,10 +1787,16 @@ function runLive(){
   const clk = document.createElement('div'); clk.className = 'lclock'; clk.innerHTML = `<span>0'</span><i><b></b></i><small>Tap to skip</small>`;
   el.querySelector('.score').after(clk);
   const D = end === 120 ? 5200 : 4000, t0 = performance.now(); let h = 0, a = 0, k = 0, done = false;
-  const finishLive = () => { if (done) return; done = true; goals.forEach(x => x.g.classList.add('in')); sh.textContent = fh; sa.textContent = fa; el.classList.add('over');
-    if (el.dataset.won) confetti(); };
-  el.addEventListener('click', finishLive, { once: true });
-  document.addEventListener('click', e => { if (e.target.closest('[data-act]')) finishLive(); }, { once: true, capture: true });
+  const kicks = [...el.querySelectorAll('.pens .k')].sort((x, y) => x.dataset.i - y.dataset.i);
+  const finishLive = (skip) => { if (done) return; done = true; goals.forEach(x => x.g.classList.add('in')); sh.textContent = fh; sa.textContent = fa;
+    const whistle = () => { el.classList.add('over'); if (el.dataset.won) confetti(); };
+    if (!kicks.length || skip === true){ kicks.forEach(k => k.classList.add('in')); whistle(); return; }
+    // the shootout, kick by kick
+    let j = 0; const next = () => { if (!el.isConnected) return; if (j < kicks.length){ kicks[j++].classList.add('in'); setTimeout(next, 650); } else whistle(); };
+    el.addEventListener('click', () => { kicks.forEach(k => k.classList.add('in')); j = kicks.length; }, { once: true });
+    setTimeout(next, 400); };
+  el.addEventListener('click', () => finishLive(true), { once: true });
+  document.addEventListener('click', e => { if (e.target.closest('[data-act]')) finishLive(true); }, { once: true, capture: true });
   const frame = now => {
     if (done || !el.isConnected) return;
     const m = Math.min(end, (now - t0) / D * end);
@@ -1814,7 +1862,7 @@ function pendCard(e){
   const c = S.run.cup;
   // straight into the Round of 16: the opponent comes out of the play-offs, so he is not known yet
   const tbd = e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
-  const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}` : 'Final';
+  const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}` : 'Final';
   const who = tbd ? '<span class="muted">Play-off winner</span>' : `${esc(nm(e.opp))} ${gchip(e.opp)}`;
   const right = tbd ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
   return `<div class="ev pend"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}</div>`;
@@ -1829,7 +1877,7 @@ function teamBox(r){
 const cupTop = r => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${stepChip(r)}${quitBtn()}</div></header>`;
 // which season of the challenge this is
 const seasonTag = () => 'Run ' + ((S.run && S.run.season) || 1);
-const cupHead = (eyebrow, title, side) => `<div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">${eyebrow} · ${seasonTag()}</div><h2>${title}</h2></div>${side ? `<span class="muted" style="font-size:13px">${side}</span>` : ''}</div>`;
+const cupHead = (eyebrow, title, side) => { const f = S.run && S.run.cup ? formDots(S.run.cup) : ''; return `<div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">${eyebrow} · ${seasonTag()}</div><h2>${title}</h2></div>${side || f ? `<span class="muted" style="font-size:13px;text-align:right">${side || ''}${f ? `<br>Form ${f}` : ''}</span>` : ''}</div>`; };
 const dock = (main, ghost) => `<div class="dock"><div class="btnrow">${main}${ghost || ''}</div></div>`;
 const skipBtn = '<button class="btn ghost" data-act="all">Skip to the end</button>';
 function viewCup(){
@@ -1871,10 +1919,20 @@ function tableAfter(c, k){
   for (const rd of (c.lg || []).slice(0, k)) for (const [a, b, ga, gb] of rd){ rec(a, ga, gb); rec(b, gb, ga); }
   return Object.values(rows).sort((x, y) => y.Pts - x.Pts || (y.GF - y.GA) - (x.GF - x.GA) || y.GF - x.GF || (c.tb[x.id] || 0) - (c.tb[y.id] || 0));
 }
-function tableHTML(rows, title, sub){
+// your last five results (league phase and knockouts so far), newest last
+function formDots(c){
+  const ms = c.ev.slice(0, c.shown).filter(e => e.k === 'md' || e.k === 'leg' || e.k === 'final').slice(-5);
+  if (!ms.length) return '';
+  const r = m => { const f = m.s[0] + (m.et ? m.et[0] : 0), a = m.s[1] + (m.et ? m.et[1] : 0); return f > a ? 'W' : f < a ? 'L' : m.pens ? (m.won ? 'W' : 'L') : 'D'; };
+  return `<span class="form5" title="Last ${ms.length}: ${ms.map(r).join(' ')}">${ms.map(m => `<i class="${r(m)}"></i>`).join('')}</span>`;
+}
+function tableHTML(rows, title, sub, prev){
+  const was = {}; (prev || []).forEach((t, i) => was[t.id] = i);
+  const mv = (t, i) => { if (!prev || !(t.id in was)) return ''; const d = was[t.id] - i; return d > 0 ? `<span class="mv up">▲${d}</span>` : d < 0 ? `<span class="mv dn">▼${-d}</span>` : ''; };
+  const meMoved = prev && rows.findIndex(t => t.id === 'YOU') !== was.YOU;
   return `<section class="card"><div class="eyebrow" style="margin-bottom:4px">${title}</div>${sub ? `<div class="muted" style="font-size:13px;margin-bottom:8px">${sub}</div>` : ''}
     <div class="tblwrap"><table class="tbl num"><thead><tr><th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>
-    ${rows.map((t, i) => `<tr class="${i < 8 ? 'z1' : i < 24 ? 'z2' : ''}${t.id === 'YOU' ? ' me' : ''}${i === 0 && t.P ? ' best' : ''}"><td>${i === 0 && t.P ? '<span class="medal">1</span>' : i + 1}</td><td>${esc(nm(t.id))}</td><td>${t.P}</td><td>${t.W}</td><td>${t.D}</td><td>${t.L}</td><td>${t.GF - t.GA > 0 ? '+' : ''}${t.GF - t.GA}</td><td>${t.Pts}</td></tr>`).join('')}
+    ${rows.map((t, i) => `<tr class="${i < 8 ? 'z1' : i < 24 ? 'z2' : ''}${t.id === 'YOU' ? ' me' + (meMoved ? ' moved' : '') : ''}${i === 0 && t.P ? ' best' : ''}"><td>${i === 0 && t.P ? '<span class="medal">1</span>' : i + 1}</td><td>${esc(nm(t.id))}${mv(t, i)}${t.id === 'YOU' && S.run && S.run.cup ? formDots(S.run.cup) : ''}</td><td>${t.P}</td><td>${t.W}</td><td>${t.D}</td><td>${t.L}</td><td>${t.GF - t.GA > 0 ? '+' : ''}${t.GF - t.GA}</td><td>${t.Pts}</td></tr>`).join('')}
     </tbody></table></div></section>`;
 }
 const nextLabel = e => !e ? '' : e.k === 'md' ? 'Play matchday ' + e.n : e.k === 'table' ? 'Final table' : e.k === 'podone' ? 'Play the knockout play-off' : e.k === 'end' ? 'Run summary' : e.k === 'final' ? 'Play the final' : 'Play ' + e.round.toLowerCase() + ', leg ' + e.leg;
@@ -1892,7 +1950,7 @@ function viewLeague(){
     ${fin ? `<section class="card verdict"><div class="eyebrow">League phase over</div><h1 style="margin-top:8px">You finished ${ord(fin.pos)}</h1><p style="margin:8px 0 0">${z}</p></section>` : ''}
     ${last && !fin ? `<div class="feed">${evHTML(last)}</div>` : ''}
     ${upcoming.length ? `<div class="feed">${pendCard(upcoming[0])}</div>` : ''}
-    ${k ? tableHTML(tableAfter(c, k), fin ? 'Final table' : `Table after matchday ${k}`, '') : ''}
+    ${k ? tableHTML(tableAfter(c, k), fin ? 'Final table' : `Table after matchday ${k}`, '', k > 1 && !fin ? tableAfter(c, k - 1) : null) : ''}
     ${upcoming.length > 1 ? `<div class="eyebrow">Still to play</div><div class="feed">${upcoming.slice(1).map(pendCard).join('')}</div>` : ''}
     ${played.length > (fin ? 0 : 1) ? `<div class="eyebrow">Results</div><div class="feed">${played.slice(0, fin ? played.length : -1).reverse().map(evHTML).join('')}</div>` : ''}
   </div>
@@ -2078,7 +2136,7 @@ function viewDynasty(){
       <div class="stat"><span>Biggest win</span><b class="num">${s.big ? s.big[0] + ':' + s.big[1] : '-'}</b><small>${s.big ? 'v ' + esc(s.big[2]) + ' · S' + s.big[3] : ''}</small></div>
       <div class="stat"><span>Win rate</span><b class="num">${s.w + s.d + s.l ? Math.round(100 * s.w / (s.w + s.d + s.l)) : 0}%</b></div>
     </div>
-    ${(b => b ? xiBox('Best XI of the challenge', b.xi, b.form) : '')(dynastyBestXI(hist))}
+    ${(b => b ? xiBox('Best XI of the challenge', Object.assign(b.xi, { dyn: true }), b.form) : '')(dynastyBestXI(hist))}
     <section class="card"><div class="eyebrow" style="margin-bottom:10px">Run by run</div><div class="tblwrap"><table class="tbl matches"><tbody>${hist.map(row).join('')}</tbody></table></div></section>
     <div class="toplists">${list('Top scorers', s.scorers, 'goals')}${list('Top assists', s.assists, 'assists')}</div>
     ${s.legends.length ? list('Legends: most runs in your XI', s.legends, 'runs') : ''}
