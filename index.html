@@ -421,6 +421,33 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .imgbox{max-width:520px;width:100%;display:flex;flex-direction:column;align-items:center}.imgbox img{max-width:100%;max-height:calc(100vh - 150px);width:auto;height:auto;object-fit:contain;border-radius:12px;display:block;box-shadow:0 12px 40px rgba(0,0,0,.6)}
 .imgbox .btnrow,.imgbox .muted{width:100%}
 .imgbox .btnrow{margin-top:12px}.imgbox a.btn{text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}
+
+/* round 4: card reveal, path, player of the run, crests, last seconds, sound */
+.fd{background:repeating-linear-gradient(45deg,#22395A 0 5px,#182A44 5px 10px)!important;color:transparent!important;border-color:rgba(242,193,78,.55)!important}
+.flip{animation:flip .45s ease-out}
+.flip.star{animation:flip .45s ease-out,starburst 1.3s ease-out}
+@keyframes flip{0%{transform:perspective(200px) rotateY(90deg)}100%{transform:perspective(200px) rotateY(0)}}
+@keyframes starburst{0%,35%{box-shadow:0 0 0 0 rgba(242,193,78,.95)}100%{box-shadow:0 0 0 22px rgba(242,193,78,0)}}
+#app.revealing .teambox .ovdot.big,#app.revealing .teambox .tnum{color:transparent;filter:grayscale(1)}
+.revhint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px;letter-spacing:.04em}
+.rpath{display:flex;align-items:center;justify-content:center;margin-top:16px}
+.rpath .st{font:600 11px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;padding:5px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.rpath .st.done{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
+.rpath .st.out{border-color:var(--loss);color:var(--loss);text-decoration:line-through}
+.rpath .st.bye{opacity:.4;border-style:dashed}
+.rpath i{flex:0 1 12px;min-width:3px;height:2px;background:var(--line)}.rpath i.on{background:var(--gold)}
+.potr{background:linear-gradient(90deg,var(--kit) 0 6px,transparent 6px),var(--panel);cursor:help}
+.potr-row{display:flex;gap:14px;align-items:center;margin-top:10px}
+.potr .ovdot{width:54px;height:54px;font-size:24px;flex:none}
+.potr-nm{font:700 22px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
+.crest{display:inline-block;vertical-align:-4px;margin-right:6px;line-height:0}
+.crest path{fill:var(--kit);stroke:rgba(243,239,230,.4);stroke-width:1}
+.crest text{fill:var(--kit-ink);font-family:var(--display);font-weight:700}
+.crest.me path{fill:var(--gold)}.crest.me text{fill:var(--gold-ink)}
+.chip.last{animation:lastsec 1s ease-in-out infinite}
+@keyframes lastsec{50%{background:rgba(229,122,98,.22);transform:scale(1.07)}}
+.chip.snd{padding:6px 9px;font-size:15px;line-height:1;background:transparent;color:var(--text);cursor:pointer}.chip.snd[aria-pressed=false]{opacity:.6}
+@media (prefers-reduced-motion: reduce){.chip.last{animation:none}}
 </style>
 
 <div class="wrap" id="app"><div class="loader"><div class="ld-logo"></div><div class="ld-bar"><b></b></div><p>Loading the clubs and players…</p></div></div>
@@ -874,6 +901,18 @@ const clubOv = id => eloOv(strength(id));
 // opponents show only a letter, never a 40-99 number
 // opponents show no rating at all
 const gchip = () => '';
+// a small shield in the club's colours with its initials (no real badges: those belong to the clubs)
+const CREST_SKIP = new Set(['fc', 'fk', 'sk', 'ac', 'afc', 'cf', 'sc', 'nk', 'sv', 'bk', 'if', 'ik', 'kv', '1', 'club', 'de', 'cd', 'ud', 'the']);
+function initials(name){
+  const w = String(name).split(/[\s\-.]+/).filter(x => x && !CREST_SKIP.has(x.toLowerCase()));
+  if (!w.length) return String(name).slice(0, 2).toUpperCase();
+  return (w.length > 1 ? w.slice(0, 3).map(x => x[0]).join('') : w[0].slice(0, w[0].length <= 4 && w[0] === w[0].toUpperCase() ? 4 : 3)).toUpperCase();
+}
+const CREST_SVG = t => `<svg viewBox="0 0 20 22" width="17" height="19"><path d="M10 1 19 4.5V11c0 5.2-4 8.8-9 10C5 19.8 1 16.2 1 11V4.5Z"/><text x="10" y="${t.length > 2 ? 13.4 : 14}" text-anchor="middle" font-size="${t.length > 3 ? 4.8 : t.length > 2 ? 6 : 7.6}">${esc(t)}</text></svg>`;
+function crest(id){
+  if (id === 'YOU') return `<span class="crest me" aria-hidden="true">${CREST_SVG('XI')}</span>`;
+  const c = W.C[id]; return c ? `<span class="crest" style="${clubKit(c)}" aria-hidden="true">${CREST_SVG(initials(c.name))}</span>` : '';
+}
 const ovDot = (r, p) => p ? `<div class="ovdot" style="${kit(p)}">${ovGrade(r.ov)}</div>` : `<div class="ovdot big g${ovGrade(r.ov)}">${teamNum(r.ov)}</div>`;
 // what each part says about your XI and why it matters, most important first (no weights shown)
 const PARTS = [['Level', 'pe', 'Players from stronger clubs are used to a higher level'],
@@ -1456,7 +1495,7 @@ function tick(){
   const now = Date.now();
   if (S.run && S.run.stepDl && now > S.run.stepDl) timeUp();
   if (!S.run && S.dyn && now > S.dyn.deadline){ S.dyn = null; S.stats.streak = 0; save(); render(); toast('Ten minutes passed. The challenge is over.'); }
-  document.querySelectorAll('[data-cd]').forEach(el => { const left = +el.dataset.cd - now; el.textContent = fmt(left); const c = el.closest('.chip'); if (c) c.classList.toggle('warn', left < (+el.dataset.w || 60000)); });
+  document.querySelectorAll('[data-cd]').forEach(el => { const left = +el.dataset.cd - now; el.textContent = fmt(left); const c = el.closest('.chip'); if (c){ c.classList.toggle('warn', left < (+el.dataset.w || 60000)); c.classList.toggle('last', left > 0 && left < 10000); } });
 }
 // the clock in the top bar, for the decision in front of you
 const STEP_LBL = { draft: 'Pick within', lineup: 'Confirm within', cup: 'Next within', done: 'Next within', keep: 'Choose within' };
@@ -1753,7 +1792,7 @@ function pensHTML(p){
 }
 function evHTML(e){
   const res = s => s[0] > s[1] ? 'W' : s[0] < s[1] ? 'L' : 'D';
-  const opp = id => `${esc(nm(id))} ${gchip(id)}`;
+  const opp = id => `${crest(id)}${esc(nm(id))}`;
   const one = ([sc, as, m, og]) => `<span data-m="${m}">⚽ ${m}' ${esc(short(W.P[sc].name))}${String(sc) === String(motm(e)) && !og ? '<b class="motm" title="Player of the match">★</b>' : ''}${og ? ' <small>(og)</small>' : as ? ` <small>(${esc(short(W.P[as].name))})</small>` : ''}</span>`;
   const col = l => (l || []).slice().sort((x, y) => x[2] - y[2]).map(one).join('');
   const gls = e => (e.gl && e.gl.length) || (e.og && e.og.length) ? `<div class="gls2"><div>${col(e.gl)}</div><div class="them">${col(e.og)}</div></div>` : '';
@@ -1783,7 +1822,7 @@ function evHTML(e){
   if (e.k === 'podone'){
     const tie = t => `<tr class="${t[0] === e.opp || t[1] === e.opp ? 'me' : ''}"><td style="text-align:left">${t[3] === t[0] ? `<b>${esc(nm(t[0]))}</b>` : esc(nm(t[0]))}</td><td class="sc">${t[2][0]}:${t[2][1]}${t[4] === 1 ? ' <small>p</small>' : t[4] === 2 ? ' <small>aet</small>' : ''}</td><td style="text-align:right">${t[3] === t[1] ? `<b>${esc(nm(t[1]))}</b>` : esc(nm(t[1]))}</td></tr>`;
     return `<div class="ev big" style="display:block"><div class="rd">Knockout play-off · Done</div>
-      <div class="opp" style="margin:4px 0 8px">Your Round of 16 opponent: <b>${esc(nm(e.opp))}</b> ${gchip(e.opp)}</div>
+      <div class="opp" style="margin:4px 0 8px">Your Round of 16 opponent: <b>${crest(e.opp)}${esc(nm(e.opp))}</b></div>
       <div class="tblwrap"><table class="tbl num"><tbody>${e.ties.map(tie).join('')}</tbody></table></div></div>`;
   }
   if (e.k === 'end') return `<div class="ev" style="display:block"><div class="rd">Full time</div>${e.champ !== 'YOU' ? `<div><b>${esc(nm(e.champ))}</b> won the ${compOf(S.run).short}.</div>` : `<div><b>You</b> won the ${compOf(S.run).short}.</div>`}</div>`;
@@ -1791,6 +1830,37 @@ function evHTML(e){
 }
 /* your match, live: a clock from 0' to 90' (120' after extra time) in about four seconds, goals drop in at their
    minute and the score ticks up; the result, aggregate and penalties show at the whistle. Tap the card to skip. */
+/* sound, off by default: made on the spot with Web Audio (crowd, whistle, applause), no files */
+const sndOn = () => !!(S.pref && S.pref.sound);
+const sndBtn = () => `<button class="chip snd" data-act="snd" aria-pressed="${sndOn()}" title="Sound ${sndOn() ? 'on' : 'off'}" aria-label="Sound ${sndOn() ? 'on' : 'off'}">${sndOn() ? '🔊' : '🔇'}</button>`;
+const SND = {
+  ctx: null,
+  ac(){ if (!this.ctx){ const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; this.ctx = new A(); } if (this.ctx.state === 'suspended') this.ctx.resume(); return this.ctx; },
+  play(kind, arg){ if (!sndOn() || toast.quiet) return; try { const c = this.ac(); if (c) this[kind](c, c.currentTime + .02, arg); } catch (e) {} },
+  noise(c, dur){ const b = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const n = c.createBufferSource(); n.buffer = b; return n; },
+  crowd(c, t, [lo, hi, peak, dur]){ const n = this.noise(c, dur), f = c.createBiquadFilter(), g = c.createGain();
+    f.type = 'bandpass'; f.Q.value = .6; f.frequency.setValueAtTime(lo, t); f.frequency.linearRampToValueAtTime(hi, t + .35);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + .25); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    n.connect(f).connect(g).connect(c.destination); n.start(t); n.stop(t + dur); },
+  roar(c, t){ this.crowd(c, t, [450, 950, .5, 2.2]); },
+  groan(c, t){ this.crowd(c, t, [380, 220, .16, 1.3]); },
+  whistle(c, t, short){
+    for (const [d, l] of short ? [[0, .16]] : [[0, .18], [.28, .18], [.56, .75]]){
+      const o = c.createOscillator(), lfo = c.createOscillator(), lg = c.createGain(), g = c.createGain();
+      o.frequency.value = 2900; lfo.frequency.value = 36; lg.gain.value = 110; lfo.connect(lg).connect(o.frequency);
+      g.gain.setValueAtTime(0, t + d); g.gain.linearRampToValueAtTime(.09, t + d + .02); g.gain.setValueAtTime(.09, t + d + l - .03); g.gain.linearRampToValueAtTime(0, t + d + l);
+      o.connect(g).connect(c.destination); o.start(t + d); lfo.start(t + d); o.stop(t + d + l); lfo.stop(t + d + l);
+    } },
+  applause(c, t){
+    const dur = 3.4, sr = c.sampleRate, b = c.createBuffer(1, Math.floor(sr * dur), sr), d = b.getChannelData(0), len = Math.floor(.012 * sr), tau = .0025 * sr;
+    for (let k = 0; k < 900; k++){
+      const at = Math.random() * (dur - .05), env = Math.min(1, at / .35) * Math.min(1, (dur - at) / 1.4), s0 = Math.floor(at * sr), amp = (.3 + Math.random() * .7) * env;
+      for (let j = 0; j < len && s0 + j < d.length; j++) d[s0 + j] += (Math.random() * 2 - 1) * amp * Math.exp(-j / tau);
+    }
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); n.buffer = b; f.type = 'highpass'; f.frequency.value = 900; g.gain.value = .22;
+    n.connect(f).connect(g).connect(c.destination); n.start(t); }
+};
+document.addEventListener('pointerdown', () => { if (sndOn()) SND.ac(); }, { capture: true });
 function runLive(){
   const el = document.querySelector('.ev.live'); const c = S.run && S.run.cup; if (!el || !c) return;
   c.live = null; save();   // played once, never again on a later render
@@ -1805,17 +1875,17 @@ function runLive(){
   // a short line when a goal goes in: yours in the competition's colour, theirs plain
   const flash = x => { el.querySelectorAll('.gflash').forEach(f => f.remove()); const f = document.createElement('div');
     const who = (x.g.textContent.replace(/^⚽\s*\d+'\s*/, '').split('(')[0] || '').replace('★', '').trim();
-    f.className = 'gflash' + (x.ours ? '' : ' them'); f.textContent = x.ours ? `Goal! ${who}` : `Conceded · ${who}`; el.appendChild(f); setTimeout(() => f.remove(), 1300); };
+    SND.play(x.ours ? 'roar' : 'groan'); f.className = 'gflash' + (x.ours ? '' : ' them'); f.textContent = x.ours ? `Goal! ${who}` : `Conceded · ${who}`; el.appendChild(f); setTimeout(() => f.remove(), 1300); };
   const kicks = [...el.querySelectorAll('.pens .k')].sort((x, y) => x.dataset.i - y.dataset.i);
   const finishLive = (skip) => { if (done) return; done = true; goals.forEach(x => x.g.classList.add('in')); sh.textContent = fh; sa.textContent = fa;
-    const whistle = () => { el.classList.add('over'); if (el.dataset.won) confetti(); };
+    const whistle = () => { el.classList.add('over'); if (el.dataset.won) confetti(); else if (skip !== true) SND.play('whistle'); };
     if (!kicks.length || skip === true){ kicks.forEach(k => k.classList.add('in')); whistle(); return; }
     // the shootout, kick by kick
     let j = 0; const next = () => { if (!el.isConnected) return; if (j < kicks.length){ kicks[j++].classList.add('in'); setTimeout(next, 650); } else whistle(); };
     el.addEventListener('click', () => { kicks.forEach(k => k.classList.add('in')); j = kicks.length; }, { once: true });
     setTimeout(next, 400); };
   el.addEventListener('click', () => finishLive(true), { once: true });
-  document.addEventListener('click', e => { if (e.target.closest('[data-act]')) finishLive(true); }, { once: true, capture: true });
+  document.addEventListener('click', e => { if (e.target.closest('[data-act]:not([data-act=snd])')) finishLive(true); }, { once: true, capture: true });
   const frame = now => {
     if (done || !el.isConnected) return;
     const m = Math.min(end, (now - t0) / D * end);
@@ -1846,6 +1916,7 @@ function runSpin(){
 }
 /* confetti in the competition's colours, two seconds */
 function confetti(){
+  SND.play('applause');
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const cv = document.createElement('canvas'); cv.id = 'confetti'; document.body.appendChild(cv);
   const x = cv.getContext('2d'), W2 = cv.width = innerWidth, H2 = cv.height = innerHeight;
@@ -1882,7 +1953,7 @@ function pendCard(e){
   // straight into the Round of 16: the opponent comes out of the play-offs, so he is not known yet
   const tbd = e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
   const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}` : 'Final';
-  const who = tbd ? '<span class="muted">Play-off winner</span>' : `${esc(nm(e.opp))} ${gchip(e.opp)}`;
+  const who = tbd ? '<span class="muted">Play-off winner</span>' : `${crest(e.opp)}${esc(nm(e.opp))}`;
   const right = tbd ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
   return `<div class="ev pend"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}</div>`;
 }
@@ -1893,7 +1964,7 @@ function teamBox(r){
 /* ================= THE SEASON, SCREEN BY SCREEN =================
    team -> draw -> league phase (table after every matchday) -> knockouts (bracket after every match)
    -> your season -> the competition -> who stays */
-const cupTop = r => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${stepChip(r)}${quitBtn()}</div></header>`;
+const cupTop = r => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${sndBtn()}${stepChip(r)}${quitBtn()}</div></header>`;
 // which season of the challenge this is
 const seasonTag = () => 'Run ' + ((S.run && S.run.season) || 1);
 const cupHead = (eyebrow, title, side) => { const f = S.run && S.run.cup ? formDots(S.run.cup) : ''; return `<div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">${eyebrow} · ${seasonTag()}</div><h2>${title}</h2></div>${side || f ? `<span class="muted" style="font-size:13px;text-align:right">${side || ''}${f ? `<br>Form ${f}` : ''}</span>` : ''}</div>`; };
@@ -1911,6 +1982,38 @@ function squadBox(r){
   return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your players</div><div class="tblwrap"><table class="tbl num"><thead><tr><th style="text-align:left">Player</th><th style="text-align:left">Club</th><th>Pos</th><th>Ovr</th></tr></thead><tbody>
     ${rows.map(p => { const gr = ovGrade(playerRating(p.id).ov); return `<tr data-pid="${p.id}"${effOvr(p.id, code(p.id)) === top ? ' class="best"' : ''}><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td style="text-align:left;white-space:nowrap" class="muted">${esc(W.C[p.club].name)}</td><td>${code(p.id)}</td><td><span class="gt g${gr}">${gr}</span></td></tr>`; }).join('')}</tbody></table></div></section>`;
 }
+/* first look at your team after the draft: the grades turn over one by one, the best last; tap to see them all */
+function runReveal(){
+  const r = S.run, app = $('#app'); if (!r || r.phase !== 'cup' || r.scr !== 'team' || r.revealed) return false;
+  r.revealed = true; save();
+  if (toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+  const order = [...r.picks].sort((a, b) => playerRating(a).ov - playerRating(b).ov);
+  const els = pid => app.querySelectorAll(`.slot[data-pid="${pid}"] .ovdot, tr[data-pid="${pid}"] .gt`);
+  order.forEach(pid => els(pid).forEach(e => e.classList.add('fd')));
+  app.classList.add('revealing');
+  const hint = document.createElement('div'); hint.className = 'revhint'; hint.textContent = 'Tap to show all'; const pt = app.querySelector('.pitch'); if (pt) pt.after(hint);
+  let i = 0, tm, over = false;
+  const done = () => { if (over) return; over = true; clearTimeout(tm); document.removeEventListener('pointerdown', done, true);
+    app.querySelectorAll('.fd').forEach(e => e.classList.remove('fd')); app.classList.remove('revealing'); hint.remove(); countUp(app); };
+  const next = () => { if (!app.contains(hint)) return done(); if (i >= order.length) return done();
+    const last = i === order.length - 1; els(order[i]).forEach(e => { e.classList.remove('fd'); e.classList.add('flip'); if (last) e.classList.add('star'); });
+    i++; tm = setTimeout(next, i === order.length ? 900 : i === order.length - 1 ? 750 : 280); };
+  document.addEventListener('pointerdown', done, true);
+  tm = setTimeout(next, 450);
+  return true;
+}
+// the team's numbers run up to their value when a screen with them opens
+function countUp(root){
+  if (toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const els = [...root.querySelectorAll('.teambox .ovdot.big, .teambox .tnum')].filter(e => /^\d+$/.test(e.textContent.trim()));
+  if (!els.length) return;
+  const to = els.map(e => +e.textContent), t0 = performance.now(), D = 900;
+  const f = now => { const k = Math.min(1, (now - t0) / D), q = 1 - Math.pow(1 - k, 3);
+    els.forEach((el, i) => { if (el.isConnected) el.textContent = Math.round(Math.min(50, to[i]) + (to[i] - Math.min(50, to[i])) * q); });
+    if (k < 1) requestAnimationFrame(f); };
+  els.forEach((el, i) => el.textContent = Math.min(50, to[i]));
+  requestAnimationFrame(f);
+}
 function viewTeam(){
   const r = S.run;
   return `${cupTop(r)}${cupHead(`Your XI · ${r.form}`, 'Your team', compOf(r).short)}
@@ -1923,7 +2026,7 @@ function viewDraw(){
   const pots = c.pots || [];
   const potCard = (p, k) => `<div class="card potc"><div class="eyebrow" style="margin-bottom:6px">Pot ${k + 1}</div>${p.map(id => id === 'YOU'
       ? `<div class="pr me"><span>Your XI</span></div>`
-      : `<div class="pr${id in venueOf ? ' opp' : ''}"><span>${id in venueOf ? `<span class="ven">${venueOf[id] ? '🏠' : '✈️'}</span>` : ''}${esc(W.C[id].name)}</span>${gchip(id)}</div>`).join('')}</div>`;
+      : `<div class="pr${id in venueOf ? ' opp' : ''}"><span>${id in venueOf ? `<span class="ven">${venueOf[id] ? '🏠' : '✈️'}</span>` : ''}${crest(id)}${esc(W.C[id].name)}</span></div>`).join('')}</div>`;
   return `${cupTop(r)}${cupHead(compOf(r).short, 'The draw', `36 clubs · ${six ? 6 : 8} matchdays`)}
   <div class="stack">${drawCard(c)}
     <div class="pots ${six ? 'p6' : 'p4'}">${pots.map(potCard).join('')}</div>
@@ -1951,7 +2054,7 @@ function tableHTML(rows, title, sub, prev){
   const meMoved = prev && rows.findIndex(t => t.id === 'YOU') !== was.YOU;
   return `<section class="card"><div class="eyebrow" style="margin-bottom:4px">${title}</div>${sub ? `<div class="muted" style="font-size:13px;margin-bottom:8px">${sub}</div>` : ''}
     <div class="tblwrap"><table class="tbl num"><thead><tr><th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>
-    ${rows.map((t, i) => `<tr class="${i < 8 ? 'z1' : i < 24 ? 'z2' : ''}${t.id === 'YOU' ? ' me' + (meMoved ? ' moved' : '') : ''}${i === 0 && t.P ? ' best' : ''}"><td>${i === 0 && t.P ? '<span class="medal">1</span>' : i + 1}</td><td>${esc(nm(t.id))}${mv(t, i)}${t.id === 'YOU' && S.run && S.run.cup ? formDots(S.run.cup) : ''}</td><td>${t.P}</td><td>${t.W}</td><td>${t.D}</td><td>${t.L}</td><td>${t.GF - t.GA > 0 ? '+' : ''}${t.GF - t.GA}</td><td>${t.Pts}</td></tr>`).join('')}
+    ${rows.map((t, i) => `<tr class="${i < 8 ? 'z1' : i < 24 ? 'z2' : ''}${t.id === 'YOU' ? ' me' + (meMoved ? ' moved' : '') : ''}${i === 0 && t.P ? ' best' : ''}"><td>${i === 0 && t.P ? '<span class="medal">1</span>' : i + 1}</td><td>${crest(t.id)}${esc(nm(t.id))}${mv(t, i)}${t.id === 'YOU' && S.run && S.run.cup ? formDots(S.run.cup) : ''}</td><td>${t.P}</td><td>${t.W}</td><td>${t.D}</td><td>${t.L}</td><td>${t.GF - t.GA > 0 ? '+' : ''}${t.GF - t.GA}</td><td>${t.Pts}</td></tr>`).join('')}
     </tbody></table></div></section>`;
 }
 const nextLabel = e => !e ? '' : e.k === 'md' ? 'Play matchday ' + e.n : e.k === 'table' ? 'Final table' : e.k === 'podone' ? 'Play the knockout play-off' : e.k === 'end' ? 'Run summary' : e.k === 'final' ? 'Play the final' : 'Play ' + e.round.toLowerCase() + ', leg ' + e.leg;
@@ -2185,9 +2288,17 @@ function fitHeroLogo(){
 }
 addEventListener('resize', () => requestAnimationFrame(fitHeroLogo));
 if (document.fonts) document.fonts.ready.then(() => fitHeroLogo());
-function canvasBase(w, h, acc){
+function canvasBase(w, h, acc, comp){
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d');
   const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0B1626'); g.addColorStop(1, '#13233A'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  // the competition's motif, as in the game: stars, stripes, hexagons
+  x.save();
+  if (comp === 'cl'){ x.fillStyle = 'rgba(255,255,255,.045)'; const star = (cx, cy, R) => { x.beginPath(); for (let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5, q = i % 2 ? R * .42 : R; x.lineTo(cx + q * Math.cos(a), cy + q * Math.sin(a)); } x.closePath(); x.fill(); };
+    for (let yy = 0, row = 0; yy < h + 120; yy += 120, row++) for (let xx = row % 2 ? 60 : 0; xx < w + 120; xx += 120) star(xx + 30, yy + 25, 13); }
+  else if (comp === 'el'){ x.strokeStyle = 'rgba(255,255,255,.035)'; x.lineWidth = 16; for (let k = -h; k < w + h; k += 110){ x.beginPath(); x.moveTo(k, h); x.lineTo(k + h, 0); x.stroke(); } }
+  else if (comp === 'ecl'){ x.strokeStyle = 'rgba(255,255,255,.05)'; x.lineWidth = 2.5; const R = 46, dx = R * Math.sqrt(3), dy = R * 1.5;
+    for (let row = 0, yy = 0; yy < h + R * 2; yy += dy, row++) for (let xx = row % 2 ? dx / 2 : 0; xx < w + dx; xx += dx){ x.beginPath(); for (let i = 0; i < 6; i++){ const a = Math.PI / 6 + i * Math.PI / 3; x.lineTo(xx + (R - 4) * Math.cos(a), yy + (R - 4) * Math.sin(a)); } x.closePath(); x.stroke(); } }
+  x.restore();
   x.fillStyle = acc; x.fillRect(0, 0, w, 10);
   return [cv, x];
 }
@@ -2246,7 +2357,7 @@ function drawPitch(x, xi, PX, PY, PW, PH){
 }
 async function seasonImage(h){
   await fontsReady();
-  const W_ = 1080, H = 1350, acc = ACCENT[h.comp], [cv, x] = canvasBase(W_, H, acc), white = '#F4F1EA', muted = '#9AA8BD';
+  const W_ = 1080, H = 1350, acc = ACCENT[h.comp], [cv, x] = canvasBase(W_, H, acc, h.comp), white = '#F4F1EA', muted = '#9AA8BD';
   drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
   txt(x, `RUN ${h.season} · ${COMPS[h.comp].short.toUpperCase()}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   const head = h.stage === 'champion' ? (h.comp === 'cl' ? 'CHAMPIONS OF EUROPE' : CUP[h.comp] + ' WINNERS') : stageWord(h).toUpperCase();
@@ -2295,7 +2406,7 @@ async function dynastyImage(hist, ended){
   await fontsReady();
   const s = dynastyStats(hist), last = hist[hist.length - 1] || { comp: 'cl', diff: 'medium' }, acc = ACCENT[last.comp];
   const best = dynastyBestXI(hist), PH = 790, OFF = best ? PH + 110 : 0;   // the best XI pushes the rest down
-  const W_ = 1080, H = 1350 + OFF, [cv, x] = canvasBase(W_, H, acc), white = '#F4F1EA', muted = '#9AA8BD';
+  const W_ = 1080, H = 1350 + OFF, [cv, x] = canvasBase(W_, H, acc, last.comp), white = '#F4F1EA', muted = '#9AA8BD';
   drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
   const dpw = diffPill(x, hist[0] ? hist[0].diff : 'medium', W_ - 60, 160) + 24;
   txt(x, `${s.n} RUN${s.n > 1 ? 'S' : ''}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
@@ -2360,7 +2471,7 @@ function viewDone(){
   const r = S.run, d = r.dscr || 'season';
   return d === 'comp' ? viewComp() : d === 'keep' ? viewKeep() : d === 'dynasty' ? viewDynasty() : viewSeason();
 }
-const doneTop = () => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${stepChip(S.run)}${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}<span class="chip">${seasonTag()}</span></div></header>`;
+const doneTop = () => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${sndBtn()}${stepChip(S.run)}${S.stats.streak > 1 ? `<span class="chip hot">${S.stats.streak} titles in a row</span>` : ''}<span class="chip">${seasonTag()}</span></div></header>`;
 const verdictHead = r => { const st = r.cup.stage; return st === 'champion' ? (r.comp === 'cl' || !r.comp ? 'Champions of Europe' : `${compOf(r).short} winners`) : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase(); };
 /* your season: the verdict, every match you played, your players */
 /* the run in one sentence, from what happened: the league phase, every knockout tie, the final */
@@ -2379,6 +2490,27 @@ function runStory(r){
   const txt = bits.length > 1 ? bits.slice(0, -1).join(', ') + ', ' + bits[bits.length - 1] : bits[0];
   return txt.charAt(0).toUpperCase() + txt.slice(1) + '.';
 }
+// the road through the competition: stages passed light up, the one you went out in is struck through
+const PATH_STEPS = [['league', 'League'], ['playoff', 'PO'], ['r16', 'R16'], ['qf', 'QF'], ['sf', 'SF'], ['final', 'Final'], ['champion', '🏆']];
+function runPath(r){
+  const st = r.cup.stage, at = STAGE_RANK.indexOf(st), t = r.cup.ev.find(e => e.k === 'table'), bye = t && t.pos <= 8;
+  const cls = (k, i) => k === 'playoff' && bye && at > 1 ? 'bye' : i < at ? 'done' : i === at ? (st === 'champion' ? 'done' : 'out') : 'todo';
+  const tip = { bye: 'Straight into the Round of 16', out: 'Out here', done: '', todo: '' };
+  return `<div class="rpath" aria-label="Your road">` + PATH_STEPS.map(([k, l], i) => { const c = cls(k, i);
+    return (i ? `<i class="${c === 'done' || c === 'bye' ? 'on' : ''}"></i>` : '') + `<span class="st ${c}"${tip[c] ? ` title="${tip[c]}"` : ''}>${l}</span>`; }).join('') + `</div>`;
+}
+// the player of the run: goals, assists and player-of-the-match awards
+function playerOfRun(r){
+  const k = campaign(r), m = {};
+  r.cup.ev.forEach(e => { if (e.k === 'md' || e.k === 'leg' || e.k === 'final'){ const x = motm(e); if (x && r.picks.includes(x)) m[x] = (m[x] || 0) + 1; } });
+  let best = null, bs = -1;
+  for (const id of r.picks){ const sc = 3 * (k.g[id] || 0) + 2 * (k.a[id] || 0) + 2 * (m[id] || 0); if (sc > bs || sc === bs && playerRating(id).ov > playerRating(best).ov){ bs = sc; best = id; } }
+  if (!best || bs < 3) return '';
+  const p = W.P[best], g = k.g[best] || 0, a = k.a[best] || 0, mm = m[best] || 0;
+  const bits = [g && `${g} goal${g > 1 ? 's' : ''}`, a && `${a} assist${a > 1 ? 's' : ''}`, mm && `player of the match ${mm > 1 ? mm + ' times' : 'once'}`].filter(Boolean).join(' · ');
+  return `<section class="card potr" data-pid="${best}" style="${clubKit(W.C[p.club])}"><div class="eyebrow">Player of the run</div>
+    <div class="potr-row">${ovDot(playerRating(best), p)}<div style="min-width:0"><div class="potr-nm">${esc(p.name)}</div><div class="muted" style="font-size:13px">${natTag(p)} · ${esc(W.C[p.club].name)}</div><div style="margin-top:6px;font-weight:600">${bits}</div></div></div></section>`;
+}
 function viewSeason(){
   const r = S.run, champ = r.cup.stage === 'champion';
   return `${doneTop()}
@@ -2386,11 +2518,12 @@ function viewSeason(){
     <section class="card verdict${champ ? ' champ' : ''}">
       ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · Your run</div>
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
-      ${runStory(r) ? `<p class="story" style="margin:10px 0 0;font-size:16px;line-height:1.45">${runStory(r)}</p>` : ''}
+      ${runPath(r)}
+      ${runStory(r) ? `<p class="story" style="margin:12px 0 0;font-size:16px;line-height:1.45">${runStory(r)}</p>` : ''}
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="season" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button></div>
     </section>
     <div class="endgrid">
-      <div class="stack">${seasonBox(r)}</div>
+      <div class="stack">${playerOfRun(r)}${seasonBox(r)}</div>
       <div class="stack">${(h => xiBox('Your XI', h.xi, h.form))(seasonSummary(r))}${teamBox(r)}${playersBox(r)}</div>
     </div>
   </div>
@@ -2441,10 +2574,11 @@ function render(){
     syncStep();
     requestAnimationFrame(() => document.querySelectorAll('.bracket-wrap[data-focus]').forEach(el => { el.scrollLeft = +el.dataset.focus; }));
     const key = !r ? 'home' : r.phase + ':' + (r.phase === 'cup' ? r.scr : r.phase === 'done' ? r.dscr : '');
-    const app = $('#app'); if (key !== render.key){ app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); render.key = key; }
+    const app = $('#app'), fresh = key !== render.key; if (fresh){ app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); render.key = key; }
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
     fitHeroLogo();
     runLive(); runSpin();
+    if (!runReveal() && fresh) countUp(app);
     if (r && r.phase === 'done' && r.celebrate){ r.celebrate = false; save(); confetti(); }
   } catch (e) {
     // a saved run that no longer fits the data (new ratings, new positions): drop it rather than show a blank page
@@ -2461,6 +2595,10 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
   const a = b.dataset.act;
   if (a !== 'fresh' && a !== 'quit' && a !== 'cont' && a !== 'kickoff') S.armed = null;
+  if (a === 'snd'){   // in place, so a match being played out is not restarted
+    S.pref = S.pref || {}; S.pref.sound = !S.pref.sound; save(); document.querySelectorAll('.chip.snd').forEach(x => x.outerHTML = sndBtn());
+    if (S.pref.sound) SND.play('whistle', true); return;
+  }
   if (a === 'quit'){
     if (S.armed === 'quit'){ S.armed = null; S.run = null; S.dyn = null; S.stats.runs++; S.stats.streak = 0; save(); render(); scrollTo(0, 0); toast('Run abandoned. It counts as a loss.'); }
     else {   // update the button in place so the draft card does not replay its reveal
