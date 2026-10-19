@@ -432,7 +432,7 @@ body.matchon .stack > .feed:has(.ev.live) ~ *{opacity:0;pointer-events:none}
 .ribbon{display:grid;grid-template-columns:minmax(0,1fr) 10px minmax(0,1.35fr) 10px minmax(0,1fr);align-items:stretch}
 .rt{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;padding:10px 6px 9px;border-radius:12px;background:var(--panel);border-top:4px solid var(--line);min-width:0}
 .rt.rW{border-top-color:var(--win)}.rt.rD{border-top-color:var(--draw)}.rt.rL{border-top-color:var(--loss)}
-.rt.prev{opacity:.72;transform:scale(.94)}
+.rt.prev{opacity:.75;transform:scale(.94)}
 .rt.cur{background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 16%,var(--panel)),var(--panel));box-shadow:0 0 0 1px var(--gold),0 10px 24px rgba(0,0,0,.35);z-index:1}
 .rt.next{border:1px dashed rgba(243,239,230,.22);border-top:4px dashed rgba(243,239,230,.3);background:transparent}
 .rt.empty{opacity:.45}
@@ -443,7 +443,7 @@ body.matchon .stack > .feed:has(.ev.live) ~ *{opacity:0;pointer-events:none}
 .rname{font:600 12.5px/1.15 var(--display);text-transform:uppercase;letter-spacing:.02em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
 .rt.cur .rname{font-size:15px}
 .rs{font:700 22px/1 var(--display);display:flex;align-items:baseline;justify-content:center;gap:3px;flex-wrap:wrap}.rs i{font-style:normal;opacity:.5;font-size:.7em}.rs small{flex-basis:100%;font:500 10px var(--body);color:var(--muted)}
-.rt.cur .rs{font-size:38px}
+.rt.cur .rs{font-size:38px}.rt.cur .odds span{font-size:12px;padding:3px 5px}
 .rv{font-size:10.5px;color:var(--muted);text-transform:none;letter-spacing:0;font-family:var(--body)}.rv b{color:var(--text);font-weight:600}
 .rt.rW .rv b{color:var(--win)}.rt.rL .rv b{color:var(--loss)}
 .rx{font:500 12px var(--body);color:var(--muted);padding:14px 0}
@@ -2149,22 +2149,30 @@ const isMatch = e => e.k === 'md' || e.k === 'leg' || e.k === 'final';
 const rdShort = e => e.k === 'md' ? `Matchday ${e.n}` : e.k === 'final' ? 'Final' : `${RD_SHORT[e.round] || e.round} · leg ${e.leg}`;
 const resOf = m => { const f = m.s[0] + (m.et ? m.et[0] : 0), a = m.s[1] + (m.et ? m.et[1] : 0); return f > a ? 'W' : f < a ? 'L' : m.pens ? (m.won ? 'W' : 'L') : 'D'; };
 function ribbon(c){
-  const played = c.ev.slice(0, c.shown).filter(isMatch), cur = played[played.length - 1], prev = played[played.length - 2];
-  const next = c.ev.slice(c.shown).find(isMatch);
+  // previous (last played) -> now (the match the button starts, with odds) -> next (the one after; its opponent only if already known)
+  const played = c.ev.slice(0, c.shown).filter(isMatch), prev = played[played.length - 1];
+  const ahead = c.ev.slice(c.shown).filter(isMatch), now = ahead[0], next = ahead[1];
   const where = e => e.k === 'final' ? 'Neutral' : e.h ? 'Home' : 'Away';
+  const tbd = e => e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
+  const spinKey = e => e.k === 'md' ? '' : `${e.round || 'Final'}|${e.opp}`;
   const team = (id, spin) => `<div class="rteam"><span class="drawn"${spin ? ` data-spin="${esc(spin)}"` : ''}>${crest(id)}<span class="rname">${esc(nm(id))}</span></span></div>`;
-  const done = (e, tag) => { const r = resOf(e), xt = e.pens ? `<small>pens ${e.pens.a}:${e.pens.b}</small>` : e.et ? '<small>aet</small>' : '';
-    return `<div class="rt ${tag} r${r}"><div class="rl">${tag === 'cur' ? 'Just played' : 'Previous'} · ${rdShort(e)}</div>${team(e.opp)}<div class="rs num">${e.s[0] + (e.et ? e.et[0] : 0)}<i>:</i>${e.s[1] + (e.et ? e.et[1] : 0)}${xt}</div><div class="rv">${where(e)} · <b>${r === 'W' ? 'Won' : r === 'L' ? 'Lost' : 'Drew'}</b></div></div>`; };
-  const empty = (tag, txt) => `<div class="rt ${tag} empty"><div class="rl">${tag === 'cur' ? 'Just played' : tag === 'prev' ? 'Previous' : 'Next'}</div><div class="rx">${txt}</div></div>`;
-  let nx = empty('next', 'Nothing left');
-  if (next){
-    const tbd = next.k === 'leg' && next.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
-    const spin = next.k === 'md' ? '' : `${next.round || 'Final'}|${next.opp}`;
-    nx = tbd ? `<div class="rt next"><div class="rl">Next · ${rdShort(next)}</div><div class="rx">Play-off winner</div></div>`
-      : `<div class="rt next"><div class="rl">Next · ${rdShort(next)}</div>${team(next.opp, spin)}${oddsHTML(next.opp, next.k === 'final' ? null : next.h)}<div class="rv">${where(next)}</div></div>`;
+  const empty = (tag, lbl, txt) => `<div class="rt ${tag} empty"><div class="rl">${lbl}</div><div class="rx">${txt}</div></div>`;
+  let a = empty('prev', 'Previous', 'Not started');
+  if (prev){ const r = resOf(prev), xt = prev.pens ? `<small>pens ${prev.pens.a}:${prev.pens.b}</small>` : prev.et ? '<small>aet</small>' : '';
+    a = `<div class="rt prev r${r}"><div class="rl">Previous · ${rdShort(prev)}</div>${team(prev.opp)}<div class="rs num">${prev.s[0] + (prev.et ? prev.et[0] : 0)}<i>:</i>${prev.s[1] + (prev.et ? prev.et[1] : 0)}${xt}</div><div class="rv">${where(prev)} · <b>${r === 'W' ? 'Won' : r === 'L' ? 'Lost' : 'Drew'}</b></div></div>`; }
+  let b = empty('cur', 'Up now', 'Nothing left'), watch = '';
+  if (now){
+    b = tbd(now) ? `<div class="rt cur"><div class="rl">Up now · ${rdShort(now)}</div><div class="rx">Play-off winner</div></div>`
+      : `<div class="rt cur"><div class="rl">Up now · ${rdShort(now)}</div>${team(now.opp, spinKey(now))}${oddsHTML(now.opp, now.k === 'final' ? null : now.h)}<div class="rv">${where(now)}</div></div>`;
+    if (!tbd(now)) watch = `<div class="rwatch">${watchOut(now.opp)}</div>`;
   }
-  return `<div class="ribbon">${prev ? done(prev, 'prev') : empty('prev', '–')}<i class="rarr" aria-hidden="true"></i>${cur ? done(cur, 'cur') : empty('cur', 'Not started')}<i class="rarr" aria-hidden="true"></i>${nx}</div>
-    ${next && !(next.k === 'leg' && next.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone')) ? `<div class="rwatch">${watchOut(next.opp)}</div>` : ''}`;
+  let d = empty('next', 'Then', 'Nothing left');
+  if (next){
+    // the opponent after this one is known only within the same tie or the league phase; across rounds it depends on this result
+    const known = now && ((now.k === 'md' && next.k === 'md') || (now.k === 'leg' && next.k === 'leg' && next.round === now.round)) && !tbd(next);
+    d = `<div class="rt next"><div class="rl">Then · ${rdShort(next)}</div>${known ? team(next.opp, spinKey(next)) + `<div class="rs num muted">–<i>:</i>–</div><div class="rv">${where(next)}</div>` : `<div class="rx">${next.k === 'final' ? 'Final opponent to come' : 'Opponent to come'}</div>`}</div>`;
+  }
+  return `<div class="ribbon">${a}<i class="rarr" aria-hidden="true"></i>${b}<i class="rarr" aria-hidden="true"></i>${d}</div>${watch}`;
 }
 // only the very next match shows odds (and who to watch out for): later ones wait, as if form will still move them
 function pendCard(e, later){
@@ -2974,7 +2982,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261019223927';
+const BUILD = '20261019231555';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
