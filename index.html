@@ -1955,7 +1955,7 @@ function runLive(){
     SND.play(x.ours ? 'roar' : 'groan'); f.className = 'gflash' + (x.ours ? '' : ' them'); f.textContent = x.ours ? `Goal! ${who}` : `Conceded · ${who}`; el.appendChild(f); setTimeout(() => f.remove(), 1300); };
   const kicks = [...el.querySelectorAll('.pens .k')].sort((x, y) => x.dataset.i - y.dataset.i);
   const finishLive = (skip) => { if (done) return; done = true; goals.forEach(x => x.g.classList.add('in')); sh.textContent = fh; sa.textContent = fa;
-    const whistle = () => { if (el.dataset.blown) return; el.dataset.blown = 1; el.classList.add('over'); if (el.dataset.won) confetti(); else if (skip !== true) SND.play('whistle'); };
+    const whistle = () => { if (el.dataset.blown) return; el.dataset.blown = 1; if (runLive.cur && runLive.cur.el === el) runLive.cur.over(); el.classList.add('over'); if (el.dataset.won) confetti(); else if (skip !== true) SND.play('whistle'); };
     if (!kicks.length || skip === true){ kicks.forEach(k => k.classList.add('in')); whistle(); return; }
     // the shootout, kick by kick
     // who steps up, a beat, then the kick
@@ -1972,11 +1972,13 @@ function runLive(){
   el.addEventListener('click', () => finishLive(true), { once: true });
   // a button pressed while the match is still on: this click only ends the match (score, penalties, whistle); the next click moves on
   const endNow = () => { if (!done) finishLive(true); else if (skipPens) skipPens(); };
-  const onAct = e => { const b = e.target.closest('[data-act]'); if (!b || b.dataset.act === 'snd') return;
-    document.removeEventListener('click', onAct, true);
-    if (!el.isConnected || el.dataset.blown) return;
-    if (b.dataset.act === 'next' || b.dataset.act === 'all' || b.dataset.act === 'scr'){ e.preventDefault(); e.stopImmediatePropagation(); }
-    endNow(); };
+  // the dock's buttons know about the match on screen (see the click handler): while it runs they read "Full time" and only end it
+  const btns = [...document.querySelectorAll('.dock [data-act=next], .dock [data-act=all], .dock [data-act=scr]')], labels = btns.map(x => x.textContent);
+  btns.forEach((x, n) => { if (n === 0) x.textContent = 'Full time'; });
+  runLive.cur = { el, endNow, over: () => { btns.forEach((x, n) => x.textContent = labels[n]); if (runLive.cur && runLive.cur.el === el) runLive.cur = null; } };
+  // any other button pressed meanwhile (quit, sound aside) ends the match on its way
+  const onAct = e => { const b = e.target.closest('[data-act]'); if (!b || ['snd', 'next', 'all', 'scr'].includes(b.dataset.act)) return;
+    document.removeEventListener('click', onAct, true); if (el.isConnected && !el.dataset.blown) endNow(); };
   document.addEventListener('click', onAct, true);
   const frame = now => {
     if (done || !el.isConnected) return;
@@ -2762,6 +2764,8 @@ document.addEventListener('click', e => {
     if (S.armed === 'kickoff'){ S.armed = null; kickoff(); }
     else { S.armed = 'kickoff'; render(); toast('Shape and positions are final for the whole run. Tap again to confirm.'); }
   }
+  // a match still being played out: the first press only ends it; the next press moves on
+  else if ((a === 'next' || a === 'all' || a === 'scr') && runLive.cur && runLive.cur.el.isConnected && !runLive.cur.el.dataset.blown){ runLive.cur.endNow(); }
   else if (a === 'scr'){ const r = S.run; if (r.phase === 'done') r.dscr = b.dataset.to; else r.scr = b.dataset.to; S.armed = null; save(); render(); scrollTo(0, 0); }
   else if (a === 'next') step(false);
   else if (a === 'all') step(true);
