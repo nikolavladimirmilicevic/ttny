@@ -427,6 +427,22 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 body.matchon .stack > .feed:has(.ev.live) ~ *{opacity:0;pointer-events:none}
 .stack > .feed ~ *{transition:opacity .35s ease-out}
 .ev.drawing .odds,.ev.drawing .watch{visibility:hidden}
+.ev.live:not(.over) .pens:not(.go){visibility:hidden}   /* no hint of a shootout before it starts */
+.stack > .feed:has(.drawn.spinning) ~ *{opacity:0;pointer-events:none}
+/* the match being played out takes the whole screen (top bar and buttons stay) */
+body.matchon .ev.live:not(.over){position:fixed;left:12px;right:12px;top:72px;bottom:92px;max-width:760px;margin:0 auto;z-index:4;display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:16px;padding:24px 20px;
+  box-shadow:0 0 0 100vmax rgba(11,22,38,.88),0 20px 60px rgba(0,0,0,.6);animation:liveup .3s ease-out;overflow:auto}
+body.matchon .topbar{position:relative;z-index:6}
+body.matchon .ev.live:not(.over) .rd{text-align:center;font-size:13px}
+body.matchon .ev.live:not(.over) .opp{text-align:center;white-space:normal;font:600 clamp(22px,6.5vw,34px)/1.15 var(--display);text-transform:uppercase}
+body.matchon .ev.live:not(.over) .opp .crest svg{width:28px;height:31px}
+body.matchon .ev.live:not(.over) .score{justify-content:center;font-size:clamp(64px,20vw,112px);gap:14px}
+body.matchon .ev.live:not(.over) .lclock{font-size:16px}body.matchon .ev.live:not(.over) .lclock i{height:5px}
+body.matchon .ev.live:not(.over) .gls2{font-size:15px;gap:18px}body.matchon .ev.live:not(.over) .gls2 small{font-size:13px}
+body.matchon .ev.live:not(.over) .pens{justify-content:center;font-size:14px}body.matchon .ev.live:not(.over) .pens .k{width:24px;height:24px;font-size:13px}
+body.matchon .ev.live:not(.over) .pkline{text-align:center;font-size:20px}
+body.matchon .ev.live:not(.over) .gflash{top:14%;font-size:24px}
+@keyframes liveup{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
 /* round 6: watch out, achievements, the run's title card */
 .ev .watch{grid-column:1/-1;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ev .watch b{color:var(--text);font-weight:500}
 .achs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
@@ -1843,7 +1859,7 @@ function motm(e){
   return best != null && pts[best] >= 1 ? best : null;   // ids are strings ('p123')
 }
 // the first leg's score, for the second leg's card
-const firstLeg = e => { const c = S.run && S.run.cup; const f = c && c.ev.find(x => x.k === 'leg' && x.leg === 1 && x.round === e.round && x.opp === e.opp); return f ? `First leg ${f.s[0]}:${f.s[1]}` : ''; };
+const firstLeg = e => { const c = S.run && S.run.cup; const f = c && c.ev.slice(0, c.shown).find(x => x.k === 'leg' && x.leg === 1 && x.round === e.round && x.opp === e.opp); return f ? `First leg ${f.s[0]}:${f.s[1]}` : ''; };
 // penalties kick by kick: you and them in turn (your kicks first in the list), green scored, red missed
 function pensHTML(p, opp){
   if (!p || !p.kicks) return '';
@@ -1963,7 +1979,7 @@ function runLive(){
     if (!kicks.length || skip === true){ kicks.forEach(k => k.classList.add('in')); whistle(); return; }
     // the shootout, kick by kick
     // who steps up, a beat, then the kick
-    const pk = document.createElement('div'); pk.className = 'pkline'; el.querySelector('.pens').before(pk);
+    const pk = document.createElement('div'); pk.className = 'pkline'; el.querySelector('.pens').classList.add('go'); el.querySelector('.pens').before(pk);
     let j = 0; const next = () => { if (!el.isConnected) return;
       if (j >= kicks.length){ pk.remove(); whistle(); return; }
       const k = kicks[j++], n = k.dataset.n || (k.dataset.i % 2 ? 'Them' : 'Your XI'), ours = k.dataset.i % 2 === 0;
@@ -2095,7 +2111,7 @@ function pendCard(e, later){
   // straight into the Round of 16: the opponent comes out of the play-offs, so he is not known yet
   const tbd = e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
   const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}` : 'Final';
-  const draw = (e.k === 'leg' && e.leg === 1) || e.k === 'final';
+  const draw = e.k === 'leg' || e.k === 'final';   // both legs carry the same draw, so the second leg spins with the first
   const who = tbd ? '<span class="muted">Play-off winner</span>' : `<span class="drawn"${draw ? ` data-spin="${esc(e.round || 'Final')}|${e.opp}"` : ''}>${crest(e.opp)}${esc(nm(e.opp))}</span>`;
   const right = tbd || later ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
   return `<div class="ev pend${e.k === 'final' ? ' fin' : ''}"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}${tbd || later ? '' : watchOut(e.opp)}</div>`;
@@ -2889,7 +2905,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261019173827';
+const BUILD = '20261019180724';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
