@@ -423,6 +423,23 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .imgbox .btnrow{margin-top:12px}.imgbox a.btn{text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}
 
 
+
+/* round 6: watch out, achievements, the run's title card */
+.ev .watch{grid-column:1/-1;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ev .watch b{color:var(--text);font-weight:500}
+.achs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.ach{display:flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);font-size:12px;cursor:help}
+.ach i{font-style:normal;font-size:15px;line-height:1}
+.ach.on{border-color:rgba(242,193,78,.6);background:rgba(242,193,78,.1)}
+.ach:not(.on){opacity:.4;filter:grayscale(1)}
+.achnew{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+.achnew .ach{opacity:1;filter:none;animation:goalin .5s cubic-bezier(.2,1.4,.4,1)}
+#intro{position:fixed;inset:0;z-index:60;display:grid;place-items:center;text-align:center;padding:24px;background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--ia) 35%,#0B1626) 0%,#0B1626 70%);animation:introin .35s ease-out;cursor:pointer}
+#intro.out{animation:introout .35s ease-in forwards}
+#intro .ie{font:600 13px/1 var(--display);letter-spacing:.3em;text-transform:uppercase;color:var(--ia)}
+#intro h1{font-size:clamp(34px,10vw,64px);margin:12px 0 10px;line-height:1}
+#intro .is{color:var(--muted);font-size:15px}
+#intro .bar{width:120px;height:3px;margin:18px auto 0;border-radius:2px;background:var(--line);overflow:hidden}#intro .bar b{display:block;height:100%;background:var(--ia);animation:introbar 1.7s linear forwards}
+@keyframes introin{from{opacity:0}}@keyframes introout{to{opacity:0;transform:scale(1.04)}}@keyframes introbar{from{width:0}to{width:100%}}
 /* round 5: tags, knockout draw, the final, named penalties, veterans, the draft's mini pitch */
 .tags{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .tag{font:600 11px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:999px;background:rgba(242,193,78,.13);color:#F2C14E;border:1px solid rgba(242,193,78,.35)}
@@ -1323,7 +1340,7 @@ function newRun(diff){
   // a challenge remembers everyone who has played in it: whoever was let go cannot come back
   const ever = S.dyn && S.dyn.ever ? S.dyn.ever : [], gone = ever.filter(id => !kept.includes(id));
   S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null, diff, comp, season: (S.dyn && S.dyn.season) || 1, hist: (S.dyn && S.dyn.hist) || [] };
-  S.dyn = null;
+  S.dyn = null; S.run.intro = 1;
   // champions keep the whole XI: straight to the line-up
   if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; if (!feasible(S.run.picks).includes(S.run.form)) S.run.form = randomForm(S.run.picks); }
   else drawClub();
@@ -1465,6 +1482,7 @@ function finish(){
   // the challenge's history; after ten seasons (or out of the Conference League) the challenge is over
   try { r.hist = [...(r.hist || []), seasonSummary(r)]; } catch (e) { r.hist = r.hist || []; }
   if ((r.season || 1) >= DYNASTY_SEASONS){ r.keepN = 0; r.dynEnd = 'complete'; } else if (!r.keepN) r.dynEnd = 'out';
+  try { achCheck(r); } catch (e) {}
 }
 // the next run of a challenge: same difficulty; a title moves it up a competition
 // a title moves the challenge up; missing the top 24 drops it a level (out of the Conference League, it ends)
@@ -1666,10 +1684,26 @@ function xiPitch(xi, form){
 }
 const xiBox = (title, xi, form) => `<section class="card"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">${title}</div><span class="muted" style="font-size:13px">${form}</span></div>${xiPitch(xi, form)}</section>`;
 // the trophy cabinet: one trophy per competition in its colour, with how many you have won
+/* achievements: earned once, kept for good */
+const ACH = [['title', '🏆', 'First title', 'Win any competition'], ['hattrick', '⚽', 'Hat-trick', 'One of your players scores three in a match'],
+  ['unbeaten', '🛡️', 'Unbeaten', 'A whole run without a defeat'], ['hard', '💎', 'Hard title', 'Win a title on Hard'],
+  ['treble', '⭐', 'All three', 'Win the Champions League, Europa League and Conference League'], ['ten', '🔟', 'The full ten', 'Play a challenge through all ten runs']];
+const achChip = ([k, ic, name, how], on) => `<span class="ach${on ? ' on' : ''}" title="${esc(name)}: ${esc(how)}"><i>${ic}</i>${esc(name)}</span>`;
+function achCheck(r){
+  const st = S.stats, tb = st.titlesBy || {}, c = r.cup, champ = c.stage === 'champion'; st.ach = st.ach || {};
+  const ms = c.ev.filter(e => e.k === 'md' || e.k === 'leg' || e.k === 'final');
+  const lost = m => { const f = m.s[0] + (m.et ? m.et[0] : 0), a = m.s[1] + (m.et ? m.et[1] : 0); return f < a || (f === a && m.pens && !m.won); };
+  const ht = ms.some(m => { const n = {}; return (m.gl || []).some(([sc, , , og]) => !og && (n[sc] = (n[sc] || 0) + 1) >= 3); });
+  const ok = { title: champ, hattrick: ht, unbeaten: ms.length > 0 && !ms.some(lost), hard: champ && r.diff === 'hard', treble: tb.cl && tb.el && tb.ecl, ten: r.dynEnd === 'complete' };
+  const fresh = ACH.filter(([k]) => ok[k] && !st.ach[k]).map(([k]) => k);
+  fresh.forEach(k => st.ach[k] = Date.now()); r.ach = fresh;
+  if (fresh.length) setTimeout(() => toast('Achievement unlocked: ' + fresh.map(k => ACH.find(a => a[0] === k)[2]).join(', ')), 300);
+}
 function cabinet(st){
   const tb = st.titlesBy || {};
   const cup = col => TROPHY.replace('class="trophy"', 'class="cabcup"').replace(/var\(--gold\)/g, col);
-  return `<div class="cabinet">${['cl', 'el', 'ecl'].map(k => `<div class="cab${tb[k] ? '' : ' none'}">${cup(ACCENT[k])}<b class="num">${tb[k] || 0}</b><small>${CUP[k]}</small></div>`).join('')}</div>`;
+  return `<div class="cabinet">${['cl', 'el', 'ecl'].map(k => `<div class="cab${tb[k] ? '' : ' none'}">${cup(ACCENT[k])}<b class="num">${tb[k] || 0}</b><small>${CUP[k]}</small></div>`).join('')}</div>
+    <div class="achs" aria-label="Achievements">${ACH.map(a => achChip(a, (st.ach || {})[a[0]])).join('')}</div>`;
 }
 function viewHome(){
   const st = S.stats, d = S.dyn;
@@ -1972,6 +2006,19 @@ function runSpin(){
   };
   tick();
 }
+/* the start of every run: a title card with the run, the competition and who stays, under two seconds; tap to skip */
+function runIntro(){
+  const r = S.run; if (!r || !r.intro || (r.phase !== 'draft' && r.phase !== 'lineup')) return false;
+  delete r.intro; save();
+  if (toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+  const k = r.kept.length, el = document.createElement('div'); el.id = 'intro'; el.style.setProperty('--ia', ACCENT[r.comp || 'cl']);
+  el.innerHTML = `<div><div class="ie">Run ${r.season || 1} of ${DYNASTY_SEASONS}</div><h1>${COMPS[r.comp || 'cl'].short}</h1>
+    <div class="is">${DIFF[r.diff || 'medium'].label} · ${k ? (k === 11 ? 'The whole XI stays' : `${k} kept · ${11 - k} to draft`) : 'Fresh squad · 11 to draft'}</div><div class="bar"><b></b></div></div>`;
+  document.body.appendChild(el);
+  const go = () => { if (!el.isConnected || el.classList.contains('out')) return; el.classList.add('out'); setTimeout(() => el.remove(), 350); };
+  el.addEventListener('click', go); setTimeout(go, 1750);
+  return true;
+}
 /* a new knockout opponent comes out of a spinning draw, once per tie */
 function runKoSpin(){
   const c = S.run && S.run.cup; if (!c) return;
@@ -2024,6 +2071,12 @@ function pendList(c){
   const rest = c.ev.slice(c.shown);
   return nx.k === 'md' ? rest.filter(e => e.k === 'md') : nx.k === 'leg' ? rest.filter(e => e.k === 'leg' && e.round === nx.round) : nx.k === 'final' ? [nx] : [];
 }
+// the opponent's three strongest players, by name only
+function watchOut(opp){
+  const c = W.C[opp]; if (!c || !c.squad) return '';
+  const top = c.squad.filter(id => W.P[id] && !S.run.picks.includes(id)).sort((x, y) => W.P[y].ovr - W.P[x].ovr).slice(0, 3);
+  return top.length ? `<div class="watch">Watch out: <b>${top.map(id => esc(short(W.P[id].name))).join(', ')}</b></div>` : '';
+}
 function pendCard(e){
   const c = S.run.cup;
   // straight into the Round of 16: the opponent comes out of the play-offs, so he is not known yet
@@ -2032,7 +2085,7 @@ function pendCard(e){
   const draw = (e.k === 'leg' && e.leg === 1) || e.k === 'final';
   const who = tbd ? '<span class="muted">Play-off winner</span>' : `<span class="drawn"${draw ? ` data-spin="${esc(e.round || 'Final')}|${e.opp}"` : ''}>${crest(e.opp)}${esc(nm(e.opp))}</span>`;
   const right = tbd ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
-  return `<div class="ev pend${e.k === 'final' ? ' fin' : ''}"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}</div>`;
+  return `<div class="ev pend${e.k === 'final' ? ' fin' : ''}"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}${tbd ? '' : watchOut(e.opp)}</div>`;
 }
 function teamBox(r){
   const t = teamRating(r.picks, r.form);
@@ -2596,6 +2649,7 @@ function viewSeason(){
       ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · Your run</div>
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
       ${runPath(r)}
+      ${(r.ach || []).length ? `<div class="achnew">${r.ach.map(k => achChip(ACH.find(a => a[0] === k), true)).join('')}</div>` : ''}
       ${runStory(r) ? `<p class="story" style="margin:12px 0 0;font-size:16px;line-height:1.45">${runStory(r)}</p>` : ''}
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="season" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button></div>
     </section>
@@ -2654,7 +2708,7 @@ function render(){
     const app = $('#app'), fresh = key !== render.key; if (fresh){ app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); render.key = key; }
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
     fitHeroLogo();
-    runLive(); runSpin(); runKoSpin();
+    runLive(); if (runIntro()) setTimeout(runSpin, 1700); else runSpin(); runKoSpin();
     if (!runReveal() && fresh) countUp(app);
     if (r && r.phase === 'done' && r.celebrate){ r.celebrate = false; save(); confetti(); }
   } catch (e) {
