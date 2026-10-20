@@ -948,7 +948,12 @@ function teamRating(picks, form){
   // the parts: the plain average of your 11 players on the players' own scale (not ranked against club XIs, which
   // put any good draft at 99)
   const q = k => m(k);
-  return { ov, elo: youElo(picks, form), q: { pe: q('pe'), ro: q('ro'), pf: q('pf'), fo: q('fo') }, chem };
+  // by line: the average of the players in it, each in his slot (the keeper counts with the defence)
+  const a = (form && picks.length === 11 && arrangement(picks, form)) || null, sum = { fw: [0, 0], mf: [0, 0], df: [0, 0] };
+  picks.forEach((pid, i) => { const j = a ? a.indexOf(pid) : -1, code = j >= 0 ? FORMS[form][j][0] : W.P[pid].prim, ln = LINE[code];
+    const k = ln === 'FWD' ? 'fw' : ln === 'MID' ? 'mf' : 'df'; sum[k][0] += effOvr(pid, j >= 0 ? code : null); sum[k][1]++; });
+  const ln = Object.fromEntries(Object.entries(sum).map(([k, [t, n]]) => [k, n ? t / n : null]));
+  return { ov, elo: youElo(picks, form), q: { pe: q('pe'), ro: q('ro'), pf: q('pf'), fo: q('fo') }, ln, chem };
 }
 /* Chemistry, per player as in FIFA: 2 links for every team-mate (same club, or started for the same team, club or
    national, in the last year), 1 for every compatriot who is not also a team-mate; at most 3 per player, 33 per XI. */
@@ -1009,7 +1014,8 @@ const PARTS = [['Level', 'pe', 'Players from stronger clubs are used to a higher
   ['Performance', 'pf', 'How well they have played, weighed by the opposition'],
   ['Experience', 'ro', 'Players who start every week are trusted and match-fit'],
   ['Form', 'fo', 'How they have played lately']];
-const partRows = r => PARTS.map(([k, f, why]) => `<div class="r"><span>${k}<small>${why}</small></span><b class="num tnum g${ovGrade(R(r.q[f]))}">${R(r.q[f])}</b></div>`).join('');
+const LINE_ROWS = [['FW', 'fw', 'Forwards'], ['MF', 'mf', 'Midfielders'], ['DF', 'df', 'Defenders and goalkeeper']];
+const partRows = r => LINE_ROWS.filter(([, f]) => r.ln[f] != null).map(([k, f, why]) => `<div class="r"><span>${k}<small>${why}</small></span><b class="num tnum g${ovGrade(teamNum(r.ln[f]))}">${teamNum(r.ln[f])}</b></div>`).join('');
 const locked = () => S.run && (S.run.phase === 'cup' || S.run.phase === 'done');
 function roleOf(pid){ const r = S.run, a = arrangement(r.picks, r.form); return FORMS[r.form][a.indexOf(pid)][3]; }
 
@@ -2994,7 +3000,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261019232554';
+const BUILD = '20261020211230';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
