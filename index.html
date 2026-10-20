@@ -457,22 +457,23 @@ body.matchon .ribbon,body.matchon .rwatch{opacity:0}
 @media(min-width:700px){.rname{font-size:14px}.rt.cur .rname{font-size:18px}.rl{font-size:10.5px}.rt .odds span{font-size:13px;padding:3px 7px}}
 .aggline{grid-column:1/-1;font:600 13px/1.2 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .aggline b{font-size:20px;letter-spacing:.02em;color:var(--text);margin-left:6px}.aggline span{display:inline-block}.aggline .pop{animation:pop .5s ease-out}
-body.matchon .ev.live:not(.over) .aggline{text-align:center;font-size:18px}body.matchon .ev.live:not(.over) .aggline b{font-size:40px;margin-left:10px}
+body.matchon .ev.live .aggline{text-align:center;font-size:18px}body.matchon .ev.live .aggline b{font-size:40px;margin-left:10px}
 .ev.live:not(.over) .pens:not(.go){visibility:hidden}   /* no hint of a shootout before it starts */
 .stack > .feed:has(.drawn.spinning) ~ *{opacity:0;pointer-events:none}
 /* the match being played out takes the whole screen (top bar and buttons stay) */
-body.matchon .ev.live:not(.over){position:fixed;left:12px;right:12px;top:72px;bottom:128px;max-width:760px;margin:0 auto;z-index:4;display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:16px;padding:24px 20px;
+body.matchon .ev.live{position:fixed;left:12px;right:12px;top:72px;bottom:128px;max-width:760px;margin:0 auto;z-index:4;display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:16px;padding:24px 20px;
   box-shadow:0 0 0 100vmax rgba(11,22,38,.88),0 20px 60px rgba(0,0,0,.6);animation:liveup .3s ease-out;overflow:auto}
 body.matchon .topbar{position:relative;z-index:6}
-body.matchon .ev.live:not(.over) .rd{text-align:center;font-size:13px}
-body.matchon .ev.live:not(.over) .opp{text-align:center;white-space:normal;font:600 clamp(22px,6.5vw,34px)/1.15 var(--display);text-transform:uppercase}
-body.matchon .ev.live:not(.over) .opp .crest svg{width:28px;height:31px}
-body.matchon .ev.live:not(.over) .score{justify-content:center;font-size:clamp(64px,20vw,112px);gap:14px}
-body.matchon .ev.live:not(.over) .lclock{font-size:16px}body.matchon .ev.live:not(.over) .lclock i{height:5px}
-body.matchon .ev.live:not(.over) .gls2{font-size:15px;gap:18px}body.matchon .ev.live:not(.over) .gls2 small{font-size:13px}
-body.matchon .ev.live:not(.over) .pens{justify-content:center;font-size:14px}body.matchon .ev.live:not(.over) .pens .k{width:24px;height:24px;font-size:13px}
-body.matchon .ev.live:not(.over) .pkline{text-align:center;font-size:20px}
-body.matchon .ev.live:not(.over) .gflash{top:auto;bottom:6%;font-size:24px}
+body.matchon .ev.live .rd{text-align:center;font-size:13px}
+body.matchon .ev.live .extra,body.matchon .ev.live .tags{justify-content:center;text-align:center;font-size:15px}body.matchon .ev.live .score .res{font-size:14px;padding:6px 10px}
+body.matchon .ev.live .opp{text-align:center;white-space:normal;font:600 clamp(22px,6.5vw,34px)/1.15 var(--display);text-transform:uppercase}
+body.matchon .ev.live .opp .crest svg{width:28px;height:31px}
+body.matchon .ev.live .score{justify-content:center;font-size:clamp(64px,20vw,112px);gap:14px}
+body.matchon .ev.live .lclock{font-size:16px}body.matchon .ev.live .lclock i{height:5px}
+body.matchon .ev.live .gls2{font-size:15px;gap:18px}body.matchon .ev.live .gls2 small{font-size:13px}
+body.matchon .ev.live .pens{justify-content:center;font-size:14px}body.matchon .ev.live .pens .k{width:24px;height:24px;font-size:13px}
+body.matchon .ev.live .pkline{text-align:center;font-size:20px}
+body.matchon .ev.live .gflash{top:auto;bottom:6%;font-size:24px}
 @keyframes liveup{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
 /* round 6: watch out, achievements, the run's title card */
 .ev .watch{grid-column:1/-1;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ev .watch b{color:var(--text);font-weight:500}
@@ -2045,7 +2046,10 @@ function runLive(){
   const btns = [...document.querySelectorAll('.dock [data-act=next], .dock [data-act=all], .dock [data-act=scr]')], labels = btns.map(x => x.textContent);
   btns.forEach((x, n) => { if (n === 0) x.textContent = 'Full time'; });
   document.body.classList.add('matchon');
-  runLive.cur = { el, endNow, over: () => { btns.forEach((x, n) => x.textContent = labels[n]); if (runLive.cur && runLive.cur.el === el){ runLive.cur = null; document.body.classList.remove('matchon'); runKoSpin(); } } };
+  // at the whistle the full-screen card stays with the final result; the next press of the main button closes it
+  runLive.cur = { el, endNow, waiting: false,
+    over: () => { if (runLive.cur && runLive.cur.el === el){ runLive.cur.waiting = true; if (btns[0]) btns[0].textContent = 'Continue'; } },
+    close: () => { btns.forEach((x, n) => x.textContent = labels[n]); if (runLive.cur && runLive.cur.el === el){ runLive.cur = null; document.body.classList.remove('matchon'); runKoSpin(); } } };
   // any other button pressed meanwhile (quit, sound aside) ends the match on its way
   const onAct = e => { const b = e.target.closest('[data-act]'); if (!b || ['snd', 'next', 'all', 'scr'].includes(b.dataset.act)) return;
     document.removeEventListener('click', onAct, true); if (el.isConnected && !el.dataset.blown) endNow(); };
@@ -2098,7 +2102,7 @@ function runIntro(){
 /* a new knockout opponent comes out of a spinning draw, once per tie */
 function runKoSpin(){
   const c = S.run && S.run.cup; if (!c) return;
-  if (runLive.cur && runLive.cur.el.isConnected && !runLive.cur.el.dataset.blown) return;   // after the whistle of the match on screen
+  if (runLive.cur && runLive.cur.el.isConnected) return;   // after the result card of the match on screen is closed
   const els = [...document.querySelectorAll('.drawn[data-spin]')]; if (!els.length) return;
   c.spun = c.spun || {};
   const keys = [...new Set(els.map(x => x.dataset.spin))].filter(k => !c.spun[k]); if (!keys.length) return;
@@ -2885,6 +2889,7 @@ document.addEventListener('click', e => {
   }
   // a match still being played out: the first press only ends it; the next press moves on
   else if ((a === 'next' || a === 'all' || a === 'scr') && runLive.cur && runLive.cur.el.isConnected && !runLive.cur.el.dataset.blown){ runLive.cur.endNow(); }
+  else if ((a === 'next' || a === 'all' || a === 'scr') && runLive.cur && runLive.cur.el.isConnected && runLive.cur.waiting){ runLive.cur.close(); }
   else if (a === 'scr'){ const r = S.run; if (r.phase === 'done') r.dscr = b.dataset.to; else r.scr = b.dataset.to; S.armed = null; save(); render(); scrollTo(0, 0); }
   else if (a === 'next') step(false);
   else if (a === 'all') step(true);
@@ -3000,7 +3005,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261020211230';
+const BUILD = '20261020230218';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
