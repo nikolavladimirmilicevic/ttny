@@ -1693,7 +1693,7 @@ function cardHTML(p){
   const chip = (x, i) => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}</span>`;
   const tags = [r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : offHere ? `<span class="tag">Slightly below his level at ${slot}</span>` : ''].join('');
   // the top of the card in his club's colours, like a collectible card: grade and main position on the left
-  const head = `<div class="pc-top" style="${clubKit(c)}"><div class="pc-badge"><span class="pc-prim">${p.prim}</span></div>
+  const head = `<div class="pc-top" style="${clubKit(c)}"><div class="pc-badge"><span class="pc-prim" title="${slot ? 'Where he plays for you' : 'Main position'}">${slot || p.prim}</span></div>
       <div class="pc-id"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age} · ${esc(c.name)}</div></div></div>
     <div class="pc-pos">${p.pos.map(chip).join('')}</div>${tags ? `<div class="pc-tags">${tags}</div>` : ''}`;
   if (!rt) return head;
@@ -2807,11 +2807,13 @@ function runPath(r){
 function playerOfRun(r){
   const k = campaign(r), m = {};
   r.cup.ev.forEach(e => { if (e.k === 'md' || e.k === 'leg' || e.k === 'final'){ const x = motm(e); if (x && r.picks.includes(x)) m[x] = (m[x] || 0) + 1; } });
-  let best = null, bs = -1;
-  for (const id of r.picks){ const sc = 3 * (k.g[id] || 0) + 2 * (k.a[id] || 0) + 2 * (m[id] || 0); if (sc > bs || sc === bs && playerRating(id).ov > playerRating(best).ov){ bs = sc; best = id; } }
-  if (!best || bs < 3) return '';
+  // the best average match rating of the run; goals and assists break a tie
+  const mr = matchRatings(r); let best = null;
+  for (const id of r.picks){ if (!mr[id]) continue; const v = Math.round(mr[id].avg * 100), bv = best && Math.round(mr[best].avg * 100);
+    if (!best || v > bv || (v === bv && (k.g[id] || 0) + (k.a[id] || 0) > (k.g[best] || 0) + (k.a[best] || 0))) best = id; }
+  if (!best) return '';
   const p = W.P[best], g = k.g[best] || 0, a = k.a[best] || 0, mm = m[best] || 0;
-  const bits = [g && `${g} goal${g > 1 ? 's' : ''}`, a && `${a} assist${a > 1 ? 's' : ''}`, mm && `player of the match ${mm > 1 ? mm + ' times' : 'once'}`].filter(Boolean).join(' · ');
+  const bits = [`average rating ${rt1(mr[best].avg)} in ${mr[best].n} matches`, g && `${g} goal${g > 1 ? 's' : ''}`, a && `${a} assist${a > 1 ? 's' : ''}`, mm && `player of the match ${mm > 1 ? mm + ' times' : 'once'}`].filter(Boolean).join(' · ');
   return `<section class="card potr" data-pid="${best}" style="${clubKit(W.C[p.club])}"><div class="eyebrow">Player of the run</div>
     <div class="potr-row"><div class="ovdot gr g${rtGrade(matchRatings(r)[best].avg)}" title="Average match rating">${rt1(matchRatings(r)[best].avg)}</div><div style="min-width:0"><div class="potr-nm">${esc(p.name)}</div><div class="muted" style="font-size:13px">${natTag(p)} · ${esc(W.C[p.club].name)}</div><div style="margin-top:6px;font-weight:600">${bits}</div></div></div></section>`;
 }
@@ -3053,7 +3055,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021063009';
+const BUILD = '20261021072316';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
