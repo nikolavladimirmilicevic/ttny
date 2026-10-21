@@ -455,6 +455,10 @@ body.matchon .stack > *:not(.allwrap),body.matchon .allwrap > .eyebrow,body.matc
 body.matchon .ribbon,body.matchon .rwatch{opacity:0}
 .ribbon,.rwatch{transition:opacity .35s ease-out}
 @media(min-width:700px){.rname{font-size:14px}.rt.cur .rname{font-size:18px}.rl{font-size:10.5px}.rt .odds span{font-size:13px;padding:3px 7px}}
+.rtc{display:inline-grid;place-items:center;min-width:34px;padding:3px 6px;border-radius:6px;font:600 13px/1 var(--display);color:#0B1626;background:var(--gC)}
+.rtc.gA{background:var(--gA);color:#fff}.rtc.gB{background:var(--gB)}.rtc.gD{background:var(--gD)}.rtc.gE{background:var(--gE);color:#fff}
+.kst{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none}.kst small{font-size:11px;color:var(--muted);white-space:nowrap}
+.ovdot.gr.gX{background:var(--panel-2);color:var(--muted)}.ovdot.gr{font-size:15px}
 .aggline{grid-column:1/-1;font:600 13px/1.2 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .aggline b{font-size:20px;letter-spacing:.02em;color:var(--text);margin-left:6px}.aggline span{display:inline-block}.aggline .pop{animation:pop .5s ease-out}
 body.matchon .ev.live .aggline{text-align:center;font-size:18px}body.matchon .ev.live .aggline b{font-size:40px;margin-left:10px}
@@ -923,6 +927,34 @@ const ovGrade = ov => 'ABCDE'[OVR_BANDS.filter(b => ov < b).length];
 // teams (yours and every club) as a number from 40 to 99, on the same scale as a player's overall
 const teamNum = ov => Math.round(Math.max(40, Math.min(99, ov)));
 const R = q => Math.round(40 + 59 * Math.max(0, Math.min(1, q)));
+/* match ratings for your players, on the usual 1-10 scale where 6 is an ordinary game: his level in the slot he plays,
+   the result, his goals and assists, a clean sheet at the back (or a heavy defeat), the player of the match, and a little
+   luck that stays the same however often the match is shown. Overalls are never shown; these are. */
+const hashU = str => { let h = 2166136261; for (let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return ((h >>> 0) % 100000) / 100000; };
+const rtGrade = v => { v = Math.round(v * 10) / 10; return v >= 7.6 ? 'A' : v >= 7.1 ? 'B' : v >= 6.6 ? 'C' : v >= 6.2 ? 'D' : 'E'; };   // by the number shown
+const rt1 = v => v == null || isNaN(v) ? '–' : v.toFixed(1);
+function matchRatings(r, upto){
+  const c = r.cup, out = {}; if (!c) return out;
+  const a = arrangement(r.picks, r.form) || [], code = {}; a.forEach((id, j) => { if (id) code[id] = FORMS[r.form][j][0]; });
+  c.ev.slice(0, upto == null ? c.ev.length : upto).forEach((e, i) => {
+    if (!isMatch(e)) return;
+    const f = e.s[0] + (e.et ? e.et[0] : 0), ag = e.s[1] + (e.et ? e.et[1] : 0), res = f > ag ? 1 : f < ag ? -1 : e.pens ? (e.won ? .3 : -.3) : 0, best = motm(e);
+    const g = {}, as = {}; for (const [sc, ast, , og] of e.gl || []){ if (!og) g[sc] = (g[sc] || 0) + 1; if (ast) as[ast] = (as[ast] || 0) + 1; }
+    for (const pid of r.picks){
+      const cd = code[pid] || W.P[pid].prim, ln = LINE[cd];
+      let v = 6.6 + (effOvr(pid, cd) - 72) / 25 + .45 * res + .9 * (g[pid] || 0) + .55 * (as[pid] || 0);
+      if (ag === 0) v += ln === 'GK' ? .8 : ln === 'DEF' ? .5 : ln === 'MID' ? .15 : 0;
+      if (ag >= 3 && (ln === 'GK' || ln === 'DEF')) v -= .4;
+      if (String(best) === String(pid)) v += .3;
+      v += (hashU(pid + '|' + (r.season || 1) + '|' + i) - .5) * .9;
+      v = Math.max(3.5, Math.min(10, v));
+      const o = out[pid] = out[pid] || { sum: 0, n: 0 }; o.sum += v; o.n++;
+    }
+  });
+  for (const k in out) out[k].avg = out[k].sum / out[k].n;
+  return out;
+}
+const rtChip = v => `<b class="rtc g${v == null ? 'C' : rtGrade(v)}">${rt1(v)}</b>`;
 function playerRating(pid){
   const p = W.P[pid];
   return { ov: p.ovr, q: { pe: p.lvl, ro: p.rl, pf: p.pf, fo: p.fm } };
@@ -1661,17 +1693,17 @@ function cardHTML(p){
   const chip = (x, i) => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}</span>`;
   const tags = [r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : offHere ? `<span class="tag">Slightly below his level at ${slot}</span>` : ''].join('');
   // the top of the card in his club's colours, like a collectible card: grade and main position on the left
-  const head = `<div class="pc-top" style="${clubKit(c)}"><div class="pc-badge">${rt ? `<div class="pc-ov g${ovGrade(rt.ov)}"><b>${ovGrade(rt.ov)}</b><small>Overall</small></div>` : ''}<span class="pc-prim">${p.prim}</span></div>
+  const head = `<div class="pc-top" style="${clubKit(c)}"><div class="pc-badge"><span class="pc-prim">${p.prim}</span></div>
       <div class="pc-id"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age} · ${esc(c.name)}</div></div></div>
     <div class="pc-pos">${p.pos.map(chip).join('')}</div>${tags ? `<div class="pc-tags">${tags}</div>` : ''}`;
   if (!rt) return head;
-  // every A-E grade in one list, alphabetical (the overall stays on its own at the top)
+  // every rating in one list, 40-99, alphabetical (the overall itself is never shown)
   const gk = p.prim === 'GK';
   const all = [['Level', rt.q.pe, 'How strong the clubs he started for are'], ['Experience', rt.q.ro, 'How often he started while he was at them'],
     ['Performance', rt.q.pf, 'Match ratings, adjusted for the opponent'], ['Form', rt.q.fo, 'Match ratings in his last 5 starts'],
     ...(p.gr || []).map((q, i) => CARD_GRADES[i] && !(gk && CARD_GRADES[i][2]) ? [CARD_GRADES[i][0], q, CARD_GRADES[i][1]] : null).filter(Boolean)]
     .sort((x, y) => x[0].localeCompare(y[0]));
-  const grades = all.map(([n, q, t]) => { const l = qGrade(q); return `<div class="pc-g" title="${t}"><span>${n}</span><b class="gt g${l}">${l}</b></div>`; }).join('');
+  const grades = all.map(([n, q, t]) => `<div class="pc-g" title="${t}"><span>${n}</span><b class="gt g${qGrade(q)}">${R(q)}</b></div>`).join('');
   // this season so far (only what you have already seen)
   let season = '';
   if (r.cup && mine){
@@ -1717,7 +1749,7 @@ function pitch(pids, form, kept, rated, editable, fit){
     const pid = a[j];
     if (!pid) return `<div class="slot empty${cls(j)}"${act(j)} style="left:${x}%;top:${y}%"><div class="dot">${code}</div></div>`;
     const p = W.P[pid];
-    const rt = rated ? playerRating(pid) : null;
+    const rt = null;   // overalls are never shown
     const vn = kept && kept.includes(pid) ? vetRuns(pid) : 0;
     return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${pid === cap ? '<span class="cap" title="Captain">C</span>' : ''}${vn > 1 ? `<span class="vet" title="${vn} runs with you">×${vn}</span>` : ''}${rt ? ovDot(rt, p) : `<div class="dot">${code}</div>`}<div class="lbl${fit ? ' fit' + Math.min(2, fitTier(p, code)) : ''}">${esc(short(p.name))}</div></div>`;
   }).join('') + `</div>`;
@@ -1737,7 +1769,7 @@ function xiPitch(xi, form){
   return `<div class="pitch tall" role="img" aria-label="Formation ${form}">` + xi.map(p => {
     const bits = [p.code, p.g ? '⚽' + p.g : '', p.a ? '🅰' + p.a : ''].filter(Boolean).join(' ');
     const boot = S.run && S.run.cup && S.run.phase === 'done' && S.run.cup.top && S.run.cup.top.g[0] && S.run.cup.top.g[0][0] === p.id && xi.length && !xi.dyn;
-    return `<div class="slot full"${W.P[p.id] ? ` data-pid="${p.id}"` : ''} style="left:${p.x}%;top:${p.y}%">${boot ? '<span class="boot" title="Top scorer of the competition">👟</span>' : ''}${p.cap ? '<span class="cap" title="Captain">C</span>' : ''}<div class="ovdot gr g${p.gr}">${p.gr}</div><div class="lbl">${esc(short(p.n))}</div><div class="sub fit${Math.min(2, p.fit || 0)}">${bits}</div></div>`;
+    return `<div class="slot full"${W.P[p.id] ? ` data-pid="${p.id}"` : ''} style="left:${p.x}%;top:${p.y}%">${boot ? '<span class="boot" title="Top scorer of the competition">👟</span>' : ''}${p.cap ? '<span class="cap" title="Captain">C</span>' : ''}<div class="ovdot gr g${p.rt == null ? 'X' : rtGrade(p.rt)}" title="Average match rating">${rt1(p.rt)}</div><div class="lbl">${esc(short(p.n))}</div><div class="sub fit${Math.min(2, p.fit || 0)}">${bits}</div></div>`;
   }).join('') + `</div>`;
 }
 const xiBox = (title, xi, form) => `<section class="card"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">${title}</div><span class="muted" style="font-size:13px">${form}</span></div>${xiPitch(xi, form)}</section>`;
@@ -1808,7 +1840,7 @@ function viewHome(){
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>A new challenge starts with one choice, the difficulty. It sets where you start (Easy in the Champions League, Medium in the Europa League, Hard in the Conference League) and how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots. Win a competition and the next run moves up a level.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Once your XI is locked, every player shows a grade from A to E; hover him for club strength, playing time, performance and form. Your team's rating is the average of your 11 (a little lower for anyone away from his main position) plus the chemistry bonus; opponents show no rating at all. Away from his main position a player plays a little below his level: a bit less in a position he plays often, a bit more in a weak one (started in at most half as often as his main one). Weak positions are faded on his card.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Player overalls are never shown. Once your XI is locked, his card shows 18 ratings from 40 to 99 (club strength, playing time, performance, form, finishing and more), and every match gives him a match rating (6 is an ordinary game). Your team's rating, by line (FW, MF, DF), is the average of your 11 (a little lower for anyone away from his main position) plus the chemistry bonus; opponents show no rating at all. Away from his main position a player plays a little below his level: a bit less in a position he plays often, a bit more in a weak one (started in at most half as often as his main one). Weak positions are faded on his card.</li>
         <li>The draft starts in 4-2-2-2 and keeps that shape while it still works; when it stops working, another one that works is picked at random. A player can only be picked if he still fits one of the 14 formations. At the end you choose the shape yourself.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>The further you go, the more players you keep: out in the league phase 5 (in the Conference League that ends the challenge), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
@@ -2250,12 +2282,12 @@ function viewCup(){
 function squadBox(r){
   const arr = arrangement(r.picks, r.form), code = pid => FORMS[r.form][arr.indexOf(pid)][0];
   const rows = arr.map(pid => W.P[pid]).sort((x, y) => POS_ORDER.indexOf(code(x.id)) - POS_ORDER.indexOf(code(y.id)));
-  const top = Math.max(...rows.map(p => effOvr(p.id, code(p.id))));
-  return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your players</div><div class="tblwrap"><table class="tbl num"><thead><tr><th style="text-align:left">Player</th><th style="text-align:left">Club</th><th>Pos</th><th>Ovr</th></tr></thead><tbody>
-    ${rows.map(p => { const gr = ovGrade(playerRating(p.id).ov); return `<tr data-pid="${p.id}"${effOvr(p.id, code(p.id)) === top ? ' class="best"' : ''}><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td style="text-align:left;white-space:nowrap" class="muted">${esc(W.C[p.club].name)}</td><td>${code(p.id)}</td><td><span class="gt g${gr}">${gr}</span></td></tr>`; }).join('')}</tbody></table></div></section>`;
+  return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your players</div><div class="tblwrap"><table class="tbl num"><thead><tr><th style="text-align:left">Player</th><th style="text-align:left">Club</th><th>Pos</th></tr></thead><tbody>
+    ${rows.map(p => `<tr data-pid="${p.id}"><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td style="text-align:left;white-space:nowrap" class="muted">${esc(W.C[p.club].name)}</td><td>${code(p.id)}</td></tr>`).join('')}</tbody></table></div></section>`;
 }
 /* first look at your team after the draft: the grades turn over one by one, the best last; tap to see them all */
 function runReveal(){
+  return false;   // no overalls to turn over any more
   const r = S.run, app = $('#app'); if (!r || r.phase !== 'cup' || r.scr !== 'team' || r.revealed) return false;
   r.revealed = true; save();
   if (toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
@@ -2396,14 +2428,14 @@ function seasonBox(r){
     <div class="tblwrap" style="margin-top:12px"><table class="tbl matches"><tbody>${rows}</tbody></table></div></section>`;
 }
 function playersBox(r){
-  const k = campaign(r), g = k.g, a = k.a;
+  const k = campaign(r), g = k.g, a = k.a, mr = matchRatings(r);
   const arr = arrangement(r.picks, r.form), code = pid => FORMS[r.form][arr.indexOf(pid)][0];
   const rows = arr.map(pid => W.P[pid]).sort((x, y) => POS_ORDER.indexOf(code(x.id)) - POS_ORDER.indexOf(code(y.id)));
   const mg = Math.max(0, ...rows.map(p => g[p.id] || 0)), ma = Math.max(0, ...rows.map(p => a[p.id] || 0));
   const cell = (v, m) => `<td${m && v === m ? ' class="best"' : ''}>${v}</td>`;
   return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your players</div>
-    <div class="tblwrap"><table class="tbl num"><thead><tr><th style="text-align:left">Player</th><th>Pos</th><th>G</th><th>A</th><th>Ovr</th></tr></thead><tbody>
-    ${rows.map(p => { const gr = ovGrade(playerRating(p.id).ov); return `<tr data-pid="${p.id}"><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td>${code(p.id)}</td>${cell(g[p.id] || 0, mg)}${cell(a[p.id] || 0, ma)}<td><span class="gt g${gr}">${gr}</span></td></tr>`; }).join('')}</tbody></table></div></section>`;
+    <div class="tblwrap"><table class="tbl num"><thead><tr><th style="text-align:left">Player</th><th>Pos</th><th>G</th><th>A</th><th title="Average match rating">Rt</th></tr></thead><tbody>
+    ${rows.map(p => `<tr data-pid="${p.id}"><td style="text-align:left;white-space:nowrap">${esc(p.name)}</td><td>${code(p.id)}</td>${cell(g[p.id] || 0, mg)}${cell(a[p.id] || 0, ma)}<td>${rtChip(mr[p.id] && mr[p.id].avg)}</td></tr>`).join('')}</tbody></table></div></section>`;
 }
 function topBox(r){
   const c = r.cup; if (!c.top) return '';
@@ -2482,8 +2514,9 @@ const STAGE_SHORT = { league: 'League phase', playoff: 'Play-off', r16: 'Round o
 function seasonSummary(r){
   const c = r.cup, k = campaign(r), arr = arrangement(r.picks, r.form) || [], t = teamRating(r.picks, r.form);
   const cap = captainOf(arr.filter(Boolean));
+  const mr = matchRatings(r);
   const xi = arr.map((id, j) => { if (!id) return null; const p = W.P[id], s = FORMS[r.form][j];
-    return { id, n: p.name, nat: p.nat, code: s[0], x: s[1], y: s[2], g: k.g[id] || 0, a: k.a[id] || 0, gr: ovGrade(playerRating(id).ov), fit: fitTier(p, s[0]), cap: id === cap, o: r.picks.indexOf(id) }; }).filter(Boolean);
+    return { id, n: p.name, nat: p.nat, code: s[0], x: s[1], y: s[2], g: k.g[id] || 0, a: k.a[id] || 0, rt: mr[id] ? +mr[id].avg.toFixed(2) : null, mp: mr[id] ? mr[id].n : 0, fit: fitTier(p, s[0]), cap: id === cap, o: r.picks.indexOf(id) }; }).filter(Boolean);
   const lt = c.top && c.top.g[0];
   return { season: r.season || 1, comp: r.comp || 'cl', diff: r.diff || 'medium', stage: c.stage, pos: c.pos, champ: c.champ === 'YOU' ? 'YOU' : nm(c.champ),
     w: k.W_, d: k.D, l: k.L, gf: k.GF, ga: k.GA, cs: k.CS, big: k.big ? [k.big.f, k.big.ag, nm(k.big.opp)] : null,
@@ -2608,8 +2641,8 @@ function drawPitch(x, xi, PX, PY, PW, PH){
     row.forEach((p, i) => {
       const cx = cxs[i], left = i ? (cx - cxs[i - 1]) : 2 * (cx - PX - 6), right = i < row.length - 1 ? (cxs[i + 1] - cx) : 2 * (PX + PW - 6 - cx);
       const room = Math.min(left, right, 230) - 10; // the label never reaches past half way to a neighbour
-      x.beginPath(); x.arc(cx, cy, 32, 0, 2 * Math.PI); x.fillStyle = GC[p.gr] || '#888'; x.fill(); x.lineWidth = 4; x.strokeStyle = '#0B1626'; x.stroke();
-      txt(x, p.gr, cx, cy + 12, '700 34px Oswald, "Arial Narrow", Arial, sans-serif', p.gr === 'C' ? '#0B1626' : '#fff', 'center');
+      x.beginPath(); x.arc(cx, cy, 32, 0, 2 * Math.PI); const rg = p.rt == null ? null : rtGrade(p.rt); x.fillStyle = GC[rg] || '#4A5C78'; x.fill(); x.lineWidth = 4; x.strokeStyle = '#0B1626'; x.stroke();
+      txt(x, rt1(p.rt), cx, cy + 11, '700 27px Oswald, "Arial Narrow", Arial, sans-serif', rg === 'C' || rg === 'B' || rg === 'D' ? '#0B1626' : '#fff', 'center');
       if (p.cap){ x.beginPath(); x.arc(cx + 27, cy - 22, 14, 0, 2 * Math.PI); x.fillStyle = '#0B1626'; x.fill(); x.lineWidth = 3; x.strokeStyle = '#F2C14E'; x.stroke();
         txt(x, 'C', cx + 27, cy - 15, '700 19px Oswald, "Arial Narrow", Arial, sans-serif', '#F2C14E', 'center'); }
       const nm_ = surname(p.n), nf = fit(nm_, room - 20, 500, 24, 17), tw = Math.min(room, x.measureText(nm_).width + 20);
@@ -2651,24 +2684,26 @@ async function seasonImage(h){
   txt(x, 'This Time Next Year', W_ - 60, 1328, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   return cv;
 }
-/* the best XI of the challenge: everyone who played in it, ranked by runs, then Champions, Europa and Conference League titles, then goals, assists, clean sheets (keepers
-   only, the seasons he started in goal) and finally who was drafted earlier; the first 11 who still fit a formation.
-   The captain: the most seasons in the XI, then the one drafted earliest. */
+/* the best XI of the challenge: everyone who played in it, ranked by Champions League, Europa League and Conference League
+   titles, then his average match rating over the challenge, then who was drafted earlier; the first 11 who still fit a
+   formation. The captain: the most matches in the challenge, then the one drafted earliest. */
 function dynastyBestXI(hist){
   const st = {};
   for (const h of hist) for (const p of h.xi || []){
-    const v = st[p.id] = st[p.id] || { id: p.id, n: p.n, s: 0, cl: 0, el: 0, ecl: 0, g: 0, a: 0, cs: 0, d: h.season * 100 + (p.o != null && p.o >= 0 ? p.o : 50) };
+    const v = st[p.id] = st[p.id] || { id: p.id, n: p.n, s: 0, cl: 0, el: 0, ecl: 0, g: 0, a: 0, cs: 0, mp: 0, rs: 0, d: h.season * 100 + (p.o != null && p.o >= 0 ? p.o : 50) };
     v.s++; v.g += p.g || 0; v.a += p.a || 0; if (p.code === 'GK') v.cs += h.cs || 0;
+    const mp = p.mp || (p.rt != null ? 1 : 0); v.mp += p.mp || 0; if (p.rt != null){ v.rs += p.rt * mp; v.rn = (v.rn || 0) + mp; }
     if (h.stage === 'champion' && v[h.comp] != null) v[h.comp]++;   // titles he won: Champions, Europa, Conference League
   }
-  const ranked = Object.values(st).filter(v => W.P[v.id]).sort((a, b) => b.s - a.s || b.cl - a.cl || b.el - a.el || b.ecl - a.ecl || b.g - a.g || b.a - a.a || b.cs - a.cs || a.d - b.d);
+  for (const v of Object.values(st)) v.rt = v.rn ? v.rs / v.rn : null;
+  const ranked = Object.values(st).filter(v => W.P[v.id]).sort((a, b) => b.cl - a.cl || b.el - a.el || b.ecl - a.ecl || (b.rt || 0) - (a.rt || 0) || a.d - b.d);
   let picks = [];
   for (const v of ranked){ if (picks.length === 11) break; const t = [...picks, v.id]; if (FORM_ORDER.some(f => assign(t, f))) picks = t; }
   if (picks.length < 11) return null;
   const form = bestForm(picks), arr = sideBySide(bestAssign(picks, form), form); if (!arr) return null;
-  const cap = picks.slice().sort((a, b) => st[b].s - st[a].s || st[a].d - st[b].d)[0];   // most seasons, then drafted earliest
+  const cap = picks.slice().sort((a, b) => st[b].mp - st[a].mp || st[a].d - st[b].d)[0];   // most matches, then drafted earliest
   const xi = arr.map((id, j) => { if (!id) return null; const p = W.P[id], sl = FORMS[form][j], v = st[id];
-    return { id, n: v.n, code: sl[0], x: sl[1], y: sl[2], g: v.g, a: v.a, gr: ovGrade(playerRating(id).ov), fit: fitTier(p, sl[0]), cap: id === cap, s: v.s }; }).filter(Boolean);
+    return { id, n: v.n, code: sl[0], x: sl[1], y: sl[2], g: v.g, a: v.a, rt: v.rt, mp: v.mp, cl: v.cl, el: v.el, ecl: v.ecl, fit: fitTier(p, sl[0]), cap: id === cap, s: v.s }; }).filter(Boolean);
   return { form, xi };
 }
 async function dynastyImage(hist, ended){
@@ -2778,7 +2813,7 @@ function playerOfRun(r){
   const p = W.P[best], g = k.g[best] || 0, a = k.a[best] || 0, mm = m[best] || 0;
   const bits = [g && `${g} goal${g > 1 ? 's' : ''}`, a && `${a} assist${a > 1 ? 's' : ''}`, mm && `player of the match ${mm > 1 ? mm + ' times' : 'once'}`].filter(Boolean).join(' · ');
   return `<section class="card potr" data-pid="${best}" style="${clubKit(W.C[p.club])}"><div class="eyebrow">Player of the run</div>
-    <div class="potr-row">${ovDot(playerRating(best), p)}<div style="min-width:0"><div class="potr-nm">${esc(p.name)}</div><div class="muted" style="font-size:13px">${natTag(p)} · ${esc(W.C[p.club].name)}</div><div style="margin-top:6px;font-weight:600">${bits}</div></div></div></section>`;
+    <div class="potr-row"><div class="ovdot gr g${rtGrade(matchRatings(r)[best].avg)}" title="Average match rating">${rt1(matchRatings(r)[best].avg)}</div><div style="min-width:0"><div class="potr-nm">${esc(p.name)}</div><div class="muted" style="font-size:13px">${natTag(p)} · ${esc(W.C[p.club].name)}</div><div style="margin-top:6px;font-weight:600">${bits}</div></div></div></section>`;
 }
 function viewSeason(){
   const r = S.run, champ = r.cup.stage === 'champion';
@@ -2816,12 +2851,12 @@ function viewComp(){
 /* who stays for the next run */
 function viewKeep(){
   const r = S.run, st = r.cup.stage, n = r.keepN, champ = st === 'champion';
-  const topOv = Math.max(...r.picks.map(id => W.P[id].ovr));
+  const mr = matchRatings(r), k = campaign(r);
   const lst = arrangement(r.picks, r.form).map(pid => W.P[pid]).map(p => {
     const on = r.keepSel.includes(p.id);
     return `<button class="krow${on ? ' on' : ''}" data-act="keep" data-p="${p.id}" data-pid="${p.id}" aria-pressed="${on}" ${n ? '' : 'disabled'}>
-      <span class="box">${on ? '✓' : ''}</span><span style="min-width:0"><div class="nm${p.ovr === topOv ? ' bestn' : ''}" style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${natTag(p)} · ${p.pos.join(' · ')} · ${esc(W.C[p.club].name)}</div></span>
-      ${ovDot(playerRating(p.id), p)}</button>`;
+      <span class="box">${on ? '✓' : ''}</span><span style="min-width:0"><div class="nm" style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${natTag(p)} · ${p.pos.join(' · ')} · ${esc(W.C[p.club].name)}</div></span>
+      <span class="kst">${rtChip(mr[p.id] && mr[p.id].avg)}<small>${k.g[p.id] || 0} G · ${k.a[p.id] || 0} A</small></span></button>`;
   }).join('');
   return `${doneTop()}
   <div class="stack">
@@ -3018,7 +3053,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021053725';
+const BUILD = '20261021063009';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
