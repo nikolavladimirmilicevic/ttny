@@ -2216,6 +2216,8 @@ function watchOut(opp){
   const top = c.squad.filter(id => W.P[id] && !S.run.picks.includes(id)).sort((x, y) => W.P[y].ovr - W.P[x].ovr).slice(0, 3);
   return top.length ? `<div class="watch">Watch out: <b>${top.map(id => esc(short(W.P[id].name))).join(', ')}</b></div>` : '';
 }
+// as in the real format, only the play-off and the Round of 16 pairings come out of a draw; after that the bracket decides
+const DRAWN_ROUNDS = [STAGE_NAME.playoff, STAGE_NAME.r16];
 // straight into the Round of 16: the opponent is the winner of a play-off not yet played
 const tbdOf = (c, e) => e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
 /* every match of the run, in order: the played ones in full, then the ones whose opponent is already known */
@@ -2237,7 +2239,7 @@ function ribbon(c){
   const ahead = c.ev.slice(c.shown).filter(isMatch), now = ahead[0], next = ahead[1];
   const where = e => e.k === 'final' ? 'Neutral' : e.h ? 'Home' : 'Away';
   const tbd = e => e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
-  const spinKey = e => e.k === 'md' ? '' : `${e.round || 'Final'}|${e.opp}`;
+  const spinKey = e => DRAWN_ROUNDS.includes(e.round) ? `${e.round}|${e.opp}` : '';   // later rounds follow the bracket, no draw
   const team = (id, spin) => `<div class="rteam"><span class="drawn"${spin ? ` data-spin="${esc(spin)}"` : ''}>${crest(id)}<span class="rname">${esc(nm(id))}</span></span></div>`;
   const empty = (tag, lbl, txt) => `<div class="rt ${tag} empty"><div class="rl">${lbl}</div><div class="rx">${txt}</div></div>`;
   let a = empty('prev', 'Previous', 'Not started');
@@ -2263,7 +2265,7 @@ function pendCard(e, later){
   // straight into the Round of 16: the opponent comes out of the play-offs, so he is not known yet
   const tbd = e.k === 'leg' && e.round === STAGE_NAME.r16 && c.pos <= 8 && !c.ev.slice(0, c.shown).some(x => x.k === 'leg' || x.k === 'podone');
   const rd = e.k === 'md' ? `League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}` : e.k === 'leg' ? `${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}` : 'Final';
-  const draw = e.k === 'leg' || e.k === 'final';   // both legs carry the same draw, so the second leg spins with the first
+  const draw = e.k === 'leg' && DRAWN_ROUNDS.includes(e.round);   // only the play-off and the Round of 16 are drawn; both legs spin together
   const who = tbd ? '<span class="muted">Play-off winner</span>' : `<span class="drawn"${draw ? ` data-spin="${esc(e.round || 'Final')}|${e.opp}"` : ''}>${crest(e.opp)}${esc(nm(e.opp))}</span>`;
   const right = tbd || later ? `<div class="score num">–<span style="font-size:16px">:</span>–</div>` : oddsHTML(e.opp, e.k === 'final' ? null : e.h);
   return `<div class="ev pend${e.k === 'final' ? ' fin' : ''}"><div class="rd">${rd}</div><div class="opp">${venue(e.k === 'final' ? null : e.h)} ${who}</div>${right}${tbd || later ? '' : watchOut(e.opp)}</div>`;
@@ -3069,7 +3071,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021110038';
+const BUILD = '20261021110315';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
