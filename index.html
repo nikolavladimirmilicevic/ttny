@@ -331,9 +331,11 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .bh{position:absolute;top:0;font:600 11px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .bx{position:absolute;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;justify-content:center;padding:0 8px;font-size:12px;cursor:default}
 .bx.mine{border-color:var(--gold)}.bx.fin{box-shadow:0 0 0 1px rgba(227,179,65,.35)}
-.bl{display:flex;justify-content:space-between;gap:6px;color:var(--muted);line-height:1.5}
+.bl{display:flex;align-items:center;gap:6px;color:var(--muted);line-height:1.5}
 .bl.w{color:var(--text);font-weight:600}.bl.me .bn{color:var(--gold)}
-.bn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bs{flex:none}.bs small{font-size:10px;color:var(--muted);margin-right:4px;font-weight:400}
+.bn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}.bn small{font-size:9.5px;font-weight:400;color:var(--muted)}.bs{flex:none}
+.bl .sd{flex:none;width:18px;text-align:right;font-size:10px;color:var(--muted);font-weight:400}.bl .s1,.bl .s2{flex:none;width:14px;text-align:center;color:var(--muted);font-weight:400}
+.bl .sa{flex:none;min-width:18px;text-align:right}.bl .sa small{font-size:9.5px;font-weight:400;color:var(--muted)}.bl.tbd{opacity:.4}.bl.tbd .bn{border-bottom:1px dashed var(--line)}.bs small{font-size:10px;color:var(--muted);margin-right:4px;font-weight:400}
 .tbldet summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none}.tbldet summary::-webkit-details-marker{display:none}
 .tbldet[open] summary{margin-bottom:10px}.tbldet .ev{background:transparent;padding:0;animation:none}
 .verdict h1{font-size:clamp(40px,11vw,76px);font-weight:700}
@@ -2483,23 +2485,28 @@ function koBox(c, st){
   const ORDER = [0, 7, 3, 4, 1, 6, 2, 5];
   const cols = [ORDER.map(k => po[7 - k]), r16, qf, sf, fi];
   const names = ['Play-off', 'Round of 16', 'Quarter-finals', 'Semi-finals', 'Final'];
-  const BW = 156, GAP = 28, RH = 62, BH = 46, TOP = 26, H = TOP + 8 * RH;
+  const BW = 212, GAP = 26, RH = 62, BH = 50, TOP = 26, H = TOP + 8 * RH;
+  // seeds: the final league-phase position, known once the league phase is over
+  const seed = {}; if (c.lg && c.lg.length) tableAfter(c, c.lg.length).forEach((t, i) => seed[t.id] = i + 1);
   const x = ci => ci * (BW + GAP), y = (ci, i) => TOP + (i + 0.5) * (8 / cols[ci].length) * RH;
-  const line = (id, t, mode) => {
-    if (mode === 'hidden') return `<div class="bl"><span class="bn muted">?</span></div>`;
-    const i = id === t.a ? 0 : 1;
-    if (mode === 'names' || mode === 'leg1') return `<div class="bl${id === 'YOU' ? ' me' : ''}"><span class="bn">${esc(nm(id))}</span><span class="bs num">${mode === 'leg1' ? t.legs[0][i] : ''}</span></div>`;
-    const sc = t.agg[i], won = id === t.w;
-    const pen = t.pens ? `<small>${t.pens[i]}p</small>` : t.et ? (won ? '<small>aet</small>' : '') : '';
-    const beaten = !won && t.w === 'YOU';
-    return `<div class="bl${won ? ' w' : ''}${id === 'YOU' ? ' me' : ''}${beaten ? ' beaten' : ''}"><span class="bn">${esc(nm(id))}</span><span class="bs num">${pen}${sc}</span></div>`;
+  // a row as in a printed bracket: seed, club, first leg, second leg, aggregate (the final: one score)
+  const line = (id, t, mode, ci) => {
+    const i = id === t.a ? 0 : 1, one = t.legs.length === 1;
+    // the Round of 16 seeds (top 8) are in place from the end of the league phase; the rest arrive round by round
+    const known = mode !== 'hidden' || (ci === 1 && seed[id] && seed[id] <= 8);
+    if (!known) return `<div class="bl tbd"><span class="sd"></span><span class="bn">&nbsp;</span></div>`;
+    const l1 = mode === 'leg1' || mode === 'full' ? t.legs[0][i] : '', l2 = mode === 'full' && !one ? t.legs[1][i] : '';
+    const full = mode === 'full', won = full && id === t.w, beaten = full && !won && t.w === 'YOU';
+    const xt = full && won ? (t.pens ? ` <small>(p)</small>` : t.et ? ` <small>(aet)</small>` : '') : '';
+    const agg = full ? `${t.agg[i]}${t.pens ? `<small> (${t.pens[i]})</small>` : ''}` : '';
+    return `<div class="bl${won ? ' w' : ''}${id === 'YOU' ? ' me' : ''}${beaten ? ' beaten' : ''}"><span class="sd num">${seed[id] || ''}</span><span class="bn">${esc(nm(id))}${xt}</span>${one ? '' : `<span class="s1 num">${l1}</span><span class="s2 num">${l2}</span>`}<b class="sa num">${one ? (full ? agg : l1) : agg}</b></div>`;
   };
   const tip = t => t.legs.map(l => `${l[0]}:${l[1]}`).join(', ') + (t.et ? ` · aet ${t.et[0]}:${t.et[1]}` : '') + (t.pens ? ` · pens ${t.pens[0]}:${t.pens[1]}` : '');
   let boxes = '', paths = '';
   cols.forEach((ts, ci) => ts.forEach((t, i) => {
     if (!t) return;
     const mode = st[KO_KEYS[ci]] || 'full', mine = mode !== 'hidden' && (t.a === 'YOU' || t.b === 'YOU');
-    boxes += `<div class="bx${mine ? ' mine' : ''}${ci === 4 ? ' fin' : ''}" style="left:${x(ci)}px;top:${y(ci, i) - BH / 2}px;width:${BW}px;height:${BH}px"${mode === 'full' ? ` title="${esc(nm(t.a))} v ${esc(nm(t.b))}: ${tip(t)}"` : ''}>${line(t.a, t, mode)}${line(t.b, t, mode)}</div>`;
+    boxes += `<div class="bx${mine ? ' mine' : ''}${ci === 4 ? ' fin' : ''}" style="left:${x(ci)}px;top:${y(ci, i) - BH / 2}px;width:${BW}px;height:${BH}px"${mode === 'full' ? ` title="${esc(nm(t.a))} v ${esc(nm(t.b))}: ${tip(t)}"` : ''}>${line(t.a, t, mode, ci)}${line(t.b, t, mode, ci)}</div>`;
     if (ci > 0){
       const kids = ci === 1 ? [i] : [2 * i, 2 * i + 1], x2 = x(ci), y2 = y(ci, i);
       for (const k of kids){
@@ -2518,7 +2525,7 @@ function koBox(c, st){
   if (fc < 0) fc = 0;
   return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Knockout stage</div>
     <div class="bracket-wrap" data-focus="${Math.max(0, x(fc) - 12)}"><div class="bracket" style="width:${W_}px;height:${H}px">${heads}<svg width="${W_}" height="${H}" aria-hidden="true">${paths}</svg>${boxes}</div></div>
-    <div class="muted" style="font-size:12px;margin-top:8px">Aggregate scores. <span class="wide-only">Hover a tie for the legs.</span><span class="narrow-only">Swipe sideways for the later rounds.</span></div></section>`;
+    <div class="muted" style="font-size:12px;margin-top:8px">League-phase position, first leg, second leg, aggregate. <span class="wide-only">Hover a tie for the details.</span><span class="narrow-only">Swipe sideways for the later rounds.</span></div></section>`;
 }
 /* a short text summary of the run, for sending to friends */
 /* ================= CHALLENGE: 10 SEASONS, A HISTORY, AND IMAGES TO SHARE ================= */
@@ -3071,7 +3078,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021110315';
+const BUILD = '20261021112211';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
