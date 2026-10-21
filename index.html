@@ -1390,7 +1390,7 @@ function buildCup(T){
   ev.push({ k: 'table', pos, table: table.map(r => [r.id, r.P, r.W, r.D, r.L, r.GF - r.GA, r.Pts]) });
   let stage = 'league', alive = pos <= 24;
   const ko = [];   // every knockout tie, for the end screen
-  const run = (round, a, b, legs, key) => {
+  const run = (round, a, b, legs, key, cand) => {
     const t = playTie(a, b, legs, T);
     ko.push({ k: key, a: t.a, b: t.b, legs: t.legs, agg: t.agg, et: t.et || null, pens: t.pens ? [t.pens.a, t.pens.b] : null, w: t.winner });
     const gA = t.legs.map(l => goals(t.a, l[0], 1, 90, t.b)), gB = t.legs.map(l => goals(t.b, l[1], 1, 90, t.a));
@@ -1398,22 +1398,35 @@ function buildCup(T){
     const eB = t.et ? goals(t.b, t.et[1], 91, 120, t.a) : [];
     if (t.a === 'YOU'){
       if (legs === 2){
-        ev.push({ k: 'leg', round, leg: 1, opp: t.b, s: t.legs[0], gl: gA[0], og: gB[0], h: t.home[0] === 'YOU' ? 1 : 0 });
-        ev.push({ k: 'leg', round, leg: 2, opp: t.b, s: t.legs[1], gl: gA[1].concat(eA), og: gB[1].concat(eB), h: t.home[1] === 'YOU' ? 1 : 0, agg: t.agg, et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
+        ev.push({ k: 'leg', round, leg: 1, opp: t.b, cand: cand && cand.YOU, s: t.legs[0], gl: gA[0], og: gB[0], h: t.home[0] === 'YOU' ? 1 : 0 });
+        ev.push({ k: 'leg', round, leg: 2, opp: t.b, cand: cand && cand.YOU, s: t.legs[1], gl: gA[1].concat(eA), og: gB[1].concat(eB), h: t.home[1] === 'YOU' ? 1 : 0, agg: t.agg, et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
       } else ev.push({ k: 'final', round, opp: t.b, s: t.legs[0], gl: gA[0].concat(eA), og: gB[0].concat(eB), et: t.et || null, pens: t.pens || null, won: t.winner === 'YOU' });
       stage = t.winner === 'YOU' ? (key === 'final' ? 'champion' : stage) : key;
     }
     return t.winner;
   };
-  // play-off: 9 v 24, 10 v 23 ... 16 v 17
+  // the real bracket. Play-off: four seeded pairings, I 9/10 v 23/24, II 11/12 v 21/22, III 13/14 v 19/20, IV 15/16 v 17/18,
+  // the draw deciding which seed meets which of the two. Round of 16: A 1/2 v the winners of IV, B 3/4 v III, C 5/6 v II,
+  // D 7/8 v I, the draw again deciding who meets whom and which half each of a pair goes to (1 and 2 always apart).
+  // Quarter-finals A v D and B v C in each half, the semi-final inside the half, the halves meet in the final.
   if (pos > 24) stage = 'league';
-  const po = []; for (let i = 0; i < 8; i++) po.push(run(STAGE_NAME.playoff, seed[8 + i], seed[23 - i], 2, 'playoff'));
+  const two = (x, y) => Math.random() < .5 ? [x, y] : [y, x], cand = {};
+  const POP = [0, 1, 2, 3].map(p => { const hi = [seed[8 + 2 * p], seed[9 + 2 * p]], lo = two(seed[22 - 2 * p], seed[23 - 2 * p]);
+    hi.forEach(t => cand[t] = lo); lo.forEach(t => cand[t] = hi); return [[hi[0], lo[0]], [hi[1], lo[1]]]; });
+  const poW = POP.map(pr => pr.map(([a, b]) => run(STAGE_NAME.playoff, a, b, 2, 'playoff', cand)));
+  const po = poW.flat();
   if (pos >= 9 && pos <= 24 && !po.includes('YOU')) alive = false;
+  // Round of 16 slots, half by half: A, D, B, C (so the quarter-finals are A v D and B v C)
+  const LET = { A: [0, 3], B: [2, 2], C: [4, 1], D: [6, 0] }, half = [[], []];   // seed index of the pair, play-off pairing it meets
+  for (const L of ['A', 'D', 'B', 'C']){ const [si, p] = LET[L], ss = L === 'A' ? [seed[0], seed[1]] : two(seed[si], seed[si + 1]), ww = two(0, 1);
+    [0, 1].forEach(h => half[h].push({ a: ss[h], p, j: ww[h] })); }
+  const slots = half[0].concat(half[1]);
+  slots.forEach(sl => { const sib = slots.filter(o => o.p === sl.p); cand[sl.a] = sib.map(o => poW[o.p][o.j]); const w = poW[sl.p][sl.j]; cand[w] = sib.map(o => o.a); });
+  const brk = slots.map(sl => 2 * sl.p + sl.j);   // which play-off tie feeds each Round of 16 slot (for the bracket)
+  const mySlot = slots.findIndex(sl => sl.a === 'YOU');
   // straight into the Round of 16: one click plays the play-offs and names your opponent before your first leg
-  if (pos <= 8) ev.push({ k: 'podone', opp: po[7 - (pos - 1)], ties: ko.filter(t => t.k === 'playoff').map(t => [t.a, t.b, t.agg, t.w, t.pens ? 1 : t.et ? 2 : 0]) });
-  // R16: seed k vs winner of the tie that holds seeds 17-k / 8+k (bracket order 1,8,4,5,2,7,3,6)
-  const r16pairs = [0, 7, 3, 4, 1, 6, 2, 5].map(k => [seed[k], po[7 - k]]);
-  const r16 = r16pairs.map(([a, b]) => run(STAGE_NAME.r16, a, b, 2, 'r16'));
+  if (pos <= 8) ev.push({ k: 'podone', opp: poW[slots[mySlot].p][slots[mySlot].j], ties: ko.filter(t => t.k === 'playoff').map(t => [t.a, t.b, t.agg, t.w, t.pens ? 1 : t.et ? 2 : 0]) });
+  const r16 = slots.map(sl => run(STAGE_NAME.r16, sl.a, poW[sl.p][sl.j], 2, 'r16', cand));
   const qf = [0, 2, 4, 6].map(i => run(STAGE_NAME.qf, r16[i], r16[i + 1], 2, 'qf'));
   const sf = [0, 2].map(i => run(STAGE_NAME.sf, qf[i], qf[i + 1], 2, 'sf'));
   const champ = run(STAGE_NAME.final, sf[0], sf[1], 1, 'final');
@@ -1423,7 +1436,7 @@ function buildCup(T){
   const pickNo = id => (S.run && S.run.picks ? S.run.picks.indexOf(id) : -1);
   const top = M => Object.entries(M).sort((x, y) => y[1] - x[1] || pickNo(y[0]) - pickNo(x[0]) || W.P[x[0]].name.localeCompare(W.P[y[0]].name)).slice(0, 10);
   const tb = {}; teams.forEach(t => tb[t] = rows[t].tb);
-  return { ev, shown: 0, stage, champ, pos, myPot, top: { g: top(G), a: top(A) }, ko, lg, tb, pots: sch.pots };
+  return { ev, shown: 0, stage, champ, pos, myPot, brk, top: { g: top(G), a: top(A) }, ko, lg, tb, pots: sch.pots };
 }
 
 /* ================= STATE ================= */
@@ -2266,11 +2279,13 @@ function runKoSpin(){
   if (toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const pool = (c.pots || []).flat().filter(id => id !== 'YOU' && W.C[id]); if (pool.length < 3) return;
   for (const k of keys){
+    // the draw only ever spins between the clubs it could really give: the two of the other half of the pairing
+    const ce = c.ev.find(x => x.cand && (x.round + '|' + x.opp) === k), pk = ce && ce.cand.length > 1 ? ce.cand : pool;
     const group = els.filter(x => x.dataset.spin === k), finals = group.map(x => x.innerHTML); let i = 0;
     group.forEach(x => { x.classList.add('spinning'); const ev = x.closest('.ev, .rt'); if (ev) ev.classList.add('drawing'); });
     const tick = () => { if (!group[0].isConnected) return;
       if (i >= 12){ group.forEach((x, n) => { x.innerHTML = finals[n]; x.classList.remove('spinning'); x.classList.add('landed'); const ev = x.closest('.ev, .rt'); if (ev) ev.classList.remove('drawing'); }); return; }
-      const id = pool[Math.floor(Math.random() * pool.length)]; group.forEach(x => x.innerHTML = crest(id) + esc(nm(id))); i++; setTimeout(tick, 40 + i * i * 1.6); };
+      const id = pk.length < 3 ? pk[i % pk.length] : pk[Math.floor(Math.random() * pk.length)]; group.forEach(x => x.innerHTML = crest(id) + esc(nm(id))); i++; setTimeout(tick, 40 + i * i * 1.6); };
     setTimeout(tick, 250);
   }
 }
@@ -2577,9 +2592,9 @@ function koBox(c, st){
   st = st || {};
   const by = k => c.ko.filter(t => t.k === k);
   const po = by('playoff'), r16 = by('r16'), qf = by('qf'), sf = by('sf'), fi = by('final');
-  // R16 slot j holds seed k = [1,8,4,5,2,7,3,6][j] - 1 and the winner of play-off tie 7 - k
+  // R16 slot j is fed by play-off tie brk[j] (runs from before the real bracket: seed [1,8,4,5,2,7,3,6][j] and tie 7 - k)
   const ORDER = [0, 7, 3, 4, 1, 6, 2, 5];
-  const cols = [ORDER.map(k => po[7 - k]), r16, qf, sf, fi];
+  const cols = [c.brk ? c.brk.map(i => po[i]) : ORDER.map(k => po[7 - k]), r16, qf, sf, fi];   // older runs: the fixed bracket
   const names = ['Play-off', 'Round of 16', 'Quarter-finals', 'Semi-finals', 'Final'];
   const BW = 212, GAP = 26, RH = 62, BH = 50, TOP = 26, H = TOP + 8 * RH;
   // seeds: the final league-phase position, known once the league phase is over
@@ -3175,7 +3190,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021202414';
+const BUILD = '20261021214602';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
