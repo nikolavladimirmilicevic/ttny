@@ -1694,7 +1694,7 @@ const RADAR = [['SHO', 'Finishing: goals per 90 minutes', (p, rt) => p.gr && p.g
 function radar(p, rt){
   const C = 100, Rr = 62, pt = (i, f) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [C + Rr * f * Math.cos(a), C * .9 + Rr * f * Math.sin(a)]; };
   const ring = f => RADAR.map((_, i) => pt(i, f).map(v => v.toFixed(1)).join(',')).join(' ');
-  const vals = RADAR.map(([k, , g]) => { const v = p.prim === 'GK' && (k === 'SHO' || k === 'PAS') ? 0 : g(p, rt);   // a keeper's goals and assists say nothing return Math.max(.06, Math.min(1, v == null ? 0 : v)); });
+  const vals = RADAR.map(([k, , g]) => { const v = p.prim === 'GK' && (k === 'SHO' || k === 'PAS') ? 0 : g(p, rt); return Math.max(.06, Math.min(1, v == null ? 0 : v)); });
   const shape = vals.map((v, i) => pt(i, v).map(n => n.toFixed(1)).join(',')).join(' ');
   const spokes = RADAR.map((_, i) => { const [x, y] = pt(i, 1); return `<line x1="${C}" y1="${C * .9}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('');
   const labels = RADAR.map(([k, t], i) => { const [x, y] = pt(i, 1.32); return `<text x="${x.toFixed(1)}" y="${(y + 5).toFixed(1)}" text-anchor="middle"><title>${t}</title>${k}</text>`; }).join('');
@@ -3095,7 +3095,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021193047';
+const BUILD = '20261021193141';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
