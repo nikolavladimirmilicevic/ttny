@@ -1427,8 +1427,10 @@ function buildCup(T){
   // straight into the Round of 16: one click plays the play-offs and names your opponent before your first leg
   if (pos <= 8) ev.push({ k: 'podone', opp: poW[slots[mySlot].p][slots[mySlot].j], ties: ko.filter(t => t.k === 'playoff').map(t => [t.a, t.b, t.agg, t.w, t.pens ? 1 : t.et ? 2 : 0]) });
   const r16 = slots.map(sl => run(STAGE_NAME.r16, sl.a, poW[sl.p][sl.j], 2, 'r16', cand));
-  const qf = [0, 2, 4, 6].map(i => run(STAGE_NAME.qf, r16[i], r16[i + 1], 2, 'qf'));
-  const sf = [0, 2].map(i => run(STAGE_NAME.sf, qf[i], qf[i + 1], 2, 'sf'));
+  // from 2025/26 the club ranked higher in the league phase plays the second leg at home in every round (the bracket's order does not decide it)
+  const hiFirst = (x, y) => seed.indexOf(x) <= seed.indexOf(y) ? [x, y] : [y, x];
+  const qf = [0, 2, 4, 6].map(i => run(STAGE_NAME.qf, ...hiFirst(r16[i], r16[i + 1]), 2, 'qf'));
+  const sf = [0, 2].map(i => run(STAGE_NAME.sf, ...hiFirst(qf[i], qf[i + 1]), 2, 'sf'));
   const champ = run(STAGE_NAME.final, sf[0], sf[1], 1, 'final');
   if (pos > 24) stage = 'league';
   ev.push({ k: 'end', stage, champ });
@@ -2623,7 +2625,9 @@ function koBox(c, st){
   cols.forEach((ts, ci) => ts.forEach((t, i) => {
     if (!t) return;
     const mode = st[KO_KEYS[ci]] || 'full', mine = mode !== 'hidden' && (t.a === 'YOU' || t.b === 'YOU');
-    const inner = ci === 1 && c.brk && !drawn ? ghost(i) : line(t.a, t, mode, ci) + line(t.b, t, mode, ci);
+    // rows keep the bracket's order (the winner from above on top), whoever hosts the second leg
+    const up = ci >= 2 && cols[ci - 1][2 * i] ? cols[ci - 1][2 * i].w : t.a, ab = up === t.b ? [t.b, t.a] : [t.a, t.b];
+    const inner = ci === 1 && c.brk && !drawn ? ghost(i) : line(ab[0], t, mode, ci) + line(ab[1], t, mode, ci);
     boxes += `<div class="bx${mine ? ' mine' : ''}${ci === 4 ? ' fin' : ''}" style="left:${x(ci)}px;top:${y(ci, i) - BH / 2}px;width:${BW}px;height:${BH}px"${mode === 'full' ? ` title="${esc(nm(t.a))} v ${esc(nm(t.b))}: ${tip(t)}"` : ''}>${ci === 0 ? poLab(i) : ''}${inner}</div>`;
     // the play-off feeds the Round of 16 only once it is over: until then the two rounds stand apart, unconnected
     if (ci > 0 && !(ci === 1 && (st.playoff || 'full') !== 'full')){
@@ -3197,7 +3201,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021215328';
+const BUILD = '20261021215855';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
