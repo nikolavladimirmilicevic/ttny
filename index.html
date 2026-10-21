@@ -519,7 +519,7 @@ body.matchon .ev.live .gflash{top:auto;bottom:6%;font-size:24px}
 .flip.star{animation:gradeflip .45s ease-out,starburst 1.3s ease-out}
 @keyframes gradeflip{0%{transform:perspective(200px) rotateY(90deg)}100%{transform:perspective(200px) rotateY(0)}}
 @keyframes starburst{0%,35%{box-shadow:0 0 0 0 rgba(242,193,78,.95)}100%{box-shadow:0 0 0 22px rgba(242,193,78,0)}}
-#app.revealing .teambox .ovdot.big,#app.revealing .teambox .tnum{color:transparent;filter:grayscale(1)}
+#app.revealing .teambox .ovdot.big,#app.revealing .teambox .tnum{color:transparent!important;filter:grayscale(1)}
 .revhint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px;letter-spacing:.04em}
 .rpath{display:flex;align-items:center;justify-content:center;margin-top:16px}
 .rpath .st{font:600 11px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;padding:5px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
@@ -3018,7 +3018,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261020230745';
+const BUILD = '20261021053725';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
