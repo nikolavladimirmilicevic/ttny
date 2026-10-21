@@ -403,6 +403,8 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .pc-tags{display:block;line-height:1}.pc-tags .tag{white-space:nowrap;display:inline-block;line-height:1.4;margin:0 4px 0 0;vertical-align:middle}
 .pc-part{grid-template-columns:1fr auto 34px}.pc-part>:last-child{justify-self:end}
 .pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+.radar{display:block;width:100%;max-width:240px;margin:0 auto}.radar .rg polygon,.radar .rg line{fill:none;stroke:rgba(243,239,230,.22);stroke-width:1}.radar .rg polygon:first-child{fill:rgba(243,239,230,.05);stroke:rgba(243,239,230,.35);stroke-width:1.5}
+.radar .rv{fill:rgba(226,74,92,.18);stroke:#E24A5C;stroke-width:2;stroke-linejoin:round}.radar text{font:700 13px var(--display);fill:var(--text);letter-spacing:.02em}
 .pc-g{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;color:var(--muted);min-width:0}
 .pc-g span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc-g .gt{font-size:10px;padding:0 5px;min-width:18px;text-align:center}
 @media (pointer:coarse){.pcard.sheet .pc-g{font-size:13px}.pcard.sheet .pc-g .gt{font-size:12px}}
@@ -1684,6 +1686,20 @@ const CARD_GRADES = [['Finishing', 'Goals per 90 minutes, penalties left out', 1
   ['Versatility', 'Positions he started in more than once', 1], ['Momentum', 'Ratings in the last 3 months against before'], ['Away form', 'Match ratings away from home'], ['Involvement', 'Goals and assists per 90 minutes', 1]];
 // 4 main grades + 14 here = 18 for outfield players, 4 + 8 = 12 for goalkeepers: always an even number, two full columns
 const teamName = id => (W.C['t' + id] || {}).name || (TEAMS[id] || [])[0] || null;
+/* the card shows no numbers: a hexagon of six things the data can really tell, each from the bottom of all players
+   (centre) to the top (edge). Speed, dribbling and strength are not in the data, so they are not on it. */
+const RADAR = [['SHO', 'Finishing: goals per 90 minutes', (p, rt) => p.gr && p.gr[0]], ['PAS', 'Creativity: assists per 90 minutes', (p, rt) => p.gr && p.gr[1]],
+  ['BIG', 'Big games: match ratings against top-40 clubs', (p, rt) => p.gr && p.gr[4]], ['DEF', 'Defending: clean sheets in his starts', (p, rt) => p.gr && p.gr[9]],
+  ['FRM', 'Form: his last 5 starts', (p, rt) => rt.q.fo], ['LVL', 'Level: how strong the clubs he started for are', (p, rt) => rt.q.pe]];
+function radar(p, rt){
+  const C = 100, Rr = 62, pt = (i, f) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [C + Rr * f * Math.cos(a), C * .9 + Rr * f * Math.sin(a)]; };
+  const ring = f => RADAR.map((_, i) => pt(i, f).map(v => v.toFixed(1)).join(',')).join(' ');
+  const vals = RADAR.map(([k, , g]) => { const v = p.prim === 'GK' && (k === 'SHO' || k === 'PAS') ? 0 : g(p, rt);   // a keeper's goals and assists say nothing return Math.max(.06, Math.min(1, v == null ? 0 : v)); });
+  const shape = vals.map((v, i) => pt(i, v).map(n => n.toFixed(1)).join(',')).join(' ');
+  const spokes = RADAR.map((_, i) => { const [x, y] = pt(i, 1); return `<line x1="${C}" y1="${C * .9}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('');
+  const labels = RADAR.map(([k, t], i) => { const [x, y] = pt(i, 1.32); return `<text x="${x.toFixed(1)}" y="${(y + 5).toFixed(1)}" text-anchor="middle"><title>${t}</title>${k}</text>`; }).join('');
+  return `<svg class="radar" viewBox="0 0 200 180" role="img" aria-label="Profile"><g class="rg"><polygon points="${ring(1)}"/><polygon points="${ring(.5)}"/>${spokes}</g><polygon class="rv" points="${shape}"/>${labels}</svg>`;
+}
 function cardHTML(p){
   const r = S.run, c = W.C[p.club], mine = r && r.picks && r.picks.includes(p.id);
   // after the draft his grades show for your players, and for anyone who played in your challenge (the best XI of it)
@@ -1713,7 +1729,7 @@ function cardHTML(p){
   let season = '';
   if (cs && cs.runs){
     const t = [['cl', 'UCL'], ['el', 'UEL'], ['ecl', 'UECL']].filter(([k]) => cs[k]).map(([k, l]) => `${cs[k]}× ${l}`).join(' · ');
-    season = `<div class="pc-sec"><div class="pc-h">This challenge</div><div class="pc-line" style="display:flex;flex-wrap:wrap;gap:4px 12px"><span><b>${cs.runs}</b> run${cs.runs > 1 ? 's' : ''}</span><span><b>${cs.mp || '–'}</b> played</span><span><b>${cs.g}</b> G · <b>${cs.a}</b> A</span>${cs.rt != null ? `<span>Rating ${rtChip(cs.rt)}</span>` : ''}</div>${t ? `<div style="margin-top:4px">🏆 ${t}</div>` : ''}</div>`;
+    season = `<div class="pc-sec"><div class="pc-h">This challenge</div><div class="pc-line" style="display:flex;flex-wrap:wrap;gap:4px 12px"><span><b>${cs.runs}</b> run${cs.runs > 1 ? 's' : ''}</span><span><b>${cs.mp || '–'}</b> played</span><span><b>${cs.g}</b> G · <b>${cs.a}</b> A</span></div>${t ? `<div style="margin-top:4px">🏆 ${t}</div>` : ''}</div>`;
   } else if (r.cup && mine && !chal){
     const shown = r.phase === 'done' ? r.cup.ev : r.cup.ev.slice(0, r.cup.shown);
     let g = 0, a = 0, n = 0;
@@ -1721,7 +1737,7 @@ function cardHTML(p){
     if (n) season = `<div class="pc-sec pc-line"><span class="pc-h">This run</span><span><b>${n}</b> played · <b>${g}</b> G · <b>${a}</b> A</span></div>`;
   }
   return `${head}
-    <div class="pc-sec pc-grid">${grades}</div>
+    <div class="pc-sec">${radar(p, rt)}</div>
     ${season}
     ${chal ? '' : chemCard(p)}`;
 }
@@ -1856,7 +1872,7 @@ function viewHome(){
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>A new challenge starts with one choice, the difficulty. It sets where you start (Easy in the Champions League, Medium in the Europa League, Hard in the Conference League) and how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots. Win a competition and the next run moves up a level.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Player overalls are never shown. Once your XI is locked, his card shows 18 ratings from 40 to 99 (club strength, playing time, performance, form, finishing and more), and every match gives him a match rating (6 is an ordinary game). Your team's rating, by line (FW, MF, DF), is the average of your 11 (a little lower for anyone away from his main position) plus the chemistry bonus; opponents show no rating at all. Away from his main position a player plays a little below his level: a bit less in a position he plays often, a bit more in a weak one (started in at most half as often as his main one). Weak positions are faded on his card.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Player overalls are never shown. Once your XI is locked, his card shows a hexagon of six things the data can tell (finishing, creativity, big games, clean sheets, form, level), with no numbers, and every match gives him a match rating (6 is an ordinary game). Your team's rating, by line (FW, MF, DF), is the average of your 11 (a little lower for anyone away from his main position) plus the chemistry bonus; opponents show no rating at all. Away from his main position a player plays a little below his level: a bit less in a position he plays often, a bit more in a weak one (started in at most half as often as his main one). Weak positions are faded on his card.</li>
         <li>The draft starts in 4-2-2-2 and keeps that shape while it still works; when it stops working, another one that works is picked at random. A player can only be picked if he still fits one of the 14 formations. At the end you choose the shape yourself.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>The further you go, the more players you keep: out in the league phase 5 (in the Conference League that ends the challenge), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
@@ -3079,7 +3095,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021120135';
+const BUILD = '20261021193047';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
