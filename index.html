@@ -1696,32 +1696,69 @@ const teamName = id => (W.C['t' + id] || {}).name || (TEAMS[id] || [])[0] || nul
 /* the card shows no numbers: a hexagon of six things the data can really tell, each from the bottom of all players
    (centre) to the top (edge). Speed, dribbling and strength are not in the data, so they are not on it. */
 /* the profile hexagon, as on football cards: shooting, passing, strength, defending, speed, dribbling. Speed, dribbling and
-   strength are not in the data, so every axis is an estimate built in three layers:
-   1. what his positions usually ask for (a mix by how often he started in each),
-   2. his own numbers where they say something (goals, assists, involvement, late goals, clean sheets, minutes, width, age),
-      each a percentile within his line (keepers, defenders, midfielders, forwards),
-   3. the level he does it at: the clubs he plays for, his performance against the opposition, big games. */
+   strength are not in the data, so every axis is an estimate, worked out on one scale (standard deviations, "z"):
+     score = what his positions usually ask for            (the position profile, as a z)
+           + his own numbers, as far as his minutes let us trust them   (each a z against players of his main position;
+             goals and assists first scaled by the strength of the clubs he scored for)
+           + his age on that skill's curve                 (speed peaks young, strength and passing later)
+           + the level he does it at                       (clubs, performance against the opposition, big games)
+   and the hexagon shows where that score ranks among all players, axis by axis (the centre is the bottom, the edge the top). */
 const RADAR_AXES = ['SHO', 'PAS', 'STR', 'DEF', 'SPD', 'DRI'];
-const POS_PRIOR = {   // SHO PAS STR DEF SPD DRI
+const POS_PRIOR = {   // SHO PAS STR DEF SPD DRI: how much each position asks for each skill (0-1)
   GK: [.06, .32, .55, .45, .25, .10], CB: [.22, .42, .80, .80, .42, .26], LB: [.26, .52, .50, .66, .76, .50], RB: [.26, .52, .50, .66, .76, .50],
   DMF: [.36, .66, .62, .66, .46, .45], CMF: [.46, .71, .56, .50, .50, .56], LMF: [.50, .60, .42, .36, .72, .66], RMF: [.50, .60, .42, .36, .72, .66],
   AMF: [.62, .78, .36, .26, .56, .76], LWF: [.66, .60, .36, .20, .82, .80], RWF: [.66, .60, .36, .20, .82, .80], CF: [.80, .46, .62, .16, .66, .56] };
-function profile(p, rt){
-  const w = p.pc && p.pc.length === p.pos.length ? p.pc : p.pos.map((_, i) => i ? 1 : 3), tot = w.reduce((t, x) => t + x, 0) || 1;
-  const base = [0, 1, 2, 3, 4, 5].map(k => p.pos.reduce((t, c, i) => t + (POS_PRIOR[c] || POS_PRIOR.CMF)[k] * w[i], 0) / tot);
-  const g = i => (p.gr && p.gr[i] != null ? p.gr[i] : .5) - .5, age = p.age || 26, wide = Math.abs(p.lat || 0);
-  const own = [
-    .34 * g(0) + .08 * g(3),                                  // SHO: non-penalty goals per 90, late goals
-    .34 * g(1) + .10 * g(13),                                 // PAS: assists per 90, goals and assists per 90
-    .12 * g(6) + (age <= 30 ? Math.max(-.05, Math.min(.06, .012 * (age - 22))) : Math.max(-.04, .06 - .02 * (age - 30))),   // STR: minutes he lasts, a grown man's body (fading after 30)
-    .24 * g(9) + .08 * g(8),                                  // DEF: clean sheets and wins in his starts
-    (age <= 24 ? .04 : -Math.min(.18, .022 * (age - 24))) + .08 * wide,     // SPD: young legs, the wide channels
-    .14 * g(13) + .10 * g(1) + .05 * g(10) + (age <= 23 ? .03 : age >= 31 ? -.03 : 0)];   // DRI: involvement, creativity, versatility
-  const q = .5 * (rt.q.pe != null ? rt.q.pe : .5) + .3 * (rt.q.pf != null ? rt.q.pf : .5) + .2 * (p.gr && p.gr[4] != null ? p.gr[4] : .5);
-  return base.map((b, k) => Math.max(.05, Math.min(.98, b + own[k] + .30 * (q - .5))));
+// age curves, in z: [age, value] points joined by straight lines (speed peaks early, strength and passing late)
+const AGE_CURVE = [
+  [[17, -.35], [23, 0], [28, .12], [31, .05], [35, -.25]],    // SHO
+  [[17, -.45], [23, 0], [29, .2], [33, .2], [37, .05]],       // PAS
+  [[17, -.7], [23, 0], [28, .25], [31, .25], [35, -.1]],      // STR
+  [[17, -.45], [24, 0], [29, .2], [32, .15], [36, -.2]],      // DEF
+  [[17, .25], [23, .3], [26, 0], [30, -.3], [34, -.7], [38, -1.1]],      // SPD
+  [[17, .1], [24, .1], [28, 0], [32, -.35], [36, -.8]]];      // DRI
+const ageZ = (k, a) => { const c = AGE_CURVE[k]; if (a <= c[0][0]) return c[0][1]; for (let i = 1; i < c.length; i++) if (a <= c[i][0]){ const [x0, y0] = c[i - 1], [x1, y1] = c[i]; return y0 + (y1 - y0) * (a - x0) / (x1 - x0); } return c[c.length - 1][1]; };
+// the inverse of the normal curve (Acklam): a percentile as standard deviations
+function probit(q){
+  q = Math.min(.995, Math.max(.005, q)); const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239],
+    b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155911624], c = [-.007784894002430293, -.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783], d = [.007784695709041462, .3224671290700398, 2.445134137142996, 3.754408661907416];
+  if (q < .02425){ const t = Math.sqrt(-2 * Math.log(q)); return (((((c[0] * t + c[1]) * t + c[2]) * t + c[3]) * t + c[4]) * t + c[5]) / ((((d[0] * t + d[1]) * t + d[2]) * t + d[3]) * t + 1); }
+  if (q > .97575){ const t = Math.sqrt(-2 * Math.log(1 - q)); return -(((((c[0] * t + c[1]) * t + c[2]) * t + c[3]) * t + c[4]) * t + c[5]) / ((((d[0] * t + d[1]) * t + d[2]) * t + d[3]) * t + 1); }
+  const t = q - .5, r = t * t; return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * t / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
 }
+const clampZ = z => Math.max(-3, Math.min(3, z));
+// goals and assists per 90, scaled by how strong his clubs are (a goal for a top club against top opposition is worth more)
+const rates = p => { const mn = p.mn || (p.starts || 0) * 85, m = .6 + .8 * (p.lvl != null ? p.lvl : .5);
+  return { mn, npg: Math.max(0, (p.ga != null ? p.ga : p.g || 0) - (p.pk || 0)) / Math.max(mn, 1) * 90 * m, ast: (p.aa != null ? p.aa : p.a || 0) / Math.max(mn, 1) * 90 * m }; };
+// mean and spread of those rates among players of each main position with at least 900 minutes (once per data load)
+function posRates(){
+  if (W._posRates) return W._posRates; const acc = {};
+  for (const p of Object.values(W.P)){ const r = rates(p); if (r.mn < 900) continue; const o = acc[p.prim] = acc[p.prim] || { npg: [], ast: [] }; o.npg.push(r.npg); o.ast.push(r.ast); }
+  const ms = L => { const m = L.reduce((t, x) => t + x, 0) / (L.length || 1), sd = Math.sqrt(L.reduce((t, x) => t + (x - m) * (x - m), 0) / (L.length || 1)) || 1; return [m, sd]; };
+  W._posRates = Object.fromEntries(Object.entries(acc).map(([k, o]) => [k, { npg: ms(o.npg), ast: ms(o.ast) }]));
+  return W._posRates;
+}
+function profileScore(p){
+  const w = p.pc && p.pc.length === p.pos.length ? p.pc : p.pos.map((_, i) => i ? 1 : 3), tot = w.reduce((t, x) => t + x, 0) || 1;
+  const prior = [0, 1, 2, 3, 4, 5].map(k => 1.6 * probit(p.pos.reduce((t, c, i) => t + (POS_PRIOR[c] || POS_PRIOR.CMF)[k] * w[i], 0) / tot));   // the position carries most of the shape
+  const r = rates(p), pr = posRates()[p.prim] || { npg: [0, 1], ast: [0, 1] }, rel = r.mn / (r.mn + 900);   // how far his minutes let us trust his numbers
+  const zr = (v, [m, sd]) => clampZ((v - m) / sd), zg = i => p.gr && p.gr[i] != null ? probit(p.gr[i]) : 0;
+  const zNpg = zr(r.npg, pr.npg), zAst = zr(r.ast, pr.ast), age = p.age || 26, wide = Math.abs(p.lat || 0);
+  const own = [
+    .55 * zNpg + .10 * zg(3),                 // SHO: non-penalty goals per 90 (club-strength scaled), late goals
+    .50 * zAst + .20 * zg(13),                // PAS: assists per 90 (scaled), goals + assists per 90
+    .25 * zg(6),                              // STR: the minutes he lasts
+    .40 * zg(9) + .15 * zg(8),                // DEF: clean sheets and wins in his starts
+    .55 * wide - .15,                         // SPD: the wide channels ask for pace
+    .30 * zg(13) + .20 * zAst + .10 * zg(10)];  // DRI: involvement, creativity, versatility
+  const zq = probit(.5 * (p.lvl != null ? p.lvl : .5) + .3 * (p.pf != null ? p.pf : .5) + .2 * (p.gr && p.gr[4] != null ? p.gr[4] : .5));
+  const WQ = [.35, .35, .2, .3, .15, .35];   // how much the level counts: more for skills, less for the body
+  return prior.map((z, k) => z + rel * own[k] + ageZ(k, age) + WQ[k] * zq);
+}
+// the score on the hexagon's 0-1: the normal curve at score / 1.5, so a typical player at a position sits where his position puts him
+const normCdf = z => { const t = 1 / (1 + .2316419 * Math.abs(z)), d = .3989423 * Math.exp(-z * z / 2), q = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - q : q; };
+const profile = p => profileScore(p).map(z => .06 + .92 * normCdf(z / 1.5));
 function radar(p, rt){
-  const vals = profile(p, rt);
+  const vals = profile(p);
   const CX = 130, CY = 104, Rr = 74, pt = (i, f) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [CX + Rr * f * Math.cos(a), CY + Rr * f * Math.sin(a)]; };
   const P = (i, f) => pt(i, f).map(v => v.toFixed(1)).join(',');
   const ring = f => RADAR_AXES.map((_, i) => P(i, f)).join(' ');
@@ -3129,7 +3166,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021201050';
+const BUILD = '20261021201553';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
