@@ -1727,7 +1727,7 @@ function cardHTML(p){
 function chalStats(hist, pid){
   const o = { runs: 0, mp: 0, g: 0, a: 0, cl: 0, el: 0, ecl: 0, rs: 0, rn: 0 };
   for (const h of hist){ const x = (h.xi || []).find(q => q.id === pid); if (!x) continue;
-    o.runs++; o.mp += x.mp || 0; o.g += x.g || 0; o.a += x.a || 0; if (h.stage === 'champion' && o[h.comp] != null) o[h.comp]++;
+    o.runs++; o.mp += x.mp || ((h.w || 0) + (h.d || 0) + (h.l || 0)); o.g += x.g || 0; o.a += x.a || 0; if (h.stage === 'champion' && o[h.comp] != null) o[h.comp]++;
     if (x.rt != null){ const n = x.mp || 1; o.rs += x.rt * n; o.rn += n; } }
   o.rt = o.rn ? o.rs / o.rn : null; return o;
 }
@@ -2698,19 +2698,19 @@ async function seasonImage(h){
   txt(x, 'This Time Next Year', W_ - 60, 1328, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   return cv;
 }
-/* the best XI of the challenge: everyone who played in it, ranked by Champions League, Europa League and Conference League
-   titles, then his average match rating over the challenge, then who was drafted earlier; the first 11 who still fit a
-   formation. The captain: the most matches in the challenge, then the one drafted earliest. */
+/* the best XI of the challenge: everyone who played in it, ranked by matches played in the challenge, then who was
+   drafted earlier; the first 11 who still fit a formation. The captain: the same order, so the first of them. */
 function dynastyBestXI(hist){
   const st = {};
   for (const h of hist) for (const p of h.xi || []){
     const v = st[p.id] = st[p.id] || { id: p.id, n: p.n, s: 0, cl: 0, el: 0, ecl: 0, g: 0, a: 0, cs: 0, mp: 0, rs: 0, d: h.season * 100 + (p.o != null && p.o >= 0 ? p.o : 50) };
     v.s++; v.g += p.g || 0; v.a += p.a || 0; if (p.code === 'GK') v.cs += h.cs || 0;
-    const mp = p.mp || (p.rt != null ? 1 : 0); v.mp += p.mp || 0; if (p.rt != null){ v.rs += p.rt * mp; v.rn = (v.rn || 0) + mp; }
+    const mp = p.mp || ((h.w || 0) + (h.d || 0) + (h.l || 0));   // runs saved before matches were counted: that run's matches
+    v.mp += mp; if (p.rt != null){ v.rs += p.rt * mp; v.rn = (v.rn || 0) + mp; }
     if (h.stage === 'champion' && v[h.comp] != null) v[h.comp]++;   // titles he won: Champions, Europa, Conference League
   }
   for (const v of Object.values(st)) v.rt = v.rn ? v.rs / v.rn : null;
-  const ranked = Object.values(st).filter(v => W.P[v.id]).sort((a, b) => b.cl - a.cl || b.el - a.el || b.ecl - a.ecl || (b.rt || 0) - (a.rt || 0) || a.d - b.d);
+  const ranked = Object.values(st).filter(v => W.P[v.id]).sort((a, b) => b.mp - a.mp || a.d - b.d);
   let picks = [];
   for (const v of ranked){ if (picks.length === 11) break; const t = [...picks, v.id]; if (FORM_ORDER.some(f => assign(t, f))) picks = t; }
   if (picks.length < 11) return null;
@@ -3069,7 +3069,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021104628';
+const BUILD = '20261021110038';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
