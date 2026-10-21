@@ -1732,19 +1732,23 @@ const rates = p => { const mn = p.mn || (p.starts || 0) * 85, m = .6 + .8 * (p.l
 // mean and spread of those rates among players of each main position with at least 900 minutes (once per data load)
 function posRates(){
   if (W._posRates) return W._posRates; const acc = {};
-  for (const p of Object.values(W.P)){ const r = rates(p); if (r.mn < 900) continue; const o = acc[p.prim] = acc[p.prim] || { npg: [], ast: [] }; o.npg.push(r.npg); o.ast.push(r.ast); }
+  for (const p of Object.values(W.P)){ const r = rates(p); if (r.mn < 900) continue; const o = acc[p.prim] = acc[p.prim] || { npg: [], ast: [], rt: [] }; o.npg.push(r.npg); o.ast.push(r.ast); if (p.rt) o.rt.push(p.rt); }
   const ms = L => { const m = L.reduce((t, x) => t + x, 0) / (L.length || 1), sd = Math.sqrt(L.reduce((t, x) => t + (x - m) * (x - m), 0) / (L.length || 1)) || 1; return [m, sd]; };
-  W._posRates = Object.fromEntries(Object.entries(acc).map(([k, o]) => [k, { npg: ms(o.npg), ast: ms(o.ast) }]));
+  W._posRates = Object.fromEntries(Object.entries(acc).map(([k, o]) => [k, { npg: ms(o.npg), ast: ms(o.ast), rt: ms(o.rt) }]));
   return W._posRates;
 }
 function profileScore(p){
   const w = p.pc && p.pc.length === p.pos.length ? p.pc : p.pos.map((_, i) => i ? 1 : 3), tot = w.reduce((t, x) => t + x, 0) || 1;
-  const prior = [0, 1, 2, 3, 4, 5].map(k => 1.6 * probit(p.pos.reduce((t, c, i) => t + (POS_PRIOR[c] || POS_PRIOR.CMF)[k] * w[i], 0) / tot));   // the position carries most of the shape
-  const r = rates(p), pr = posRates()[p.prim] || { npg: [0, 1], ast: [0, 1] }, rel = r.mn / (r.mn + 900);   // how far his minutes let us trust his numbers
+  const mix = [0, 1, 2, 3, 4, 5].map(k => p.pos.reduce((t, c, i) => t + (POS_PRIOR[c] || POS_PRIOR.CMF)[k] * w[i], 0) / tot);
+  const prior = mix.map(v => 1.6 * probit(v));   // the position carries most of the shape
+  const r = rates(p), pr = posRates()[p.prim] || { npg: [0, 1], ast: [0, 1], rt: [6.7, .3] }, rel = r.mn / (r.mn + 900);   // how far his minutes let us trust his numbers
   const zr = (v, [m, sd]) => clampZ((v - m) / sd), zg = i => p.gr && p.gr[i] != null ? probit(p.gr[i]) : 0;
   const zNpg = zr(r.npg, pr.npg), zAst = zr(r.ast, pr.ast), age = p.age || 26, wide = Math.abs(p.lat || 0);
+  // his match ratings against others at his position: they speak for the skills his position is judged on (a striker's
+  // rating is about shooting, a centre-back's about defending), so each axis takes them in by how much his position asks for it
+  const zRt = p.rt ? zr(p.rt, pr.rt) : 0, rtw = mix.map((v, k) => (k === 2 || k === 4 ? .12 : .35) * v);   // the body (STR, SPD) shows less in a rating
   const own = [
-    .55 * zNpg + .10 * zg(3),                 // SHO: non-penalty goals per 90 (club-strength scaled), late goals
+    .55 * zNpg + .10 * zg(3) + .06 * zg(2),   // SHO: non-penalty goals per 90 (club-strength scaled), late goals, penalties
     .50 * zAst + .20 * zg(13),                // PAS: assists per 90 (scaled), goals + assists per 90
     .25 * zg(6),                              // STR: the minutes he lasts
     .40 * zg(9) + .15 * zg(8),                // DEF: clean sheets and wins in his starts
@@ -1752,7 +1756,7 @@ function profileScore(p){
     .30 * zg(13) + .20 * zAst + .10 * zg(10)];  // DRI: involvement, creativity, versatility
   const zq = probit(.5 * (p.lvl != null ? p.lvl : .5) + .3 * (p.pf != null ? p.pf : .5) + .2 * (p.gr && p.gr[4] != null ? p.gr[4] : .5));
   const WQ = [.35, .35, .2, .3, .15, .35];   // how much the level counts: more for skills, less for the body
-  return prior.map((z, k) => z + rel * own[k] + ageZ(k, age) + WQ[k] * zq);
+  return prior.map((z, k) => z + rel * (own[k] + rtw[k] * zRt) + ageZ(k, age) + WQ[k] * zq);
 }
 // the score on the hexagon's 0-1: the normal curve at score / 1.5, so a typical player at a position sits where his position puts him
 const normCdf = z => { const t = 1 / (1 + .2316419 * Math.abs(z)), d = .3989423 * Math.exp(-z * z / 2), q = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - q : q; };
@@ -3166,7 +3170,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021201553';
+const BUILD = '20261021201909';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
