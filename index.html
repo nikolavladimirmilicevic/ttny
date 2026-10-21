@@ -335,7 +335,7 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .bl.w{color:var(--text);font-weight:600}.bl.me .bn{color:var(--gold)}
 .bn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}.bn small{font-size:9.5px;font-weight:400;color:var(--muted)}.bs{flex:none}
 .bl .sd{flex:none;width:18px;text-align:right;font-size:10px;color:var(--muted);font-weight:400}.bl .s1,.bl .s2{flex:none;width:14px;text-align:center;color:var(--muted);font-weight:400}
-.bl .sa{flex:none;min-width:18px;text-align:right}.bl .sa small{font-size:9.5px;font-weight:400;color:var(--muted)}.bl.tbd{opacity:.4}.bl.tbd .bn{border-bottom:1px dashed var(--line)}.bs small{font-size:10px;color:var(--muted);margin-right:4px;font-weight:400}
+.bl .sa{flex:none;min-width:18px;text-align:right}.bl .sa small{font-size:9.5px;font-weight:400;color:var(--muted)}.bl.tbd{opacity:.4}.bl.ph{opacity:.55}.bl.ph .bn{border-bottom:0;font-size:12px}.bx .pl{position:absolute;right:8px;top:-7px;padding:0 5px;border-radius:4px;background:var(--panel-2);border:1px solid var(--line);font-size:9px;line-height:12px;color:var(--muted);letter-spacing:.04em}.bl.tbd .bn{border-bottom:1px dashed var(--line)}.bs small{font-size:10px;color:var(--muted);margin-right:4px;font-weight:400}
 .tbldet summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none}.tbldet summary::-webkit-details-marker{display:none}
 .tbldet[open] summary{margin-bottom:10px}.tbldet .ev{background:transparent;padding:0;animation:none}
 .verdict h1{font-size:clamp(40px,11vw,76px);font-weight:700}
@@ -2594,7 +2594,13 @@ function koBox(c, st){
   const po = by('playoff'), r16 = by('r16'), qf = by('qf'), sf = by('sf'), fi = by('final');
   // R16 slot j is fed by play-off tie brk[j] (runs from before the real bracket: seed [1,8,4,5,2,7,3,6][j] and tie 7 - k)
   const ORDER = [0, 7, 3, 4, 1, 6, 2, 5];
-  const cols = [c.brk ? c.brk.map(i => po[i]) : ORDER.map(k => po[7 - k]), r16, qf, sf, fi];   // older runs: the fixed bracket
+  // until the Round of 16 draw (made once the play-off is over) the play-off stands in its pairings, I to IV, and the
+  // Round of 16 shows only who meets whom (1/2 v the winners of IV ...): which half a club goes to is still to be drawn
+  const drawn = (st.playoff || 'full') === 'full';
+  const cols = [c.brk ? (drawn ? c.brk.map(i => po[i]) : po) : ORDER.map(k => po[7 - k]), r16, qf, sf, fi];   // older runs: the fixed bracket
+  const ROM = ['I', 'II', 'III', 'IV'], SLOT = [['1/2', 3], ['7/8', 0], ['3/4', 2], ['5/6', 1]];
+  const ghost = i => { const [sd, p] = SLOT[i % 4]; return `<div class="bl tbd ph"><span class="sd"></span><span class="bn">Seed ${sd}</span></div><div class="bl tbd ph"><span class="sd"></span><span class="bn">Winner play-off ${ROM[p]}</span></div>`; };
+  const poLab = i => !c.brk || drawn ? '' : `<span class="pl">${ROM[i >> 1]}</span>`;
   const names = ['Play-off', 'Round of 16', 'Quarter-finals', 'Semi-finals', 'Final'];
   const BW = 212, GAP = 26, RH = 62, BH = 50, TOP = 26, H = TOP + 8 * RH;
   // seeds: the final league-phase position, known once the league phase is over
@@ -2617,7 +2623,8 @@ function koBox(c, st){
   cols.forEach((ts, ci) => ts.forEach((t, i) => {
     if (!t) return;
     const mode = st[KO_KEYS[ci]] || 'full', mine = mode !== 'hidden' && (t.a === 'YOU' || t.b === 'YOU');
-    boxes += `<div class="bx${mine ? ' mine' : ''}${ci === 4 ? ' fin' : ''}" style="left:${x(ci)}px;top:${y(ci, i) - BH / 2}px;width:${BW}px;height:${BH}px"${mode === 'full' ? ` title="${esc(nm(t.a))} v ${esc(nm(t.b))}: ${tip(t)}"` : ''}>${line(t.a, t, mode, ci)}${line(t.b, t, mode, ci)}</div>`;
+    const inner = ci === 1 && c.brk && !drawn ? ghost(i) : line(t.a, t, mode, ci) + line(t.b, t, mode, ci);
+    boxes += `<div class="bx${mine ? ' mine' : ''}${ci === 4 ? ' fin' : ''}" style="left:${x(ci)}px;top:${y(ci, i) - BH / 2}px;width:${BW}px;height:${BH}px"${mode === 'full' ? ` title="${esc(nm(t.a))} v ${esc(nm(t.b))}: ${tip(t)}"` : ''}>${ci === 0 ? poLab(i) : ''}${inner}</div>`;
     // the play-off feeds the Round of 16 only once it is over: until then the two rounds stand apart, unconnected
     if (ci > 0 && !(ci === 1 && (st.playoff || 'full') !== 'full')){
       const kids = ci === 1 ? [i] : [2 * i, 2 * i + 1], x2 = x(ci), y2 = y(ci, i);
@@ -3190,7 +3197,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021214602';
+const BUILD = '20261021215328';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
