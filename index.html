@@ -334,22 +334,6 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .bl{display:flex;align-items:center;gap:6px;color:var(--muted);line-height:1.5}
 .bl.w{color:var(--text);font-weight:600}.bl.me .bn{color:var(--gold)}
 .bn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}.bn small{font-size:9.5px;font-weight:400;color:var(--muted)}.bs{flex:none}
-/* the bracket as on Wikipedia: header boxes, bordered cells, seed, flag and club, both legs, the aggregate */
-.bracket.wiki .bh{top:0;height:24px;display:grid;place-items:center;background:#eaecf0;border:1px solid #a2a9b1;color:#202122;font:400 13px/1 var(--body);letter-spacing:0;text-transform:none}
-.bracket.wiki .bx{background:transparent;border:0;border-radius:0;padding:0;gap:0;box-shadow:none;font:400 13px/1 var(--body)}
-.bracket.wiki .bx.mine{box-shadow:0 0 0 2px var(--gold)}
-.bracket.wiki .bl{align-items:stretch;display:grid;grid-template-columns:24px minmax(0,1fr) 20px 20px 26px;gap:0;height:23px;line-height:21px;color:#202122;opacity:1}
-.bracket.wiki .bx.fin .bl{grid-template-columns:24px minmax(0,1fr) 30px}
-.bracket.wiki .bl > *{border:1px solid #a2a9b1;margin:0 -1px -1px 0;background:#f8f9fa;padding:0 4px;text-align:center;width:auto;min-width:0;font-size:12.5px;color:#202122}
-.bracket.wiki .bl .sd{background:#eaecf0;text-align:center;padding:0;font-size:11.5px}
-.bracket.wiki .bl .bn{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
-.bracket.wiki .bl .bt{color:#3366cc}.bracket.wiki .bl.w .bt,.bracket.wiki .bl.w .sa{font-weight:700}
-.bracket.wiki .bl .flag{font-size:12px;margin-right:5px}
-.bracket.wiki .bl .bn small,.bracket.wiki .bl .sa small{font-size:11px;color:#202122;font-weight:400}
-.bracket.wiki .bl .s1,.bracket.wiki .bl .s2{color:#202122;font-weight:400}
-.bracket.wiki .bl.me > *{background:#fef6e7}.bracket.wiki .bl.me .bt{color:#0645ad;font-weight:700}
-.bracket.wiki .bl.beaten .bn{text-decoration:none;opacity:1}.bracket.wiki .bl.tbd{opacity:1}.bracket.wiki .bl.tbd .bn{border-bottom:1px solid #a2a9b1}
-.bracket.wiki path{stroke:#a2a9b1;stroke-width:1.5}.bracket.wiki path.hot{stroke:var(--gold);stroke-width:3}
 .bl .sd{flex:none;width:18px;text-align:right;font-size:10px;color:var(--muted);font-weight:400}.bl .s1,.bl .s2{flex:none;width:14px;text-align:center;color:var(--muted);font-weight:400}
 .bl .sa{flex:none;min-width:18px;text-align:right}.bl .sa small{font-size:9.5px;font-weight:400;color:var(--muted)}.bl.tbd{opacity:.4}.bl.tbd .bn{border-bottom:1px dashed var(--line)}.bs small{font-size:10px;color:var(--muted);margin-right:4px;font-weight:400}
 .tbldet summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none}.tbldet summary::-webkit-details-marker{display:none}
@@ -2500,8 +2484,8 @@ function koBox(c, st){
   // R16 slot j holds seed k = [1,8,4,5,2,7,3,6][j] - 1 and the winner of play-off tie 7 - k
   const ORDER = [0, 7, 3, 4, 1, 6, 2, 5];
   const cols = [ORDER.map(k => po[7 - k]), r16, qf, sf, fi];
-  const names = ['Knockout phase play-offs', 'Round of 16', 'Quarter-finals', 'Semi-finals', 'Final'];
-  const BW = 250, GAP = 26, RH = 62, BH = 46, TOP = 34, H = TOP + 8 * RH;
+  const names = ['Play-off', 'Round of 16', 'Quarter-finals', 'Semi-finals', 'Final'];
+  const BW = 212, GAP = 26, RH = 62, BH = 50, TOP = 26, H = TOP + 8 * RH;
   // seeds: the final league-phase position, known once the league phase is over
   const seed = {}; if (c.lg && c.lg.length) tableAfter(c, c.lg.length).forEach((t, i) => seed[t.id] = i + 1);
   const x = ci => ci * (BW + GAP), y = (ci, i) => TOP + (i + 0.5) * (8 / cols[ci].length) * RH;
@@ -2510,13 +2494,12 @@ function koBox(c, st){
     const i = id === t.a ? 0 : 1, one = t.legs.length === 1;
     // the Round of 16 seeds (top 8) are in place from the end of the league phase; the rest arrive round by round
     const known = mode !== 'hidden' || (ci === 1 && seed[id] && seed[id] <= 8);
-    if (!known) return `<div class="bl tbd"><span class="sd"></span><span class="bn"></span>${one ? '' : '<span class="s1"></span><span class="s2"></span>'}<b class="sa"></b></div>`;
+    if (!known) return `<div class="bl tbd"><span class="sd"></span><span class="bn">&nbsp;</span></div>`;
     const l1 = mode === 'leg1' || mode === 'full' ? t.legs[0][i] : '', l2 = mode === 'full' && !one ? t.legs[1][i] : '';
     const full = mode === 'full', won = full && id === t.w, beaten = full && !won && t.w === 'YOU';
-    const xt = full && won ? (t.pens ? ` <small>(p)</small>` : t.et ? ` <small>(a.e.t.)</small>` : '') : '';
-    const fl = id === 'YOU' ? '' : (() => { const cn = COUNTRY[(W.C[id] || {}).ctry]; const f = cn && flagOf(cn); return f ? `<span class="flag">${f}</span>` : ''; })();
+    const xt = full && won ? (t.pens ? ` <small>(p)</small>` : t.et ? ` <small>(aet)</small>` : '') : '';
     const agg = full ? `${t.agg[i]}${t.pens ? `<small> (${t.pens[i]})</small>` : ''}` : '';
-    return `<div class="bl${won ? ' w' : ''}${id === 'YOU' ? ' me' : ''}${beaten ? ' beaten' : ''}"><span class="sd num">${seed[id] || ''}</span><span class="bn">${fl}<span class="bt">${esc(nm(id))}</span>${xt}</span>${one ? '' : `<span class="s1 num">${l1}</span><span class="s2 num">${l2}</span>`}<b class="sa num">${one ? (full ? agg : l1) : agg}</b></div>`;
+    return `<div class="bl${won ? ' w' : ''}${id === 'YOU' ? ' me' : ''}${beaten ? ' beaten' : ''}"><span class="sd num">${seed[id] || ''}</span><span class="bn">${esc(nm(id))}${xt}</span>${one ? '' : `<span class="s1 num">${l1}</span><span class="s2 num">${l2}</span>`}<b class="sa num">${one ? (full ? agg : l1) : agg}</b></div>`;
   };
   const tip = t => t.legs.map(l => `${l[0]}:${l[1]}`).join(', ') + (t.et ? ` · aet ${t.et[0]}:${t.et[1]}` : '') + (t.pens ? ` · pens ${t.pens[0]}:${t.pens[1]}` : '');
   let boxes = '', paths = '';
@@ -2524,7 +2507,8 @@ function koBox(c, st){
     if (!t) return;
     const mode = st[KO_KEYS[ci]] || 'full', mine = mode !== 'hidden' && (t.a === 'YOU' || t.b === 'YOU');
     boxes += `<div class="bx${mine ? ' mine' : ''}${ci === 4 ? ' fin' : ''}" style="left:${x(ci)}px;top:${y(ci, i) - BH / 2}px;width:${BW}px;height:${BH}px"${mode === 'full' ? ` title="${esc(nm(t.a))} v ${esc(nm(t.b))}: ${tip(t)}"` : ''}>${line(t.a, t, mode, ci)}${line(t.b, t, mode, ci)}</div>`;
-    if (ci > 0){
+    // the play-off feeds the Round of 16 only once it is over: until then the two rounds stand apart, unconnected
+    if (ci > 0 && !(ci === 1 && (st.playoff || 'full') !== 'full')){
       const kids = ci === 1 ? [i] : [2 * i, 2 * i + 1], x2 = x(ci), y2 = y(ci, i);
       for (const k of kids){
         const x1 = x(ci - 1) + BW, y1 = y(ci - 1, k), xm = x1 + GAP / 2, ch = cols[ci - 1][k];
@@ -2541,7 +2525,7 @@ function koBox(c, st){
   else cols.forEach((ts, ci) => { if (ts.some(t => t && (t.a === 'YOU' || t.b === 'YOU'))) fc = ci; });
   if (fc < 0) fc = 0;
   return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Knockout stage</div>
-    <div class="bracket-wrap" data-focus="${Math.max(0, x(fc) - 12)}"><div class="bracket wiki" style="width:${W_}px;height:${H}px">${heads}<svg width="${W_}" height="${H}" aria-hidden="true">${paths}</svg>${boxes}</div></div>
+    <div class="bracket-wrap" data-focus="${Math.max(0, x(fc) - 12)}"><div class="bracket" style="width:${W_}px;height:${H}px">${heads}<svg width="${W_}" height="${H}" aria-hidden="true">${paths}</svg>${boxes}</div></div>
     <div class="muted" style="font-size:12px;margin-top:8px">League-phase position, first leg, second leg, aggregate. <span class="wide-only">Hover a tie for the details.</span><span class="narrow-only">Swipe sideways for the later rounds.</span></div></section>`;
 }
 /* a short text summary of the run, for sending to friends */
@@ -3095,7 +3079,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021115656';
+const BUILD = '20261021120135';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
