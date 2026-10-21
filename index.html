@@ -406,13 +406,16 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .radar{display:block;width:100%;max-width:250px;margin:0 auto;overflow:visible}
 .radar .rg polygon,.radar .rg line{fill:none;stroke:rgba(243,239,230,.12);stroke-width:1}
 .radar .rg polygon:first-child{fill:rgba(243,239,230,.045);stroke:rgba(243,239,230,.32);stroke-width:1.4}
-.radar .rg polygon.mid{stroke:rgba(243,239,230,.38);stroke-dasharray:3 3}
+.radar .ravg{fill:none;stroke:rgba(243,239,230,.6);stroke-width:1.4;stroke-dasharray:4 3;stroke-linejoin:round}
 .radar .rv{transform-origin:var(--cx) var(--cy);animation:rgrow .55s cubic-bezier(.2,.9,.3,1.1)}
 .radar .rv polygon{fill:rgba(226,74,92,.22);stroke:#E9566A;stroke-width:2.2;stroke-linejoin:round;filter:drop-shadow(0 0 6px rgba(233,86,106,.45))}
 .radar .rv circle{fill:#E9566A;stroke:var(--panel-2);stroke-width:1.5}
 .radar text{font:700 14px var(--display);fill:var(--text);letter-spacing:.04em;cursor:help}
 @keyframes rgrow{from{transform:scale(.15);opacity:0}to{transform:none;opacity:1}}
-.rcap{text-align:center;font-size:12px;color:var(--text);margin-top:2px}.rcap span{display:block;color:var(--muted);font-size:10.5px;margin-top:2px}
+.rcap{text-align:center;font-size:12px;color:var(--text);margin-top:2px;line-height:1.35}
+.rleg{display:flex;justify-content:center;gap:14px;margin-top:6px;font-size:10.5px;color:var(--muted)}.rleg i{display:inline-block;width:16px;height:0;vertical-align:middle;margin-right:5px}
+.rleg .lp{border-top:2.2px solid #E9566A}.rleg .la{border-top:1.4px dashed rgba(243,239,230,.7)}
+.rkeys{display:grid;grid-template-columns:repeat(3,1fr);gap:2px 8px;margin-top:8px;font-size:10.5px;color:var(--muted)}.rkeys b{color:var(--text);font:600 11px var(--display);letter-spacing:.04em;margin-right:2px}
 .pc-g{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;color:var(--muted);min-width:0}
 .pc-g span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc-g .gt{font-size:10px;padding:0 5px;min-width:18px;text-align:center}
 @media (pointer:coarse){.pcard.sheet .pc-g{font-size:13px}.pcard.sheet .pc-g .gt{font-size:12px}}
@@ -1701,6 +1704,10 @@ const RADAR = [['SHO', 'Finishing', 'goals per 90 minutes', p => p.gr && p.gr[0]
   ['FRM', 'Form', 'his last 5 starts', (p, rt) => rt.q.fo], ['LVL', 'Level', 'how strong the clubs he started for are', (p, rt) => rt.q.pe]];
 // a keeper's goals and assists say nothing: his top two axes are steadiness and minutes instead
 const RADAR_GK = { SHO: ['CON', 'Consistency', 'how steady his match ratings are', p => p.gr && p.gr[5]], PAS: ['WRK', 'Workload', 'minutes played', p => p.gr && p.gr[6]] };
+// the typical player at a position, axis by axis (cached): the dashed shape the card compares him with
+const radarAvg = (prim, axes) => { const k = prim + axes.map(a => a[0]).join(''); radarAvg.c = radarAvg.c || {};
+  if (!radarAvg.c[k]){ const ps = Object.values(W.P).filter(q => q.prim === prim && q.gr); radarAvg.c[k] = axes.map(a => ps.length ? ps.reduce((t, q) => t + (a[3](q, playerRating(q.id)) || 0), 0) / ps.length : .5); }
+  return radarAvg.c[k]; };
 function radar(p, rt){
   const axes = RADAR.map(a => p.prim === 'GK' && RADAR_GK[a[0]] ? RADAR_GK[a[0]] : a);
   const CX = 130, CY = 104, Rr = 74, pt = (i, f) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [CX + Rr * f * Math.cos(a), CY + Rr * f * Math.sin(a)]; };
@@ -1712,12 +1719,18 @@ function radar(p, rt){
     return `<text x="${x.toFixed(1)}" y="${(y + (y < CY - 40 ? -2 : y > CY + 40 ? 12 : 5)).toFixed(1)}" text-anchor="${anc}"><title>${name}: ${what}</title>${k}</text>`; }).join('');
   const dots = vals.map((v, i) => { const [x, y] = pt(i, v); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3"/>`; }).join('');
   // in words, without numbers: where he stands out
-  const order = vals.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]), top = order.filter(([v]) => v >= .65).slice(0, 2).map(([, i]) => axes[i][1].toLowerCase());
-  const words = top.length ? `Stands out in ${top.join(' and ')}.` : 'No single strength stands out.';
+  // in words, without numbers: where he is clearly above and clearly below the typical player at his position
+  const avg = radarAvg(p.prim, axes), diff = vals.map((v, i) => [v - avg[i], i]).sort((a, b) => b[0] - a[0]);
+  const nm_ = i => axes[i][1].toLowerCase(), and = L => L.length > 1 ? L.slice(0, -1).join(', ') + ' and ' + L[L.length - 1] : L[0];
+  const up = diff.filter(([d]) => d >= .15).slice(0, 2).map(([, i]) => nm_(i)), dn = diff.filter(([d]) => d <= -.15).slice(-2).reverse().map(([, i]) => nm_(i));
+  const words = (up.length ? `Above the typical ${p.prim} in ${and(up)}` : `Close to the typical ${p.prim} everywhere`) + (dn.length ? `; below in ${and(dn)}.` : '.');
   return `<svg class="radar" viewBox="0 0 260 206" role="img" aria-label="Profile: ${esc(words)}" style="--cx:${CX}px;--cy:${CY}px">
-    <g class="rg">${[1, .75, .25].map(f => `<polygon points="${ring(f)}"/>`).join('')}<polygon class="mid" points="${ring(.5)}"/>${spokes}</g>
+    <g class="rg">${[1, .75, .5, .25].map(f => `<polygon points="${ring(f)}"/>`).join('')}${spokes}</g>
+    <polygon class="ravg" points="${avg.map((v, i) => P(i, Math.max(.05, v))).join(' ')}"/>
     <g class="rv"><polygon points="${vals.map((v, i) => P(i, v)).join(' ')}"/>${dots}</g>${labels}</svg>
-    <div class="rcap">${words} <span>Dashed line: the average player.</span></div>`;
+    <div class="rcap">${words}</div>
+    <div class="rleg"><span><i class="lp"></i>${esc(short(p.name))}</span><span><i class="la"></i>Typical ${p.prim}</span></div>
+    <div class="rkeys">${axes.map(([k, name, what]) => `<span title="${esc(what)}"><b>${k}</b> ${name}</span>`).join('')}</div>`;
 }
 function cardHTML(p){
   const r = S.run, c = W.C[p.club], mine = r && r.picks && r.picks.includes(p.id);
@@ -3114,7 +3127,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021200154';
+const BUILD = '20261021200432';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
