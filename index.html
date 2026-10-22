@@ -411,7 +411,6 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .radar .rv circle{fill:#E9566A;stroke:var(--panel-2);stroke-width:1.5}
 .radar text{font:700 14px var(--display);fill:var(--text);letter-spacing:.04em;cursor:help}
 @keyframes rgrow{from{transform:scale(.15);opacity:0}to{transform:none;opacity:1}}
-.rnote{text-align:center;font-size:10.5px;color:var(--muted);margin-top:2px}
 .pc-g{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;color:var(--muted);min-width:0}
 .pc-g span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc-g .gt{font-size:10px;padding:0 5px;min-width:18px;text-align:center}
 @media (pointer:coarse){.pcard.sheet .pc-g{font-size:13px}.pcard.sheet .pc-g .gt{font-size:12px}}
@@ -1792,8 +1791,7 @@ function radar(p, rt){
   const dots = vals.map((v, i) => { const [x, y] = pt(i, v); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3"/>`; }).join('');
   return `<svg class="radar" viewBox="0 0 260 206" role="img" aria-label="Profile: shooting, passing, strength, defending, speed, dribbling" style="--cx:${CX}px;--cy:${CY}px">
     <g class="rg">${[1, .75, .5, .25].map(f => `<polygon points="${ring(f)}"/>`).join('')}${spokes}</g>
-    <g class="rv"><polygon points="${vals.map((v, i) => P(i, v)).join(' ')}"/>${dots}</g>${labels}</svg>
-    <div class="rnote">Estimated from his positions, his numbers, his age and the level he plays at.</div>`;
+    <g class="rv"><polygon points="${vals.map((v, i) => P(i, v)).join(' ')}"/>${dots}</g>${labels}</svg>`;
 }
 function cardHTML(p){
   const r = S.run, c = W.C[p.club], mine = r && r.picks && r.picks.includes(p.id);
@@ -3201,7 +3199,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261021215855';
+const BUILD = '20261022034456';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
