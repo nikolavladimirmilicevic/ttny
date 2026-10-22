@@ -73,8 +73,13 @@ details.rules summary{padding:14px 0;font:600 16px var(--display);letter-spacing
 details.rules summary::after{content:"+";float:right;color:var(--gold)}
 details.rules[open] summary::after{content:"−"}
 details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:column;gap:8px}
-.dyn{border:1px solid var(--gold);background:linear-gradient(180deg,rgba(227,179,65,.12),transparent)}
-.dyn h3{font-size:22px}
+.bruns{display:flex;flex-direction:column;gap:6px}
+.brun{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;cursor:pointer}
+.brun:hover{border-color:var(--gold)}.brun.champ{border-color:rgba(227,179,65,.55);background:linear-gradient(90deg,rgba(227,179,65,.12),var(--panel-2) 60%)}
+.brun .bi{flex:none;width:20px;text-align:center;color:var(--muted);font-weight:700}.brun.champ .bi{color:var(--gold)}
+.brun .bc{flex:none;font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:6px;border:1px solid currentColor}
+.brun .bt{flex:1;min-width:0;display:flex;flex-direction:column}.brun .bt small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brun .bg{flex:none;color:var(--muted);font-size:20px}
 .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .pill{background:var(--panel-2);border-radius:999px;padding:4px 10px;font-size:13px}
 .foot{font-size:12px;color:var(--muted);line-height:1.5}
@@ -572,7 +577,6 @@ const logoImg = new Image(); logoImg.src = LOGO;
 /* ================= CONFIG ================= */
 const CFG = {
   SHOOTOUT_P: 0.686,          // World Cup shootout conversion, all tournaments (Opta / The Analyst)
-  TIMER_MS: 10 * 60 * 1000,   // between runs of a challenge: 10 minutes to start the next one
   STEP_S: { draft: 60, lineup: 120, next: 60, keep: 120 },   // seconds per decision; when time runs out the game decides
   KEEP: { league: 5, playoff: 6, r16: 7, qf: 8, sf: 9, final: 10, champion: 11 },
   STORE: 'ttny.v9'
@@ -826,7 +830,7 @@ function splitPots(list, n){
   return pots;
 }
 // this run's pots: with players kept, every club is split into as many pots as there are picks left
-/* difficulty: which clubs you draft from and which competition you start in; winning one moves the challenge up */
+/* difficulty: which clubs you draft from and which competition you start in; winning one moves a run played straight after it up */
 const COMPS = {
   cl: { name: 'UEFA Champions League', short: 'Champions League', band: 0 },    // band: opponents ranked below this
   el: { name: 'UEFA Europa League', short: 'Europa League', band: 25 },
@@ -838,7 +842,7 @@ const DIFF = {
   medium: { label: 'Medium', share: 2 / 3, pool: 'A wider mix of clubs' },
   hard: { label: 'Hard', share: 1, pool: 'Anyone, from anywhere' }
 };
-// the difficulty also sets where a new challenge starts: easy in the Champions League, hard in the Conference League
+// the difficulty also sets where a new run starts: easy in the Champions League, hard in the Conference League
 const START_COMP = { easy: 'cl', medium: 'el', hard: 'ecl' };
 const compOf = r => COMPS[(r && r.comp) || 'cl'];
 // the top third (or two thirds) of the UEFA list by rank, among the clubs with enough players to draft from
@@ -1433,7 +1437,7 @@ function buildCup(T){
   const champ = run(STAGE_NAME.final, sf[0], sf[1], 1, 'final');
   if (pos > 24) stage = 'league';
   ev.push({ k: 'end', stage, champ });
-  // ties: your players first, the one drafted later in the challenge ahead; then everyone else by name
+  // ties: your players first, the one drafted later ahead; then everyone else by name
   const pickNo = id => (S.run && S.run.picks ? S.run.picks.indexOf(id) : -1);
   const top = M => Object.entries(M).sort((x, y) => y[1] - x[1] || pickNo(y[0]) - pickNo(x[0]) || W.P[x[0]].name.localeCompare(W.P[y[0]].name)).slice(0, 10);
   const tb = {}; teams.forEach(t => tb[t] = rows[t].tb);
@@ -1441,35 +1445,33 @@ function buildCup(T){
 }
 
 /* ================= STATE ================= */
-let S = { run: null, dyn: null, stats: { runs: 0, titles: 0, streak: 0, best: 0, bestStage: null }, armed: null };
+let S = { run: null, best: [], stats: { runs: 0, titles: 0, streak: 0, best: 0, bestStage: null }, armed: null };
 function load(){ try { const s = JSON.parse(localStorage.getItem(CFG.STORE) || 'null'); if (s && s.stats) S = Object.assign(S, s); } catch (e) {} }
-function save(){ try { localStorage.setItem(CFG.STORE, JSON.stringify({ run: S.run, dyn: S.dyn, stats: S.stats, pref: S.pref })); } catch (e) {} }
+function save(){ try { localStorage.setItem(CFG.STORE, JSON.stringify({ run: S.run && S.run.arch ? null : S.run, best: S.best, stats: S.stats, pref: S.pref })); } catch (e) {} }
 function toast(msg){ if (toast.quiet) return; const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 3200); }
 const fmt = ms => { ms = Math.max(0, ms); const m = Math.floor(ms / 60000), s = Math.floor(ms % 60000 / 1000); return m + ':' + String(s).padStart(2, '0'); };
 const nm = id => id === 'YOU' ? 'Your XI' : W.C[id].name;
 const STAGE_RANK = ['league', 'playoff', 'r16', 'qf', 'sf', 'final', 'champion'];
 
-function newRun(diff){
-  // a new challenge takes the competition and the difficulty picked on the home screen; a challenge keeps its own
+function newRun(carry){
+  // a new run takes the difficulty picked on the home screen; a run straight after another can carry players over
+  // (and its competition: a title moves it up, missing the top 24 down)
   const pref = S.pref || {};
-  diff = S.dyn && S.dyn.diff ? S.dyn.diff : DIFF[pref.diff] ? pref.diff : 'medium';
-  const comp = S.dyn && S.dyn.comp ? S.dyn.comp : START_COMP[diff];
-  const kept = S.dyn && S.dyn.kept ? S.dyn.kept.filter(id => W.P[id] && W.P[id].starts >= MIN_STARTS) : [];
-  const potCount = 11 - kept.length;
-  // a challenge remembers everyone who has played in it: whoever was let go cannot come back
-  const ever = S.dyn && S.dyn.ever ? S.dyn.ever : [], gone = ever.filter(id => !kept.includes(id));
-  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), deadline: Date.now() + CFG.TIMER_MS, form: '4-2-2-2', cup: null, diff, comp, season: (S.dyn && S.dyn.season) || 1, hist: (S.dyn && S.dyn.hist) || [] };
-  S.dyn = null; S.run.intro = 1;
+  const diff = carry ? carry.diff : DIFF[pref.diff] ? pref.diff : 'medium';
+  const comp = carry ? carry.comp : START_COMP[diff];
+  const kept = carry ? carry.kept.filter(id => W.P[id] && W.P[id].starts >= MIN_STARTS) : [];
+  const potCount = 11 - kept.length, vet = {}; kept.forEach(id => vet[id] = ((carry.vet || {})[id] || 1) + 1);
+  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], note: '', start: Date.now(), form: '4-2-2-2', cup: null, diff, comp, season: (S.stats.runs || 0) + 1, vet, full: kept.length === 11 };
+  S.run.intro = 1;
   // champions keep the whole XI: straight to the line-up
   if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; if (!feasible(S.run.picks).includes(S.run.form)) S.run.form = randomForm(S.run.picks); }
   else drawClub();
   save(); render(); scrollTo(0, 0);
 }
 function pickable(cid){
-  const r = S.run, gone = r.gone || [];
-  return W.C[cid].elig.filter(p => !r.picks.includes(p) && !gone.includes(p) && fits([...r.picks, p]));
+  const r = S.run;
+  return W.C[cid].elig.filter(p => !r.picks.includes(p) && fits([...r.picks, p]));
 }
-const everOf = r => [...new Set([...(r.ever || []), ...r.picks])];
 // one club per country in a run: a country already drafted from is skipped (only if no other club is left, it comes back)
 const freshCtry = (r, c) => !(r.usedC || []).includes(W.C[c].ctry);
 function drawClub(){
@@ -1598,21 +1600,32 @@ function finish(){
   if (!st8.bestStage || STAGE_RANK.indexOf(st) > STAGE_RANK.indexOf(st8.bestStage)) st8.bestStage = st;
   if (st === 'champion'){ st8.titlesBy = st8.titlesBy || {}; st8.titlesBy[r.comp || 'cl'] = (st8.titlesBy[r.comp || 'cl'] || 0) + 1; st8.titles++; st8.streak++; st8.best = Math.max(st8.best, st8.streak); } else st8.streak = 0;
   r.doneAt = Date.now(); r.dscr = 'season'; r.celebrate = st === 'champion';
-  // the challenge's history; after ten seasons (or out of the Conference League) the challenge is over
-  try { r.hist = [...(r.hist || []), seasonSummary(r)]; } catch (e) { r.hist = r.hist || []; }
-  if ((r.season || 1) >= DYNASTY_SEASONS){ r.keepN = 0; r.dynEnd = 'complete'; } else if (!r.keepN) r.dynEnd = 'out';
   try { achCheck(r); } catch (e) {}
+  try { archive(r); } catch (e) { console.error(e); }
 }
-// the next run of a challenge: same difficulty; a title moves it up a competition
-// a title moves the challenge up; missing the top 24 drops it a level (out of the Conference League, it ends)
+/* your ten best runs, kept with everything needed to open their summary again. The competition comes first (the worst
+   Champions League run beats the best Europa League one), then how far you went, then the difficulty, then the
+   league-phase position, then goal difference, goals scored and wins; on a full tie the earlier run stays ahead */
+const COMP_RANK = { cl: 3, el: 2, ecl: 1 }, DIFF_RANK = { easy: 0, medium: 1, hard: 2 }, BEST_N = 10;
+function runOrder(a, b){
+  const x = a.h, y = b.h;
+  return (COMP_RANK[y.comp] || 0) - (COMP_RANK[x.comp] || 0) || STAGE_RANK.indexOf(y.stage) - STAGE_RANK.indexOf(x.stage)
+    || (DIFF_RANK[y.diff] || 0) - (DIFF_RANK[x.diff] || 0) || x.pos - y.pos || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || y.w - x.w || a.at - b.at;
+}
+function archive(r){
+  const copy = JSON.parse(JSON.stringify(r));
+  ['celebrate', 'stepK', 'stepDl', 'keepSel', 'intro', 'tried', 'order', 'club', 'note', 'cut', 'tip', 'manual', 'sel'].forEach(k => delete copy[k]);
+  const e = { at: r.doneAt, h: seasonSummary(r), run: copy };
+  const all = [...(S.best || []), e].sort(runOrder), i = all.indexOf(e);
+  S.best = all.slice(0, BEST_N); r.rank = i < BEST_N ? i + 1 : null;
+}
+// the next run straight away, with the players you keep; its competition: a title moves it up, missing the top 24 down
 const PREV_COMP = { cl: 'el', el: 'ecl', ecl: null };
-const dynComp = r => { const c = r.comp || 'cl', st = r.cup && r.cup.stage;
-  return { season: (r.season || 1) + 1, hist: r.hist || [], diff: r.diff || 'medium', comp: st === 'champion' ? NEXT_COMP[c] : st === 'league' ? (PREV_COMP[c] || c) : c }; };
-function continueDynasty(){
-  const r = S.run;
-  S.dyn = r.keepN > 0 ? { kept: keptInOrder(r), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, streak: S.stats.streak, ever: everOf(r), ...dynComp(r) } : null;
+const nextComp = r => { const c = r.comp || 'cl', st = r.cup && r.cup.stage; return st === 'champion' ? NEXT_COMP[c] : st === 'league' ? (PREV_COMP[c] || c) : c; };
+function continueRun(){
+  const r = S.run, carry = r.keepN > 0 ? { kept: keptInOrder(r), diff: r.diff || 'medium', comp: nextComp(r), vet: r.vet || {} } : null;
   S.run = null; save();
-  newRun();
+  newRun(carry);
 }
 /* step timers: every decision has its own clock; when it runs out the game makes the decision */
 function stepKey(r){
@@ -1621,8 +1634,8 @@ function stepKey(r){
   if (r.phase === 'lineup') return ['lineup', T.lineup];
   if (r.phase === 'cup') return ['cup:' + r.scr + ':' + (r.cup ? r.cup.shown : 0), T.next];
   const d = r.dscr || 'season';
-  if (d === 'dynasty') return null;
-  if (d === 'keep') return r.keepN && !r.dynEnd ? ['keep', T.keep] : null;
+  if (r.arch) return null;
+  if (d === 'keep') return r.keepN ? ['keep', T.keep] : null;
   return ['done:' + d, T.next];
 }
 function syncStep(){
@@ -1644,7 +1657,7 @@ function timeUp(){
     toast('Time is up. A random shape was locked in.'); kickoff(); return;
   }
   if (r.phase === 'done' && (r.dscr || 'season') === 'keep'){
-    r.keepSel = []; S.dyn = { kept: [], keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, ever: everOf(r), ...dynComp(r) }; S.run = null;
+    r.keepSel = []; S.run = null;
     save(); render(); scrollTo(0, 0); toast('Time is up. Nobody carries over.'); return;
   }
   const b = document.querySelector('.dock .btn.primary');
@@ -1653,7 +1666,6 @@ function timeUp(){
 function tick(){
   const now = Date.now();
   if (S.run && S.run.stepDl && now > S.run.stepDl) timeUp();
-  if (!S.run && S.dyn && now > S.dyn.deadline){ S.dyn = null; S.stats.streak = 0; save(); render(); toast('Ten minutes passed. The challenge is over.'); }
   document.querySelectorAll('[data-cd]').forEach(el => { const left = +el.dataset.cd - now; el.textContent = fmt(left); const c = el.closest('.chip'); if (c){ c.classList.toggle('warn', left < (+el.dataset.w || 60000)); c.classList.toggle('last', left > 0 && left < 10000); } });
 }
 // the clock in the top bar, for the decision in front of you
@@ -1683,9 +1695,10 @@ function byPositions(a, b){
   return 0;
 }
 const POS_ORDER = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'CF'];
-// leave from any screen: during a run it counts as a loss; after a run it ends the challenge (or just leaves, once it is over)
-const quitBtn = () => { const r = S.run, done = r && r.phase === 'done', over = done && r.dynEnd, armed = S.armed === 'quit';
-  const lbl = armed ? (over ? 'Tap again to leave' : done || (r && r.kept.length) ? 'Tap again: challenge ends' : 'Tap again to quit') : over ? 'Leave' : done ? 'Quit challenge' : 'Quit run';
+// leave from any screen: during a run it counts as a loss; after a run it goes home (nobody carries over); a saved run: back
+const quitBtn = () => { const r = S.run, done = r && r.phase === 'done', armed = S.armed === 'quit';
+  if (r && r.arch) return `<button class="chip quit" data-act="back">Back</button>`;
+  const lbl = armed ? (done ? 'Tap again to leave' : 'Tap again to quit') : done ? 'Leave' : 'Quit run';
   return `<button class="chip quit${armed ? ' warn' : ''}" data-act="quit">${lbl}</button>`; };
 const kit = p => { const n = natInfo(p.nat); return `--kit:${n[1]};--kit-ink:${n[2]}`; };
 const ISO = {'Chad':'TD','Niger':'NE','Gibraltar':'GI','Liechtenstein':'LI','Grenada':'GD','Pakistan':'PK','Mauritius':'MU','San Marino':'SM','England':'gb-eng','Scotland':'gb-sct','Wales':'gb-wls','Spain':'ES','Germany':'DE','Italy':'IT','France':'FR','Portugal':'PT','Netherlands':'NL','Belgium':'BE','Türkiye':'TR','Greece':'GR','Czechia':'CZ','Norway':'NO','Denmark':'DK','Sweden':'SE','Ukraine':'UA','Austria':'AT','Switzerland':'CH','Croatia':'HR','Serbia':'RS','Azerbaijan':'AZ','Hungary':'HU','Poland':'PL','Romania':'RO','Slovenia':'SI','Slovakia':'SK','Bulgaria':'BG','Cyprus':'CY','Israel':'IL','Brazil':'BR','Argentina':'AR','Uruguay':'UY','Colombia':'CO','Senegal':'SN','Nigeria':'NG','Ghana':'GH','Ivory Coast':'CI','Cameroon':'CM','Morocco':'MA','Japan':'JP','South Korea':'KR','USA':'US','Algeria':'DZ','Mali':'ML','Guinea':'GN','Egypt':'EG','Tunisia':'TN','Ecuador':'EC','Paraguay':'PY','Chile':'CL','Mexico':'MX','Canada':'CA','Australia':'AU','Republic of Ireland':'IE','Ireland':'IE','Georgia':'GE','Albania':'AL','Kosovo':'XK','Bosnia and Herzegovina':'BA','North Macedonia':'MK','Montenegro':'ME','Iceland':'IS','Finland':'FI','Burkina Faso':'BF','Gabon':'GA','Congo DR':'CD','Angola':'AO','Cape Verde Islands':'CV','Jamaica':'JM','Venezuela':'VE','Peru':'PE','Iran':'IR','Armenia':'AM','Russia':'RU','Lithuania':'LT','Luxembourg':'LU','Zambia':'ZM','Zimbabwe':'ZW','Gambia':'GM','Togo':'TG','Benin':'BJ','Equatorial Guinea':'GQ','Suriname':'SR','Curaçao':'CW','Haiti':'HT','China':'CN','Uzbekistan':'UZ','New Zealand':'NZ','South Africa':'ZA','Kenya':'KE','Estonia':'EE','Latvia':'LV','Belarus':'BY','Moldova':'MD','Costa Rica':'CR','Honduras':'HN','Panama':'PA','Bolivia':'BO','Sierra Leone':'SL','Mozambique':'MZ','Comoros':'KM','Iraq':'IQ','Liberia':'LR','Central African Republic':'CF','Jordan':'JO','Saudi Arabia':'SA','Congo':'CG','Guinea-Bissau':'GW','Qatar':'QA','Syria':'SY','Lebanon':'LB','Palestine':'PS','Faroe Islands':'FO','Malta':'MT','Andorra':'AD','Kazakhstan':'KZ','Trinidad and Tobago':'TT','Guadeloupe':'GP','Martinique':'MQ','French Guiana':'GF','Madagascar':'MG','Mauritania':'MR','Sudan':'SD','Tanzania':'TZ','Uganda':'UG','Rwanda':'RW','Burundi':'BI','Ethiopia':'ET','Libya':'LY','Philippines':'PH','Indonesia':'ID','Thailand':'TH','Vietnam':'VN','India':'IN','Cuba':'CU','Dominican Republic':'DO','El Salvador':'SV','Guatemala':'GT','Belize':'BZ','Korea Republic':'KR',"Côte d'Ivoire":'CI','Czech Republic':'CZ','Turkey':'TR','Cape Verde':'CV','Kyrgyz Republic':'KG','Kyrgyzstan':'KG','St. Kitts and Nevis':'KN','Saint Kitts and Nevis':'KN','St. Lucia':'LC','Saint Lucia':'LC','St. Vincent and the Grenadines':'VC','Saint Vincent and the Grenadines':'VC','Antigua and Barbuda':'AG','Barbados':'BB','Bermuda':'BM','Bahamas':'BS','Aruba':'AW','Montserrat':'MS','Dominica':'DM','Cayman Islands':'KY','Puerto Rico':'PR','Nicaragua':'NI','Guyana':'GY','Korea DPR':'KP','North Korea':'KP','Chinese Taipei':'TW','Hong Kong':'HK','Singapore':'SG','Malaysia':'MY','Oman':'OM','Bahrain':'BH','Kuwait':'KW','United Arab Emirates':'AE','Yemen':'YE','Afghanistan':'AF','Tajikistan':'TJ','Turkmenistan':'TM','Sri Lanka':'LK','Bangladesh':'BD','Nepal':'NP','Mongolia':'MN','Eswatini':'SZ','Namibia':'NA','Botswana':'BW','Lesotho':'LS','Malawi':'MW','Eritrea':'ER','Somalia':'SO','Djibouti':'DJ','South Sudan':'SS','Seychelles':'SC','São Tomé and Príncipe':'ST','Sao Tome and Principe':'ST','Cabo Verde':'CV','Fiji':'FJ','Papua New Guinea':'PG','New Caledonia':'NC','Tahiti':'PF','Solomon Islands':'SB','Vanuatu':'VU','Samoa':'WS','Réunion':'RE','Reunion':'RE','Mayotte':'YT','Bosnia':'BA','Macedonia':'MK','FYR Macedonia':'MK','Moldova Republic':'MD','Republic of Moldova':'MD','United States':'US','DR Congo':'CD','Iran IR':'IR','Holland':'NL','Great Britain':'GB','United Kingdom':'GB','Monaco':'MC','Vatican':'VA'};
@@ -1795,17 +1808,13 @@ function radar(p, rt){
 }
 function cardHTML(p){
   const r = S.run, c = W.C[p.club], mine = r && r.picks && r.picks.includes(p.id);
-  // after the draft his grades show for your players, and for anyone who played in your challenge (the best XI of it)
-  const wasMine = r && (r.hist || []).some(h => (h.xi || []).some(x => x.id === p.id));
-  const rated = locked() && (mine || wasMine), rt = rated ? playerRating(p.id) : null;
-  // on the challenge review the card is about the whole challenge, not the last run
-  const chal = r && r.phase === 'done' && r.dscr === 'dynasty', cs = chal ? chalStats(r.hist || [], p.id) : null;
+  // after the draft his hexagon shows for your players
+  const rated = locked() && mine, rt = rated ? playerRating(p.id) : null;
   let slot = null;
-  if (chal){ const b = dynastyBestXI(r.hist || []), x = b && b.xi.find(q => q.id === p.id); if (x) slot = x.code; }
-  else if (mine && r.form && r.picks.length === 11){ const a = arrangement(r.picks, r.form); const j = a ? a.indexOf(p.id) : -1; if (j > -1) slot = FORMS[r.form][j][0]; }
+  if (mine && r.form && r.picks.length === 11){ const a = arrangement(r.picks, r.form); const j = a ? a.indexOf(p.id) : -1; if (j > -1) slot = FORMS[r.form][j][0]; }
   const weakHere = slot && isWeak(p, slot), offHere = slot && slot !== p.prim && !weakHere;
   const chip = (x, i) => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}</span>`;
-  const tags = [!chal && r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : offHere ? `<span class="tag">Slightly below his level at ${slot}</span>` : ''].join('');
+  const tags = [r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : offHere ? `<span class="tag">Slightly below his level at ${slot}</span>` : ''].join('');
   // the top of the card in his club's colours, like a collectible card: grade and main position on the left
   const head = `<div class="pc-top" style="${clubKit(c)}"><div class="pc-badge"><span class="pc-prim" title="${slot ? 'Where he plays for you' : 'Main position'}">${slot || p.prim}</span></div>
       <div class="pc-id"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age} · ${esc(c.name)}</div></div></div>
@@ -1820,10 +1829,7 @@ function cardHTML(p){
   const grades = all.map(([n, q, t]) => `<div class="pc-g" title="${t}"><span>${n}</span><b class="gt g${qGrade(q)}">${R(q)}</b></div>`).join('');
   // this season so far (only what you have already seen)
   let season = '';
-  if (cs && cs.runs){
-    const t = [['cl', 'UCL'], ['el', 'UEL'], ['ecl', 'UECL']].filter(([k]) => cs[k]).map(([k, l]) => `${cs[k]}× ${l}`).join(' · ');
-    season = `<div class="pc-sec"><div class="pc-h">This challenge</div><div class="pc-line" style="display:flex;flex-wrap:wrap;gap:4px 12px"><span><b>${cs.runs}</b> run${cs.runs > 1 ? 's' : ''}</span><span><b>${cs.mp || '–'}</b> played</span><span><b>${cs.g}</b> G · <b>${cs.a}</b> A</span></div>${t ? `<div style="margin-top:4px">🏆 ${t}</div>` : ''}</div>`;
-  } else if (r.cup && mine && !chal){
+  if (r.cup && mine){
     const shown = r.phase === 'done' ? r.cup.ev : r.cup.ev.slice(0, r.cup.shown);
     let g = 0, a = 0, n = 0;
     for (const e of shown) if (e.k === 'md' || e.k === 'leg' || e.k === 'final'){ n++; for (const [sc, as, , og] of e.gl || []){ if (!og && sc === p.id) g++; if (as === p.id) a++; } }
@@ -1832,15 +1838,7 @@ function cardHTML(p){
   return `${head}
     <div class="pc-sec">${radar(p, rt)}</div>
     ${season}
-    ${chal ? '' : chemCard(p)}`;
-}
-// one player's whole challenge: runs, matches, goals, assists, average match rating, titles
-function chalStats(hist, pid){
-  const o = { runs: 0, mp: 0, g: 0, a: 0, cl: 0, el: 0, ecl: 0, rs: 0, rn: 0 };
-  for (const h of hist){ const x = (h.xi || []).find(q => q.id === pid); if (!x) continue;
-    o.runs++; o.mp += x.mp || ((h.w || 0) + (h.d || 0) + (h.l || 0)); o.g += x.g || 0; o.a += x.a || 0; if (h.stage === 'champion' && o[h.comp] != null) o[h.comp]++;
-    if (x.rt != null){ const n = x.mp || 1; o.rs += x.rt * n; o.rn += n; } }
-  o.rt = o.rn ? o.rs / o.rn : null; return o;
+    ${chemCard(p)}`;
 }
 // his chemistry in your XI: who he played with and his compatriots
 function chemCard(p){
@@ -1853,7 +1851,7 @@ function chemCard(p){
 const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
 function short(n){ const s = n.split(' '); return s.length > 1 ? s[0][0] + '. ' + s.slice(1).join(' ') : n; }
 
-/* the captain, just for show: the player picked earliest in the challenge. r.picks keeps that order (the kept players
+/* the captain, just for show: the player picked earliest. r.picks keeps that order (the kept players
    first, in the order they were first drafted, then this run's picks), so he is always the first of them. */
 function captainOf(pids){
   const order = (S.run && S.run.picks) || [];
@@ -1862,7 +1860,7 @@ function captainOf(pids){
 // the players who stay, in the order they were first drafted (not the order they were ticked)
 const keptInOrder = r => r.keepSel.slice(0, r.keepN).sort((a, b) => r.picks.indexOf(a) - r.picks.indexOf(b));
 // how many runs a player has been with you, this one included
-const vetRuns = pid => { const r = S.run; if (!r) return 0; return (r.hist || []).filter(h => h.xi && h.xi.some(x => x.id === pid)).length + (r.phase === 'done' ? 0 : 1); };
+const vetRuns = pid => { const r = S.run; return r ? (r.vet || {})[pid] || 1 : 0; };
 function pitch(pids, form, kept, rated, editable, fit){
   const f = form || bestForm(pids) || FORM_ORDER[0];
   const a = (pids.length ? arrangement(pids, f) : null) || Array(11).fill(null);
@@ -1893,7 +1891,7 @@ function shapes(pids, active, clickable){
 function xiPitch(xi, form){
   return `<div class="pitch tall" role="img" aria-label="Formation ${form}">` + xi.map(p => {
     const bits = [p.code, p.g ? '⚽' + p.g : '', p.a ? '🅰' + p.a : ''].filter(Boolean).join(' ');
-    const boot = S.run && S.run.cup && S.run.phase === 'done' && S.run.cup.top && S.run.cup.top.g[0] && S.run.cup.top.g[0][0] === p.id && xi.length && !xi.dyn;
+    const boot = S.run && S.run.cup && S.run.phase === 'done' && S.run.cup.top && S.run.cup.top.g[0] && S.run.cup.top.g[0][0] === p.id && xi.length;
     return `<div class="slot full"${W.P[p.id] ? ` data-pid="${p.id}"` : ''} style="left:${p.x}%;top:${p.y}%">${boot ? '<span class="boot" title="Top scorer of the competition">👟</span>' : ''}${p.cap ? '<span class="cap" title="Captain">C</span>' : ''}<div class="ovdot gr g${p.rt == null ? 'X' : rtGrade(p.rt)}" title="Average match rating">${rt1(p.rt)}</div><div class="lbl">${esc(short(p.n))}</div><div class="sub fit${Math.min(2, p.fit || 0)}">${bits}</div></div>`;
   }).join('') + `</div>`;
 }
@@ -1902,14 +1900,14 @@ const xiBox = (title, xi, form) => `<section class="card"><div class="drafthead"
 /* achievements: earned once, kept for good */
 const ACH = [['title', '🏆', 'First title', 'Win any competition'], ['hattrick', '⚽', 'Hat-trick', 'One of your players scores three in a match'],
   ['unbeaten', '🛡️', 'Unbeaten', 'A whole run without a defeat'], ['hard', '💎', 'Hard title', 'Win a title on Hard'],
-  ['treble', '⭐', 'All three', 'Win the Champions League, Europa League and Conference League'], ['ten', '🔟', 'The full ten', 'Play a challenge through all ten runs']];
+  ['treble', '⭐', 'All three', 'Win the Champions League, Europa League and Conference League'], ['again', '🔁', 'Again', 'Keep all 11 after a title and win the next run too']];
 const achChip = ([k, ic, name, how], on) => `<span class="ach${on ? ' on' : ''}" title="${esc(name)}: ${esc(how)}"><i>${ic}</i>${esc(name)}</span>`;
 function achCheck(r){
   const st = S.stats, tb = st.titlesBy || {}, c = r.cup, champ = c.stage === 'champion'; st.ach = st.ach || {};
   const ms = c.ev.filter(e => e.k === 'md' || e.k === 'leg' || e.k === 'final');
   const lost = m => { const f = m.s[0] + (m.et ? m.et[0] : 0), a = m.s[1] + (m.et ? m.et[1] : 0); return f < a || (f === a && m.pens && !m.won); };
   const ht = ms.some(m => { const n = {}; return (m.gl || []).some(([sc, , , og]) => !og && (n[sc] = (n[sc] || 0) + 1) >= 3); });
-  const ok = { title: champ, hattrick: ht, unbeaten: ms.length > 0 && !ms.some(lost), hard: champ && r.diff === 'hard', treble: tb.cl && tb.el && tb.ecl, ten: r.dynEnd === 'complete' };
+  const ok = { title: champ, hattrick: ht, unbeaten: ms.length > 0 && !ms.some(lost), hard: champ && r.diff === 'hard', treble: tb.cl && tb.el && tb.ecl, again: champ && !!r.full };
   const fresh = ACH.filter(([k]) => ok[k] && !st.ach[k]).map(([k]) => k);
   fresh.forEach(k => st.ach[k] = Date.now()); r.ach = fresh;
   if (fresh.length) setTimeout(() => toast('Achievement unlocked: ' + fresh.map(k => ACH.find(a => a[0] === k)[2]).join(', ')), 300);
@@ -1920,20 +1918,18 @@ function cabinet(st){
   return `<div class="cabinet">${['cl', 'el', 'ecl'].map(k => `<div class="cab${tb[k] ? '' : ' none'}">${cup(ACCENT[k])}<b class="num">${tb[k] || 0}</b><small>${CUP[k]}</small></div>`).join('')}</div>
     <div class="achs" aria-label="Achievements">${ACH.map(a => achChip(a, (st.ach || {})[a[0]])).join('')}</div>`;
 }
+function bestRuns(){
+  const L = S.best || []; if (!L.length) return '';
+  const day = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your best runs</div><div class="bruns">${L.map((e, i) => { const h = e.h;
+    return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}" data-act="open" data-i="${i}"><span class="bi num">${i + 1}</span><span class="bc" style="color:${ACCENT[h.comp]}">${CUP[h.comp]}</span>
+      <span class="bt"><b>${esc(stageWord(h))}</b><small>${DIFF[h.diff || 'medium'].label} · ${h.w}-${h.d}-${h.l} · ${h.gf}:${h.ga} · ${day(e.at)}</small></span><span class="bg">›</span></button>`; }).join('')}</div></section>`;
+}
 function viewHome(){
-  const st = S.stats, d = S.dyn;
-  const best = st.bestStage ? STAGE_NAME[st.bestStage] : 'None yet';
-  const dyn = d ? `<section class="card dyn">
-      <div class="eyebrow">Challenge on · ${COMPS[d.comp || 'cl'].short} · ${DIFF[d.diff || 'medium'].label} · ${d.kept.length} kept</div>
-      <h3 style="margin-top:6px">Start your next run within <span class="num" data-cd="${d.deadline}">${fmt(d.deadline - Date.now())}</span></h3>
-      <div class="pills">${d.kept.map(id => `<span class="pill" data-pid="${id}">${natTag(W.P[id])} · ${esc(W.P[id].name)} · ${W.P[id].prim}</span>`).join('') || '<span class="pill">No players kept</span>'}</div>
-      <p class="muted" style="margin:10px 0 0;font-size:13px">You draft ${11 - d.kept.length} new players, one from each of ${11 - d.kept.length} pots made from your difficulty's clubs.</p>
-    </section>` : '';
-  const btns = d
-    ? `<button class="btn primary" data-act="start">Continue challenge</button><button class="btn ghost" data-act="fresh">${S.armed === 'fresh' ? 'Tap again to drop it' : 'Start fresh'}</button>`
-    : '';
+  const st = S.stats, top = (S.best || [])[0];
+  const best = top ? `${CUP[top.h.comp]} · ${STAGE_SHORT[top.h.stage]}` : st.bestStage ? STAGE_NAME[st.bestStage] : 'None yet';
   const pref = Object.assign({ diff: 'medium' }, S.pref);
-  const picker = d ? '' : `<div class="pick"><div class="eyebrow">Difficulty</div><div class="diffs">${Object.entries(DIFF).map(([k, v]) => `<button class="diff c-${START_COMP[k]}${pref.diff === k ? ' on' : ''}" data-act="pickd" data-d="${k}" aria-pressed="${pref.diff === k}">
+  const picker = `<div class="pick"><div class="eyebrow">Difficulty</div><div class="diffs">${Object.entries(DIFF).map(([k, v]) => `<button class="diff c-${START_COMP[k]}${pref.diff === k ? ' on' : ''}" data-act="pickd" data-d="${k}" aria-pressed="${pref.diff === k}">
       <b>${v.label}</b><small>${v.pool}. Starts in the ${COMPS[START_COMP[k]].short}.</small></button>`).join('')}</div>
     <div class="btnrow" style="margin-top:14px"><button class="btn primary" data-act="start">Start a run</button></div></div>`;
   return `
@@ -1947,15 +1943,14 @@ function viewHome(){
       </div>
       <img class="hlogo" src="${LOGO}" alt="This Time Next Year">
     </section>
-    ${dyn}
     ${picker}
-    ${btns ? `<div class="btnrow">${btns}</div>` : ''}
+    ${bestRuns()}
     ${cabinet(st)}
     <div class="stats">
       <div class="stat"><b class="num">${st.runs}</b><span>Runs</span></div>
       <div class="stat"><b class="num">${st.titles}</b><span>Titles${st.titlesBy ? ' · ' + ['cl', 'el', 'ecl'].filter(k => st.titlesBy[k]).map(k => ({ cl: 'UCL', el: 'UEL', ecl: 'UECL' }[k]) + ' ' + st.titlesBy[k]).join(', ') : ''}</span></div>
       <div class="stat"><b class="num">${st.best}</b><span>Best title streak</span></div>
-      <div class="stat"><b style="font-size:18px;line-height:1.55">${best}</b><span>Best finish</span></div>
+      <div class="stat"><b style="font-size:18px;line-height:1.55">${best}</b><span>Best run</span></div>
     </div>
     <details class="rules">
       <summary>How it works</summary>
@@ -1963,17 +1958,17 @@ function viewHome(){
         <li>The world is every club on the UEFA 5-year ranking. A player counts with at least one start for one of those clubs in the last 365 days, against any opponent; with only a few starts his grade leans toward a squad player's.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
-        <li>A new challenge starts with one choice, the difficulty. It sets where you start (Easy in the Champions League, Medium in the Europa League, Hard in the Conference League) and how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots. Win a competition and the next run moves up a level.</li>
+        <li>A run starts with one choice, the difficulty. It sets where you start (Easy in the Champions League, Medium in the Europa League, Hard in the Conference League) and how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots. Win a competition and a run played straight after it moves up a level.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
         <li>No ratings during the draft: you pick on name, nationality and positions. Player overalls are never shown. Once your XI is locked, his card shows a hexagon (shooting, passing, strength, defending, speed, dribbling) estimated from his positions, his numbers, his age and his level, with no numbers, and every match gives him a match rating (6 is an ordinary game). Your team's rating, by line (FW, MF, DF), is the average of your 11 (a little lower for anyone away from his main position) plus the chemistry bonus; opponents show no rating at all. Away from his main position a player plays a little below his level: a bit less in a position he plays often, a bit more in a weak one (started in at most half as often as his main one). Weak positions are faded on his card.</li>
         <li>The draft starts in 4-2-2-2 and keeps that shape while it still works; when it stops working, another one that works is picked at random. A player can only be picked if he still fits one of the 14 formations. At the end you choose the shape yourself.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
-        <li>The further you go, the more players you keep: out in the league phase 5 (in the Conference League that ends the challenge), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
+        <li>Right after a run you can play the next one at once and carry players into it; the further you went, the more: out in the league phase 5 (out of the Conference League's top 24, none), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
         <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) and 1 for each compatriot, at most 3 each. It makes your XI play stronger. You see it as a number from 70 (none) to 99 (full) once your XI is complete.</li>
-        <li>A challenge is up to ten runs at this one season. After each run and at the end you get a summary and an image to share. A challenge never takes a player back: anyone who played in it and was let go stays greyed out in the draft.</li>
+        <li>Your ten best runs are kept on this page: the competition first (any Champions League run is ahead of every Europa League one), then how far you went, the difficulty, the league-phase position and goal difference. Tap one to see its summary again.</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
-        <li>Every decision has a clock: 60 seconds for each draft pick (then a random player is picked), 2 minutes to confirm your shape (then a random one is locked in), 60 seconds for each step of the season (then it moves on) and 2 minutes to choose who stays (then nobody carries over). Between runs you have 10 minutes to start the next one, or the challenge ends. Missing the top 24 of the league phase drops the challenge a level, from the Champions League to the Europa League or from the Europa League to the Conference League, keeping 5 players; in the Conference League it ends the challenge.</li>
+        <li>Every decision has a clock: 60 seconds for each draft pick (then a random player is picked), 2 minutes to confirm your shape (then a random one is locked in), 60 seconds for each step of the season (then it moves on) and 2 minutes to choose who stays (then nobody carries over). Missing the top 24 of the league phase drops the next run a level, from the Champions League to the Europa League or from the Europa League to the Conference League.</li>
       </ol>
     </details>
     <p class="foot">${W.meta.live ? 'Live data from API-Football, updated ' + niceDate(W.meta.updated) + '.' : 'Demo world: club names follow the UEFA ranking, players and results are invented.'} ${W.draftable.length} of ${W.meta.ranked || 100} ranked clubs have the 11 players needed for the draft, and ${W.eligCount.toLocaleString('en-GB')} players are rated. Penalties go in ${Math.round(CFG.SHOOTOUT_P * 1000) / 10}% of the time, the all-time World Cup shootout rate.</p>
@@ -2261,7 +2256,7 @@ function runIntro(){
   delete r.intro; save();
   if (toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
   const k = r.kept.length, el = document.createElement('div'); el.id = 'intro'; el.style.setProperty('--ia', ACCENT[r.comp || 'cl']);
-  el.innerHTML = `<div><div class="ie">Run ${r.season || 1} of ${DYNASTY_SEASONS}</div><h1>${COMPS[r.comp || 'cl'].short}</h1>
+  el.innerHTML = `<div><div class="ie">Run ${r.season || 1}</div><h1>${COMPS[r.comp || 'cl'].short}</h1>
     <div class="is">${DIFF[r.diff || 'medium'].label} · ${k ? (k === 11 ? 'The whole XI stays' : `${k} kept · ${11 - k} to draft`) : 'Fresh squad · 11 to draft'}</div><div class="bar"><b></b></div></div>`;
   document.body.appendChild(el);
   const go = () => { if (!el.isConnected || el.classList.contains('out')) return; el.classList.add('out'); setTimeout(() => el.remove(), 350); };
@@ -2391,7 +2386,7 @@ function teamBox(r){
    team -> draw -> league phase (table after every matchday) -> knockouts (bracket after every match)
    -> your season -> the competition -> who stays */
 const cupTop = r => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${sndBtn()}${stepChip(r)}${quitBtn()}</div></header>`;
-// which season of the challenge this is
+// which run this is (all runs you have played, this one included)
 const seasonTag = () => 'Run ' + ((S.run && S.run.season) || 1);
 const cupHead = (eyebrow, title, side) => { const f = S.run && S.run.cup ? formDots(S.run.cup) : ''; return `<div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">${eyebrow} · ${seasonTag()}</div><h2>${title}</h2></div>${side || f ? `<span class="muted" style="font-size:13px;text-align:right">${side || ''}${f ? `<br>Form ${f}` : ''}</span>` : ''}</div>`; };
 // match speed, any time during the season: a slider above the buttons (half speed to three times as fast)
@@ -2650,7 +2645,6 @@ function koBox(c, st){
 }
 /* a short text summary of the run, for sending to friends */
 /* ================= CHALLENGE: 10 SEASONS, A HISTORY, AND IMAGES TO SHARE ================= */
-const DYNASTY_SEASONS = 10;
 const ACCENT = { cl: '#3D7BFF', el: '#FC9529', ecl: '#48D75D' };
 const CUP = { cl: 'UCL', el: 'UEL', ecl: 'UECL' };
 const STAGE_SHORT = { league: 'League phase', playoff: 'Play-off', r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', champion: 'Champions' };
@@ -2667,50 +2661,6 @@ function seasonSummary(r){
     team: Math.round(Math.min(99, t.ov)), chem: chemNum(t.chem), chemB: +chemBonus(t.chem).toFixed(1), chemG: chemGrade(t.chem), chemN: chemNum(t.chem), form: r.form, xi, top: lt ? [W.P[lt[0]].name, lt[1], r.picks.includes(lt[0])] : null };
 }
 const stageWord = h => h.stage === 'champion' ? 'Champions' : h.stage === 'final' ? 'Lost the final' : h.stage === 'league' ? `League phase · ${ord(h.pos)}` : 'Out in the ' + STAGE_SHORT[h.stage].toLowerCase();
-function dynastyStats(hist){
-  const cups = { cl: 0, el: 0, ecl: 0 }, finals = { cl: 0, el: 0, ecl: 0 }, G = {}, A = {}, seasons = {}, names = {}, drafted = {};
-  let w = 0, d = 0, l = 0, gf = 0, ga = 0, cs = 0, big = null, best = null;
-  for (const h of hist){
-    if (h.stage === 'champion') cups[h.comp]++; if (h.stage === 'final') finals[h.comp]++;
-    w += h.w; d += h.d; l += h.l; gf += h.gf; ga += h.ga; cs += h.cs || 0;
-    if (h.big && (!big || h.big[0] - h.big[1] > big[0] - big[1])) big = [...h.big, h.season];
-    if (!best || h.team > best.team) best = h;
-    for (const p of h.xi){ names[p.id] = p.n; G[p.id] = (G[p.id] || 0) + p.g; A[p.id] = (A[p.id] || 0) + p.a; seasons[p.id] = (seasons[p.id] || 0) + 1;
-      if (!(p.id in drafted)) drafted[p.id] = h.season * 100 + (p.o != null && p.o >= 0 ? p.o : 50); }
-  }
-  // ties: legends, the player drafted earlier in the challenge first (the captain's rule); scorers and assists, the one drafted later
-  const top = (M, min, later) => Object.entries(M).filter(([, v]) => v >= (min || 1))
-    .sort((x, y) => y[1] - x[1] || (later ? drafted[y[0]] - drafted[x[0]] : drafted[x[0]] - drafted[y[0]])).slice(0, 5).map(([id, v]) => [names[id], v]);
-  return { cups, finals, titles: cups.cl + cups.el + cups.ecl, w, d, l, gf, ga, cs, big, best, scorers: top(G, 1, true), assists: top(A, 1, true), legends: top(seasons, 2), n: hist.length };
-}
-function viewDynasty(){
-  const r = S.run, hist = r.hist || [], s = dynastyStats(hist), done = r.dynEnd === 'complete';
-  const row = h => `<tr class="${h.stage === 'champion' ? 'best' : ''}"><td class="rd">R${h.season}</td><td class="op">${COMPS[h.comp].short}<small>${esc(stageWord(h))}${h.stage !== 'champion' && h.champ ? ' · ' + esc(h.champ === 'YOU' ? 'you' : h.champ) + ' won' : ''}</small></td><td class="sc">${h.w}-${h.d}-${h.l}</td><td><span class="cg g${ovGrade(h.team)}">${h.team}</span></td></tr>`;
-  const list = (title, L, unit) => `<div class="card"><div class="eyebrow" style="margin-bottom:8px">${title}</div><div class="tblwrap"><table class="tbl num toplist"><tbody>
-    ${L.length ? L.map(([n, v], i) => `<tr class="${i === 0 ? 'best' : ''}"><td>${i === 0 ? '<span class="medal">1</span>' : i + 1}</td><td>${esc(n)}</td><td>${v}${unit ? ' <small style="display:inline">' + unit + '</small>' : ''}</td></tr>`).join('') : '<tr><td>None</td></tr>'}</tbody></table></div></div>`;
-  return `${doneTop()}
-  <div class="stack">
-    <section class="card verdict${s.titles ? ' champ' : ''}">
-      <div class="eyebrow">${done ? 'Challenge complete' : 'Challenge over'} · ${DIFF[hist[0] ? hist[0].diff : 'medium'].label} · ${s.n} run${s.n > 1 ? 's' : ''}</div>
-      <h1 style="margin-top:8px">${s.titles ? `${s.titles} trophy${s.titles > 1 ? ' haul' : ''}` : 'No trophies'}</h1>
-      <div class="cups">${['cl', 'el', 'ecl'].map(c => `<div class="cupbox c-${c}"><b>${s.cups[c]}</b><span>${CUP[c]}</span>${s.finals[c] ? `<small>${s.finals[c]} lost final${s.finals[c] > 1 ? 's' : ''}</small>` : ''}</div>`).join('')}</div>
-      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="dynasty" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button></div>
-    </section>
-    <div class="stats s3">
-      <div class="stat"><span>Matches</span><b class="num">${s.w + s.d + s.l}</b><small>${s.w}-${s.d}-${s.l}</small></div>
-      <div class="stat"><span>Goals</span><b class="num">${s.gf}:${s.ga}</b></div>
-      <div class="stat"><span>Clean sheets</span><b class="num">${s.cs}</b></div>
-      <div class="stat"><span>Best team</span><b class="num">${s.best ? s.best.team : '-'}</b><small>${s.best ? 'Run ' + s.best.season : ''}</small></div>
-      <div class="stat"><span>Biggest win</span><b class="num">${s.big ? s.big[0] + ':' + s.big[1] : '-'}</b><small>${s.big ? 'v ' + esc(s.big[2]) + ' · S' + s.big[3] : ''}</small></div>
-      <div class="stat"><span>Win rate</span><b class="num">${s.w + s.d + s.l ? Math.round(100 * s.w / (s.w + s.d + s.l)) : 0}%</b></div>
-    </div>
-    ${(b => b ? xiBox('Best XI of the challenge', Object.assign(b.xi, { dyn: true }), b.form) : '')(dynastyBestXI(hist))}
-    <section class="card"><div class="eyebrow" style="margin-bottom:10px">Run by run</div><div class="tblwrap"><table class="tbl matches"><tbody>${hist.map(row).join('')}</tbody></table></div></section>
-    <div class="toplists">${list('Top scorers', s.scorers, 'goals')}${list('Top assists', s.assists, 'assists')}</div>
-    ${s.legends.length ? list('Legends: most runs in your XI', s.legends, 'runs') : ''}
-  </div>
-  ${dock('<button class="btn primary" data-act="cont">New challenge</button>', '<button class="btn ghost" data-act="home">Home</button>')}`;
-}
 
 /* ----- images: drawn on a canvas, then shared (phone) or shown to save ----- */
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -2828,73 +2778,11 @@ async function seasonImage(h){
   txt(x, 'This Time Next Year', W_ - 60, 1328, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   return cv;
 }
-/* the best XI of the challenge: everyone who played in it, ranked by matches played in the challenge, then who was
-   drafted earlier; the first 11 who still fit a formation. The captain: the same order, so the first of them. */
-function dynastyBestXI(hist){
-  const st = {};
-  for (const h of hist) for (const p of h.xi || []){
-    const v = st[p.id] = st[p.id] || { id: p.id, n: p.n, s: 0, cl: 0, el: 0, ecl: 0, g: 0, a: 0, cs: 0, mp: 0, rs: 0, d: h.season * 100 + (p.o != null && p.o >= 0 ? p.o : 50) };
-    v.s++; v.g += p.g || 0; v.a += p.a || 0; if (p.code === 'GK') v.cs += h.cs || 0;
-    const mp = p.mp || ((h.w || 0) + (h.d || 0) + (h.l || 0));   // runs saved before matches were counted: that run's matches
-    v.mp += mp; if (p.rt != null){ v.rs += p.rt * mp; v.rn = (v.rn || 0) + mp; }
-    if (h.stage === 'champion' && v[h.comp] != null) v[h.comp]++;   // titles he won: Champions, Europa, Conference League
-  }
-  for (const v of Object.values(st)) v.rt = v.rn ? v.rs / v.rn : null;
-  const ranked = Object.values(st).filter(v => W.P[v.id]).sort((a, b) => b.mp - a.mp || a.d - b.d);
-  let picks = [];
-  for (const v of ranked){ if (picks.length === 11) break; const t = [...picks, v.id]; if (FORM_ORDER.some(f => assign(t, f))) picks = t; }
-  if (picks.length < 11) return null;
-  const form = bestForm(picks), arr = sideBySide(bestAssign(picks, form), form); if (!arr) return null;
-  const cap = picks.slice().sort((a, b) => st[b].mp - st[a].mp || st[a].d - st[b].d)[0];   // most matches, then drafted earliest
-  const xi = arr.map((id, j) => { if (!id) return null; const p = W.P[id], sl = FORMS[form][j], v = st[id];
-    return { id, n: v.n, code: sl[0], x: sl[1], y: sl[2], g: v.g, a: v.a, rt: v.rt, mp: v.mp, cl: v.cl, el: v.el, ecl: v.ecl, fit: fitTier(p, sl[0]), cap: id === cap, s: v.s }; }).filter(Boolean);
-  return { form, xi };
-}
-async function dynastyImage(hist, ended){
-  await fontsReady();
-  const s = dynastyStats(hist), last = hist[hist.length - 1] || { comp: 'cl', diff: 'medium' }, acc = ACCENT[last.comp];
-  const best = dynastyBestXI(hist), PH = 790, OFF = best ? PH + 110 : 0;   // the best XI pushes the rest down
-  const W_ = 1080, H = 1350 + OFF, [cv, x] = canvasBase(W_, H, acc, last.comp), white = '#F4F1EA', muted = '#9AA8BD';
-  drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
-  const dpw = diffPill(x, hist[0] ? hist[0].diff : 'medium', W_ - 60, 160) + 24;
-  txt(x, `${s.n} RUN${s.n > 1 ? 'S' : ''}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
-  const dh = ended === 'complete' ? 'CHALLENGE COMPLETE' : 'CHALLENGE OVER';
-  let dfs = 80; x.font = `700 ${dfs}px Oswald, "Arial Narrow", Arial, sans-serif`; while (dfs > 40 && x.measureText(dh).width > W_ - 120 - dpw){ dfs -= 2; x.font = `700 ${dfs}px Oswald, "Arial Narrow", Arial, sans-serif`; }
-  txt(x, dh, 60, 170, x.font, white);
-  // trophy cabinet
-  ['cl', 'el', 'ecl'].forEach((c, i) => { const X = 60 + i * 330, Y = 210; rrect(x, X, Y, 300, 170, 20); x.fillStyle = '#1A2E4A'; x.fill(); x.strokeStyle = ACCENT[c]; x.lineWidth = 3; rrect(x, X, Y, 300, 170, 20); x.stroke();
-    txt(x, s.cups[c], X + 150, Y + 100, '700 84px Oswald, "Arial Narrow", Arial, sans-serif', s.cups[c] ? '#F2C14E' : muted, 'center'); txt(x, CUP[c], X + 150, Y + 140, '600 28px Oswald, "Arial Narrow", Arial, sans-serif', ACCENT[c], 'center');
-    if (s.finals[c]) txt(x, `+${s.finals[c]} final${s.finals[c] > 1 ? 's' : ''}`, X + 150, Y + 163, '400 18px Rubik, Arial, sans-serif', muted, 'center'); });
-  // the best XI of the challenge
-  if (best){
-    txt(x, 'BEST XI OF THE CHALLENGE', 60, 440, '600 26px Oswald, "Arial Narrow", Arial, sans-serif', acc);
-    txt(x, best.form, W_ - 60, 440, '500 22px Rubik, Arial, sans-serif', muted, 'right');
-    cv._boxes = drawPitch(x, best.xi, 60, 460, W_ - 120, PH); cv._pitch = { x0: 60, x1: W_ - 60, y0: 460, y1: 460 + PH };
-  }
-  // season by season
-  txt(x, 'RUN BY RUN', 60, 440 + OFF, '600 26px Oswald, "Arial Narrow", Arial, sans-serif', acc);
-  hist.slice(0, 10).forEach((h, i) => { const Y = 470 + OFF + i * 44;
-    if (i % 2 === 0){ x.fillStyle = 'rgba(255,255,255,.04)'; x.fillRect(60, Y, W_ - 120, 44); }
-    txt(x, `R${h.season}`, 76, Y + 31, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', muted);
-    txt(x, CUP[h.comp], 150, Y + 31, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', ACCENT[h.comp]);
-    txt(x, stageWord(h), 260, Y + 31, '500 24px Rubik, Arial, sans-serif', h.stage === 'champion' ? '#F2C14E' : white, 'left', 470);
-    txt(x, `${h.w}-${h.d}-${h.l}`, W_ - 200, Y + 31, '500 24px Rubik, Arial, sans-serif', muted, 'right');
-    txt(x, h.team, W_ - 80, Y + 31, '700 26px Oswald, "Arial Narrow", Arial, sans-serif', white, 'right'); });
-  // totals and people
-  const Y0 = 470 + OFF + Math.min(10, hist.length) * 44 + 40;
-  const tot = [['Matches', s.w + s.d + s.l], ['W-D-L', `${s.w}-${s.d}-${s.l}`], ['Goals', `${s.gf}:${s.ga}`], ['Win %', (s.w + s.d + s.l ? Math.round(100 * s.w / (s.w + s.d + s.l)) : 0) + '%']], cw = (W_ - 120) / tot.length;
-  tot.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, Y0, cw - 12, 104, 16); x.fillStyle = '#1A2E4A'; x.fill();
-    txt(x, v, X + cw / 2, Y0 + 60, '700 40px Oswald, "Arial Narrow", Arial, sans-serif', white, 'center'); txt(x, l.toUpperCase(), X + cw / 2, Y0 + 90, '500 18px Rubik, Arial, sans-serif', muted, 'center'); });
-  const col = (title, L, unit, X) => { txt(x, title, X, Y0 + 160, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc); L.slice(0, 3).forEach(([n, v], i) => txt(x, `${i + 1}. ${surname(n)} · ${v} ${unit}`, X, Y0 + 198 + i * 34, '500 23px Rubik, Arial, sans-serif', i ? white : '#F2C14E', 'left', 300)); };
-  col('TOP SCORERS', s.scorers, 'g', 60); col('TOP ASSISTS', s.assists, 'a', 400); col('LEGENDS', s.legends, 'runs', 740);
-  txt(x, 'This Time Next Year', W_ - 60, H - 40, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
-  return cv;
-}
 // show the image in an overlay: share it (phones), save it, or long-press it
 async function showImage(kind){
   const r = S.run; if (!r) return;
-  const hist = r.hist || [], cv = kind === 'dynasty' ? await dynastyImage(hist, r.dynEnd) : await seasonImage(hist[hist.length - 1] || seasonSummary(r));
-  const url = cv.toDataURL('image/png'), name = kind === 'dynasty' ? 'ttny-challenge.png' : `ttny-run-${r.season || 1}.png`;
+  const cv = await seasonImage(seasonSummary(r));
+  const url = cv.toDataURL('image/png'), name = `ttny-run-${r.season || 1}.png`;
   const ov = document.createElement('div'); ov.className = 'imgov';
   ov.innerHTML = `<div class="imgbox"><img src="${url}" alt="Your ${kind} as an image"><div class="btnrow"><button class="btn primary" data-img="share">Share</button><button class="btn ghost" data-img="save">Save</button><button class="btn ghost" data-img="close">Close</button></div><div class="muted" style="font-size:12px;text-align:center;margin-top:8px">On a phone you can also press and hold the image to save it.</div></div>`;
   document.body.appendChild(ov);
@@ -2917,7 +2805,7 @@ async function showImage(kind){
 
 function viewDone(){
   const r = S.run, d = r.dscr || 'season';
-  return d === 'comp' ? viewComp() : d === 'keep' ? viewKeep() : d === 'dynasty' ? viewDynasty() : viewSeason();
+  return d === 'comp' ? viewComp() : d === 'keep' && !r.arch ? viewKeep() : viewSeason();
 }
 const doneTop = () => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${sndBtn()}${stepChip(S.run)}${S.stats.streak > 1 ? `<span class="chip hot wide-only">${S.stats.streak} titles in a row</span>` : ''}<span class="chip wide-only">${seasonTag()}</span>${quitBtn()}</div></header>`;
 const verdictHead = r => { const st = r.cup.stage; return st === 'champion' ? (r.comp === 'cl' || !r.comp ? 'Champions of Europe' : `${compOf(r).short} winners`) : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase(); };
@@ -2966,7 +2854,7 @@ function viewSeason(){
   return `${doneTop()}
   <div class="stack">
     <section class="card verdict${champ ? ' champ' : ''}">
-      ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · Your run</div>
+      ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · ${r.arch ? new Date(r.doneAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Your run'}${r.rank ? ` · <span style="color:var(--gold)">No. ${r.rank} of your best runs</span>` : ''}</div>
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
       ${runPath(r)}
       ${(r.ach || []).length ? `<div class="achnew">${r.ach.map(k => achChip(ACH.find(a => a[0] === k), true)).join('')}</div>` : ''}
@@ -2978,7 +2866,7 @@ function viewSeason(){
       <div class="stack">${(h => xiBox('Your XI', h.xi, h.form))(seasonSummary(r))}${teamBox(r)}${playersBox(r)}</div>
     </div>
   </div>
-  ${dock('<button class="btn primary" data-act="scr" data-to="comp">The competition</button>')}`;
+  ${dock('<button class="btn primary" data-act="scr" data-to="comp">The competition</button>', r.arch ? '<button class="btn ghost" data-act="back">Back</button>' : '')}`;
 }
 /* the whole competition: the winner, the bracket, the league table, the top scorers */
 function viewComp(){
@@ -2992,7 +2880,7 @@ function viewComp(){
     ${topBox(r)}
     ${t ? tableHTML(tableAfter(c, (c.lg || []).length), 'League phase table', `You finished ${ord(t.pos)}`) : ''}
   </div>
-  ${dock(r.dynEnd ? '<button class="btn primary" data-act="scr" data-to="dynasty">Challenge review</button>' : '<button class="btn primary" data-act="scr" data-to="keep">' + (r.keepN ? 'Choose who stays' : 'Continue') + '</button>', '<button class="btn ghost" data-act="scr" data-to="season">Your run</button>')}`;
+  ${dock(r.arch ? '<button class="btn primary" data-act="back">Back</button>' : r.keepN ? '<button class="btn primary" data-act="scr" data-to="keep">Next run: who stays?</button>' : '<button class="btn primary" data-act="cont">New run</button>', '<button class="btn ghost" data-act="scr" data-to="season">Your run</button>')}`;
 }
 /* who stays for the next run */
 function viewKeep(){
@@ -3011,7 +2899,7 @@ function viewKeep(){
       <h1 style="margin-top:8px">${n ? 'Who stays?' : 'Starting over'}</h1>
       ${champ && r.comp && r.comp !== 'cl' && n ? `<p style="margin:8px 0 0">You won the ${compOf(r).short}. Next run: the <b>${COMPS[NEXT_COMP[r.comp]].short}</b>.</p>` : ''}
       ${st === 'league' && n ? `<p style="margin:8px 0 0">Out of the top 24. Next run drops to the <b>${COMPS[PREV_COMP[r.comp || 'cl']].short}</b>.</p>` : ''}
-      <p class="muted" style="margin:10px 0 0">${n ? `You keep up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''}. Choose within <b class="num" style="color:var(--gold)" data-cd="${r.stepDl || Date.now()}">${fmt((r.stepDl || Date.now()) - Date.now())}</b> or nobody carries over.` : st === 'league' ? 'Out of the top 24 of the Conference League, so the challenge ends here. The next run starts from scratch.' : 'No players carry over. Next run starts from scratch.'}</p>
+      <p class="muted" style="margin:10px 0 0">${n ? `Play the next run now and up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''} come with you. Choose within <b class="num" style="color:var(--gold)" data-cd="${r.stepDl || Date.now()}">${fmt((r.stepDl || Date.now()) - Date.now())}</b>; going home, or letting the clock run out, means a fresh squad next time.` : 'No players carry over. Next run starts from scratch.'}</p>
     </section>
     ${n ? `<div><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div><div class="keep">${lst}</div></div>` : ''}
   </div>
@@ -3020,7 +2908,7 @@ function viewKeep(){
 
 function render(){
   const r = S.run; if (PC) PC.hidden = true;
-  document.body.dataset.comp = (r && r.comp) || (S.dyn && S.dyn.comp) || START_COMP[(S.pref && S.pref.diff) || 'medium'];
+  document.body.dataset.comp = (r && r.comp) || START_COMP[(S.pref && S.pref.diff) || 'medium'];
   try {
     syncStep();
     requestAnimationFrame(() => document.querySelectorAll('.bracket-wrap[data-focus]').forEach(el => { el.scrollLeft = +el.dataset.focus; }));
@@ -3037,7 +2925,8 @@ function render(){
   } catch (e) {
     // a saved run that no longer fits the data (new ratings, new positions): drop it rather than show a blank page
     console.error(e);
-    if (r){ S.run = null; save(); $('#app').innerHTML = viewHome(); toast('The data was updated, so your run in progress was reset.'); }
+    if (r && r.arch){ S.run = null; $('#app').innerHTML = viewHome(); toast('That run can no longer be shown: some of its players are gone from the data.'); }
+    else if (r){ S.run = null; save(); $('#app').innerHTML = viewHome(); toast('The data was updated, so your run in progress was reset.'); }
     else throw e;
   }
 }
@@ -3048,14 +2937,14 @@ document.addEventListener('click', e => {
   if (TOUCH() && e.target.closest('.krow .ovdot')) return;
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
   const a = b.dataset.act;
-  if (a !== 'fresh' && a !== 'quit' && a !== 'cont' && a !== 'kickoff') S.armed = null;
+  if (a !== 'quit' && a !== 'cont' && a !== 'kickoff') S.armed = null;
   if (a === 'snd'){   // in place, so a match being played out is not restarted
     S.pref = S.pref || {}; S.pref.sound = !S.pref.sound; save(); document.querySelectorAll('.chip.snd').forEach(x => x.outerHTML = sndBtn());
     if (S.pref.sound) SND.play('whistle', true); return;
   }
   if (a === 'quit'){
-    if (S.armed === 'quit' && S.run && S.run.phase === 'done'){ const over = S.run.dynEnd; S.armed = null; S.run = null; S.dyn = null; if (!over) S.stats.streak = 0; save(); render(); scrollTo(0, 0); if (!over) toast('Challenge ended.'); }
-    else if (S.armed === 'quit'){ S.armed = null; S.run = null; S.dyn = null; S.stats.runs++; S.stats.streak = 0; save(); render(); scrollTo(0, 0); toast('Run abandoned. It counts as a loss.'); }
+    if (S.armed === 'quit' && S.run && S.run.phase === 'done'){ S.armed = null; S.run = null; save(); render(); scrollTo(0, 0); }
+    else if (S.armed === 'quit'){ S.armed = null; S.run = null; S.stats.runs++; S.stats.streak = 0; save(); render(); scrollTo(0, 0); toast('Run abandoned. It counts as a loss.'); }
     else {   // update the button in place so the draft card does not replay its reveal
       S.armed = 'quit'; b.outerHTML = quitBtn();
       setTimeout(() => { if (S.armed === 'quit'){ S.armed = null; const q = document.querySelector('[data-act=quit]'); if (q) q.outerHTML = quitBtn(); } }, 4000);
@@ -3064,7 +2953,8 @@ document.addEventListener('click', e => {
   }
   if (a === 'start') newRun();
   else if (a === 'pickd'){ S.pref = Object.assign({ diff: 'medium' }, S.pref, { diff: b.dataset.d }); save(); render(); }
-  else if (a === 'fresh'){ if (S.armed === 'fresh'){ S.dyn = null; S.armed = null; S.stats.streak = 0; save(); render(); } else { S.armed = 'fresh'; render(); } }
+  else if (a === 'open'){ const e = (S.best || [])[+b.dataset.i]; if (e){ S.run = Object.assign(JSON.parse(JSON.stringify(e.run)), { arch: 1, dscr: 'season', rank: +b.dataset.i + 1 }); render(); scrollTo(0, 0); } }
+  else if (a === 'back'){ S.run = null; render(); requestAnimationFrame(() => { const x = document.querySelector('.bruns'); if (x) toTop(x.closest('section')); }); }
   else if (a === 'pick') choose(b.dataset.p);
   else if (a === 'help') useHelp(b.dataset.k);
   else if (a === 'form'){ S.run.form = b.dataset.f; S.run.sel = null; save(); render(); }
@@ -3097,13 +2987,12 @@ document.addEventListener('click', e => {
     const r = S.run;
     if (r && r.keepN && r.keepSel.length < r.keepN && S.armed !== 'cont'){ S.armed = 'cont'; render(); toast(`You can keep ${r.keepN} but chose ${r.keepSel.length}. Tap again to go on.`);
       requestAnimationFrame(() => { const k = document.querySelector('.krow'); const sec = k && (k.closest('section') || k.parentElement); if (sec) toTop(sec); }); }
-    else { S.armed = null; continueDynasty(); }
+    else { S.armed = null; continueRun(); }
   }
   else if (a === 'img') showImage(b.dataset.kind);
-  else if (a === 'fresh2'){ S.run = null; S.dyn = null; save(); render(); }
   else if (a === 'home'){
     const r = S.run;
-    if (r && r.phase === 'done'){ S.dyn = r.keepN > 0 ? { kept: keptInOrder(r), keepN: r.keepN, deadline: Date.now() + CFG.TIMER_MS, ever: everOf(r), ...dynComp(r) } : null; S.run = null; }
+    if (r && r.phase === 'done') S.run = null;
     save(); render(); scrollTo(0, 0);
   }
 });
@@ -3170,17 +3059,17 @@ async function boot(){
   if (S.run && S.run.picks && S.run.picks.some(bad)) S.run = null;
   // a run from before a data update whose players no longer fit together: start again
   if (S.run && S.run.picks && S.run.picks.length === 11 && !feasible(S.run.picks).length) S.run = null;
-  if (S.dyn && S.dyn.kept) S.dyn.kept = S.dyn.kept.filter(id => !bad(id));
+  delete S.dyn; S.best = S.best || [];   // challenges are gone: nothing carries over from an old save
+  if (S.run && S.run.phase === 'done' && S.run.dscr === 'dynasty') S.run.dscr = 'season';
   catchUp();
   render();
   setInterval(tick, 1000);
 }
 /* away for a while (the phone slept, the tab was closed): every clock that ran out in the meantime is played out in
    order, on the clock it would have had, as if the page had stayed open: random picks, a random shape, the next steps,
-   nobody kept, and after 10 minutes between runs the end of the challenge. Away a few minutes, you land where the
-   game would be by now; away for hours, the challenge is over. */
+   nobody kept. Away a few minutes, you land where the game would be by now. */
 function catchUp(){
-  const realNow = Date.now, start = realNow(); let moved = false, ended = false;
+  const realNow = Date.now, start = realNow(); let moved = false;
   toast.quiet = true;
   try {
     for (let guard = 0; guard < 600; guard++){
@@ -3189,17 +3078,16 @@ function catchUp(){
         const t = r.stepDl; Date.now = () => t + 1;
         render(); timeUp(); render(); moved = true; continue;
       }
-      if (!r && S.dyn && start > S.dyn.deadline){ S.dyn = null; S.stats.streak = 0; save(); moved = true; ended = true; }
       break;
     }
   } finally { Date.now = realNow; toast.quiet = false; }
   if (!moved) return false;
   save(); render();
-  setTimeout(() => toast(ended ? 'The clock ran out while you were away, so the challenge is over.' : 'The clock moved the game on while you were away.'), 300);
+  setTimeout(() => toast('The clock moved the game on while you were away.'), 300);
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261022034456';
+const BUILD = '20261022150914';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
