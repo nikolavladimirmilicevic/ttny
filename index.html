@@ -577,7 +577,7 @@ const logoImg = new Image(); logoImg.src = LOGO;
 /* ================= CONFIG ================= */
 const CFG = {
   SHOOTOUT_P: 0.686,          // World Cup shootout conversion, all tournaments (Opta / The Analyst)
-  STEP_S: { draft: 60, lineup: 120, next: 60, carry: 60 },   // seconds per decision; when time runs out the game decides
+  STEP_S: { draft: 60, lineup: 120, next: 60, keep: 120 },   // seconds per decision; when time runs out the game decides
   KEEP: { league: 5, playoff: 6, r16: 7, qf: 8, sf: 9, final: 10, champion: 11 },
   STORE: 'ttny.v9'
 };
@@ -1636,9 +1636,9 @@ function stepKey(r){
   if (r.phase === 'lineup') return ['lineup', T.lineup];
   if (r.phase === 'cup') return ['cup:' + r.scr + ':' + (r.cup ? r.cup.shown : 0), T.next];
   const d = r.dscr || 'season';
-  // after a run one clock only: 60 seconds from the final whistle to start the next run with the players who stay
+  // between two runs (only while players can still carry over): 60 seconds per screen, 120 to choose who stays
   if (r.arch || !r.keepN || r.carryOff) return null;
-  return ['carry', T.carry];
+  return d === 'keep' ? ['keep', T.keep] : ['done:' + d, T.next];
 }
 function syncStep(){
   const r = S.run; if (!r) return;
@@ -1658,7 +1658,7 @@ function timeUp(){
     const fs = feasible(r.picks); r.form = pick(fs.length ? fs : [r.form]); r.manual = null; r.sel = null;
     toast('Time is up. A random shape was locked in.'); kickoff(); return;
   }
-  if (r.phase === 'done'){
+  if (r.phase === 'done' && r.dscr === 'keep'){
     r.keepSel = []; r.keepN = 0; r.carryOff = 1; if (r.dscr === 'keep') r.dscr = 'comp';
     save(); render(); toast('Time is up. Nobody carries over.'); return;
   }
@@ -1671,7 +1671,7 @@ function tick(){
   document.querySelectorAll('[data-cd]').forEach(el => { const left = +el.dataset.cd - now; el.textContent = fmt(left); const c = el.closest('.chip'); if (c){ c.classList.toggle('warn', left < (+el.dataset.w || 60000)); c.classList.toggle('last', left > 0 && left < 10000); } });
 }
 // the clock in the top bar, for the decision in front of you
-const STEP_LBL = { draft: 'Pick within', lineup: 'Confirm within', cup: 'Next within', carry: 'Next run within' };
+const STEP_LBL = { draft: 'Pick within', lineup: 'Confirm within', cup: 'Next within', done: 'Next within', keep: 'Choose within' };
 function stepChip(r){
   if (!r || !r.stepDl) return '';
   const k = r.stepK.split(':')[0];
@@ -1970,7 +1970,7 @@ function viewHome(){
         <li>Your ten best runs are kept on this page: the competition first (any Champions League run is ahead of every Europa League one), then how far you went, the difficulty, the league-phase position and goal difference. Tap one to see its summary again.</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
-        <li>Every decision has a clock: 60 seconds for each draft pick (then a random player is picked), 2 minutes to confirm your shape (then a random one is locked in), 60 seconds for each step of the season (then it moves on) and 60 seconds from the end of a run to start the next one with the players who stay (then nobody carries over). Missing the top 24 of the league phase drops the next run a level, from the Champions League to the Europa League or from the Europa League to the Conference League.</li>
+        <li>Every decision has a clock: 60 seconds for each draft pick (then a random player is picked), 2 minutes to confirm your shape (then a random one is locked in), 60 seconds for each step of the season (then it moves on) and between two runs 60 seconds for each screen (then it moves on) and 2 minutes to choose who stays (then nobody carries over). Missing the top 24 of the league phase drops the next run a level, from the Champions League to the Europa League or from the Europa League to the Conference League.</li>
       </ol>
     </details>
     <p class="foot">${W.meta.live ? 'Live data from API-Football, updated ' + niceDate(W.meta.updated) + '.' : 'Demo world: club names follow the UEFA ranking, players and results are invented.'} ${W.draftable.length} of ${W.meta.ranked || 100} ranked clubs have the 11 players needed for the draft, and ${W.eligCount.toLocaleString('en-GB')} players are rated. Penalties go in ${Math.round(CFG.SHOOTOUT_P * 1000) / 10}% of the time, the all-time World Cup shootout rate.</p>
@@ -2901,7 +2901,7 @@ function viewKeep(){
       <h1 style="margin-top:8px">${n ? 'Who stays?' : 'Starting over'}</h1>
       ${champ && r.comp && r.comp !== 'cl' && n ? `<p style="margin:8px 0 0">You won the ${compOf(r).short}. Next run: the <b>${COMPS[NEXT_COMP[r.comp]].short}</b>.</p>` : ''}
       ${st === 'league' && n ? `<p style="margin:8px 0 0">Out of the top 24. Next run drops to the <b>${COMPS[PREV_COMP[r.comp || 'cl']].short}</b>.</p>` : ''}
-      <p class="muted" style="margin:10px 0 0">${n ? `Play the next run now and up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''} come with you. Start it within <b class="num" style="color:var(--gold)" data-cd="${r.stepDl || Date.now()}">${fmt((r.stepDl || Date.now()) - Date.now())}</b> of the final whistle; after that, or going home, the next run starts with a fresh squad.` : 'No players carry over. Next run starts from scratch.'}</p>
+      <p class="muted" style="margin:10px 0 0">${n ? `Play the next run now and up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''} come with you. Choose within <b class="num" style="color:var(--gold)" data-cd="${r.stepDl || Date.now()}">${fmt((r.stepDl || Date.now()) - Date.now())}</b>; after that, or going home, the next run starts with a fresh squad.` : 'No players carry over. Next run starts from scratch.'}</p>
     </section>
     ${n ? `<div><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div><div class="keep">${lst}</div></div>` : ''}
   </div>
@@ -3089,7 +3089,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261022151257';
+const BUILD = '20261022151542';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
