@@ -79,7 +79,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .brun .bi{flex:none;width:20px;text-align:center;color:var(--muted);font-weight:700}.brun.champ .bi{color:var(--gold)}
 .brun .bc{flex:none;font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:6px;border:1px solid currentColor}
 .brun .bt{flex:1;min-width:0;display:flex;flex-direction:column}.brun .bt small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.brun .bg{flex:none;color:var(--muted);font-size:20px}.brun .bs{flex:none;font-weight:700;font-size:15px;min-width:34px;text-align:right}.brun.champ .bs{color:var(--gold)}.brun.mine{box-shadow:inset 3px 0 0 var(--gold)}
+.brun .bg{flex:none;color:var(--muted);font-size:20px}.brun .bs{flex:none;font-weight:700;font-size:15px;min-width:34px;text-align:right}.brun.champ .bs{color:var(--gold)}
 .pname{display:block;width:100%;margin-top:8px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;font-size:16px}.pname:focus{outline:2px solid var(--gold);outline-offset:1px}
 .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .pill{background:var(--panel-2);border-radius:999px;padding:4px 10px;font-size:13px}
@@ -1628,8 +1628,8 @@ function archive(r){
   const all = [...(S.best || []), e].sort(runOrder);
   S.best = all.slice(0, BEST_N);
   // where it stands among everyone's runs (or among yours, when the shared list is not here)
-  const g = LB.on ? [...LB.list.filter(x => !(x.mine && x.id === e.id)), { ...e, mine: true }].sort(runOrder) : all;
-  const k = g.findIndex(x => x.id === e.id); r.rank = k > -1 && k < BEST_N ? k + 1 : null; r.rankAll = LB.on;
+  const g = LB.on ? [...LB.list.filter(x => x.id !== e.id), e].sort(runOrder) : [];
+  const k = g.findIndex(x => x.id === e.id); r.rank = k > -1 && k < BEST_N ? k + 1 : null; r.rankAll = true;
   if (S.best.includes(e)) lbPush(e);
 }
 /* the shared top 10: every player's own ten best runs sit in one document of theirs, runs/<their id> (small: the
@@ -1665,7 +1665,7 @@ async function lbPush(e){
   }
 }
 async function openRun(i){
-  const L = LB.on ? LB.list : (S.best || []), e = L[i]; if (!e) return;
+  const e = LB.list[i]; if (!e) return;
   let run = null;
   const local = (S.best || []).find(x => x.id === e.id || (!x.id && x.at === e.at));
   if (local) run = local.run;
@@ -1974,13 +1974,13 @@ function cabinet(st){
     <div class="achs" aria-label="Achievements">${ACH.map(a => achChip(a, (st.ach || {})[a[0]])).join('')}</div>`;
 }
 function bestRuns(){
-  const shared = LB.on, L = shared ? LB.list.slice(0, BEST_N) : (S.best || []);
+  const L = LB.on ? LB.list.slice(0, BEST_N) : [];
   const day = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  const rows = L.map((e, i) => { const h = e.h, mine = shared ? e.mine : true, c = COMP_W[h.comp] ? h.comp : 'ecl';
-    return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}${shared && mine ? ' mine' : ''}" data-act="open" data-i="${i}"><span class="bi num">${i + 1}</span><span class="bc" style="color:${ACCENT[c]}">${CUP[c]}</span>
+  const rows = L.map((e, i) => { const h = e.h, c = COMP_W[h.comp] ? h.comp : 'ecl';
+    return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}" data-act="open" data-i="${i}"><span class="bi num">${i + 1}</span><span class="bc" style="color:${ACCENT[c]}">${CUP[c]}</span>
       <span class="bt"><b>${esc(stageWord(h))}</b><small>${esc(e.name || 'Unnamed')} · ${DIFF[h.diff] ? DIFF[h.diff].label : ''} · ${num(h.w)}-${num(h.d)}-${num(h.l)} · ${day(e.at)}</small></span><span class="bs num" title="Run score">${runScore(h).toFixed(1)}</span><span class="bg">›</span></button>`; }).join('');
-  return `<section class="card" id="lb"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">${shared ? 'Top 10 · everyone' : 'Your best runs'}</div><span class="muted" style="font-size:12px">Run score</span></div>
-    ${rows ? `<div class="bruns">${rows}</div>` : '<p class="muted" style="margin:0">No runs yet. Yours could be the first.</p>'}</section>`;
+  return `<section class="card" id="lb"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">Top 10</div><span class="muted" style="font-size:12px">Run score</span></div>
+    ${rows ? `<div class="bruns">${rows}</div>` : `<p class="muted" style="margin:0">${LB.on ? 'No runs yet. Yours could be the first.' : 'The top 10 is not available here.'}</p>`}</section>`;
 }
 function viewHome(){
   const st = S.stats, top = [...(S.best || [])].sort(runOrder)[0];
@@ -2913,7 +2913,7 @@ function viewSeason(){
   return `${doneTop()}
   <div class="stack">
     <section class="card verdict${champ ? ' champ' : ''}">
-      ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · ${r.arch ? new Date(r.doneAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Your run'}${r.player ? ' · ' + esc(r.player) : ''}${r.rank ? ` · <span style="color:var(--gold)">No. ${r.rank} ${r.rankAll ? 'of everyone\'s runs' : 'of your best runs'}</span>` : ''}</div>
+      ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · ${r.arch ? new Date(r.doneAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Your run'}${r.player ? ' · ' + esc(r.player) : ''}${r.rank ? ` · <span style="color:var(--gold)">No. ${r.rank} in the top 10</span>` : ''}</div>
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
       ${runPath(r)}
       ${(r.ach || []).length ? `<div class="achnew">${r.ach.map(k => achChip(ACH.find(a => a[0] === k), true)).join('')}</div>` : ''}
@@ -3153,7 +3153,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261023114708';
+const BUILD = '20261023115046';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
