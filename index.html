@@ -76,7 +76,15 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .bruns{display:flex;flex-direction:column;gap:6px}
 .brun{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;cursor:pointer}
 .brun:hover{border-color:var(--gold)}.brun.champ{border-color:rgba(227,179,65,.55);background:linear-gradient(90deg,rgba(227,179,65,.12),var(--panel-2) 60%)}
-.brun .bi{flex:none;width:20px;text-align:center;color:var(--muted);font-weight:700}.brun.champ .bi{color:var(--gold)}
+.brun .bi{flex:none;width:24px;height:24px;line-height:24px;border-radius:50%;text-align:center;color:var(--muted);font-weight:700;font-size:13px}.brun.champ .bi{color:var(--gold)}
+.brun .bi.md1{background:linear-gradient(135deg,#F7D66B,#C9971C);color:#2A1D00}.brun .bi.md2{background:linear-gradient(135deg,#E9EEF3,#9AA6B2);color:#1E252C}.brun .bi.md3{background:linear-gradient(135deg,#E6A472,#9C5A2B);color:#2B1406}
+.brun.flash{animation:bflash 2.4s ease-out 1}@keyframes bflash{0%,30%{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold),0 0 22px rgba(227,179,65,.55)}100%{box-shadow:none}}
+.t10{display:inline-flex;align-items:baseline;gap:8px;margin-top:10px;padding:6px 14px;border-radius:999px;background:linear-gradient(135deg,rgba(247,214,107,.22),rgba(201,151,28,.12));border:1px solid var(--gold);color:var(--gold)}.t10 b{font-size:20px}.t10 span{font-size:13px;color:var(--text)}
+.t10.pop{animation:t10pop .7s cubic-bezier(.2,1.6,.4,1) .4s both}@keyframes t10pop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+.scorebox .sbig{font-size:34px;color:var(--gold);line-height:1}.sparts{display:grid;gap:6px;margin-top:10px}.sp{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)}.sp span{display:flex;flex-direction:column}.sp small{color:var(--muted);font-size:12px}.sp b{font-size:16px}
+.hello{margin-top:16px;font-size:16px}.linkb{background:none;border:0;padding:0 0 0 6px;color:var(--muted);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
+.radar .rv{transform-origin:var(--cx) var(--cy);animation:rgrow .5s cubic-bezier(.2,.9,.3,1)}@keyframes rgrow{from{transform:scale(0);opacity:.2}}
+@media (prefers-reduced-motion:reduce){.radar .rv,.t10.pop,.brun.flash{animation:none}}
 .brun .bc{flex:none;font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:6px;border:1px solid currentColor}
 .brun .bt{flex:1;min-width:0;display:flex;flex-direction:column}.brun .bt small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .brun .bg{flex:none;color:var(--muted);font-size:20px}.brun .bs{flex:none;font-weight:700;font-size:15px;min-width:34px;text-align:right}.brun.champ .bs{color:var(--gold)}
@@ -1635,6 +1643,10 @@ function runScore(h){
   const pts = 2 * num(h.w) + num(h.d) + (STAGE_BONUS[h.stage] || 0) + Math.max(0, 37 - num(h.pos || 36)) / 4;
   return Math.round(pts * (COMP_W[h.comp] || .5) * (DIFF_W[h.diff] || 1) * 10) / 10;
 }
+function scoreParts(h){
+  const m = 2 * num(h.w) + num(h.d), st = STAGE_BONUS[h.stage] || 0, ps = Math.max(0, 37 - num(h.pos || 36)) / 4;
+  return { m, st, ps, cw: COMP_W[h.comp] || .5, dw: DIFF_W[h.diff] || 1, total: runScore(h) };
+}
 const runOrder = (a, b) => runScore(b.h) - runScore(a.h) || (num(b.h.gf) - num(b.h.ga)) - (num(a.h.gf) - num(a.h.ga)) || num(a.at) - num(b.at);
 function archive(r){
   const copy = JSON.parse(JSON.stringify(r)); copy.arr = arrangement(r.picks, r.form);
@@ -1645,6 +1657,7 @@ function archive(r){
   // where it stands among everyone's runs (or among yours, when the shared list is not here)
   const g = LB.on ? [...LB.list.filter(x => x.id !== e.id), e].sort(runOrder) : [];
   const k = g.findIndex(x => x.id === e.id); r.rank = k > -1 && k < BEST_N ? k + 1 : null; r.rankAll = true;
+  if (r.rank) LB.flash = e.id;
   if (LB.mode === 'supa' || S.best.includes(e)) lbPush(e);
 }
 /* the shared top 10. Where the game runs from its own address (GitHub Pages), every run goes to one public table
@@ -1652,7 +1665,7 @@ function archive(r){
    Inside the claude.ai artifact, where that table cannot be reached, the artifact's own shared database is used
    instead: each player's ten best runs in runs/<their id>, the full runs in runs/<id>/full/<run id>. */
 const LB_CFG = { url: 'https://sadpfbuqocbekvlwxfqz.supabase.co', key: 'sb_publishable_etNezztDu3d9TwRBm5cJ-w_Z2PyvVsP' };   // the Supabase project's URL and its public (anon / publishable) key
-const LB = { on: false, mode: null, db: null, uid: null, list: [], warned: false };
+const LB = { flash: null, on: false, mode: null, db: null, uid: null, list: [], warned: false };
 const lbShow = () => { const el = document.getElementById('lb'); if (el) el.outerHTML = bestRuns(); };
 const lbClean = x => x && x.h && typeof x.id === 'string' && STAGE_RANK.includes(x.h.stage) && COMP_W[x.h.comp];
 const lbHead = () => Object.assign({ apikey: LB_CFG.key, 'Content-Type': 'application/json' }, /^eyJ/.test(LB_CFG.key) ? { Authorization: 'Bearer ' + LB_CFG.key } : {});
@@ -2016,7 +2029,7 @@ function bestRuns(){
   const L = LB.on ? LB.list.slice(0, BEST_N) : [];
   const day = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const rows = L.map((e, i) => { const h = e.h, c = COMP_W[h.comp] ? h.comp : 'ecl';
-    return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}" data-act="open" data-i="${i}"><span class="bi num">${i + 1}</span><span class="bc" style="color:${ACCENT[c]}">${CUP[c]}</span>
+    return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}${e.id === LB.flash ? ' flash' : ''}" data-act="open" data-i="${i}"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span><span class="bc" style="color:${ACCENT[c]}">${CUP[c]}</span>
       <span class="bt"><b>${esc(stageWord(h))}</b><small>${esc(e.name || 'Unnamed')} · ${DIFF[h.diff] ? DIFF[h.diff].label : ''} · ${num(h.w)}-${num(h.d)}-${num(h.l)} · ${day(e.at)}</small></span><span class="bs num" title="Run score">${runScore(h).toFixed(1)}</span><span class="bg">›</span></button>`; }).join('');
   return `<section class="card" id="lb"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">Top 10</div><span class="muted" style="font-size:12px">Run score</span></div>
     ${rows ? `<div class="bruns">${rows}</div>` : `<p class="muted" style="margin:0">${LB.on ? 'No runs yet. Yours could be the first.' : 'The top 10 is not available here.'}</p>`}</section>`;
@@ -2027,8 +2040,8 @@ function viewHome(){
   const pref = Object.assign({ diff: 'medium' }, S.pref);
   const picker = `<div class="pick"><div class="eyebrow">Difficulty</div><div class="diffs">${Object.entries(DIFF).map(([k, v]) => `<button class="diff c-${START_COMP[k]}${pref.diff === k ? ' on' : ''}" data-act="pickd" data-d="${k}" aria-pressed="${pref.diff === k}">
       <b>${v.label}</b><small>${v.pool}. Starts in the ${COMPS[START_COMP[k]].short}.</small></button>`).join('')}</div>
-    <div class="eyebrow" style="margin-top:16px">Your name</div>
-    <input id="pname" class="pname" maxlength="20" autocomplete="nickname" placeholder="Type your name" value="${esc(pref.name || '')}" aria-label="Your name">
+    ${pref.name && !S.editName ? `<div class="hello">Welcome back, <b>${esc(pref.name)}</b> <button class="linkb" data-act="rename">Not you?</button></div>` : `<div class="eyebrow" style="margin-top:16px">Your name</div>
+    <input id="pname" class="pname" maxlength="20" autocomplete="nickname" placeholder="Type your name" value="${esc(pref.name || '')}" aria-label="Your name">`}
     <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="start" ${pref.name ? '' : 'disabled'}>${pref.name ? 'Start a run as ' + esc(pref.name) : 'Type your name to start'}</button></div></div>`;
   return `
   <header class="topbar">${MARK}<span class="chip">${W.meta.live ? 'Data ' + niceDate(W.meta.updated) : 'Demo data'}</span></header>
@@ -2853,7 +2866,7 @@ async function seasonImage(h){
   await fontsReady();
   const W_ = 1080, H = 1350, acc = ACCENT[h.comp], [cv, x] = canvasBase(W_, H, acc, h.comp), white = '#F4F1EA', muted = '#9AA8BD';
   drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
-  txt(x, `RUN ${h.season} · ${COMPS[h.comp].short.toUpperCase()}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
+  txt(x, `${h.player ? h.player.toUpperCase() + ' · ' : ''}${COMPS[h.comp].short.toUpperCase()}`, W_ - 60, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', acc, 'right');
   const head = h.stage === 'champion' ? (h.comp === 'cl' ? 'CHAMPIONS OF EUROPE' : CUP[h.comp] + ' WINNERS') : stageWord(h).toUpperCase();
   const pw = diffPill(x, h.diff, W_ - 60, 160) + 24;
   let fs = 76; x.font = `700 ${fs}px Oswald, "Arial Narrow", Arial, sans-serif`; while (fs > 40 && x.measureText(head).width > W_ - 120 - pw){ fs -= 2; x.font = `700 ${fs}px Oswald, "Arial Narrow", Arial, sans-serif`; }
@@ -2863,7 +2876,7 @@ async function seasonImage(h){
   const PX = 60, PY = 245, PW = W_ - 120, PH = 790, boxes = drawPitch(x, h.xi, PX, PY, PW, PH);
   cv._boxes = boxes; cv._pitch = { x0: PX, x1: PX + PW, y0: PY, y1: PY + PH }; cv._lines = [PY + PH - 175, PY + PH - 28];
   // stats
-  const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Clean sheets', h.cs], ['Chemistry', h.chemN != null ? h.chemN : h.chemG || (h.chemB != null ? bonusTxt(h.chemB) : h.chem)]];
+  const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Run score', runScore(h).toFixed(1)], ['Chemistry', h.chemN != null ? h.chemN : h.chemG || (h.chemB != null ? bonusTxt(h.chemB) : h.chem)]];
   const SY = 1060, cw = (W_ - 120) / stats.length;
   stats.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, SY, cw - 12, 120, 16); x.fillStyle = '#1A2E4A'; x.fill();
     let vf = 46; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; while (vf > 26 && x.measureText(String(v)).width > cw - 32){ vf -= 2; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; }
@@ -2879,7 +2892,7 @@ async function seasonImage(h){
 // show the image in an overlay: share it (phones), save it, or long-press it
 async function showImage(kind){
   const r = S.run; if (!r) return;
-  const cv = await seasonImage(seasonSummary(r));
+  const cv = await seasonImage(Object.assign(seasonSummary(r), { player: r.player || '' }));
   const url = cv.toDataURL('image/png'), name = `ttny-run-${r.season || 1}.png`;
   const ov = document.createElement('div'); ov.className = 'imgov';
   ov.innerHTML = `<div class="imgbox"><img src="${url}" alt="Your ${kind} as an image"><div class="btnrow"><button class="btn primary" data-img="share">Share</button><button class="btn ghost" data-img="save">Save</button><button class="btn ghost" data-img="close">Close</button></div><div class="muted" style="font-size:12px;text-align:center;margin-top:8px">On a phone you can also press and hold the image to save it.</div></div>`;
@@ -2947,12 +2960,21 @@ function playerOfRun(r){
   return `<section class="card potr" data-pid="${best}" style="${clubKit(W.C[p.club])}"><div class="eyebrow">Player of the run</div>
     <div class="potr-row"><div class="ovdot gr g${rtGrade(matchRatings(r)[best].avg)}" title="Average match rating">${rt1(matchRatings(r)[best].avg)}</div><div style="min-width:0"><div class="potr-nm">${esc(p.name)}</div><div class="muted" style="font-size:13px">${natTag(p)} · ${esc(W.C[p.club].name)}</div><div style="margin-top:6px;font-weight:600">${bits}</div></div></div></section>`;
 }
+// the run score and what it is made of
+function scoreBox(r){
+  const h = seasonSummary(r), p = scoreParts(h), f = v => (Math.round(v * 100) / 100).toString();
+  const row = (l, v, sub) => `<div class="sp"><span>${l}${sub ? `<small>${sub}</small>` : ''}</span><b class="num">${v}</b></div>`;
+  return `<section class="card scorebox"><div class="drafthead"><div class="eyebrow">Run score</div><b class="num sbig">${p.total.toFixed(1)}</b></div>
+    <div class="sparts">${row('Results', '+' + f(p.m), `${num(h.w)} wins × 2, ${num(h.d)} draws × 1`)}${row('Furthest round', '+' + f(p.st), esc(STAGE_SHORT[h.stage] || ''))}${row('League phase', '+' + f(p.ps), `(37 − ${num(h.pos)}) / 4`)}
+    ${row('Competition', '× ' + f(p.cw), esc(COMPS[h.comp] ? COMPS[h.comp].short : ''))}${row('Difficulty', '× ' + f(p.dw), esc(DIFF[h.diff] ? DIFF[h.diff].label : ''))}</div></section>`;
+}
 function viewSeason(){
   const r = S.run, champ = r.cup.stage === 'champion';
   return `${doneTop()}
   <div class="stack">
     <section class="card verdict${champ ? ' champ' : ''}">
-      ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · ${r.arch ? new Date(r.doneAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Your run'}${r.player ? ' · ' + esc(r.player) : ''}${r.rank ? ` · <span style="color:var(--gold)">No. ${r.rank} in the top 10</span>` : ''}</div>
+      ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · ${r.arch ? new Date(r.doneAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Your run'}${r.player ? ' · ' + esc(r.player) : ''}</div>
+      ${r.rank ? `<div class="t10${r.arch ? '' : ' pop'}"><b class="num">No. ${r.rank}</b><span>in the top 10</span></div>` : ''}
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
       ${runPath(r)}
       ${(r.ach || []).length ? `<div class="achnew">${r.ach.map(k => achChip(ACH.find(a => a[0] === k), true)).join('')}</div>` : ''}
@@ -2960,7 +2982,7 @@ function viewSeason(){
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="season" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button></div>
     </section>
     <div class="endgrid">
-      <div class="stack">${playerOfRun(r)}${seasonBox(r)}</div>
+      <div class="stack">${scoreBox(r)}${playerOfRun(r)}${seasonBox(r)}</div>
       <div class="stack">${(h => xiBox('Your XI', h.xi, h.form))(seasonSummary(r))}${teamBox(r)}${playersBox(r)}</div>
     </div>
   </div>
@@ -3017,6 +3039,7 @@ function render(){
     const pl = document.querySelector('.plist'), prevList = r && r.phase === 'draft' && pl ? pl.innerHTML : null;   // the last club's players stay while the next is drawn
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
     fitHeroLogo();
+    if (!r && LB.flash) setTimeout(() => { LB.flash = null; }, 2600);   // the new run's row on the top 10 lights up once
     runLive(); if (runIntro()) setTimeout(() => runSpin(prevList), 1700); else runSpin(prevList); runKoSpin();
     if (!runReveal() && fresh) countUp(app);
     if (r && r.phase === 'done' && r.celebrate){ r.celebrate = false; save(); confetti(); }
@@ -3049,9 +3072,10 @@ document.addEventListener('click', e => {
     }
     return;
   }
-  if (a === 'start'){ if (!(S.pref && S.pref.name)){ toast('Type your name first.'); const x = document.getElementById('pname'); if (x) x.focus(); return; } newRun(); }
+  if (a === 'start'){ S.editName = 0; if (!(S.pref && S.pref.name)){ toast('Type your name first.'); const x = document.getElementById('pname'); if (x) x.focus(); return; } newRun(); }
   else if (a === 'pickd'){ S.pref = Object.assign({ diff: 'medium' }, S.pref, { diff: b.dataset.d }); save(); render(); }
   else if (a === 'open') openRun(+b.dataset.i);
+  else if (a === 'rename'){ S.editName = 1; render(); const x = document.getElementById('pname'); if (x){ x.focus(); x.select(); } }
   else if (a === 'back'){ S.run = null; render(); requestAnimationFrame(() => { const x = document.querySelector('.bruns'); if (x) toTop(x.closest('section')); }); }
   else if (a === 'pick') choose(b.dataset.p);
   else if (a === 'help') useHelp(b.dataset.k);
@@ -3109,7 +3133,8 @@ const cardTarget = t => t.closest('.slot[data-pid]') || (t.closest('.krow .ovdot
 function showCard(el, x, y){
   const p = W.P[el.dataset.pid]; if (!p) return;
   PC.classList.remove('sheet');
-  PC.innerHTML = cardHTML(p); PC.hidden = false;
+  if (PC.hidden || PC.dataset.pid !== String(p.id)){ PC.innerHTML = cardHTML(p); PC.dataset.pid = p.id; }
+  PC.hidden = false;
   const w = PC.offsetWidth, h = PC.offsetHeight, vw = innerWidth, vh = innerHeight;
   let left = x + 16, top = y + 16;
   if (left + w > vw - 8) left = Math.max(8, x - w - 16);
@@ -3127,7 +3152,7 @@ document.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') 
 function openSheet(pid){
   const p = W.P[pid]; if (!p) return;
   PC.classList.add('sheet'); PC.style.left = PC.style.top = '';
-  PC.innerHTML = `<button class="sheet-x" data-sheet-x aria-label="Close">✕</button>` + cardHTML(p); PC.hidden = false;
+  PC.innerHTML = `<button class="sheet-x" data-sheet-x aria-label="Close">✕</button>` + cardHTML(p); PC.dataset.pid = p.id; PC.hidden = false;
 }
 document.addEventListener('click', e => {
   if (!TOUCH()) return;
@@ -3192,7 +3217,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261023135859';
+const BUILD = '20261023141424';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
