@@ -117,6 +117,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .reveal{animation:fadein .3s ease-out}
 .loader{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:var(--muted);font-size:14px}
 .ld-logo{width:120px;height:154px;background:center/contain no-repeat;animation:breathe 1.6s ease-in-out infinite}
+.clubcard.prespin h2,.clubcard.prespin .meta,.clubcard.prespin .plist{visibility:hidden}
 .ld-tip{max-width:min(420px,84vw);min-height:3em;text-align:center;color:var(--muted);font-size:13px;line-height:1.45;opacity:0}.ld-tip.in{animation:tipin .5s ease-out forwards}@keyframes tipin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 #tmom{position:fixed;inset:0;z-index:80;display:grid;place-items:center;text-align:center;background:radial-gradient(circle at 50% 42%,color-mix(in srgb,var(--ta) 38%,#08111D) 0,#08111D 70%);animation:fadein .35s ease-out;cursor:pointer}
 #tmom.out{animation:fadeout .4s ease-in forwards}#tmom .tm-cup{width:150px;height:150px;filter:drop-shadow(0 0 28px var(--ta));animation:cupin .9s cubic-bezier(.2,1.5,.4,1)}@keyframes cupin{from{transform:translateY(40px) scale(.4);opacity:0}}
@@ -2388,7 +2389,7 @@ function runSpin(prev){
   tick();
 }
 /* the start of every run: a title card with the run, the competition and who stays, under two seconds; tap to skip */
-function runIntro(){
+function runIntro(after){
   const r = S.run; if (!r || !r.intro || (r.phase !== 'draft' && r.phase !== 'lineup')) return false;
   delete r.intro; save();
   if (toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
@@ -2396,7 +2397,7 @@ function runIntro(){
   el.innerHTML = `<div><div class="ie">Run ${r.season || 1}</div><h1>${COMPS[r.comp || 'cl'].short}</h1>
     <div class="is">${DIFF[r.diff || 'medium'].label} · ${k ? (k === 11 ? 'The whole XI stays' : `${k} kept · ${11 - k} to draft`) : 'Fresh squad · 11 to draft'}</div><div class="bar"><b></b></div></div>`;
   document.body.appendChild(el);
-  const go = () => { if (!el.isConnected || el.classList.contains('out')) return; el.classList.add('out'); setTimeout(() => el.remove(), 350); };
+  const go = () => { if (!el.isConnected || el.classList.contains('out')) return; el.classList.add('out'); setTimeout(() => el.remove(), 350); if (after) after(); };
   el.addEventListener('click', go); setTimeout(go, 1750);
   return true;
 }
@@ -3100,7 +3101,11 @@ function render(){
     $('#app').innerHTML = !r ? viewHome() : r.phase === 'draft' ? viewDraft() : r.phase === 'lineup' ? viewLineup() : r.phase === 'cup' ? viewCup() : viewDone();
     fitHeroLogo();
     if (!r && LB.flash) setTimeout(() => { LB.flash = null; }, 2600);   // the new run's row on the top 10 lights up once
-    runLive(); if (runIntro()) setTimeout(() => runSpin(prevList), 1700); else runSpin(prevList); runKoSpin();
+    runLive();
+    // the first club stays hidden behind the run's title card and is drawn the moment the card goes, however it goes
+    { const card = document.querySelector('.clubcard.reveal');
+      if (runIntro(() => { if (card) card.classList.remove('prespin'); runSpin(prevList); })){ if (card) card.classList.add('prespin'); } else runSpin(prevList); }
+    runKoSpin();
     if (!runReveal() && fresh) countUp(app);
     if (r && r.phase === 'done' && r.celebrate){ r.celebrate = false; save(); if (r.tm) confetti(); else titleMoment(); }
   } catch (e) {
@@ -3290,7 +3295,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261023141920';
+const BUILD = '20261023142115';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
