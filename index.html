@@ -79,7 +79,8 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .brun .bi{flex:none;width:20px;text-align:center;color:var(--muted);font-weight:700}.brun.champ .bi{color:var(--gold)}
 .brun .bc{flex:none;font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:6px;border:1px solid currentColor}
 .brun .bt{flex:1;min-width:0;display:flex;flex-direction:column}.brun .bt small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.brun .bg{flex:none;color:var(--muted);font-size:20px}
+.brun .bg{flex:none;color:var(--muted);font-size:20px}.brun .bs{flex:none;font-weight:700;font-size:15px;min-width:34px;text-align:right}.brun.champ .bs{color:var(--gold)}.brun.mine{box-shadow:inset 3px 0 0 var(--gold)}
+.pname{display:block;width:100%;margin-top:8px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;font-size:16px}.pname:focus{outline:2px solid var(--gold);outline-offset:1px}
 .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .pill{background:var(--panel-2);border-radius:999px;padding:4px 10px;font-size:13px}
 .foot{font-size:12px;color:var(--muted);line-height:1.5}
@@ -1463,7 +1464,7 @@ function newRun(carry){
   // runs played one after another remember everyone who played in them: whoever was let go cannot come back
   const ever = carry ? carry.ever || [] : [], gone = ever.filter(id => !kept.includes(id));
   const potCount = 11 - kept.length, vet = {}; kept.forEach(id => vet[id] = ((carry.vet || {})[id] || 1) + 1);
-  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), form: '4-2-2-2', cup: null, diff, comp, season: (S.stats.runs || 0) + 1, vet, full: kept.length === 11 };
+  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), form: '4-2-2-2', cup: null, diff, comp, season: (S.stats.runs || 0) + 1, vet, player: carry ? carry.player || '' : ((S.pref || {}).name || ''), full: kept.length === 11 };
   S.run.intro = 1;
   // champions keep the whole XI: straight to the line-up
   if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; if (!feasible(S.run.picks).includes(S.run.form)) S.run.form = randomForm(S.run.picks); }
@@ -1605,27 +1606,79 @@ function finish(){
   try { achCheck(r); } catch (e) {}
   try { archive(r); } catch (e) { console.error(e); }
 }
-/* your ten best runs, kept with everything needed to open their summary again. The competition comes first (the worst
-   Champions League run beats the best Europa League one), then how far you went, then the difficulty, then the
-   league-phase position, then goal difference, goals scored and wins; on a full tie the earlier run stays ahead */
-const COMP_RANK = { cl: 3, el: 2, ecl: 1 }, DIFF_RANK = { easy: 0, medium: 1, hard: 2 }, BEST_N = 10;
-function runOrder(a, b){
-  const x = a.h, y = b.h;
-  return (COMP_RANK[y.comp] || 0) - (COMP_RANK[x.comp] || 0) || STAGE_RANK.indexOf(y.stage) - STAGE_RANK.indexOf(x.stage)
-    || (DIFF_RANK[y.diff] || 0) - (DIFF_RANK[x.diff] || 0) || x.pos - y.pos || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || y.w - x.w || a.at - b.at;
+/* RUN SCORE: one number for a run, so runs from any competition, stage and difficulty line up on one list.
+   Built like a UEFA club coefficient: every match earns 2 for a win and 1 for a draw (a shootout counts as a draw),
+   the furthest round reached adds a bonus (play-off 2, Round of 16 6, quarter-final 10, semi-final 14, final 18, title 24),
+   and the league-phase position adds (37 - position) / 4. That sum is weighed by the competition (Champions League 1,
+   Europa League 0.7, Conference League 0.5) and the difficulty (Easy 1, Medium 1.1, Hard 1.2). A Champions League title
+   scores about 55, a Conference League title on Hard about 35, a Champions League exit in the league phase under 10.
+   Ties: the bigger goal difference, then the earlier run. */
+const STAGE_BONUS = { league: 0, playoff: 2, r16: 6, qf: 10, sf: 14, final: 18, champion: 24 };
+const COMP_W = { cl: 1, el: .7, ecl: .5 }, DIFF_W = { easy: 1, medium: 1.1, hard: 1.2 }, BEST_N = 10;
+const num = v => (typeof v === 'number' && isFinite(v) ? v : 0);
+function runScore(h){
+  const pts = 2 * num(h.w) + num(h.d) + (STAGE_BONUS[h.stage] || 0) + Math.max(0, 37 - num(h.pos || 36)) / 4;
+  return Math.round(pts * (COMP_W[h.comp] || .5) * (DIFF_W[h.diff] || 1) * 10) / 10;
 }
+const runOrder = (a, b) => runScore(b.h) - runScore(a.h) || (num(b.h.gf) - num(b.h.ga)) - (num(a.h.gf) - num(a.h.ga)) || num(a.at) - num(b.at);
 function archive(r){
   const copy = JSON.parse(JSON.stringify(r));
-  ['celebrate', 'stepK', 'stepDl', 'keepSel', 'intro', 'tried', 'order', 'club', 'note', 'cut', 'tip', 'manual', 'sel'].forEach(k => delete copy[k]);
-  const e = { at: r.doneAt, h: seasonSummary(r), run: copy };
-  const all = [...(S.best || []), e].sort(runOrder), i = all.indexOf(e);
-  S.best = all.slice(0, BEST_N); r.rank = i < BEST_N ? i + 1 : null;
+  ['celebrate', 'stepK', 'stepDl', 'keepSel', 'intro', 'tried', 'order', 'club', 'note', 'cut', 'tip', 'manual', 'sel', 'rank'].forEach(k => delete copy[k]);
+  const e = { id: 'r' + r.doneAt.toString(36) + Math.random().toString(36).slice(2, 6), at: r.doneAt, name: r.player || '', h: seasonSummary(r), run: copy };
+  const all = [...(S.best || []), e].sort(runOrder);
+  S.best = all.slice(0, BEST_N);
+  // where it stands among everyone's runs (or among yours, when the shared list is not here)
+  const g = LB.on ? [...LB.list.filter(x => !(x.mine && x.id === e.id)), { ...e, mine: true }].sort(runOrder) : all;
+  const k = g.findIndex(x => x.id === e.id); r.rank = k > -1 && k < BEST_N ? k + 1 : null; r.rankAll = LB.on;
+  if (S.best.includes(e)) lbPush(e);
+}
+/* the shared top 10: every player's own ten best runs sit in one document of theirs, runs/<their id> (small: the
+   summaries), with each full run beside it at runs/<id>/full/<run id> to open its summary again. Everyone reads all of
+   it; each player writes only their own. The list on the home page is everyone's runs together, best 10 by score. */
+const LB = { on: false, db: null, uid: null, list: [], warned: false };
+async function lbInit(){
+  try {
+    if (!window.claude || !window.claude.use) return;
+    const [db, u] = await Promise.all([claude.use('db'), claude.use('user')]);
+    if (!db) return;
+    LB.db = db; LB.uid = u ? await u.id() : null;
+    db.collection('runs').onSnapshot(snap => {
+      const L = [];
+      for (const d of snap.docs){ const b = d.data() || {}; if (!Array.isArray(b.list)) continue;
+        for (const x of b.list.slice(0, BEST_N)) if (x && x.h && typeof x.id === 'string' && STAGE_RANK.includes(x.h.stage) && COMP_W[x.h.comp]) L.push({ id: x.id, at: num(x.at), name: String(x.name || '').slice(0, 24), h: x.h, uid: d.id, mine: d.id === LB.uid }); }
+      LB.list = L.sort(runOrder); LB.on = true;
+      const el = document.getElementById('lb'); if (el) el.outerHTML = bestRuns();
+    }, () => { LB.on = false; });
+  } catch (e) {}
+}
+async function lbPush(e){
+  if (!LB.db || !LB.uid) return;
+  try {
+    const mine = (S.best || []).map(x => ({ id: x.id, at: x.at, name: x.name, h: x.h }));
+    await LB.db.doc('runs/' + LB.uid + '/full/' + e.id).set({ run: e.run, at: e.at });
+    await LB.db.doc('runs/' + LB.uid).set({ list: mine, at: Date.now() });
+    // full runs that dropped out of your ten are removed
+    const keep = new Set(mine.map(x => x.id)), old = await LB.db.collection('runs/' + LB.uid + '/full').get();
+    for (const d of old.docs) if (!keep.has(d.id)) await LB.db.doc('runs/' + LB.uid + '/full/' + d.id).delete();
+  } catch (err) {
+    if (!LB.warned){ LB.warned = true; setTimeout(() => toast('Your run is kept on this device only: this page does not let you add to the shared list.'), 1200); }
+  }
+}
+async function openRun(i){
+  const L = LB.on ? LB.list : (S.best || []), e = L[i]; if (!e) return;
+  let run = null;
+  const local = (S.best || []).find(x => x.id === e.id || (!x.id && x.at === e.at));
+  if (local) run = local.run;
+  else if (LB.db && e.uid){ try { const d = await LB.db.doc('runs/' + e.uid + '/full/' + e.id).get(); if (d.exists) run = d.data().run; } catch (err) {} }
+  if (!run || !run.cup || !Array.isArray(run.picks)){ toast('That run cannot be opened right now.'); return; }
+  S.run = Object.assign(JSON.parse(JSON.stringify(run)), { arch: 1, dscr: 'season', rank: i + 1, rankAll: LB.on, player: e.name || run.player || '' });
+  render(); scrollTo(0, 0);
 }
 // the next run straight away, with the players you keep; its competition: a title moves it up, missing the top 24 down
 const PREV_COMP = { cl: 'el', el: 'ecl', ecl: null };
 const nextComp = r => { const c = r.comp || 'cl', st = r.cup && r.cup.stage; return st === 'champion' ? NEXT_COMP[c] : st === 'league' ? (PREV_COMP[c] || c) : c; };
 function continueRun(){
-  const r = S.run, carry = r.keepN > 0 ? { kept: keptInOrder(r), diff: r.diff || 'medium', comp: nextComp(r), vet: r.vet || {}, ever: [...new Set([...(r.ever || []), ...r.picks])] } : null;
+  const r = S.run, carry = r.keepN > 0 ? { kept: keptInOrder(r), player: r.player, diff: r.diff || 'medium', comp: nextComp(r), vet: r.vet || {}, ever: [...new Set([...(r.ever || []), ...r.picks])] } : null;
   S.run = null; save();
   newRun(carry);
 }
@@ -1921,19 +1974,23 @@ function cabinet(st){
     <div class="achs" aria-label="Achievements">${ACH.map(a => achChip(a, (st.ach || {})[a[0]])).join('')}</div>`;
 }
 function bestRuns(){
-  const L = S.best || []; if (!L.length) return '';
+  const shared = LB.on, L = shared ? LB.list.slice(0, BEST_N) : (S.best || []);
   const day = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your best runs</div><div class="bruns">${L.map((e, i) => { const h = e.h;
-    return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}" data-act="open" data-i="${i}"><span class="bi num">${i + 1}</span><span class="bc" style="color:${ACCENT[h.comp]}">${CUP[h.comp]}</span>
-      <span class="bt"><b>${esc(stageWord(h))}</b><small>${DIFF[h.diff || 'medium'].label} · ${h.w}-${h.d}-${h.l} · ${h.gf}:${h.ga} · ${day(e.at)}</small></span><span class="bg">›</span></button>`; }).join('')}</div></section>`;
+  const rows = L.map((e, i) => { const h = e.h, mine = shared ? e.mine : true, c = COMP_W[h.comp] ? h.comp : 'ecl';
+    return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}${shared && mine ? ' mine' : ''}" data-act="open" data-i="${i}"><span class="bi num">${i + 1}</span><span class="bc" style="color:${ACCENT[c]}">${CUP[c]}</span>
+      <span class="bt"><b>${esc(stageWord(h))}</b><small>${esc(e.name || 'Unnamed')} · ${DIFF[h.diff] ? DIFF[h.diff].label : ''} · ${num(h.w)}-${num(h.d)}-${num(h.l)} · ${day(e.at)}</small></span><span class="bs num" title="Run score">${runScore(h).toFixed(1)}</span><span class="bg">›</span></button>`; }).join('');
+  return `<section class="card" id="lb"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">${shared ? 'Top 10 · everyone' : 'Your best runs'}</div><span class="muted" style="font-size:12px">Run score</span></div>
+    ${rows ? `<div class="bruns">${rows}</div>` : '<p class="muted" style="margin:0">No runs yet. Yours could be the first.</p>'}</section>`;
 }
 function viewHome(){
-  const st = S.stats, top = (S.best || [])[0];
+  const st = S.stats, top = [...(S.best || [])].sort(runOrder)[0];
   const best = top ? `${CUP[top.h.comp]} · ${STAGE_SHORT[top.h.stage]}` : st.bestStage ? STAGE_NAME[st.bestStage] : 'None yet';
   const pref = Object.assign({ diff: 'medium' }, S.pref);
   const picker = `<div class="pick"><div class="eyebrow">Difficulty</div><div class="diffs">${Object.entries(DIFF).map(([k, v]) => `<button class="diff c-${START_COMP[k]}${pref.diff === k ? ' on' : ''}" data-act="pickd" data-d="${k}" aria-pressed="${pref.diff === k}">
       <b>${v.label}</b><small>${v.pool}. Starts in the ${COMPS[START_COMP[k]].short}.</small></button>`).join('')}</div>
-    <div class="btnrow" style="margin-top:14px"><button class="btn primary" data-act="start">Start a run</button></div></div>`;
+    <div class="eyebrow" style="margin-top:16px">Your name</div>
+    <input id="pname" class="pname" maxlength="20" autocomplete="nickname" placeholder="Type your name" value="${esc(pref.name || '')}" aria-label="Your name">
+    <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="start" ${pref.name ? '' : 'disabled'}>${pref.name ? 'Start a run as ' + esc(pref.name) : 'Type your name to start'}</button></div></div>`;
   return `
   <header class="topbar">${MARK}<span class="chip">${W.meta.live ? 'Data ' + niceDate(W.meta.updated) : 'Demo data'}</span></header>
   <div class="stack">
@@ -1967,7 +2024,7 @@ function viewHome(){
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>Right after a run you can play the next one at once and carry players into it (anyone who played in those linked runs and was let go cannot come back); the further you went, the more: out in the league phase 5 (out of the Conference League's top 24, none), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
         <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) and 1 for each compatriot, at most 3 each. It makes your XI play stronger. You see it as a number from 70 (none) to 99 (full) once your XI is complete.</li>
-        <li>Your ten best runs are kept on this page: the competition first (any Champions League run is ahead of every Europa League one), then how far you went, the difficulty, the league-phase position and goal difference. Tap one to see its summary again.</li>
+        <li>Every run gets a run score, like a UEFA club coefficient: 2 for each win and 1 for each draw, a bonus for the furthest round (play-off 2, Round of 16 6, quarter-final 10, semi-final 14, final 18, title 24) and (37 minus your league-phase position) divided by 4; the sum is weighed by the competition (Champions League 1, Europa League 0.7, Conference League 0.5) and the difficulty (Easy 1, Medium 1.1, Hard 1.2). The home page shows the top 10 runs of everyone playing this page, by that score; tap one to see its summary. A new run asks for your name (a run straight after another keeps it).</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
         <li>Every decision has a clock: 60 seconds for each draft pick (then a random player is picked), 2 minutes to confirm your shape (then a random one is locked in), 60 seconds for each step of the season (then it moves on) and between two runs 60 seconds for each screen (then it moves on) and 2 minutes to choose who stays (then nobody carries over). Missing the top 24 of the league phase drops the next run a level, from the Champions League to the Europa League or from the Europa League to the Conference League.</li>
@@ -2856,7 +2913,7 @@ function viewSeason(){
   return `${doneTop()}
   <div class="stack">
     <section class="card verdict${champ ? ' champ' : ''}">
-      ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · ${r.arch ? new Date(r.doneAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Your run'}${r.rank ? ` · <span style="color:var(--gold)">No. ${r.rank} of your best runs</span>` : ''}</div>
+      ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · ${r.arch ? new Date(r.doneAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Your run'}${r.player ? ' · ' + esc(r.player) : ''}${r.rank ? ` · <span style="color:var(--gold)">No. ${r.rank} ${r.rankAll ? 'of everyone\'s runs' : 'of your best runs'}</span>` : ''}</div>
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
       ${runPath(r)}
       ${(r.ach || []).length ? `<div class="achnew">${r.ach.map(k => achChip(ACH.find(a => a[0] === k), true)).join('')}</div>` : ''}
@@ -2953,9 +3010,9 @@ document.addEventListener('click', e => {
     }
     return;
   }
-  if (a === 'start') newRun();
+  if (a === 'start'){ if (!(S.pref && S.pref.name)){ toast('Type your name first.'); const x = document.getElementById('pname'); if (x) x.focus(); return; } newRun(); }
   else if (a === 'pickd'){ S.pref = Object.assign({ diff: 'medium' }, S.pref, { diff: b.dataset.d }); save(); render(); }
-  else if (a === 'open'){ const e = (S.best || [])[+b.dataset.i]; if (e){ S.run = Object.assign(JSON.parse(JSON.stringify(e.run)), { arch: 1, dscr: 'season', rank: +b.dataset.i + 1 }); render(); scrollTo(0, 0); } }
+  else if (a === 'open') openRun(+b.dataset.i);
   else if (a === 'back'){ S.run = null; render(); requestAnimationFrame(() => { const x = document.querySelector('.bruns'); if (x) toTop(x.closest('section')); }); }
   else if (a === 'pick') choose(b.dataset.p);
   else if (a === 'help') useHelp(b.dataset.k);
@@ -2999,6 +3056,13 @@ document.addEventListener('click', e => {
   }
 });
 
+document.addEventListener('input', e => {
+  if (e.target.id !== 'pname') return;
+  const v = e.target.value.replace(/\s+/g, ' ').trim().slice(0, 20);
+  S.pref = Object.assign({ diff: 'medium' }, S.pref, { name: v }); save();
+  const b = document.querySelector('[data-act=start]'); if (b){ b.disabled = !v; b.textContent = v ? 'Start a run as ' + v : 'Type your name to start'; }
+});
+document.addEventListener('keydown', e => { if (e.target.id === 'pname' && e.key === 'Enter'){ const b = document.querySelector('[data-act=start]'); if (b && !b.disabled) b.click(); } });
 /* player card: hover on desktop, tap on a pitch slot on touch */
 const PC = $('#pcard');
 // hover targets: players on the pitch, the rating circle on the end-of-run list, rows of the players table
@@ -3089,7 +3153,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261022151542';
+const BUILD = '20261023114708';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -3110,4 +3174,5 @@ document.addEventListener('visibilitychange', () => {
 });
 addEventListener('pageshow', e => { if (e.persisted) location.reload(); });   // a page restored from the back-forward cache
 boot();
+lbInit();
 </script>
