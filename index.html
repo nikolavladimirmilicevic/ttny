@@ -980,8 +980,17 @@ function isWeak(p, code){
   if (!p.pc) return code !== p.prim;
   const i = p.pos.indexOf(code); return i < 0 || p.pc[i] <= Math.max(...p.pc) / 2;
 }
-// away from his main position he plays a little below his level: 2 points in a weak position, 1 in any other (measured)
-function effOvr(pid, code){ const p = W.P[pid]; return p.ovr - (!code || code === p.prim ? 0 : isWeak(p, code) ? W.pen : W.pen2); }
+/* away from his main position he plays a little below his level, the less often he plays there the more: measured on
+   280,000 rated starts, his match rating away from his main position drops by about 0.016 where he plays 35% or more of
+   his starts, 0.05 at 10-20%, 0.095 under 5% (the distance between the positions adds nothing measurable once that is
+   known). On the overall scale: -0.32 - 1.15 x ln(share), from half a point to 4. */
+function offPen(p, code){
+  const i = p.pos.indexOf(code);
+  if (!p.pc || p.pc.length !== p.pos.length || i < 0) return isWeak(p, code) ? W.pen : W.pen2;
+  const sh = p.pc[i] / (p.pc.reduce((t, x) => t + x, 0) || 1);
+  return Math.max(.5, Math.min(4, -0.32 - 1.15 * Math.log(Math.max(sh, .01))));
+}
+function effOvr(pid, code){ const p = W.P[pid]; return p.ovr - (!code || code === p.prim ? 0 : offPen(p, code)); }
 const xiElo = ov => W.xi.alpha + W.xi.beta * ov;
 const eloOv = elo => (elo - W.xi.alpha) / W.xi.beta;   // a rating on the overall scale, for showing clubs as letters
 function teamOvr(picks, form){
@@ -2046,7 +2055,7 @@ function viewHome(){
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>A run starts with one choice, the difficulty. It sets where you start (Easy in the Champions League, Medium in the Europa League, Hard in the Conference League) and how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots. Win a competition and a run played straight after it moves up a level.</li>
         <li>Three helps, each once per run: <b>Redraw</b> swaps the club for another from the same pot, <b>Fifty-fifty</b> rules out the weaker half of the players you can pick, and <b>Scout's tip</b> marks one standout player at the club.</li>
-        <li>No ratings during the draft: you pick on name, nationality and positions. Player overalls are never shown. Once your XI is locked, his card shows a hexagon (shooting, passing, strength, defending, speed, dribbling) estimated from his positions, his numbers, his age and his level, with no numbers, and every match gives him a match rating (6 is an ordinary game). Your team's rating, by line (FW, MF, DF), is the average of your 11 (a little lower for anyone away from his main position) plus the chemistry bonus; opponents show no rating at all. Away from his main position a player plays a little below his level: a bit less in a position he plays often, a bit more in a weak one (started in at most half as often as his main one). Weak positions are faded on his card.</li>
+        <li>No ratings during the draft: you pick on name, nationality and positions. Player overalls are never shown. Once your XI is locked, his card shows a hexagon (shooting, passing, strength, defending, speed, dribbling) estimated from his positions, his numbers, his age and his level, with no numbers, and every match gives him a match rating (6 is an ordinary game). Your team's rating, by line (FW, MF, DF), is the average of your 11 (a little lower for anyone away from his main position) plus the chemistry bonus; opponents show no rating at all. Away from his main position a player plays below his level, the rarer the position for him the more (from half a point to 4 on the overall scale). Positions come from his starts, the recent ones weighing more (half as much three months back, friendlies half again); a second position needs 2 starts there or a tenth of his starts. Weak positions are faded on his card.</li>
         <li>The draft starts in 4-2-2-2 and keeps that shape while it still works; when it stops working, another one that works is picked at random. A player can only be picked if he still fits one of the 14 formations. At the end you choose the shape yourself.</li>
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>Right after a run you can play the next one at once and carry players into it (anyone who played in those linked runs and was let go cannot come back); the further you went, the more: out in the league phase 5 (out of the Conference League's top 24, none), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
@@ -3180,7 +3189,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261023125228';
+const BUILD = '20261023133735';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

@@ -215,6 +215,17 @@ def _video_code(formation, grid, pos):
 
 
 WIDE = {'LB', 'RB', 'LMF', 'RMF', 'LWF', 'RWF'}
+POS_HALF_LIFE = 90    # days: a start this old counts half as much toward his positions (shorter predicts the next months a bit better, but makes positions jumpy)
+FRIENDLY_W = 0.5      # ... and a friendly half as much again
+
+
+def start_weight(day, fixture):
+    try:
+        age = max(0, (TODAY - dt.date.fromisoformat(day)).days)
+    except (TypeError, ValueError):
+        age = 0
+    w = 0.5 ** (age / POS_HALF_LIFE)
+    return w * (FRIENDLY_W if 'riendl' in (fixture.get('lg') or '') else 1.0)
 BAND = {'GK': 0, 'CB': 1, 'LB': 1, 'RB': 1, 'DMF': 2, 'CMF': 2, 'LMF': 2, 'RMF': 2, 'AMF': 3, 'LWF': 3, 'RWF': 3, 'CF': 3}   # defence, midfield, attack
 
 
@@ -1131,9 +1142,15 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
                 continue
             # positions only from starts in a line-up with a formation: a player known only from line-ups without one
             # (just goalkeeper, defender, midfielder or forward) is not offered; those starts still count for the others
-            cnt = Counter(s[3] for s in st if s[3] and not s[9])
-            if not cnt:
+            raw = Counter(s[3] for s in st if s[3] and not s[9])
+            if not raw:
                 continue
+            # each start weighs by how recent it is (half as much six months back) and half as much in a friendly,
+            # so his positions follow where he plays now, not where he was tried in pre-season
+            cnt = Counter()
+            for s in st:
+                if s[3] and not s[9]:
+                    cnt[s[3]] += start_weight(s[0], fx.get(s[4]) or {})
             seen.add(pid)
             # offered positions: every position he started in, most frequent first;
             # on a tie, the one he played most recently first (starts are newest first)
@@ -1146,9 +1163,12 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             # a single start far from where he always plays (a striker at left-back, a centre-back up front) is
             # almost always a line-up the API got wrong, or a friendly experiment: with at least 3 starts in his
             # main position, a position two bands away (defence / midfield / attack) seen only once is left out
-            main = pos[0]
-            if cnt[main] >= 3:
-                pos = [k for k in pos if k == main or cnt[k] > 1 or not (abs(BAND.get(k, 2) - BAND.get(main, 2)) >= 2 or 'GK' in (k, main))]
+            main, tot_w = pos[0], sum(cnt.values()) or 1
+            if raw[main] >= 3:
+                pos = [k for k in pos if k == main or raw[k] > 1 or not (abs(BAND.get(k, 2) - BAND.get(main, 2)) >= 2 or 'GK' in (k, main))]
+            # a second position needs at least 2 starts there, or a tenth of his (weighted) starts: one start among many
+            # says little (and is often a line-up the API got wrong)
+            pos = [k for k in pos if k == main or raw[k] >= 2 or cnt[k] / tot_w >= 0.10]
             # goals and assists per start (own goals and missed penalties do not count)
             g = a = 0
             m = []
@@ -1163,7 +1183,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             cs = sum(1 for s in st[:10] if s[2] == 0 and s[3] in DEF_POS)
             e = people.get(str(pid), {})
             out_players.append({'id': pid, 'name': fix_text(display_name(e, pid)), 'nat': e.get('nat'), 'age': e.get('age'),
-                                'club': tid, 'prim': pos[0], 'pos': pos, 'pc': [cnt[k] for k in pos] if cnt else [1], 'starts': len(st), 'g': g, 'a': a, 'cs': cs,
+                                'club': tid, 'prim': pos[0], 'pos': pos, 'pc': [round(cnt[k], 2) for k in pos] if cnt else [1], 'starts': len(st), 'g': g, 'a': a, 'cs': cs,
                                 'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]],
                                 'or': [s[5] for s in st[:10]], 'm': m,
                                 # every team he started for in the window (clubs and national teams): for chemistry
