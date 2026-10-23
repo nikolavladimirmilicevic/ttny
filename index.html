@@ -1134,6 +1134,9 @@ const fits = pids => FORM_ORDER.some(f => assign(pids, f));
 /* The arrangement the player sees and plays with: his manual moves for this formation are kept
    where still valid, new picks fill the free compatible slots; otherwise fall back to auto. */
 function arrangement(pids, form){
+  // a saved run shows the XI exactly as it lined up, even if a data update has changed the players' positions since
+  const ar = S.run && S.run.arch && S.run.form === form && S.run.arr;
+  if (ar && ar.length === FORMS[form].length && pids.every(p => ar.includes(p))) return ar.slice();
   const slots = FORMS[form], man = S.run && S.run.phase !== 'draft' && S.run.manual && S.run.manual[form];
   if (man){
     const a = Array(slots.length).fill(null), used = new Set();
@@ -1622,7 +1625,7 @@ function runScore(h){
 }
 const runOrder = (a, b) => runScore(b.h) - runScore(a.h) || (num(b.h.gf) - num(b.h.ga)) - (num(a.h.gf) - num(a.h.ga)) || num(a.at) - num(b.at);
 function archive(r){
-  const copy = JSON.parse(JSON.stringify(r));
+  const copy = JSON.parse(JSON.stringify(r)); copy.arr = arrangement(r.picks, r.form);
   ['celebrate', 'stepK', 'stepDl', 'keepSel', 'intro', 'tried', 'order', 'club', 'note', 'cut', 'tip', 'manual', 'sel', 'rank'].forEach(k => delete copy[k]);
   const e = { id: 'r' + r.doneAt.toString(36) + Math.random().toString(36).slice(2, 6), at: r.doneAt, name: r.player || '', h: seasonSummary(r), run: copy };
   const all = [...(S.best || []), e].sort(runOrder);
@@ -3177,7 +3180,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261023124833';
+const BUILD = '20261023125228';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
