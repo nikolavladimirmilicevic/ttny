@@ -77,3 +77,5 @@ Difficulty calibration: serve the game on port 8830 and run `node pipeline/tools
 
 
 **Top 10 backend.** Played from the game's own address (GitHub Pages), the top 10 is one public Supabase table, `runs` (set up once with `pipeline/leaderboard.sql`): anyone who plays can add a run (only runs that would enter the current top 10 are sent), nobody can change or delete one, everyone reads it. The project URL and its public key go in `LB_CFG` in `index.html`; that key is public by design (it only allows what the table's rules allow), unlike the API-Football key, which stays a GitHub secret. Inside the claude.ai artifact, where that table cannot be reached, the artifact's own shared database is used instead.
+
+**Odd one-off positions.** A single start two bands away from where a player always plays (a striker at left-back, a centre-back up front: defence, midfield and attack being the bands, the keeper apart) is left out once he has at least 3 starts in his main position. These are almost always line-ups the API got wrong, or friendly experiments.

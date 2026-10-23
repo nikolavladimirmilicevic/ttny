@@ -215,6 +215,7 @@ def _video_code(formation, grid, pos):
 
 
 WIDE = {'LB', 'RB', 'LMF', 'RMF', 'LWF', 'RWF'}
+BAND = {'GK': 0, 'CB': 1, 'LB': 1, 'RB': 1, 'DMF': 2, 'CMF': 2, 'LMF': 2, 'RMF': 2, 'AMF': 3, 'LWF': 3, 'RWF': 3, 'CF': 3}   # defence, midfield, attack
 
 
 def lateral(formation, grid):
@@ -1142,6 +1143,12 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             # on a tie, the one in the line the API most often lists him in (G, D, M, F), then the most recent
             pos = [k for k, _ in sorted(cnt.items(), key=lambda kv: (-kv[1], -letters[pid][LETTER.get(kv[0], '')], last[kv[0]]))]
             pos = pos or ['CMF']
+            # a single start far from where he always plays (a striker at left-back, a centre-back up front) is
+            # almost always a line-up the API got wrong, or a friendly experiment: with at least 3 starts in his
+            # main position, a position two bands away (defence / midfield / attack) seen only once is left out
+            main = pos[0]
+            if cnt[main] >= 3:
+                pos = [k for k in pos if k == main or cnt[k] > 1 or not (abs(BAND.get(k, 2) - BAND.get(main, 2)) >= 2 or 'GK' in (k, main))]
             # goals and assists per start (own goals and missed penalties do not count)
             g = a = 0
             m = []
