@@ -1630,38 +1630,61 @@ function archive(r){
   // where it stands among everyone's runs (or among yours, when the shared list is not here)
   const g = LB.on ? [...LB.list.filter(x => x.id !== e.id), e].sort(runOrder) : [];
   const k = g.findIndex(x => x.id === e.id); r.rank = k > -1 && k < BEST_N ? k + 1 : null; r.rankAll = true;
-  if (S.best.includes(e)) lbPush(e);
+  if (LB.mode === 'supa' || S.best.includes(e)) lbPush(e);
 }
-/* the shared top 10: every player's own ten best runs sit in one document of theirs, runs/<their id> (small: the
-   summaries), with each full run beside it at runs/<id>/full/<run id> to open its summary again. Everyone reads all of
-   it; each player writes only their own. The list on the home page is everyone's runs together, best 10 by score. */
-const LB = { on: false, db: null, uid: null, list: [], warned: false };
+/* the shared top 10. Where the game runs from its own address (GitHub Pages), every run goes to one public table
+   (Supabase, below): anyone who plays can add a run, nobody can change or delete one, and everyone reads the top 10.
+   Inside the claude.ai artifact, where that table cannot be reached, the artifact's own shared database is used
+   instead: each player's ten best runs in runs/<their id>, the full runs in runs/<id>/full/<run id>. */
+const LB_CFG = { url: '', key: '' };   // the Supabase project's URL and its public (anon / publishable) key
+const LB = { on: false, mode: null, db: null, uid: null, list: [], warned: false };
+const lbShow = () => { const el = document.getElementById('lb'); if (el) el.outerHTML = bestRuns(); };
+const lbClean = x => x && x.h && typeof x.id === 'string' && STAGE_RANK.includes(x.h.stage) && COMP_W[x.h.comp];
+const lbHead = () => Object.assign({ apikey: LB_CFG.key, 'Content-Type': 'application/json' }, /^eyJ/.test(LB_CFG.key) ? { Authorization: 'Bearer ' + LB_CFG.key } : {});
+async function lbFetchTop(){
+  const r = await fetch(LB_CFG.url + '/rest/v1/runs?select=id,at,name,h&order=score.desc,at.asc&limit=30', { headers: lbHead(), cache: 'no-store' });
+  if (!r.ok) throw new Error('lb ' + r.status);
+  const rows = await r.json();
+  LB.list = rows.filter(lbClean).map(x => ({ id: x.id, at: Date.parse(x.at) || 0, name: String(x.name || '').slice(0, 20), h: x.h })).sort(runOrder);
+  LB.on = true; LB.mode = 'supa'; lbShow();
+}
 async function lbInit(){
+  if (LB_CFG.url && LB_CFG.key){
+    try { await lbFetchTop(); setInterval(() => { if (!S.run && !document.hidden) lbFetchTop().catch(() => {}); }, 60000); return; } catch (e) {}
+  }
   try {
     if (!window.claude || !window.claude.use) return;
     const [db, u] = await Promise.all([claude.use('db'), claude.use('user')]);
     if (!db) return;
-    LB.db = db; LB.uid = u ? await u.id() : null;
+    LB.db = db; LB.uid = u ? await u.id() : null; LB.mode = 'db';
     db.collection('runs').onSnapshot(snap => {
       const L = [];
       for (const d of snap.docs){ const b = d.data() || {}; if (!Array.isArray(b.list)) continue;
-        for (const x of b.list.slice(0, BEST_N)) if (x && x.h && typeof x.id === 'string' && STAGE_RANK.includes(x.h.stage) && COMP_W[x.h.comp]) L.push({ id: x.id, at: num(x.at), name: String(x.name || '').slice(0, 24), h: x.h, uid: d.id, mine: d.id === LB.uid }); }
-      LB.list = L.sort(runOrder); LB.on = true;
-      const el = document.getElementById('lb'); if (el) el.outerHTML = bestRuns();
+        for (const x of b.list.slice(0, BEST_N)) if (lbClean(x)) L.push({ id: x.id, at: num(x.at), name: String(x.name || '').slice(0, 24), h: x.h, uid: d.id }); }
+      LB.list = L.sort(runOrder); LB.on = true; lbShow();
     }, () => { LB.on = false; });
   } catch (e) {}
 }
 async function lbPush(e){
-  if (!LB.db || !LB.uid) return;
   try {
+    if (LB.mode === 'supa'){
+      // only runs that make the current top 10 are sent
+      const tenth = LB.list[BEST_N - 1];
+      if (LB.list.length >= BEST_N && runOrder(e, tenth) > 0) return;
+      const r = await fetch(LB_CFG.url + '/rest/v1/runs', { method: 'POST', headers: Object.assign(lbHead(), { Prefer: 'return=minimal' }),
+        body: JSON.stringify({ id: e.id, name: (e.name || 'Unnamed').slice(0, 20), score: runScore(e.h), h: e.h, run: e.run }) });
+      if (!r.ok) throw new Error('lb ' + r.status);
+      LB.list = [...LB.list, { id: e.id, at: e.at, name: e.name, h: e.h }].sort(runOrder); lbFetchTop().catch(() => {});
+      return;
+    }
+    if (!LB.db || !LB.uid) return;
     const mine = (S.best || []).map(x => ({ id: x.id, at: x.at, name: x.name, h: x.h }));
     await LB.db.doc('runs/' + LB.uid + '/full/' + e.id).set({ run: e.run, at: e.at });
     await LB.db.doc('runs/' + LB.uid).set({ list: mine, at: Date.now() });
-    // full runs that dropped out of your ten are removed
     const keep = new Set(mine.map(x => x.id)), old = await LB.db.collection('runs/' + LB.uid + '/full').get();
     for (const d of old.docs) if (!keep.has(d.id)) await LB.db.doc('runs/' + LB.uid + '/full/' + d.id).delete();
   } catch (err) {
-    if (!LB.warned){ LB.warned = true; setTimeout(() => toast('Your run is kept on this device only: this page does not let you add to the shared list.'), 1200); }
+    if (!LB.warned){ LB.warned = true; setTimeout(() => toast('This run could not be added to the top 10.'), 1200); }
   }
 }
 async function openRun(i){
@@ -1669,6 +1692,7 @@ async function openRun(i){
   let run = null;
   const local = (S.best || []).find(x => x.id === e.id || (!x.id && x.at === e.at));
   if (local) run = local.run;
+  else if (LB.mode === 'supa'){ try { const q = await fetch(LB_CFG.url + '/rest/v1/runs?select=run&id=eq.' + encodeURIComponent(e.id), { headers: lbHead() }); const rows = q.ok ? await q.json() : []; if (rows[0]) run = rows[0].run; } catch (err) {} }
   else if (LB.db && e.uid){ try { const d = await LB.db.doc('runs/' + e.uid + '/full/' + e.id).get(); if (d.exists) run = d.data().run; } catch (err) {} }
   if (!run || !run.cup || !Array.isArray(run.picks)){ toast('That run cannot be opened right now.'); return; }
   S.run = Object.assign(JSON.parse(JSON.stringify(run)), { arch: 1, dscr: 'season', rank: i + 1, rankAll: LB.on, player: e.name || run.player || '' });
@@ -3153,7 +3177,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261023115046';
+const BUILD = '20261023115344';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
