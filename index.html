@@ -1636,7 +1636,7 @@ function archive(r){
    (Supabase, below): anyone who plays can add a run, nobody can change or delete one, and everyone reads the top 10.
    Inside the claude.ai artifact, where that table cannot be reached, the artifact's own shared database is used
    instead: each player's ten best runs in runs/<their id>, the full runs in runs/<id>/full/<run id>. */
-const LB_CFG = { url: '', key: '' };   // the Supabase project's URL and its public (anon / publishable) key
+const LB_CFG = { url: 'https://sadpfbuqocbekvlwxfqz.supabase.co', key: 'sb_publishable_etNezztDu3d9TwRBm5cJ-w_Z2PyvVsP' };   // the Supabase project's URL and its public (anon / publishable) key
 const LB = { on: false, mode: null, db: null, uid: null, list: [], warned: false };
 const lbShow = () => { const el = document.getElementById('lb'); if (el) el.outerHTML = bestRuns(); };
 const lbClean = x => x && x.h && typeof x.id === 'string' && STAGE_RANK.includes(x.h.stage) && COMP_W[x.h.comp];
@@ -3177,7 +3177,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261023115344';
+const BUILD = '20261023120031';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
