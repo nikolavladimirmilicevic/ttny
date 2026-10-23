@@ -117,6 +117,15 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .reveal{animation:fadein .3s ease-out}
 .loader{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:var(--muted);font-size:14px}
 .ld-logo{width:120px;height:154px;background:center/contain no-repeat;animation:breathe 1.6s ease-in-out infinite}
+.ld-tip{max-width:min(420px,84vw);min-height:3em;text-align:center;color:var(--muted);font-size:13px;line-height:1.45;opacity:0}.ld-tip.in{animation:tipin .5s ease-out forwards}@keyframes tipin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+#tmom{position:fixed;inset:0;z-index:80;display:grid;place-items:center;text-align:center;background:radial-gradient(circle at 50% 42%,color-mix(in srgb,var(--ta) 38%,#08111D) 0,#08111D 70%);animation:fadein .35s ease-out;cursor:pointer}
+#tmom.out{animation:fadeout .4s ease-in forwards}#tmom .tm-cup{width:150px;height:150px;filter:drop-shadow(0 0 28px var(--ta));animation:cupin .9s cubic-bezier(.2,1.5,.4,1)}@keyframes cupin{from{transform:translateY(40px) scale(.4);opacity:0}}
+#tmom h1{font-size:clamp(48px,12vw,96px);margin:6px 0 0;color:#F4F1EA;letter-spacing:.02em;animation:fadein .6s .35s both}#tmom .tm-c{margin-top:14px;color:var(--ta);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:14px;animation:fadein .6s .25s both}#tmom .tm-t{color:#9AA8BD;margin-top:6px;animation:fadein .6s .5s both}
+@keyframes fadeout{to{opacity:0}}
+.rainbow{display:grid;grid-template-columns:repeat(11,1fr);gap:3px;margin-top:8px}.rainbow i{height:8px;border-radius:3px;background:var(--line)}.rainbow i.on{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}.rainbow i.new{animation:rbnew .6s ease-out}@keyframes rbnew{from{transform:scaleY(3);filter:brightness(1.6)}}
+.achcard{position:fixed;left:50%;bottom:110px;z-index:70;transform:translateX(-50%);perspective:600px;cursor:pointer}.achcard .ac-in{background:linear-gradient(135deg,#22324B,#152338);border:1px solid var(--gold);border-radius:14px;padding:12px 16px;box-shadow:0 12px 40px rgba(0,0,0,.45),0 0 24px rgba(227,179,65,.25);animation:acflip .7s cubic-bezier(.2,1.3,.4,1);min-width:250px}
+.achcard.out{animation:fadeout .4s forwards}@keyframes acflip{from{transform:rotateX(-90deg);opacity:0}}.ac-h{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}.ac-row{display:flex;gap:10px;align-items:center;margin-top:4px}.ac-row i{font-style:normal;font-size:26px}.ac-row span{display:flex;flex-direction:column}.ac-row small{color:var(--muted);font-size:12px}
+@media (prefers-reduced-motion:reduce){.achcard .ac-in,.rainbow i.new,#tmom,#tmom *{animation:none!important}.ld-tip{opacity:1}}
 .ld-bar{width:min(260px,70vw);height:6px;border-radius:3px;background:var(--line);overflow:hidden}.ld-bar b{display:block;height:100%;width:4%;background:var(--gold);border-radius:3px;transition:width .2s}
 @keyframes breathe{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.04);opacity:1}}
 #app.enter{animation:enter .22s ease-out}@keyframes enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -569,7 +578,7 @@ body.matchon .ev.live .gflash{top:auto;bottom:6%;font-size:24px}
 @media (prefers-reduced-motion: reduce){.chip.last{animation:none}}
 </style>
 
-<div class="wrap" id="app"><div class="loader"><div class="ld-logo"></div><div class="ld-bar"><b></b></div><p>Loading the clubs and players…</p></div></div>
+<div class="wrap" id="app"><div class="loader"><div class="ld-logo"></div><div class="ld-bar"><b></b></div><p>Loading the clubs and players…</p><p class="ld-tip" aria-live="polite"></p></div></div>
 <div id="toast" class="toast" hidden></div>
 <div id="pcard" class="pcard" hidden></div>
 
@@ -2017,7 +2026,15 @@ function achCheck(r){
   const ok = { title: champ, hattrick: ht, unbeaten: ms.length > 0 && !ms.some(lost), hard: champ && r.diff === 'hard', treble: tb.cl && tb.el && tb.ecl, again: champ && !!r.full };
   const fresh = ACH.filter(([k]) => ok[k] && !st.ach[k]).map(([k]) => k);
   fresh.forEach(k => st.ach[k] = Date.now()); r.ach = fresh;
-  if (fresh.length) setTimeout(() => toast('Achievement unlocked: ' + fresh.map(k => ACH.find(a => a[0] === k)[2]).join(', ')), 300);
+  if (fresh.length) setTimeout(() => achCard(fresh), 600);
+}
+function achCard(keys){
+  if (toast.quiet) return; document.querySelectorAll('.achcard').forEach(x => x.remove());
+  const el = document.createElement('div'); el.className = 'achcard'; el.setAttribute('role', 'status');
+  el.innerHTML = `<div class="ac-in"><div class="ac-h">Achievement unlocked</div>${keys.map(k => { const a = ACH.find(x => x[0] === k); return `<div class="ac-row"><i>${a[1]}</i><span><b>${esc(a[2])}</b><small>${esc(a[3])}</small></span></div>`; }).join('')}</div>`;
+  document.body.appendChild(el); SND.play('applause'); buzz([40, 40, 40]);
+  const go = () => { el.classList.add('out'); setTimeout(() => el.remove(), 400); };
+  el.addEventListener('click', go); setTimeout(go, 4200);
 }
 function cabinet(st){
   const tb = st.titlesBy || {};
@@ -2031,7 +2048,7 @@ function bestRuns(){
   const rows = L.map((e, i) => { const h = e.h, c = COMP_W[h.comp] ? h.comp : 'ecl';
     return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}${e.id === LB.flash ? ' flash' : ''}" data-act="open" data-i="${i}"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span><span class="bc" style="color:${ACCENT[c]}">${CUP[c]}</span>
       <span class="bt"><b>${esc(stageWord(h))}</b><small>${esc(e.name || 'Unnamed')} · ${DIFF[h.diff] ? DIFF[h.diff].label : ''} · ${num(h.w)}-${num(h.d)}-${num(h.l)} · ${day(e.at)}</small></span><span class="bs num" title="Run score">${runScore(h).toFixed(1)}</span><span class="bg">›</span></button>`; }).join('');
-  return `<section class="card" id="lb"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">Top 10</div><span class="muted" style="font-size:12px">Run score</span></div>
+  return `<section class="card" id="lb"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">Top 10</div>${rows ? '<button class="chip quit" data-act="lbimg" style="padding:4px 12px;font-size:12px;color:var(--text)">Share</button>' : '<span class="muted" style="font-size:12px">Run score</span>'}</div>
     ${rows ? `<div class="bruns">${rows}</div>` : `<p class="muted" style="margin:0">${LB.on ? 'No runs yet. Yours could be the first.' : 'The top 10 is not available here.'}</p>`}</section>`;
 }
 function viewHome(){
@@ -2098,6 +2115,12 @@ function miniPitch(r){
   return `<div class="minipitch" aria-hidden="true">` + FORMS[f].map(([, x, y], j) => { const pid = a[j];
     return pid ? `<i class="on${pid === last && pop ? ' pop' : ''}" style="left:${x}%;top:${y}%;${kit(W.P[pid])}"></i>` : `<i style="left:${x}%;top:${y}%"></i>`; }).join('') + `</div>`;
 }
+// the draft so far as a strip of 11: each pick in his club's colour, in the order you took them
+function rainbow(r){
+  const k = id => { const c = W.C[W.P[id].club], m = c && (CLUB_KITS[c.name] || CLUB_KITS[CLUB_ALIAS[c.name]]); return m ? m[0] : '#3A4E6B'; };
+  return `<div class="rainbow" aria-hidden="true">${[...Array(11).keys()].map(i => { const id = r.picks[i];
+    return id ? `<i class="on${i === r.picks.length - 1 && r.rbw !== id ? ' new' : ''}" style="background:${k(id)}" title="${esc(W.P[id].name)}"></i>` : '<i></i>'; }).join('')}</div>`;
+}
 function viewDraft(){
   const r = S.run;
   if (!r.club) return `<div class="card stack"><h2>No club left that fits</h2><p class="muted">Your shape cannot be completed from the remaining pots.</p><button class="btn primary" data-act="fresh2">Start over</button></div>`;
@@ -2119,11 +2142,12 @@ function viewDraft(){
   const shp = feasible(r.picks);
   // the shape stays while it still works; only when it stops working, another one that works, at random
   if (!shp.includes(r.form)) r.form = randomForm(r.picks);
-  const anim = r.anim !== r.club; r.anim = r.club;
+  const anim = r.anim !== r.club; r.anim = r.club; setTimeout(() => { r.rbw = r.picks[r.picks.length - 1]; }, 0);
   return `
   <header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${stepChip(r)}${quitBtn()}</div></header>
   <div class="drafthead"><div><div class="eyebrow">Draft · ${seasonTag()}</div><h2>Pick ${r.picks.length + 1} of 11</h2></div><span class="muted" style="font-size:13px">${r.kept.length ? r.kept.length + ' kept from last run' : 'Fresh squad'}</span></div>
   <div class="pots" aria-label="Pots" style="grid-template-columns:repeat(${nP},1fr)">${cells}</div>
+  ${rainbow(r)}
   ${shapeStrip(r, cells, nP)}
   <div class="grid2" style="margin-top:16px">
     <section class="card clubcard${anim ? ' reveal' : ''}" aria-live="polite">
@@ -2241,6 +2265,8 @@ function evHTML(e){
 /* sound, off by default: made on the spot with Web Audio (crowd, whistle, applause), no files */
 const sndOn = () => !!(S.pref && S.pref.sound);
 const sndBtn = () => `<button class="chip snd" data-act="snd" aria-pressed="${sndOn()}" title="Sound ${sndOn() ? 'on' : 'off'}" aria-label="Sound ${sndOn() ? 'on' : 'off'}">${sndOn() ? '🔊' : '🔇'}</button>`;
+// phones: a short buzz for your goal, a longer one against, a rhythm for a title; only with the sound on
+const buzz = p => { try { if (sndOn() && !toast.quiet && navigator.vibrate) navigator.vibrate(p); } catch (e) {} };
 const SND = {
   ctx: null,
   ac(){ if (!this.ctx){ const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; this.ctx = new A(); } if (this.ctx.state === 'suspended') this.ctx.resume(); return this.ctx; },
@@ -2286,10 +2312,10 @@ function runLive(){
   // a short line when a goal goes in: yours in the competition's colour, theirs plain
   const flash = x => { el.querySelectorAll('.gflash').forEach(f => f.remove()); const f = document.createElement('div');
     const who = (x.g.textContent.replace(/^⚽\s*\d+'\s*/, '').split('(')[0] || '').replace('★', '').trim();
-    SND.play(x.ours ? 'roar' : 'groan'); f.className = 'gflash' + (x.ours ? '' : ' them'); f.textContent = x.ours ? `Goal! ${who}` : `Conceded · ${who}`; el.appendChild(f); setTimeout(() => f.remove(), 1300); };
+    SND.play(x.ours ? 'roar' : 'groan'); buzz(x.ours ? [70] : [220]); f.className = 'gflash' + (x.ours ? '' : ' them'); f.textContent = x.ours ? `Goal! ${who}` : `Conceded · ${who}`; el.appendChild(f); setTimeout(() => f.remove(), 1300); };
   const kicks = [...el.querySelectorAll('.pens .k')].sort((x, y) => x.dataset.i - y.dataset.i);
   const finishLive = (skip) => { if (done) return; done = true; goals.forEach(x => x.g.classList.add('in')); sh.textContent = fh; sa.textContent = fa; if (ag){ ah.textContent = agF[0]; aa.textContent = agF[1]; }
-    const whistle = () => { if (el.dataset.blown) return; el.dataset.blown = 1; el.querySelectorAll('.gflash').forEach(f => f.remove()); if (runLive.cur && runLive.cur.el === el) runLive.cur.over(); el.classList.add('over'); if (el.dataset.won) confetti(); else if (skip !== true) SND.play('whistle'); };
+    const whistle = () => { if (el.dataset.blown) return; el.dataset.blown = 1; el.querySelectorAll('.gflash').forEach(f => f.remove()); if (runLive.cur && runLive.cur.el === el) runLive.cur.over(); el.classList.add('over'); if (el.dataset.won){ buzz([80, 60, 80, 60, 260]); titleMoment(); } else if (skip !== true) SND.play('whistle'); };
     if (!kicks.length || skip === true){ kicks.forEach(k => k.classList.add('in')); whistle(); return; }
     // the shootout, kick by kick
     // who steps up, a beat, then the kick
@@ -2394,6 +2420,17 @@ function runKoSpin(){
       const id = pk.length < 3 ? pk[i % pk.length] : pk[Math.floor(Math.random() * pk.length)]; group.forEach(x => x.innerHTML = crest(id) + esc(nm(id))); i++; setTimeout(tick, 40 + i * i * 1.6); };
     setTimeout(tick, 250);
   }
+}
+/* a title: the competition's trophy in its colour over the whole screen for two seconds (tap to skip), then confetti */
+function titleMoment(){
+  const r = S.run; if (!r || toast.quiet || document.getElementById('tmom')) return; r.tm = 1;
+  const comp = r.comp || 'cl', acc = ACCENT[comp];
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches){ confetti(); return; }
+  const el = document.createElement('div'); el.id = 'tmom'; el.style.setProperty('--ta', acc);
+  el.innerHTML = `<div>${TROPHY.replace('class="trophy"', 'class="tm-cup"').replace(/var\(--gold\)/g, acc)}<div class="tm-c">${esc(COMPS[comp].name)}</div><h1>Champions</h1><div class="tm-t">${esc(r.player ? r.player + "'s XI" : 'Your XI')}</div></div>`;
+  document.body.appendChild(el);
+  const go = () => { if (!el.isConnected || el.classList.contains('out')) return; el.classList.add('out'); setTimeout(() => el.remove(), 400); confetti(); };
+  el.addEventListener('click', go); setTimeout(go, 2200);
 }
 /* confetti in the competition's colours, two seconds */
 function confetti(){
@@ -2890,12 +2927,35 @@ async function seasonImage(h){
   return cv;
 }
 // show the image in an overlay: share it (phones), save it, or long-press it
+async function showTopImage(){
+  await fontsReady();
+  const L = LB.list.slice(0, BEST_N), W_ = 1080, H = 1350, [cv, x] = canvasBase(W_, H, ACCENT.cl, 'cl'), white = '#F4F1EA', muted = '#9AA8BD';
+  drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
+  txt(x, 'TOP 10', 60, 175, '700 84px Oswald, "Arial Narrow", Arial, sans-serif', white);
+  txt(x, new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), W_ - 60, 170, '400 26px Rubik, Arial, sans-serif', muted, 'right');
+  const MED = [['#F7D66B', '#C9971C'], ['#E9EEF3', '#9AA6B2'], ['#E6A472', '#9C5A2B']];
+  L.forEach((e, i) => { const h = e.h, Y = 230 + i * 104, c = COMP_W[h.comp] ? h.comp : 'ecl';
+    rrect(x, 60, Y, W_ - 120, 90, 18); x.fillStyle = i < 3 ? 'rgba(242,193,78,.10)' : '#1A2E4A'; x.fill();
+    x.beginPath(); x.arc(112, Y + 45, 26, 0, 2 * Math.PI);
+    if (i < 3){ const g = x.createLinearGradient(86, Y + 19, 138, Y + 71); g.addColorStop(0, MED[i][0]); g.addColorStop(1, MED[i][1]); x.fillStyle = g; x.fill(); }
+    txt(x, String(i + 1), 112, Y + 55, '700 28px Oswald, "Arial Narrow", Arial, sans-serif', i < 3 ? '#1A1408' : muted, 'center');
+    txt(x, (e.name || 'Unnamed').toUpperCase(), 160, Y + 42, '700 32px Oswald, "Arial Narrow", Arial, sans-serif', white, 'left', 520);
+    txt(x, `${CUP[c]} · ${stageWord(h)} · ${DIFF[h.diff] ? DIFF[h.diff].label : ''}`, 160, Y + 74, '400 22px Rubik, Arial, sans-serif', ACCENT[c], 'left', 640);
+    txt(x, runScore(h).toFixed(1), W_ - 90, Y + 58, '700 40px Oswald, "Arial Narrow", Arial, sans-serif', i < 3 ? '#F2C14E' : white, 'right'); });
+  if (!L.length) txt(x, 'No runs yet.', 60, 300, '400 32px Rubik, Arial, sans-serif', muted);
+  txt(x, 'Run score: wins, draws, the furthest round and the league phase, weighed by competition and difficulty', 60, H - 70, '400 20px Rubik, Arial, sans-serif', muted, 'left', W_ - 120);
+  txt(x, 'This Time Next Year', W_ - 60, H - 34, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', ACCENT.cl, 'right');
+  showCanvas(cv, 'ttny-top-10.png', 'The top 10');
+}
 async function showImage(kind){
   const r = S.run; if (!r) return;
   const cv = await seasonImage(Object.assign(seasonSummary(r), { player: r.player || '' }));
-  const url = cv.toDataURL('image/png'), name = `ttny-run-${r.season || 1}.png`;
+  showCanvas(cv, `ttny-run-${r.season || 1}.png`, 'Your run');
+}
+function showCanvas(cv, name, alt){
+  const url = cv.toDataURL('image/png'), kind = alt;
   const ov = document.createElement('div'); ov.className = 'imgov';
-  ov.innerHTML = `<div class="imgbox"><img src="${url}" alt="Your ${kind} as an image"><div class="btnrow"><button class="btn primary" data-img="share">Share</button><button class="btn ghost" data-img="save">Save</button><button class="btn ghost" data-img="close">Close</button></div><div class="muted" style="font-size:12px;text-align:center;margin-top:8px">On a phone you can also press and hold the image to save it.</div></div>`;
+  ov.innerHTML = `<div class="imgbox"><img src="${url}" alt="${kind} as an image"><div class="btnrow"><button class="btn primary" data-img="share">Share</button><button class="btn ghost" data-img="save">Save</button><button class="btn ghost" data-img="close">Close</button></div><div class="muted" style="font-size:12px;text-align:center;margin-top:8px">On a phone you can also press and hold the image to save it.</div></div>`;
   document.body.appendChild(ov);
   ov.addEventListener('click', async e => {
     if (e.target === ov || e.target.dataset.img === 'close'){ ov.remove(); return; }
@@ -3042,7 +3102,7 @@ function render(){
     if (!r && LB.flash) setTimeout(() => { LB.flash = null; }, 2600);   // the new run's row on the top 10 lights up once
     runLive(); if (runIntro()) setTimeout(() => runSpin(prevList), 1700); else runSpin(prevList); runKoSpin();
     if (!runReveal() && fresh) countUp(app);
-    if (r && r.phase === 'done' && r.celebrate){ r.celebrate = false; save(); confetti(); }
+    if (r && r.phase === 'done' && r.celebrate){ r.celebrate = false; save(); if (r.tm) confetti(); else titleMoment(); }
   } catch (e) {
     // a saved run that no longer fits the data (new ratings, new positions): drop it rather than show a blank page
     console.error(e);
@@ -3112,6 +3172,8 @@ document.addEventListener('click', e => {
     else { S.armed = null; continueRun(); }
   }
   else if (a === 'img') showImage(b.dataset.kind);
+  else if (a === 'fresh2'){ S.run = null; save(); render(); }
+  else if (a === 'lbimg') showTopImage();
   else if (a === 'home'){
     const r = S.run;
     if (r && r.phase === 'done') S.run = null;
@@ -3162,7 +3224,18 @@ document.addEventListener('click', e => {
   if (el && !(S.run && S.run.phase === 'lineup')) openSheet(el.dataset.pid); else PC.hidden = true;   // line-up: a tap moves players
 });
 
+const TIPS = ['Penalties go in 68.6% of the time, the all-time World Cup rate.', 'Home advantage is bigger in Europe than in the leagues: measured on 973 European matches.',
+  'Only the play-off and the Round of 16 are drawn; after that the bracket decides.', 'From 2025/26 the club ranked higher in the league phase plays the second leg at home.',
+  'A position a player rarely plays costs him up to 4 points; one he plays often, half a point.', 'Full chemistry adds 33 Elo points on top of your players (measured: an earlier guess was three times that).',
+  'A start 90 days old counts half as much toward a player\'s positions as one today.', 'Win a title and carry all 11 into the next run, one competition up.',
+  'Seeds 1 and 2 can only meet in the final; 3 and 4 are split between the halves too.', 'A Champions League title scores about 55; a Conference League title on Hard about 35.'];
+function loaderTips(){
+  const el = document.querySelector('.ld-tip'); if (!el) return; let i = Math.floor(Math.random() * TIPS.length);
+  const show = () => { if (!el.isConnected) return clearInterval(t); el.classList.remove('in'); void el.offsetWidth; el.textContent = TIPS[i++ % TIPS.length]; el.classList.add('in'); };
+  show(); const t = setInterval(show, 3200);
+}
 async function boot(){
+  loaderTips();
   let raw = null;
   try {
     const lg = document.querySelector('.ld-logo'); if (lg) lg.style.backgroundImage = `url(${LOGO})`;
@@ -3217,7 +3290,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261023141424';
+const BUILD = '20261023141920';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
