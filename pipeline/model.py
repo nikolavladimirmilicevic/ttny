@@ -36,6 +36,8 @@ STRONG_PENALTY = 1       # ... and in any other non-main position: measured from
 LINE = {'GK': 'GK', 'CB': 'DEF', 'LB': 'DEF', 'RB': 'DEF', 'DMF': 'MID', 'CMF': 'MID', 'LMF': 'MID', 'RMF': 'MID',
         'AMF': 'MID', 'LWF': 'FWD', 'RWF': 'FWD', 'CF': 'FWD'}
 ND = statistics.NormalDist()
+EURO_COMPS = {'UEFA Champions League', 'UEFA Europa League', 'UEFA Europa Conference League'}
+EURO_MIN = 300          # European matches needed before the game uses their own goals model
 
 
 def seed(points):
@@ -417,8 +419,16 @@ def build(world, fx, lu, evs, pst, top_clubs, since, until, log=print, national=
         return blend(rh, f['h'], top_pts) - blend(ra, f['a'], top_pts)
     rows = [(gap_of(fid, f), f['hg'], f['ag']) for fid, f in fx.items()
             if fid in pre and f['s'] in FINISHED and since <= f['d'] <= until and f['h'] in top_pts and f['a'] in top_pts]
-    G = fit_goals(rows)
-    log(f"  goals model on {len(rows)} matches: {G}")
+    G_all = fit_goals(rows)
+    # the game plays European matches only, and they differ: a bigger home advantage (h 0.32 against 0.21 at home in
+    # the leagues), a rating gap that counts for more (b 0.24 against 0.18) and fewer goals. Fitted on European matches
+    # alone, the model predicts held-out European results better (5-fold, log-loss 0.968 against 0.975), so the game
+    # uses that one; the all-match fit stays as goals_all (and is the fallback with too few European matches)
+    eu_rows = [(gap_of(fid, f), f['hg'], f['ag']) for fid, f in fx.items()
+               if fid in pre and f['s'] in FINISHED and since <= f['d'] <= until and f['h'] in top_pts and f['a'] in top_pts
+               and (f.get('lg') or '') in EURO_COMPS]
+    G = fit_goals(eu_rows) if len(eu_rows) >= EURO_MIN else G_all
+    log(f"  goals model on {len(rows)} matches: {G_all}; European matches only ({len(eu_rows)}): {G}")
 
     ranked_r = sorted(rating[t] for t in top_pts if t in rating)
     # no cap on clubs off the UEFA list: measured, it changed nothing for the better (national-team check 0.471 vs 0.473)
@@ -446,7 +456,7 @@ def build(world, fx, lu, evs, pst, top_clubs, since, until, log=print, national=
     beta = sum((x - mx) * (y - my) for x, y in pts) / max(1e-9, sum((x - mx) ** 2 for x, _ in pts))
     alpha = my - beta * mx
     corr = beta * statistics.pstdev([x for x, _ in pts]) / (statistics.pstdev([y for _, y in pts]) or 1)
-    world['model'] = {'goals': G, 'xi': {'alpha': round(alpha, 3), 'beta': round(beta, 3), 'clubs': len(pts), 'r': round(corr, 3)},
+    world['model'] = {'goals': G, 'goals_all': G_all, 'goals_n': len(eu_rows), 'xi': {'alpha': round(alpha, 3), 'beta': round(beta, 3), 'clubs': len(pts), 'r': round(corr, 3)},
                       'prestige': PRESTIGE, 'secondary_penalty': SECONDARY_PENALTY, 'strong_penalty': STRONG_PENALTY, 'player': pinfo}
     report = credibility(world, G, top_clubs)
     report['backtest'] = backtest(fx, pre, top_pts, until)

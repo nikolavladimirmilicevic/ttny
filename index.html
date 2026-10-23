@@ -1042,7 +1042,10 @@ const chemBar = picks => { const g = ovGrade(chemNum(chemOf(picks).total));   //
   return `<div class="chembar"><span>Chemistry</span><b class="tnum g${g}" title="Added on top of your team rating">${chemNum(chemOf(picks).total)}</b></div>`; };
 /* Your XI's strength: the clubs' line from its overall, a lift that grows with how good the XI is (no weak bench, no
    rotation; bigger where the field is stronger) and its chemistry. Calibrated with draft bots (pipeline/tools/draft_bots.js). */
-const LIFT = { cl: 7.7, el: 3.9, ecl: 1.2 }, LIFT_FROM = 68, CHEM_ELO = 3;
+// chemistry, measured: 1 Elo per chemistry point (at most 33). On 19,000 club matches the effect beyond the players' own
+// strength is 0.5 (90% range -0.5 to 1), on 288 national-team matches, where XIs come from many clubs like a draft,
+// 1.5 (-1.5 to 5); the old guess, 3, was about three times too much
+const LIFT = { cl: 7.7, el: 3.9, ecl: 1.2 }, LIFT_FROM = 68, CHEM_ELO = 1;
 function youElo(picks, form){
   const T = window.__YB || {}, lift = T.lift || W.lift || LIFT, ce = T.chem != null ? T.chem : CHEM_ELO;
   const ov = teamOvr(picks, form), comp = (S.run && S.run.comp) || 'el';
@@ -3189,7 +3192,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261023133735';
+const BUILD = '20261023135859';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
