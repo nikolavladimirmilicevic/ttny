@@ -790,7 +790,7 @@ def fetch_nations(people, squads, extra, meta):
         tried[nat] = TODAY.isoformat()
 
 
-def fetch_arrivals(top_ids, extra, meta, squads):
+def fetch_arrivals(top_ids, extra, meta, squads, careers=None):
     """Every other club today's players played for in the window. A ranked club's transfers list each player's whole
     transfer history, so a path like X -> Y -> ranked club gives both X and Y. For each club he left inside the window:
     the time he was there (from his move in, or the window's start, until the day he left). Only his matches there
@@ -800,6 +800,8 @@ def fetch_arrivals(top_ids, extra, meta, squads):
         for k in [k for k, v in extra.items() if v.get('kind') == 'club']:
             extra.pop(k)
     done = meta.setdefault('transfers', {})
+    if careers is not None and not careers and meta.get('careers_v') != 1:
+        done.clear(); meta['careers_v'] = 1   # the first time careers are kept: every club once more, to collect them
     top = set(top_ids)
     members = {pid for sq in squads.values() for pid in (sq.get('p') or [])}
     lo, hi = SINCE.isoformat(), TODAY.isoformat()
@@ -814,6 +816,9 @@ def fetch_arrivals(top_ids, extra, meta, squads):
             if (x.get('player') or {}).get('id') not in members:
                 continue
             moves = sorted((t for t in x.get('transfers') or [] if t.get('date')), key=lambda t: t['date'])
+            if careers is not None and moves:   # his whole transfer history, for the guess-who game
+                careers[str(x['player']['id'])] = [[t['date'], ((t.get('teams') or {}).get('out') or {}).get('id'), ((t.get('teams') or {}).get('out') or {}).get('name'),
+                                                    ((t.get('teams') or {}).get('in') or {}).get('id'), ((t.get('teams') or {}).get('in') or {}).get('name'), t.get('type') or ''] for t in moves]
             for k, t in enumerate(moves):
                 d = t['date']
                 left = (t.get('teams') or {}).get('out') or {}
@@ -1233,6 +1238,48 @@ def position_check(world):
         f.write('\n'.join(lines) + '\n')
 
 
+CAREER_MIN_CLUBS = 3
+
+
+def short_club(name):
+    return re.sub(r'\s+(FC|CF|SC|AC|FK|SK|NK|AFC|CFC|U19|U21|U23| II)$', '', (name or '').strip()) or name
+
+
+def write_careers(world, careers, teams):
+    """careers.json for the guess-who game: every player in the game whose transfer history gives at least 3 clubs,
+    as stints [club, first year, last year, loan] oldest first (the first club from the club he first left; the current
+    club last, to today), with his name, nationality, main position, age and overall (for difficulty and the wrong
+    answers). Youth clubs before his first transfer are not in the API, so short histories are left out."""
+    club_name = {c['id']: c['name'] for c in world['clubs']}
+    out = []
+    for p in world['players']:
+        mv = careers.get(str(p['id']))
+        if not mv:
+            continue
+        st = []
+        def add(cid, cname, y0, y1, loan):
+            nm = club_name.get(cid) or short_club(cname)
+            if not nm:
+                return
+            if st and st[-1][0] == nm and not loan and not st[-1][3]:
+                st[-1][2] = y1; return
+            st.append([nm, y0, y1, 1 if loan else 0])
+        first = mv[0]
+        add(first[1], first[2], None, int(first[0][:4]), False)
+        for i, t in enumerate(mv):
+            y0 = int(t[0][:4]); y1 = int(mv[i + 1][0][:4]) if i + 1 < len(mv) else TODAY.year
+            add(t[3], t[4], y0, y1, 'loan' in (t[5] or '').lower() and 'back' not in (t[5] or '').lower())
+        cur = club_name.get(p['club'])
+        if cur and st and st[-1][0] != cur:
+            st.append([cur, st[-1][2], TODAY.year, 0])
+        if len({s[0] for s in st}) < CAREER_MIN_CLUBS:
+            continue
+        out.append({'id': p['id'], 'n': p['name'], 'nat': p.get('nat'), 'pos': p['prim'], 'age': p.get('age'), 'ovr': p.get('ovr'), 'c': st})
+    with open(os.path.join(ROOT, 'careers.json'), 'w', encoding='utf-8') as f:
+        json.dump({'updated': TODAY.isoformat(), 'players': out}, f, ensure_ascii=False, separators=(',', ':'))
+    log(f'  careers.json: {len(out)} players')
+
+
 WEEKLY_CLUBS = 22
 
 
@@ -1297,6 +1344,7 @@ def main():
     squads = load('squads', {})
     people = load('people', {})
     extra = load('extra_teams', {})   # national teams and non-ranked clubs players came from
+    careers = load('careers', {})     # every player's transfer history (guess-who)
     stopped = None
     core_done = False
     top_ids = []
@@ -1319,7 +1367,7 @@ def main():
         fetch_missing_nat(squads, people, lu, fx)
         log('7/7 National teams and the clubs players came from')
         fetch_nations(people, squads, extra, meta)
-        fetch_arrivals(top_ids, extra, meta, squads)
+        fetch_arrivals(top_ids, extra, meta, squads, careers)
         ext_ids = [int(k) for k in extra]
         keep = top | set(ext_ids)   # drop matches of clubs no longer followed (the first version took too many)
         for fid in [k for k, f in fx.items() if f['h'] not in keep and f['a'] not in keep]:
@@ -1340,7 +1388,7 @@ def main():
             evs.pop(fid, None)
             pst.pop(fid, None)
             subs.pop(fid, None)
-        for name, obj in (('teams', teams), ('fixtures', fx), ('lineups', lu), ('events', evs), ('pstats', pst), ('subs', subs), ('squads', squads), ('people', people), ('meta', meta), ('extra_teams', extra)):
+        for name, obj in (('careers', careers), ('teams', teams), ('fixtures', fx), ('lineups', lu), ('events', evs), ('pstats', pst), ('subs', subs), ('squads', squads), ('people', people), ('meta', meta), ('extra_teams', extra)):
             save(name, obj)
     world = build_world(clubs, teams, fx, lu, squads, people, evs, pst, load('extra_teams', {}), subs)
     world['complete'] = stopped is None
@@ -1381,6 +1429,10 @@ def main():
         json.dump(world, f, ensure_ascii=False, separators=(',', ':'))
     log(f'Wrote {os.path.basename(target)}')
     position_check(world)
+    try:
+        write_careers(world, careers, teams)
+    except Exception as e:   # the guess-who file never stops the main game's data
+        log(f'  careers.json not written: {e}')
     eligible_clubs = Counter(p['club'] for p in world['players'])
     log(f"world.json: {len(world['clubs'])} clubs, {len(world['players'])} rated players, "
         f"{sum(1 for v in eligible_clubs.values() if v >= 11)} clubs with 11+ rated players, {used} calls used")
