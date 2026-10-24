@@ -1484,8 +1484,12 @@ def main():
         p.pop('m', None); p.pop('or', None)
     for c in world['clubs']:
         c.pop('m', None); c.pop('or', None)
+    # nor these player fields (monthly form, W-D-L, appearances and clean-sheet splits): about 10% less to download.
+    # 'nt' stays, the careers file below needs it
+    UNREAD = ('mo', 'wdl', 'ap', 'csy', 'csg')
+    out = dict(world, players=[{k: v for k, v in p.items() if k not in UNREAD} for p in world['players']])
     with open(target, 'w', encoding='utf-8') as f:
-        json.dump(world, f, ensure_ascii=False, separators=(',', ':'))
+        json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     log(f'Wrote {os.path.basename(target)}')
     position_check(world)
     try:

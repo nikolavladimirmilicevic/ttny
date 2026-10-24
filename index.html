@@ -37,6 +37,8 @@ h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.1;tex
 .num{font-variant-numeric:tabular-nums}
 
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:6px 14px}
+.games{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}.games a{padding:5px 12px;border-radius:999px;color:var(--muted);text-decoration:none;font:600 13px/1 var(--body);white-space:nowrap}.games a.on{background:var(--gold);color:var(--gold-ink)}.games a:not(.on):hover{color:var(--text)}
+@media(max-width:440px){.topbar:has(.games) .mark .mtxt{display:none}.games a{padding:5px 10px;font-size:12px}}
 .mark{font:700 16px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
 .mark .mtxt > span{color:var(--gold)}
 .mark{display:flex;align-items:center;gap:8px}
@@ -76,9 +78,9 @@ h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.1;tex
 .stat b{display:block;font:600 28px/1 var(--display)}
 .stat span{font-size:12px;color:var(--muted)}
 details.rules{background:var(--panel);border-radius:14px;padding:4px 18px}
-details.rules summary{padding:14px 0;font:600 16px var(--display);letter-spacing:.06em;text-transform:uppercase;list-style:none}
-details.rules summary::after{content:"+";float:right;color:var(--gold)}
-details.rules[open] summary::after{content:"−"}
+details.rules>summary{padding:14px 0;font:600 16px var(--display);letter-spacing:.06em;text-transform:uppercase;list-style:none}
+details.rules>summary::after{content:"+";float:right;color:var(--gold)}
+details.rules[open]>summary::after{content:"−"}
 details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:column;gap:8px}
 .bruns{display:flex;flex-direction:column;gap:6px}
 .brun{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;cursor:pointer}
@@ -118,6 +120,8 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .pill{background:var(--panel-2);border-radius:999px;padding:4px 10px;font-size:13px}
 .foot{font-size:12px;color:var(--muted);line-height:1.5}
+.rules ol.steps{counter-reset:st;list-style:none;padding:0;margin:4px 0 8px;gap:0}.fullrules>summary::-webkit-details-marker{color:var(--muted)}.rules .steps li{counter-increment:st;position:relative;padding-left:36px;margin:12px 0}.rules .steps li::before{content:counter(st);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:var(--gold);color:var(--gold-ink);font:700 13px/24px var(--display);text-align:center}
+.fullrules{margin-top:6px}.fullrules>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:6px 0}
 
 /* draft */
 .drafthead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
@@ -360,13 +364,13 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .diff.c-el{--c:#FC9529}.diff.c-ecl{--c:#48D75D}
 .diff .dl{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--c)}
 .diff b{font:700 22px/1.1 var(--display);text-transform:uppercase}
-.diff{opacity:.55}.diff.on{opacity:1;box-shadow:0 0 0 2px var(--c)}
+.diff{opacity:.85}.diff:not(.on){border-color:color-mix(in srgb,var(--c) 55%,var(--line))}.diff:not(.on) b{color:color-mix(in srgb,var(--text) 80%,transparent)}.diff.on{opacity:1;box-shadow:0 0 0 2px var(--c)}
 .pick .eyebrow{margin-bottom:8px}
 .seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .sg{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer;font:inherit}
 .sg b{font:600 15px var(--display);text-transform:uppercase;letter-spacing:.04em}.sg small{font-size:12px;color:var(--muted)}
 .sg.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}.sg.on b{color:var(--gold)}
-.diff small{font-size:12.5px;color:var(--muted);line-height:1.4}
+.diff small{font-size:12.5px;color:#B8C4D4;line-height:1.4}
 .endgrid{display:grid;gap:16px;align-items:start}@media(min-width:900px){.endgrid{grid-template-columns:1.1fr 1fr}}
 .stat small{display:block;font-size:11px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tbl.matches td{padding:6px 6px;vertical-align:middle}.tbl.matches .rd{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
@@ -616,6 +620,8 @@ const LOGO_S = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAA/CAYAAAB3s0
 const LOGO_AR = 0.7819;   // height / width of the logo
 // the team's tracker (defects, enhancements, feedback), one tap from every screen
 const TRACKER_URL = 'https://github.com/nikolavladimirmilicevic/ttny/issues';   // GitHub Issues: public, anyone with a GitHub account can post
+// the two games of the site, the same bar on both pages
+const GAMES_NAV = on => `<nav class="games" aria-label="Games"><a class="${on === 'draft' ? 'on' : ''}" href="./"${on === 'draft' ? ' aria-current="page"' : ''}>Draft</a><a class="${on === 'guess' ? 'on' : ''}" href="guess.html">Guess Who</a></nav>`;
 const MARK = `<div class="mark"><img class="logo" src="${LOGO_S}" alt="This Time Next Year"><span class="mtxt">This Time <span>Next Year</span></span><a class="trk" href="${TRACKER_URL}" target="_blank" rel="noopener" title="Tracker on GitHub: defects, enhancements, feedback, questions" aria-label="Open the tracker on GitHub"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M4 5h2v2H4zm4 0h12v2H8zm-4 6h2v2H4zm4 0h12v2H8zm-4 6h2v2H4zm4 0h12v2H8z"/></svg><span>Tracker</span></a></div>`;
 const logoImg = new Image(); logoImg.src = LOGO;
 /* ================= CONFIG ================= */
@@ -1739,6 +1745,14 @@ const LB_CFG = { url: 'https://sadpfbuqocbekvlwxfqz.supabase.co', key: 'sb_publi
 const LB = { hall: [], wlist: [], flash: null, on: false, mode: null, db: null, uid: null, list: [], warned: false };
 const lbShow = () => { const el = document.getElementById('lb'); if (el) el.outerHTML = bestRuns(); const w = document.getElementById('wklb'); if (w) w.innerHTML = weeklyMini(); const h = document.getElementById('wkhall'); if (h) h.innerHTML = hallHTML(); };
 const lbClean = x => x && x.h && typeof x.id === 'string' && STAGE_RANK.includes(x.h.stage) && COMP_W[x.h.comp];
+// a visit counter with no personal data: one row per page per device per day (nothing that identifies anyone), so the
+// owner can count daily visitors in Supabase (pipeline/visits.sql)
+function countVisit(page){
+  try { const k = 'ttny.seen', seen = JSON.parse(localStorage.getItem(k) || '{}'), d = new Date().toISOString().slice(0, 10);
+    if (seen[page] === d) return; const first = !seen[page]; seen[page] = d; localStorage.setItem(k, JSON.stringify(seen));
+    fetch(LB_CFG.url + '/rest/v1/visits', { method: 'POST', headers: Object.assign(lbHead(), { Prefer: 'return=minimal' }), body: JSON.stringify({ page, first }) }).catch(() => {});
+  } catch (e) {}
+}
 // the home card for Guess Who: a section like the weekly challenge, with a small career as a taste and the day's best
 // score there (its ten-player mode)
 function gwCard(){
@@ -2186,7 +2200,7 @@ function viewHome(){
     <input id="pname" class="pname" maxlength="20" autocomplete="nickname" placeholder="Type your name" value="${esc(pref.name || '')}" aria-label="Your name">`}
     <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="start" ${pref.name ? '' : 'disabled'}>${pref.name ? 'Start a run' : 'Type your name to start'}</button></div></div>`;
   return `
-  <header class="topbar">${MARK}<span class="chip">${W.meta.live ? 'Data ' + niceDate(W.meta.updated) : 'Demo data'}</span></header>
+  <header class="topbar">${MARK}${GAMES_NAV('draft')}</header>
   <div class="stack">
     <section class="hero">
       <div class="htext">
@@ -2203,6 +2217,12 @@ function viewHome(){
     ${cabinet(st, best)}
     <details class="rules">
       <summary>How it works</summary>
+      <ol class="steps">
+        <li><b>Pick a difficulty.</b> It sets where you start, from the Champions League (Easy) to the Conference League (Hard), and how big the clubs in the pots are.</li>
+        <li><b>Draft your XI.</b> Eleven pots of real clubs, one at a time: take one player from the club you get. No ratings, only names, nationalities and positions. Three helps, each once.</li>
+        <li><b>Win in Europe.</b> Your XI plays a real-format season against Europe's clubs, rated on the last year of real matches. Go far and keep players for the next run.</li>
+      </ol>
+      <details class="fullrules"><summary>Full rules</summary>
       <ol>
         <li>The world is every club on the UEFA 5-year ranking. A player counts with at least one start for one of those clubs in the last 365 days, against any opponent; with only a few starts his grade leans toward a squad player's.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
@@ -2220,6 +2240,7 @@ function viewHome(){
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
         <li>Every decision has a clock: 60 seconds for each draft pick (then a random player is picked), 2 minutes to confirm your shape (then a random one is locked in), 60 seconds for each step of the season (then it moves on) and between two runs 60 seconds for each screen (then it moves on) and 2 minutes to choose who stays (then nobody carries over). Missing the top 24 of the league phase drops the next run a level, from the Champions League to the Europa League or from the Europa League to the Conference League.</li>
       </ol>
+      </details>
     </details>
     <p class="foot">${W.meta.live ? 'Data from API-Football, updated ' + niceDate(W.meta.updated) + '.' : 'Demo world: club names follow the UEFA ranking, players and results are invented.'} ${W.draftable.length} clubs in the draft, ${W.eligCount.toLocaleString('en-GB')} players rated.</p>
   </div>`;
@@ -3440,7 +3461,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024194402';
+const BUILD = '20261024195800';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -3460,5 +3481,5 @@ document.addEventListener('visibilitychange', () => {
   checkBuild();
 });
 addEventListener('pageshow', e => { if (e.persisted) location.reload(); });   // a page restored from the back-forward cache
-boot().then(lbInit, lbInit); gwBest();   // the lists once the data (and this week's challenge) is in; the Guess Who best of the day
+boot().then(lbInit, lbInit); gwBest(); countVisit('draft');   // the lists once the data (and this week's challenge) is in; the Guess Who best of the day
 </script>
