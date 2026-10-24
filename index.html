@@ -82,8 +82,6 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .t10{display:inline-flex;align-items:baseline;gap:8px;margin-top:10px;padding:6px 14px;border-radius:999px;background:linear-gradient(135deg,rgba(247,214,107,.22),rgba(201,151,28,.12));border:1px solid var(--gold);color:var(--gold)}.t10 b{font-size:20px}.t10 span{font-size:13px;color:var(--text)}
 .t10.pop{animation:t10pop .7s cubic-bezier(.2,1.6,.4,1) .4s both}@keyframes t10pop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
 .scorebox .sbig{font-size:34px;color:var(--gold);line-height:1}.sparts{display:grid;gap:6px;margin-top:10px}.sp{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)}.sp span{display:flex;flex-direction:column}.sp small{color:var(--muted);font-size:12px}.sp b{font-size:16px}
-.tut{position:fixed;left:0;right:0;bottom:96px;z-index:65;display:flex;justify-content:center;padding:0 12px;pointer-events:none}.tut-in{pointer-events:auto;max-width:440px;width:100%;background:linear-gradient(135deg,#22324B,#152338);border:1px solid var(--gold);border-radius:14px;padding:12px 14px;box-shadow:0 12px 40px rgba(0,0,0,.5);animation:fadein .3s}
-.tut-h{display:flex;justify-content:space-between;align-items:baseline}.tut-h span{color:var(--muted);font-size:12px}.tut p{margin:6px 0 10px;font-size:14px;line-height:1.45}.tut-b{display:flex;justify-content:space-between;align-items:center}.tut-b .btn{padding:8px 16px;min-height:0;font-size:13px}
 .lastwin{display:flex;gap:8px;align-items:center;margin-top:14px;padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,rgba(242,193,78,.16),transparent);border:1px solid rgba(242,193,78,.4)}.lw-c{font-size:18px}.hall{margin-top:8px}.hall summary{cursor:pointer;color:var(--muted);font-size:13px}
 .wkend{font-size:12px;color:var(--muted);font-weight:600}.wkend.last{color:var(--loss)}
 .pbadge{display:inline-flex;align-items:baseline;gap:6px;margin:10px 8px 0 0;padding:6px 14px;border-radius:999px;background:rgba(76,201,104,.14);border:1px solid var(--win);color:var(--win);font-weight:700;animation:t10pop .7s cubic-bezier(.2,1.6,.4,1) .2s both}.pbadge small{color:var(--muted);font-weight:400}
@@ -1840,7 +1838,6 @@ function timeUp(){
 }
 function tick(){
   const now = Date.now();
-  if (S.run && S.run.stepDl && document.querySelector('.tut')) S.run.stepDl += 1000;   // the clock waits while a first-time tip is open
   if (S.run && S.run.stepDl && now > S.run.stepDl) timeUp();
   document.querySelectorAll('[data-ends]').forEach(el => { const ms = +el.dataset.ends - now, d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
     el.textContent = ms <= 0 ? 'Ended' : 'Ends in ' + (d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m + 'm'); el.classList.toggle('last', ms < 864e5); });
@@ -3199,24 +3196,6 @@ function viewKeep(){
   ${dock(n ? `<button class="btn primary" data-act="cont">${S.armed === 'cont' ? `Sure? Only ${r.keepSel.length} of ${n} kept` : r.keepSel.length ? `Next run · ${r.keepSel.length} kept` : 'Next run'}</button>` : `<button class="btn primary" data-act="cont">New run</button>`, `<button class="btn ghost${S.armed === 'home' ? ' warn' : ''}" data-act="home">${S.armed === 'home' ? 'Tap again to leave' : 'Home'}</button>`)}`;
 }
 
-/* first time only: a few tips at the bottom of the screen (the draft on the first run, choosing who stays on the first
-   keep screen); the clock of the decision underneath starts again once they are closed */
-const TUT = {
-  draft: [['Eleven pots', 'Each round a club comes out of one of 11 pots of real clubs. Pick one of its players who still fits your formation.'],
-    ['Positions', 'Green is his main position, yellow one he also plays, red one he rarely plays: he plays below his level there.'],
-    ['Three helps', 'Once per run each: Redraw swaps the club, Fifty-fifty hides the weaker half, Scout\'s tip marks a standout.'],
-    ['No ratings', 'You pick on names, nationality and positions. Ratings show only once your XI is locked.']],
-  keep: [['Who stays', 'The further you went, the more players you keep for a run played straight away: 5 out in the league phase, up to all 11 with the title.'],
-    ['Let go for good', 'Players you let go never come back in runs linked like this. Going home means a fresh squad next time.']] };
-function tutorial(){
-  const r = S.run, p = S.pref || {}; document.querySelectorAll('.tut').forEach(x => x.remove());
-  if (!r || toast.quiet) return;
-  const k = r.phase === 'draft' && !r.wk && !p.tutDraft ? 'draft' : r.phase === 'done' && r.dscr === 'keep' && r.keepN && !p.tutKeep ? 'keep' : null; if (!k) return;
-  const i = r.tutI || 0, [t, txt] = TUT[k][i], n = TUT[k].length;
-  const el = document.createElement('div'); el.className = 'tut';
-  el.innerHTML = `<div class="tut-in"><div class="tut-h"><b>${t}</b><span>${i + 1} / ${n}</span></div><p>${txt}</p><div class="tut-b"><button class="linkb" data-act="tutskip">Skip</button><button class="btn primary" data-act="tutnext">${i + 1 < n ? 'Next' : 'Got it'}</button></div></div>`;
-  document.body.appendChild(el);
-}
 function render(){
   const r = S.run; if (PC) PC.hidden = true;
   document.body.dataset.comp = (r && r.comp) || START_COMP[(S.pref && S.pref.diff) || 'medium'];
@@ -3235,7 +3214,7 @@ function render(){
     // the first club stays hidden behind the run's title card and is drawn the moment the card goes, however it goes
     { const card = document.querySelector('.clubcard.reveal');
       if (runIntro(() => { if (card) card.classList.remove('prespin'); runSpin(prevList); })){ if (card) card.classList.add('prespin'); } else runSpin(prevList); }
-    runKoSpin(); tutorial();
+    runKoSpin();
     if (!runReveal() && fresh) countUp(app);
     if (fresh) scoreCount(app);
     if (r && r.phase === 'done' && r.celebrate){ r.celebrate = false; save(); if (r.tm) confetti(); else titleMoment(); }
@@ -3270,12 +3249,6 @@ document.addEventListener('click', e => {
   }
   if (a === 'start'){ S.editName = 0; if (!(S.pref && S.pref.name)){ toast('Type your name first.'); const x = document.getElementById('pname'); if (x) x.focus(); return; } newRun(); }
   else if (a === 'pickd'){ S.pref = Object.assign({ diff: 'medium' }, S.pref, { diff: b.dataset.d }); save(); render(); }
-  else if (a === 'tutnext' || a === 'tutskip'){
-    const r = S.run; if (!r) return; const k = r.phase === 'draft' ? 'draft' : 'keep';
-    if (a === 'tutnext' && (r.tutI || 0) + 1 < TUT[k].length){ r.tutI = (r.tutI || 0) + 1; tutorial(); return; }
-    S.pref = Object.assign({}, S.pref, k === 'draft' ? { tutDraft: 1 } : { tutKeep: 1 }); r.tutI = 0; r.stepK = null;   // the decision's clock starts now
-    save(); render();
-  }
   else if (a === 'open') openRun(+b.dataset.i, b.dataset.wk === '1');
   else if (a === 'openhall') openRun(+b.dataset.i, true, true);
   else if (a === 'lbtab'){ S.pref = Object.assign({}, S.pref, { lbTab: b.dataset.t }); save(); lbShow(); }
@@ -3433,7 +3406,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024113644';
+const BUILD = '20261024113850';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
