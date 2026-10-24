@@ -1286,6 +1286,8 @@ def write_careers(world, careers, teams):
     rank_of_name = {c['name']: c['rank'] for c in world['clubs']}
     kits, alias = game_kits()
     out, used_kits = [], {}
+    # the API now and then puts a person as a club ('Meunier Thomas', 'Carvajal Daniel') or an all-star side: left out
+    people = {frozenset(norm(p['name']).replace('-', ' ').split()) for p in world['players'] if len(norm(p['name']).split()) >= 2}
     for p in world['players']:
         mv = careers.get(str(p['id']))
         if not mv:
@@ -1295,6 +1297,8 @@ def write_careers(world, careers, teams):
         def add(cid, cname, y0, y1, loan):
             nm = club_name.get(cid) or short_club(cname)
             if not nm or (who and set(norm(nm).split()) <= who):   # the API sometimes puts the player's own name as a club
+                return
+            if frozenset(norm(nm).replace('-', ' ').split()) in people or 'all star' in norm(nm).replace('-', ' '):
                 return
             # the same club under two spellings ('Bayern Munich', 'Bayern München') or a move straight back: one stint
             # a loan and then a permanent move to the same club is one stint too, marked 2 ('loan, then signed')
@@ -1308,6 +1312,8 @@ def write_careers(world, careers, teams):
         add(first[1], first[2], None, int(first[0][:4]), False)
         for i, t in enumerate(mv):
             y0 = int(t[0][:4]); y1 = int(mv[i + 1][0][:4]) if i + 1 < len(mv) else TODAY.year
+            if t[3] is None and 'free agent' in (t[5] or '').lower():   # no club: the API puts his own name there
+                continue
             add(t[3], t[4], y0, y1, 'loan' in (t[5] or '').lower() and 'back' not in (t[5] or '').lower())
         cur = club_name.get(p['club'])
         if cur and st and st[-1][0] != cur:
@@ -1323,7 +1329,9 @@ def write_careers(world, careers, teams):
                 fame += (1 - (r - 1) / 120) ** 2 * min(6, max(1, (y1 or TODAY.year) - (y0 or (y1 or TODAY.year) - 1)))
         fame += min(10, p.get('nt') or 0) * 0.4 + (p.get('ovr') or 60) / 25
         for nm, *_ in st:
-            k = kits.get(nm) or kits.get(alias.get(nm, ''))
+            # a reserve or youth side ('Hoffenheim II', 'Jong Ajax', 'Sporting CP B', 'Benfica U23') wears its club's colours
+            base = re.sub(r'\s+(II|B|U\d\d|Reserves|Youth)$', '', re.sub(r'^Jong\s+', '', nm))
+            k = kits.get(nm) or kits.get(alias.get(nm, '')) or kits.get(base) or kits.get(alias.get(base, ''))
             if k: used_kits[nm] = k
         out.append({'id': p['id'], 'n': p['name'], 'nat': p.get('nat'), 'pos': p['prim'], 'age': p.get('age'), 'ovr': p.get('ovr'), 'f': round(fame, 2), 'c': st})
     # each club's country (UEFA clubs only), for the themed games ('played in England')
