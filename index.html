@@ -82,6 +82,9 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .t10{display:inline-flex;align-items:baseline;gap:8px;margin-top:10px;padding:6px 14px;border-radius:999px;background:linear-gradient(135deg,rgba(247,214,107,.22),rgba(201,151,28,.12));border:1px solid var(--gold);color:var(--gold)}.t10 b{font-size:20px}.t10 span{font-size:13px;color:var(--text)}
 .t10.pop{animation:t10pop .7s cubic-bezier(.2,1.6,.4,1) .4s both}@keyframes t10pop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
 .scorebox .sbig{font-size:34px;color:var(--gold);line-height:1}.sparts{display:grid;gap:6px;margin-top:10px}.sp{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)}.sp span{display:flex;flex-direction:column}.sp small{color:var(--muted);font-size:12px}.sp b{font-size:16px}
+.tut{position:fixed;left:0;right:0;bottom:96px;z-index:65;display:flex;justify-content:center;padding:0 12px;pointer-events:none}.tut-in{pointer-events:auto;max-width:440px;width:100%;background:linear-gradient(135deg,#22324B,#152338);border:1px solid var(--gold);border-radius:14px;padding:12px 14px;box-shadow:0 12px 40px rgba(0,0,0,.5);animation:fadein .3s}
+.tut-h{display:flex;justify-content:space-between;align-items:baseline}.tut-h span{color:var(--muted);font-size:12px}.tut p{margin:6px 0 10px;font-size:14px;line-height:1.45}.tut-b{display:flex;justify-content:space-between;align-items:center}.tut-b .btn{padding:8px 16px;min-height:0;font-size:13px}
+.lastwin{display:flex;gap:8px;align-items:center;margin-top:14px;padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,rgba(242,193,78,.16),transparent);border:1px solid rgba(242,193,78,.4)}.lw-c{font-size:18px}.hall{margin-top:8px}.hall summary{cursor:pointer;color:var(--muted);font-size:13px}
 .lbtabs{display:flex;gap:4px}.lbt{background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:3px 11px;font:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}.lbt.on{color:var(--text);border-color:var(--gold)}
 .weekly{border:1px solid var(--gold)}.wkcs{display:flex;flex-wrap:wrap;gap:5px}.wkc{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--kit);color:var(--kit-ink);font-weight:600}
 .hello{margin-top:16px;font-size:16px}.linkb{background:none;border:0;padding:0 0 0 6px;color:var(--muted);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
@@ -905,7 +908,7 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, m: p.m, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, lg: p.lg, lgd: p.lgd, sr: p.sr || 0, lat: p.lat, gr: p.gr,
+    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, lg: p.lg, lgd: p.lgd, sr: p.sr || 0, lat: p.lat, gr: p.gr,
       ap: p.ap, mn: p.mn, ga: p.ga, pk: p.pk, aa: p.aa, rt: p.rt, csy: p.csy, csg: p.csg, nt: p.nt, wdl: p.wdl };
     club.squad.push(pid);
   }
@@ -1574,7 +1577,6 @@ function lastTipText(t){
   return `${when}: ${list} against ${t.opp}`;
 }
 const tipText = t => t.kind === 'last' ? lastTipText(t) : t.kind === 'st' ? `Started his club's last ${t.n} matches` : `${t.n} ${TIP_UNIT[t.kind][1]} in his last ${t.m} games`;
-const csOf = p => p.m.reduce((t, r) => t + (r[5] && r[3] === 0 ? 1 : 0), 0);
 const helpUsed = k => !!(S.run.help && S.run.help[k]);
 const visible = r => pickable(r.club).filter(id => !(r.cut || []).includes(id));
 function swapOk(r){ const pot = r.order[r.step]; return runPots(r)[pot].some(c => c !== r.club && !r.tried.includes(c) && freshCtry(r, c) && pickable(c).length); }
@@ -1709,16 +1711,20 @@ function archive(r){
    Inside the claude.ai artifact, where that table cannot be reached, the artifact's own shared database is used
    instead: each player's ten best runs in runs/<their id>, the full runs in runs/<id>/full/<run id>. */
 const LB_CFG = { url: 'https://sadpfbuqocbekvlwxfqz.supabase.co', key: 'sb_publishable_etNezztDu3d9TwRBm5cJ-w_Z2PyvVsP' };   // the Supabase project's URL and its public (anon / publishable) key
-const LB = { wlist: [], flash: null, on: false, mode: null, db: null, uid: null, list: [], warned: false };
-const lbShow = () => { const el = document.getElementById('lb'); if (el) el.outerHTML = bestRuns(); const w = document.getElementById('wklb'); if (w) w.innerHTML = weeklyMini(); };
+const LB = { hall: [], wlist: [], flash: null, on: false, mode: null, db: null, uid: null, list: [], warned: false };
+const lbShow = () => { const el = document.getElementById('lb'); if (el) el.outerHTML = bestRuns(); const w = document.getElementById('wklb'); if (w) w.innerHTML = weeklyMini(); const h = document.getElementById('wkhall'); if (h) h.innerHTML = hallHTML(); };
 const lbClean = x => x && x.h && typeof x.id === 'string' && STAGE_RANK.includes(x.h.stage) && COMP_W[x.h.comp];
 const lbHead = () => Object.assign({ apikey: LB_CFG.key, 'Content-Type': 'application/json' }, /^eyJ/.test(LB_CFG.key) ? { Authorization: 'Bearer ' + LB_CFG.key } : {});
 async function lbFetchTop(){
   const get = async q => { const r = await fetch(LB_CFG.url + '/rest/v1/runs?select=id,at,name,h&order=score.desc,at.asc&limit=300&' + q, { headers: lbHead(), cache: 'no-store' });
     if (!r.ok) throw new Error('lb ' + r.status); return (await r.json()).filter(lbClean).map(x => ({ id: x.id, at: Date.parse(x.at) || 0, name: String(x.name || '').slice(0, 20), h: x.h })).sort(runOrder); };
   const wk = W && W.weekly ? W.weekly.week : '';
-  const [main, week] = await Promise.all([get('h->>wk=is.null'), wk ? get('h->>wk=eq.' + encodeURIComponent(wk)) : Promise.resolve([])]);
+  const [main, week, past] = await Promise.all([get('h->>wk=is.null'), wk ? get('h->>wk=eq.' + encodeURIComponent(wk)) : Promise.resolve([]),
+    get('h->>wk=not.is.null' + (wk ? '&h->>wk=neq.' + encodeURIComponent(wk) : '')).catch(() => [])]);
   LB.list = main; LB.wlist = week;
+  // every past week's winner: the best run of that week (the hall of fame), newest week first
+  const byWk = {}; for (const e of past) if (e.h.wk && (!byWk[e.h.wk] || runOrder(e, byWk[e.h.wk]) < 0)) byWk[e.h.wk] = e;
+  LB.hall = Object.keys(byWk).sort().reverse().map(k => byWk[k]);
   LB.on = true; LB.mode = 'supa'; lbShow();
 }
 async function lbInit(){
@@ -1770,15 +1776,15 @@ async function lbPush(e){
     console.error('top 10', err); setTimeout(() => toast('This run could not be added to the top 10 (' + (err && err.message || 'error') + ').'), 1200);
   }
 }
-async function openRun(i, wk){
-  const e = lbTop(wk ? LB.wlist : LB.list)[i]; if (!e) return;
+async function openRun(i, wk, hall){
+  const e = hall ? (LB.hall || [])[i] : lbTop(wk ? LB.wlist : LB.list)[i]; if (!e) return;
   let run = null;
   const local = (S.best || []).find(x => x.id === e.id || (!x.id && x.at === e.at));
   if (local) run = local.run;
   else if (LB.mode === 'supa'){ try { const q = await fetch(LB_CFG.url + '/rest/v1/runs?select=run&id=eq.' + encodeURIComponent(e.id), { headers: lbHead() }); const rows = q.ok ? await q.json() : []; if (rows[0]) run = rows[0].run; } catch (err) {} }
   else if (LB.db && e.uid){ try { const d = await LB.db.doc('runs/' + e.uid + '/full/' + e.id).get(); if (d.exists) run = d.data().run; } catch (err) {} }
   if (!run || !run.cup || !Array.isArray(run.picks)){ toast('That run cannot be opened right now.'); return; }
-  S.run = Object.assign(JSON.parse(JSON.stringify(run)), { arch: 1, dscr: 'season', rank: i + 1, rankAll: LB.on, rankWk: !!wk, player: e.name || run.player || '' });
+  S.run = Object.assign(JSON.parse(JSON.stringify(run)), { arch: 1, dscr: 'season', rank: hall ? null : i + 1, rankAll: LB.on, rankWk: !!wk, player: e.name || run.player || '' });
   render(); scrollTo(0, 0);
 }
 // the next run straight away, with the players you keep; its competition: a title moves it up, missing the top 24 down
@@ -1827,6 +1833,7 @@ function timeUp(){
 }
 function tick(){
   const now = Date.now();
+  if (S.run && S.run.stepDl && document.querySelector('.tut')) S.run.stepDl += 1000;   // the clock waits while a first-time tip is open
   if (S.run && S.run.stepDl && now > S.run.stepDl) timeUp();
   document.querySelectorAll('[data-cd]').forEach(el => { const left = +el.dataset.cd - now; el.textContent = fmt(left); const c = el.closest('.chip'); if (c){ c.classList.toggle('warn', left < (+el.dataset.w || 60000)); c.classList.toggle('last', left > 0 && left < 10000); } });
 }
@@ -2098,11 +2105,19 @@ function bestRuns(){
     ${rows ? `<div class="bruns">${rows}</div>` : `<p class="muted" style="margin:0">${LB.on ? (wkTab ? 'No weekly challenge runs yet this week. Yours could be the first.' : 'No runs yet. Yours could be the first.') : 'The top 10 is not available here.'}</p>`}</section>`;
 }
 // this week's standings inside the challenge card: the best run of each player so far
+// last week's winner, and every week's winner before
+function hallHTML(){
+  const H = LB.hall || []; if (!H.length) return '';
+  const day = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), last = H[0];
+  const row = (e, i) => `<button class="brun hrow" data-act="openhall" data-i="${i}"><span class="bt"><b>${esc(e.name || 'Unnamed')}</b><small>Week of ${day(e.h.wk)} · ${esc(stageWord(e.h))}</small></span><span class="bs num">${score99(e.h)}</span><span class="bg">›</span></button>`;
+  return `<div class="lastwin"><span class="lw-c">🏆</span><span>Last week's winner: <b>${esc(last.name || 'Unnamed')}</b> · ${score99(last.h)}</span></div>
+    ${H.length > 0 ? `<details class="hall"><summary>Hall of fame · ${H.length} week${H.length > 1 ? 's' : ''}</summary><div class="bruns" style="margin-top:8px">${H.map(row).join('')}</div></details>` : ''}`;
+}
 function weeklyMini(){
   if (!LB.on) return '';
   const L = lbTop(LB.wlist).slice(0, 5);
   if (!L.length) return '<p class="muted" style="margin:12px 0 0;font-size:13px">No runs yet this week. Yours could be the first.</p>';
-  return `<div class="eyebrow" style="margin:14px 0 6px">This week so far</div><div class="bruns">${L.map((e, i) => `<button class="brun${e.h.stage === 'champion' ? ' champ' : ''}" data-act="open" data-i="${i}" data-wk="1"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span>
+  return `<div class="drafthead" style="margin:14px 0 6px"><div class="eyebrow">This week so far</div><button class="chip quit" data-act="lbimg" data-wk="1" style="padding:4px 12px;font-size:12px;color:var(--text)">Share</button></div><div class="bruns">${L.map((e, i) => `<button class="brun${e.h.stage === 'champion' ? ' champ' : ''}" data-act="open" data-i="${i}" data-wk="1"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span>
     <span class="bt"><b>${esc(e.name || 'Unnamed')}</b><small>${esc(stageWord(e.h))} · ${num(e.h.w)}-${num(e.h.d)}-${num(e.h.l)}</small></span><span class="bs num">${score99(e.h)}</span><span class="bg">›</span></button>`).join('')}</div>`;
 }
 function weeklyCard(){
@@ -2114,7 +2129,7 @@ function weeklyCard(){
     <p style="margin:8px 0 10px">This week's 22 clubs, from 22 countries, in 11 pots of 2. Everyone gets the same draft; Redraw shows the pot's other club. Play again straight away and your players carry over (not when you miss the top 24): then all 22 clubs make as many pots as you have picks left.</p>
     <div class="wkcs">${clubs}</div>
     <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="weekly">Play this week's challenge</button></div>
-    <div id="wklb">${weeklyMini()}</div></section>`;
+    <div id="wklb">${weeklyMini()}</div><div id="wkhall">${hallHTML()}</div></section>`;
 }
 function viewHome(){
   const st = S.stats, top = [...(S.best || [])].sort(runOrder)[0];
@@ -2994,12 +3009,12 @@ async function seasonImage(h){
   return cv;
 }
 // show the image in an overlay: share it (phones), save it, or long-press it
-async function showTopImage(){
+async function showTopImage(wk){
   await fontsReady();
-  const L = lbTop(LB.list).slice(0, BEST_N), W_ = 1080, H = 1350, [cv, x] = canvasBase(W_, H, ACCENT.cl, 'cl'), white = '#F4F1EA', muted = '#9AA8BD';
+  const L = lbTop(wk ? LB.wlist : LB.list).slice(0, BEST_N), W_ = 1080, H = 1350, [cv, x] = canvasBase(W_, H, ACCENT.cl, 'cl'), white = '#F4F1EA', muted = '#9AA8BD';
   drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
-  txt(x, 'TOP 10', 60, 175, '700 84px Oswald, "Arial Narrow", Arial, sans-serif', white);
-  txt(x, new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), W_ - 60, 170, '400 26px Rubik, Arial, sans-serif', muted, 'right');
+  txt(x, wk ? 'THIS WEEK' : 'TOP 10', 60, 175, '700 84px Oswald, "Arial Narrow", Arial, sans-serif', white);
+  txt(x, wk && W.weekly ? 'Weekly challenge · week of ' + new Date(W.weekly.week + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), W_ - 60, 170, '400 26px Rubik, Arial, sans-serif', muted, 'right');
   const MED = [['#F7D66B', '#C9971C'], ['#E9EEF3', '#9AA6B2'], ['#E6A472', '#9C5A2B']];
   L.forEach((e, i) => { const h = e.h, Y = 230 + i * 104, c = COMP_W[h.comp] ? h.comp : 'ecl';
     rrect(x, 60, Y, W_ - 120, 90, 18); x.fillStyle = i < 3 ? 'rgba(242,193,78,.10)' : '#1A2E4A'; x.fill();
@@ -3012,7 +3027,7 @@ async function showTopImage(){
   if (!L.length) txt(x, 'No runs yet.', 60, 300, '400 32px Rubik, Arial, sans-serif', muted);
   txt(x, 'Run score: wins, draws, the furthest round and the league phase, weighed by competition and difficulty', 60, H - 70, '400 20px Rubik, Arial, sans-serif', muted, 'left', W_ - 120);
   txt(x, 'This Time Next Year', W_ - 60, H - 34, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', ACCENT.cl, 'right');
-  showCanvas(cv, 'ttny-top-10.png', 'The top 10');
+  showCanvas(cv, wk ? 'ttny-this-week.png' : 'ttny-top-10.png', wk ? 'This week' : 'The top 10');
 }
 async function showImage(kind){
   const r = S.run; if (!r) return;
@@ -3153,6 +3168,24 @@ function viewKeep(){
   ${dock(n ? `<button class="btn primary" data-act="cont">${S.armed === 'cont' ? `Sure? Only ${r.keepSel.length} of ${n} kept` : r.keepSel.length ? `Next run · ${r.keepSel.length} kept` : 'Next run'}</button>` : `<button class="btn primary" data-act="cont">New run</button>`, `<button class="btn ghost${S.armed === 'home' ? ' warn' : ''}" data-act="home">${S.armed === 'home' ? 'Tap again to leave' : 'Home'}</button>`)}`;
 }
 
+/* first time only: a few tips at the bottom of the screen (the draft on the first run, choosing who stays on the first
+   keep screen); the clock of the decision underneath starts again once they are closed */
+const TUT = {
+  draft: [['Eleven pots', 'Each round a club comes out of one of 11 pots of real clubs. Pick one of its players who still fits your formation.'],
+    ['Positions', 'Green is his main position, yellow one he also plays, red one he rarely plays: he plays below his level there.'],
+    ['Three helps', 'Once per run each: Redraw swaps the club, Fifty-fifty hides the weaker half, Scout\'s tip marks a standout.'],
+    ['No ratings', 'You pick on names, nationality and positions. Ratings show only once your XI is locked.']],
+  keep: [['Who stays', 'The further you went, the more players you keep for a run played straight away: 5 out in the league phase, up to all 11 with the title.'],
+    ['Let go for good', 'Players you let go never come back in runs linked like this. Going home means a fresh squad next time.']] };
+function tutorial(){
+  const r = S.run, p = S.pref || {}; document.querySelectorAll('.tut').forEach(x => x.remove());
+  if (!r || toast.quiet) return;
+  const k = r.phase === 'draft' && !r.wk && !p.tutDraft ? 'draft' : r.phase === 'done' && r.dscr === 'keep' && r.keepN && !p.tutKeep ? 'keep' : null; if (!k) return;
+  const i = r.tutI || 0, [t, txt] = TUT[k][i], n = TUT[k].length;
+  const el = document.createElement('div'); el.className = 'tut';
+  el.innerHTML = `<div class="tut-in"><div class="tut-h"><b>${t}</b><span>${i + 1} / ${n}</span></div><p>${txt}</p><div class="tut-b"><button class="linkb" data-act="tutskip">Skip</button><button class="btn primary" data-act="tutnext">${i + 1 < n ? 'Next' : 'Got it'}</button></div></div>`;
+  document.body.appendChild(el);
+}
 function render(){
   const r = S.run; if (PC) PC.hidden = true;
   document.body.dataset.comp = (r && r.comp) || START_COMP[(S.pref && S.pref.diff) || 'medium'];
@@ -3171,7 +3204,7 @@ function render(){
     // the first club stays hidden behind the run's title card and is drawn the moment the card goes, however it goes
     { const card = document.querySelector('.clubcard.reveal');
       if (runIntro(() => { if (card) card.classList.remove('prespin'); runSpin(prevList); })){ if (card) card.classList.add('prespin'); } else runSpin(prevList); }
-    runKoSpin();
+    runKoSpin(); tutorial();
     if (!runReveal() && fresh) countUp(app);
     if (r && r.phase === 'done' && r.celebrate){ r.celebrate = false; save(); if (r.tm) confetti(); else titleMoment(); }
   } catch (e) {
@@ -3205,7 +3238,14 @@ document.addEventListener('click', e => {
   }
   if (a === 'start'){ S.editName = 0; if (!(S.pref && S.pref.name)){ toast('Type your name first.'); const x = document.getElementById('pname'); if (x) x.focus(); return; } newRun(); }
   else if (a === 'pickd'){ S.pref = Object.assign({ diff: 'medium' }, S.pref, { diff: b.dataset.d }); save(); render(); }
+  else if (a === 'tutnext' || a === 'tutskip'){
+    const r = S.run; if (!r) return; const k = r.phase === 'draft' ? 'draft' : 'keep';
+    if (a === 'tutnext' && (r.tutI || 0) + 1 < TUT[k].length){ r.tutI = (r.tutI || 0) + 1; tutorial(); return; }
+    S.pref = Object.assign({}, S.pref, k === 'draft' ? { tutDraft: 1 } : { tutKeep: 1 }); r.tutI = 0; r.stepK = null;   // the decision's clock starts now
+    save(); render();
+  }
   else if (a === 'open') openRun(+b.dataset.i, b.dataset.wk === '1');
+  else if (a === 'openhall') openRun(+b.dataset.i, true, true);
   else if (a === 'lbtab'){ S.pref = Object.assign({}, S.pref, { lbTab: b.dataset.t }); save(); lbShow(); }
   else if (a === 'weekly'){ S.editName = 0; if (!(S.pref && S.pref.name)){ toast('Type your name first.'); const x = document.getElementById('pname'); if (x) x.focus(); return; } if (!weeklyOk()){ toast('This week\'s challenge is not ready yet.'); return; } newRun(null, true); }
   else if (a === 'rename'){ S.editName = 1; render(); const x = document.getElementById('pname'); if (x){ x.focus(); x.select(); } }
@@ -3249,7 +3289,7 @@ document.addEventListener('click', e => {
   }
   else if (a === 'img') showImage(b.dataset.kind);
   else if (a === 'fresh2'){ S.run = null; save(); render(); }
-  else if (a === 'lbimg') showTopImage();
+  else if (a === 'lbimg') showTopImage(b.dataset.wk === '1' || (b.dataset.wk == null && (S.pref || {}).lbTab === 'week'));
   else if (a === 'home'){
     const r = S.run;
     // leaving while players could still carry over loses them: a second tap confirms
@@ -3321,11 +3361,11 @@ async function boot(){
   let raw = null;
   try {
     const lg = document.querySelector('.ld-logo'); if (lg) lg.style.backgroundImage = `url(${LOGO})`;
-    const r = await fetch('world.json?t=' + Date.now(), { cache: 'no-store' });   // always the latest data, never a cached copy
+    const r = await fetch('world.json', { cache: 'no-cache' });   // always the latest data: the browser asks the server, and reuses its copy when nothing changed
     if (r.ok){
       // the data is a few MB: a progress bar while it arrives (the size is a guess when the server compresses it)
       const bar = document.querySelector('.ld-bar b'), len = +r.headers.get('content-length') || 0;
-      const total = len && !r.headers.get('content-encoding') ? len : Math.max(len * 6, 7e6);
+      const total = len && !r.headers.get('content-encoding') ? len : Math.max(len * 5, 5e6);
       if (r.body && r.body.getReader && bar){
         const rd = r.body.getReader(), parts = []; let got = 0;
         for (;;){ const { done, value } = await rd.read(); if (done) break; parts.push(value); got += value.length; bar.style.width = Math.min(97, 4 + 93 * got / total) + '%'; }
@@ -3372,7 +3412,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024090940';
+const BUILD = '20261024110538';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

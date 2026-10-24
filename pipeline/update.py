@@ -1370,6 +1370,12 @@ def main():
     # old one stays in the data and the game shows none for the new week
     world['weekly'] = weekly_challenge(world, fx, prev_world.get('weekly'), allow_new=stopped is None and core_done,
                                        top_pts={tid: (c.get('points') or 0.5) for tid, c in top_map.items()}, national=national)
+    # the game never reads every player's and club's match-by-match list (the model is done with them): left out of the
+    # file, which makes it about 40% smaller to download and to read on a phone
+    for p in world['players']:
+        p.pop('m', None); p.pop('or', None)
+    for c in world['clubs']:
+        c.pop('m', None); c.pop('or', None)
     with open(target, 'w', encoding='utf-8') as f:
         json.dump(world, f, ensure_ascii=False, separators=(',', ':'))
     log(f'Wrote {os.path.basename(target)}')
