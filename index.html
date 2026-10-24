@@ -86,7 +86,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .tut-h{display:flex;justify-content:space-between;align-items:baseline}.tut-h span{color:var(--muted);font-size:12px}.tut p{margin:6px 0 10px;font-size:14px;line-height:1.45}.tut-b{display:flex;justify-content:space-between;align-items:center}.tut-b .btn{padding:8px 16px;min-height:0;font-size:13px}
 .lastwin{display:flex;gap:8px;align-items:center;margin-top:14px;padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,rgba(242,193,78,.16),transparent);border:1px solid rgba(242,193,78,.4)}.lw-c{font-size:18px}.hall{margin-top:8px}.hall summary{cursor:pointer;color:var(--muted);font-size:13px}
 .lbtabs{display:flex;gap:4px}.lbt{background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:3px 11px;font:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}.lbt.on{color:var(--text);border-color:var(--gold)}
-.weekly{border:1px solid var(--gold)}.wkcs{display:flex;flex-wrap:wrap;gap:5px}.wkc{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--kit);color:var(--kit-ink);font-weight:600}
+.weekly{--gold:#3D7BFF;--gold-ink:#06102A;border:1px solid var(--gold)}   /* always the Champions League, whatever difficulty is picked */.wkcs{display:flex;flex-wrap:wrap;gap:5px}.wkc{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--kit);color:var(--kit-ink);font-weight:600}
 .hello{margin-top:16px;font-size:16px}.linkb{background:none;border:0;padding:0 0 0 6px;color:var(--muted);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
 .radar .rv{transform-origin:var(--cx) var(--cy);animation:rgrow .5s cubic-bezier(.2,.9,.3,1)}@keyframes rgrow{from{transform:scale(0);opacity:.2}}
 @media (prefers-reduced-motion:reduce){.radar .rv,.t10.pop,.brun.flash{animation:none}}
@@ -3412,7 +3412,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024110538';
+const BUILD = '20261024112239';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
