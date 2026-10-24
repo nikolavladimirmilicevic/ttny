@@ -130,7 +130,6 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .loader{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:var(--muted);font-size:14px}
 .ld-logo{width:120px;height:154px;background:center/contain no-repeat;animation:breathe 1.6s ease-in-out infinite}
 .clubcard.prespin h2,.clubcard.prespin .meta,.clubcard.prespin .plist{visibility:hidden}
-.ld-tip{max-width:min(420px,84vw);min-height:3em;text-align:center;color:var(--muted);font-size:13px;line-height:1.45;opacity:0}.ld-tip.in{animation:tipin .5s ease-out forwards}@keyframes tipin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 #tmom{position:fixed;inset:0;z-index:80;display:grid;place-items:center;text-align:center;background:radial-gradient(circle at 50% 42%,color-mix(in srgb,var(--ta) 38%,#08111D) 0,#08111D 70%);animation:fadein .35s ease-out;cursor:pointer}
 #tmom.out{animation:fadeout .4s ease-in forwards}#tmom .tm-cup{width:150px;height:150px;filter:drop-shadow(0 0 28px var(--ta));animation:cupin .9s cubic-bezier(.2,1.5,.4,1)}@keyframes cupin{from{transform:translateY(40px) scale(.4);opacity:0}}
 #tmom h1{font-size:clamp(48px,12vw,96px);margin:6px 0 0;color:#F4F1EA;letter-spacing:.02em;animation:fadein .6s .35s both}#tmom .tm-c{margin-top:14px;color:var(--ta);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:14px;animation:fadein .6s .25s both}#tmom .tm-t{color:#9AA8BD;margin-top:6px;animation:fadein .6s .5s both}
@@ -138,7 +137,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .rainbow{display:grid;grid-template-columns:repeat(11,1fr);gap:3px;margin-top:8px}.rainbow i{height:8px;border-radius:3px;background:transparent;box-shadow:inset 0 0 0 1px var(--line)}.rainbow i.on{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}.rainbow i.new{animation:rbnew .6s ease-out}@keyframes rbnew{from{transform:scaleY(3);filter:brightness(1.6)}}
 .achcard{position:fixed;left:50%;bottom:110px;z-index:70;transform:translateX(-50%);perspective:600px;cursor:pointer}.achcard .ac-in{background:linear-gradient(135deg,#22324B,#152338);border:1px solid var(--gold);border-radius:14px;padding:12px 16px;box-shadow:0 12px 40px rgba(0,0,0,.45),0 0 24px rgba(227,179,65,.25);animation:acflip .7s cubic-bezier(.2,1.3,.4,1);min-width:250px}
 .achcard.out{animation:fadeout .4s forwards}@keyframes acflip{from{transform:rotateX(-90deg);opacity:0}}.ac-h{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}.ac-row{display:flex;gap:10px;align-items:center;margin-top:4px}.ac-row i{font-style:normal;font-size:26px}.ac-row span{display:flex;flex-direction:column}.ac-row small{color:var(--muted);font-size:12px}
-@media (prefers-reduced-motion:reduce){.achcard .ac-in,.rainbow i.new,#tmom,#tmom *{animation:none!important}.ld-tip{opacity:1}}
+@media (prefers-reduced-motion:reduce){.achcard .ac-in,.rainbow i.new,#tmom,#tmom *{animation:none!important}}
 .ld-bar{width:min(260px,70vw);height:6px;border-radius:3px;background:var(--line);overflow:hidden}.ld-bar b{display:block;height:100%;width:4%;background:var(--gold);border-radius:3px;transition:width .2s}
 @keyframes breathe{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.04);opacity:1}}
 #app.enter{animation:enter .22s ease-out}@keyframes enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -591,7 +590,7 @@ body.matchon .ev.live .gflash{top:auto;bottom:6%;font-size:24px}
 @media (prefers-reduced-motion: reduce){.chip.last{animation:none}}
 </style>
 
-<div class="wrap" id="app"><div class="loader"><div class="ld-logo"></div><div class="ld-bar"><b></b></div><p>Loading the clubs and players…</p><p class="ld-tip" aria-live="polite"></p></div></div>
+<div class="wrap" id="app"><div class="loader"><div class="ld-logo"></div><div class="ld-bar"><b></b></div><p>Loading the clubs and players…</p></div></div>
 <div id="toast" class="toast" hidden></div>
 <div id="pcard" class="pcard" hidden></div>
 
@@ -3379,18 +3378,7 @@ document.addEventListener('click', e => {
   if (el && !(S.run && S.run.phase === 'lineup')) openSheet(el.dataset.pid); else PC.hidden = true;   // line-up: a tap moves players
 });
 
-const TIPS = ['Penalties go in 68.6% of the time, the all-time World Cup rate.', 'Home advantage is bigger in Europe than in the leagues: measured on 973 European matches.',
-  'Only the play-off and the Round of 16 are drawn; after that the bracket decides.', 'From 2025/26 the club ranked higher in the league phase plays the second leg at home.',
-  'A position a player rarely plays costs him up to 4 points; one he plays often, half a point.', 'Full chemistry adds 33 Elo points on top of your players (measured: an earlier guess was three times that).',
-  'A start 90 days old counts half as much toward a player\'s positions as one today.', 'Win a title and carry all 11 into the next run, one competition up.',
-  'Seeds 1 and 2 can only meet in the final; 3 and 4 are split between the halves too.', 'Run score 1-99: 1 is the worst run possible, 99 a Champions League title on Hard from 1st place with every match won.'];
-function loaderTips(){
-  const el = document.querySelector('.ld-tip'); if (!el) return; let i = Math.floor(Math.random() * TIPS.length);
-  const show = () => { if (!el.isConnected) return clearInterval(t); el.classList.remove('in'); void el.offsetWidth; el.textContent = TIPS[i++ % TIPS.length]; el.classList.add('in'); };
-  show(); const t = setInterval(show, 3200);
-}
 async function boot(){
-  loaderTips();
   let raw = null;
   try {
     const lg = document.querySelector('.ld-logo'); if (lg) lg.style.backgroundImage = `url(${LOGO})`;
@@ -3445,7 +3433,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024113434';
+const BUILD = '20261024113534';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
