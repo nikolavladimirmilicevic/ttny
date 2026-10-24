@@ -36,7 +36,8 @@ GRID_COL1_IS_RIGHT = (os.environ.get('GRID_COL1_IS_RIGHT') or '0') == '1'   # ch
 TODAY = dt.date.fromisoformat(os.environ['TODAY']) if os.environ.get('TODAY') else dt.date.today()
 SINCE = TODAY - dt.timedelta(days=365)
 FINISHED = {'FT', 'AET', 'PEN'}
-SQUAD_MAX_AGE = 7      # days between roster refreshes
+SQUAD_MAX_AGE = 1      # days between roster refreshes: daily, so a transfer shows the next day
+TRANSFER_MAX_AGE = 1   # days between transfer-list checks per ranked club (was 30)
 PROFILE_MAX_AGE = 30   # days between nationality/age refreshes per club
 
 used = 0
@@ -793,7 +794,7 @@ def fetch_arrivals(top_ids, extra, meta, squads):
     """Every other club today's players played for in the window. A ranked club's transfers list each player's whole
     transfer history, so a path like X -> Y -> ranked club gives both X and Y. For each club he left inside the window:
     the time he was there (from his move in, or the window's start, until the day he left). Only his matches there
-    count, so only that club's matches in that stretch are needed. One transfers call per ranked club, monthly."""
+    count, so only that club's matches in that stretch are needed. One transfers call per ranked club, daily."""
     if meta.get('transfers_v') != 3:   # earlier versions took clubs players left to, and whole seasons
         meta['transfers'] = {}; meta['transfers_v'] = 3
         for k in [k for k, v in extra.items() if v.get('kind') == 'club']:
@@ -802,8 +803,8 @@ def fetch_arrivals(top_ids, extra, meta, squads):
     top = set(top_ids)
     members = {pid for sq in squads.values() for pid in (sq.get('p') or [])}
     lo, hi = SINCE.isoformat(), TODAY.isoformat()
-    for tid in top_ids:
-        if days_old(done.get(str(tid))) < 30:
+    for tid in sorted(top_ids, key=lambda t: done.get(str(t)) or ''):   # the longest unchecked first, if the budget runs out
+        if days_old(done.get(str(tid))) < TRANSFER_MAX_AGE:
             continue
         try:
             data = api('transfers', team=tid)
