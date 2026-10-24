@@ -1250,6 +1250,15 @@ def short_club(name):
     return re.sub(r'\s+(FC|CF|SC|AC|FK|SK|NK|AFC|CFC|U19|U21|U23| II)$', '', (name or '').strip()) or name
 
 
+def same_club(a, b):
+    """Two spellings of one club: equal once accents, 'FC'-type words and the München/Munich kind of variants go."""
+    def key(x):
+        k = norm(x).replace('munich', 'munchen').replace('milano', 'milan').replace('torino', 'turin').replace('lisboa', 'lisbon')
+        return ' '.join(w for w in k.split() if w not in ('fc', 'cf', 'sc', 'ac', 'fk', 'sk', 'nk', 'afc', 'club', 'de', 'the'))
+    ka, kb = key(a), key(b)
+    return ka == kb or (min(len(ka), len(kb)) >= 5 and difflib.SequenceMatcher(None, ka, kb).ratio() >= .88)
+
+
 def write_careers(world, careers, teams):
     """careers.json for the guess-who game: every player in the game whose transfer history gives at least 3 clubs,
     as stints [club, first year, last year, loan] oldest first (the first club from the club he first left; the current
@@ -1262,12 +1271,16 @@ def write_careers(world, careers, teams):
         if not mv:
             continue
         st = []
+        who = set(norm(p['name']).split())
         def add(cid, cname, y0, y1, loan):
             nm = club_name.get(cid) or short_club(cname)
-            if not nm:
+            if not nm or (who and set(norm(nm).split()) <= who):   # the API sometimes puts the player's own name as a club
                 return
-            if st and st[-1][0] == nm and not loan and not st[-1][3]:
-                st[-1][2] = y1; return
+            # the same club under two spellings ('Bayern Munich', 'Bayern München') or a move straight back: one stint
+            if st and same_club(st[-1][0], nm) and bool(loan) == bool(st[-1][3]):
+                st[-1][2] = y1
+                if club_name.get(cid): st[-1][0] = nm
+                return
             st.append([nm, y0, y1, 1 if loan else 0])
         first = mv[0]
         add(first[1], first[2], None, int(first[0][:4]), False)
