@@ -1319,8 +1319,11 @@ def write_careers(world, careers, teams):
             k = kits.get(nm) or kits.get(alias.get(nm, ''))
             if k: used_kits[nm] = k
         out.append({'id': p['id'], 'n': p['name'], 'nat': p.get('nat'), 'pos': p['prim'], 'age': p.get('age'), 'ovr': p.get('ovr'), 'f': round(fame, 2), 'c': st})
+    # each club's country (UEFA clubs only), for the themed games ('played in England')
+    ctry = {c['name']: c['ctry'] for c in world['clubs'] if c.get('ctry')}
+    used_cc = {nm: ctry[nm] for p in out for nm, *_ in p['c'] if nm in ctry}
     with open(os.path.join(ROOT, 'careers.json'), 'w', encoding='utf-8') as f:
-        json.dump({'updated': TODAY.isoformat(), 'kits': used_kits, 'players': out}, f, ensure_ascii=False, separators=(',', ':'))
+        json.dump({'updated': TODAY.isoformat(), 'kits': used_kits, 'cc': used_cc, 'players': out}, f, ensure_ascii=False, separators=(',', ':'))
     log(f'  careers.json: {len(out)} players')
 
 

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Rubik:wght@400;500;700&display=swap">
 <style>
-/* Guess Who: a player's career on screen, four names to choose from; ten players a day, the same for everyone */
+/* Guess Who: a player's career on screen, guess who it is; four modes, themed practice games, a new set every game */
 :root{
   --night:#0B1626; --panel:#13233A; --panel-2:#1A2E4A; --line:#294060;
   --gold:#3D7BFF; --gold-ink:#06102A; --text:#F3EFE6; --muted:#A3B1C4;
@@ -53,6 +53,17 @@ input.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-radi
 .lb{list-style:none;margin:8px 0 0;padding:0}.lb li{display:flex;justify-content:space-between;padding:8px 2px;border-top:1px solid var(--line)}.lb li:first-child{border-top:0}.lb li.me{color:var(--gold);font-weight:700}
 .row{display:flex;gap:8px;margin-top:12px}.row .btn{flex:1}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--line);padding:8px 14px;border-radius:10px;font-size:14px;z-index:9}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.mode{display:flex;flex-direction:column;align-items:flex-start;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);text-align:left}.mode b{font-family:var(--display);letter-spacing:.04em;text-transform:uppercase;font-size:14px}.mode small{font-size:12px;color:var(--muted)}.mode.on{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}.mode.on b{color:var(--gold)}
+select.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;font-size:16px}
+.tabs{flex-wrap:wrap;margin-top:8px}
+.timer b{transition:background .3s}.timer b.low{background:var(--loss)}
+.career li{transition:opacity .35s}.career li.hid{opacity:.35}.career li.hid .yr,.career li.hid .cl{color:transparent;background:var(--line);border-radius:5px;user-select:none}.career li.hid .kit,.career li.hid .ln{visibility:hidden}
+.typed{margin-top:14px}.typed input{margin-top:0}.typed input.right{border-color:var(--win);background:rgba(92,192,138,.22)}.typed input.wrong{border-color:var(--loss);background:rgba(229,122,98,.22)}
+.sugg{display:grid;gap:6px;margin-top:8px}.sg{text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);font-weight:600}.sg.first{border-color:var(--gold)}.sg:hover{border-color:var(--gold)}
+.opt.right{animation:pop .35s ease-out}@keyframes pop{50%{transform:scale(1.03)}}
+.review details{border-top:1px solid var(--line)}.review details:first-child{border-top:0}.review summary{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:baseline;padding:9px 2px;cursor:pointer;list-style:none}.review summary::-webkit-details-marker{display:none}
+.review .rk{font-weight:700}.review .rk.ok{color:var(--win)}.review .rk.no{color:var(--loss)}.review .rn{display:flex;flex-direction:column}.review .rn small{font-size:12px}.review .career{margin:0 0 10px 30px}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:8}.confetti i{position:absolute;top:-12px;width:8px;height:12px;border-radius:2px;animation:fall linear forwards}@keyframes fall{to{top:105%;transform:translateX(30px) rotate(540deg)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head><body>
@@ -66,7 +77,40 @@ const POS_NAME = { GK: 'goalkeeper', DEF: 'defender', MID: 'midfielder', FWD: 'f
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const toast = m => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); };
-const today = () => new Date().toISOString().slice(0, 10);   // the day's set changes at midnight UTC
+const today = () => new Date().toISOString().slice(0, 10);   // the day's table changes at midnight UTC
+const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+/* ---------- modes and themes ---------- */
+// ten: four names to choose from; drip: the same, but the clubs appear one by one (the sooner you know, the more you
+// score); typed: no names given, type it; endless: four names, until the first miss. Each has its own table.
+const MODES = [
+  ['ten', 'Ten', 'Four names to choose from'],
+  ['drip', 'One by one', 'Clubs appear one at a time'],
+  ['typed', 'Type it', 'No names given'],
+  ['endless', 'Endless', 'Until you miss one'],
+];
+const MODE_NAME = Object.fromEntries(MODES.map(m => [m[0], m[1]]));
+// a theme narrows the players (and the wrong names); themed games are practice and do not go in the table
+const THEMES = [
+  ['all', 'All players', null],
+  ['legends', 'The best known', 'legends'],
+  ['ENG', 'Played in England', 'cc'], ['ESP', 'Played in Spain', 'cc'], ['ITA', 'Played in Italy', 'cc'], ['GER', 'Played in Germany', 'cc'],
+  ['FRA', 'Played in France', 'cc'], ['POR', 'Played in Portugal', 'cc'], ['NED', 'Played in the Netherlands', 'cc'], ['SRB', 'Played in Serbia', 'cc'],
+  ['serbs', 'Serbian players', p => p.nat === 'Serbia'], ['croats', 'Croatian players', p => p.nat === 'Croatia'],
+  ['gk', 'Goalkeepers', p => p.pos === 'GK'],
+];
+const POOLS = {};
+function themePool(k){
+  if (POOLS[k]) return POOLS[k];
+  const t = THEMES.find(x => x[0] === k) || THEMES[0], all = DATA.players, cc = DATA.cc || {};
+  let pool;
+  if (!t[2]) pool = all;
+  else if (t[2] === 'legends') pool = byFame(all).slice(0, 200);
+  else if (t[2] === 'cc') pool = all.filter(p => p.c.some(s => cc[s[0]] === k));
+  else pool = all.filter(t[2]);
+  return POOLS[k] = pool;
+}
+const prefs = () => { const s = store.get(); return { mode: MODE_NAME[s.mode] ? s.mode : 'ten', theme: THEMES.some(t => t[0] === s.theme) ? s.theme : 'all' }; };
 
 /* ---------- the player's name: shared with This Time Next Year on the same site ---------- */
 const store = { get(){ try { return JSON.parse(localStorage.getItem(STORE) || '{}'); } catch (e) { return {}; } }, set(v){ try { localStorage.setItem(STORE, JSON.stringify(v)); } catch (e) {} } };
@@ -82,9 +126,14 @@ function playerName(){
 // Endless: three well-known, then the middle, then deeper and deeper for as long as you keep getting them right
 const BANDS = [[0, .12], [0, .12], [0, .12], [.1, .4], [.1, .4], [.1, .4], [.1, .4], [.35, 1], [.35, 1], [.35, 1]];
 const pickR = arr => arr[Math.floor(Math.random() * arr.length)];
+const FAME = new WeakMap();
+function byFame(players){
+  if (!FAME.has(players)) FAME.set(players, [...players].sort((a, b) => (b.f != null ? b.f - a.f : (b.ovr || 0) - (a.ovr || 0))));
+  return FAME.get(players);
+}
 function bandPool(players, band, used){
-  const byFame = DATA._byFame || (DATA._byFame = [...players].sort((a, b) => (b.f != null ? b.f - a.f : (b.ovr || 0) - (a.ovr || 0)))), n = byFame.length, lo = Math.floor(band[0] * n);
-  return byFame.slice(lo, Math.max(lo + 1, Math.floor(band[1] * n))).filter(p => !used.has(p.id));
+  const list = byFame(players), n = list.length, lo = Math.floor(band[0] * n);
+  return list.slice(lo, Math.max(lo + 1, Math.floor(band[1] * n))).filter(p => !used.has(p.id));
 }
 const endlessBand = i => i < 3 ? BANDS[0] : i < 8 ? BANDS[3] : i < 15 ? BANDS[7] : [.6, 1];
 // three wrong answers: the same line, a similar age and standing, never the same name; one of them, when there is one,
@@ -106,147 +155,219 @@ function newSet(players, used){
   return qs;
 }
 
+/* ---------- typing a name: every player in the game can be suggested, accents and case do not matter ---------- */
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/ø/g, 'o').replace(/[łľ]/g, 'l').replace(/đ/g, 'd').replace(/ß/g, 'ss').replace(/æ/g, 'ae').replace(/ı/g, 'i').replace(/[^a-z0-9]+/g, ' ').trim();
+let NAMES = null;
+function suggest(text){
+  if (!NAMES){ const m = new Map(); for (const p of byFame(DATA.players)) if (!m.has(p.n)) m.set(p.n, norm(p.n).split(' ')); NAMES = [...m]; }
+  const q = norm(text).split(' ').filter(Boolean); if (!q.length) return [];
+  const out = [];
+  for (const [n, toks] of NAMES){ if (q.every(w => toks.some(t => t.startsWith(w)))){ out.push(n); if (out.length >= 6) break; } }
+  return out;
+}
+
 /* ---------- state ---------- */
-let DATA = null, G = null;   // G: the game { mode, qs, i, picks: [{ok, ms}], used, help: {info, half, swap}, t0, timer }
+let DATA = null, G = null;   // G: the game { mode, theme, pool, qs, i, picks: [{ok, ms, pick}], used, help: {info, half, swap}, t0, timer }
 
 /* ---------- screens ---------- */
 const header = () => `<div class="top"><div><div class="eyebrow">This Time Next Year</div><h1 style="font-size:26px;margin-top:4px">Guess Who</h1></div><a href="./">The draft game</a></div>`;
 function viewStart(){
-  const name = playerName(), d = new Date(today() + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const name = playerName(), pr = prefs(), d = new Date(today() + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   $('#app').innerHTML = `${header()}
-    <section class="card"><div class="eyebrow">${esc(d)}</div><h2 style="margin-top:6px">Ten careers</h2>
-      <p class="muted" style="margin:8px 0 0">A player's career, club by club. Pick who it is from four names. ${Q_SECONDS} seconds each; the faster you are, the more you score. Three helps, once each per game: Info, Fifty-fifty and Swap. A new set of players every game.</p>
+    <section class="card"><div class="eyebrow">${esc(d)}</div><h2 style="margin-top:6px">Whose career is this?</h2>
+      <p class="muted" style="margin:8px 0 0">A player's career, club by club. ${Q_SECONDS} seconds each; the faster you are, the more you score. Three helps, once each per game. A new set of players every game.</p>
       <div class="eyebrow" style="margin-top:16px">Your name</div>
       <input id="nm" class="name" maxlength="20" placeholder="Type your name" value="${esc(name)}" autocomplete="nickname">
-      <button class="btn primary" id="go" style="margin-top:12px" ${name ? '' : 'disabled'}>${name ? 'Ten players as ' + esc(name) : 'Type your name to start'}</button>
-      <button class="btn" id="goe" style="margin-top:8px" ${name ? '' : 'disabled'}>Endless: until you miss one</button>
+      <div class="eyebrow" style="margin-top:16px">Mode</div>
+      <div class="modes">${MODES.map(([k, n, dsc]) => `<button class="mode${k === pr.mode ? ' on' : ''}" data-m="${k}"><b>${n}</b><small>${dsc}</small></button>`).join('')}</div>
+      <div class="eyebrow" style="margin-top:16px">Players</div>
+      <select id="th" class="name">${THEMES.map(([k, n]) => `<option value="${k}"${k === pr.theme ? ' selected' : ''}>${esc(n)}${k === 'all' ? '' : ' (practice)'}</option>`).join('')}</select>
+      <p class="muted" id="thn" style="margin:6px 0 0;font-size:13px"></p>
+      <button class="btn primary" id="go" style="margin-top:14px"></button>
       ${statsLine()}
     </section>
     <section class="card">${tableHead()}<div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section>`;
   bindTabs();
-  $('#nm').addEventListener('input', e => { const v = e.target.value.replace(/\s+/g, ' ').trim().slice(0, 20), s = store.get(); s.name = v; store.set(s); const b = $('#go'); b.disabled = !v; b.textContent = v ? 'Ten players as ' + v : 'Type your name to start'; $('#goe').disabled = !v; });
+  const sync = () => { const v = playerName(), p = prefs(), b = $('#go'); b.disabled = !v; b.textContent = v ? `${MODE_NAME[p.mode]} as ${v}` : 'Type your name to start';
+    $('#thn').textContent = p.theme === 'all' ? '' : `${themePool(p.theme).length} players. A themed game is practice: it counts in your own numbers, not in the table.`; };
+  $('#nm').addEventListener('input', e => { const v = e.target.value.replace(/\s+/g, ' ').trim().slice(0, 20), s = store.get(); s.name = v; store.set(s); sync(); });
   $('#nm').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('#go').disabled) $('#go').click(); });
-  $('#go').addEventListener('click', () => start('ten')); $('#goe').addEventListener('click', () => start('endless'));
-  loadTable();
+  document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => { const s = store.get(); s.mode = b.dataset.m; store.set(s);
+    document.querySelectorAll('.mode').forEach(x => x.classList.toggle('on', x === b)); LBMODE = b.dataset.m; document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE)); loadTable(); sync(); }));
+  $('#th').addEventListener('change', e => { const s = store.get(); s.theme = e.target.value; store.set(s); sync(); });
+  $('#go').addEventListener('click', () => { const p = prefs(); start(p.mode, p.theme); });
+  LBMODE = pr.mode; document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE));
+  sync(); loadTable();
 }
-function start(mode){
-  mode = mode === 'endless' ? 'endless' : 'ten';
-  const used = new Set();
+function start(mode, theme){
+  mode = MODE_NAME[mode] ? mode : 'ten'; theme = theme || 'all';
+  const pool = themePool(theme), used = new Set();
+  if (pool.length < 30){ toast('Not enough players for this theme yet.'); return; }
   let qs;
-  if (mode === 'ten') qs = newSet(DATA.players, used);
-  else { const pool = bandPool(DATA.players, endlessBand(0), used), ans = pickR(pool); used.add(ans.id); qs = [buildQ(ans, DATA.players, endlessBand(0))]; }
+  if (mode !== 'endless') qs = newSet(pool, used);
+  else { const ans = pickR(bandPool(pool, endlessBand(0), used)); used.add(ans.id); qs = [buildQ(ans, pool, endlessBand(0))]; }
   if (!qs.length){ toast('No players yet.'); return; }
-  G = { mode, qs, used, i: 0, picks: [], help: {} }; viewQ();
+  G = { mode, theme, pool, qs, used, i: 0, picks: [], help: {} }; viewQ();
 }
-/* personal numbers on this device: games, best score, best endless run, share of right answers */
+/* personal numbers on this device: games, share of right answers, the best score in each mode */
 function statsLine(){
   const t = store.get().stats; if (!t || !t.games) return '';
-  return `<p class="muted" style="margin:12px 0 0;font-size:13px">Your games: ${t.games} · best ${t.best || 0} · endless best ${t.streak || 0} · ${t.total ? Math.round(100 * t.right / t.total) : 0}% right</p>`;
+  const best = Object.assign({ ten: t.best || 0, endless: t.streak || 0 }, t.by || {});
+  const parts = MODES.filter(m => best[m[0]] > 0).map(m => `${m[1]} ${best[m[0]]}`);
+  return `<p class="muted" style="margin:12px 0 0;font-size:13px">Your games: ${t.games} · ${t.total ? Math.round(100 * t.right / t.total) : 0}% right${parts.length ? ' · best: ' + parts.join(' · ') : ''}</p>`;
 }
 function addStats(res){
-  const s = store.get(), t = s.stats = s.stats || { games: 0, best: 0, streak: 0, right: 0, total: 0 };
-  const key = res.mode === 'endless' ? 'streak' : 'best', pb = (t[key] || 0) > 0 && res.score > t[key];
-  t.games++; t.right += res.right; t.total += res.picks.length; if (res.score > (t[key] || 0)) t[key] = res.score;
+  const s = store.get(), t = s.stats = s.stats || { games: 0, right: 0, total: 0 };
+  t.by = Object.assign({ ten: t.best || 0, endless: t.streak || 0 }, t.by || {});
+  t.games++; t.right += res.right; t.total += res.picks.length;
+  if (res.theme !== 'all'){ store.set(s); return false; }   // practice games do not set a best
+  const pb = (t.by[res.mode] || 0) > 0 && res.score > t.by[res.mode];
+  if (res.score > (t.by[res.mode] || 0)) t.by[res.mode] = res.score;
+  t.best = t.by.ten; t.streak = t.by.endless;
   store.set(s); return pb;
 }
-function careerHTML(c){
+function careerHTML(c, shown){
   const kit = n => { const k = (DATA.kits || {})[n]; return `<i class="kit" style="${k ? `background:${k[0]};border-color:${k[1]}` : ''}"></i>`; };
-  return `<ol class="career">${c.map(([club, y0, y1, loan]) => `<li><span class="yr num">${y0 == null ? '' : y0}${y0 == null || y0 !== y1 ? '–' + (y1 === new Date().getUTCFullYear() ? '' : y1) : ''}</span><span class="cl">${kit(club)}${esc(club)}${loan ? '<span class="ln">loan</span>' : ''}</span></li>`).join('')}</ol>`;
+  return `<ol class="career">${c.map(([club, y0, y1, loan], j) => `<li class="${shown != null && j >= shown ? 'hid' : ''}"><span class="yr num">${y0 == null ? '' : y0}${y0 == null || y0 !== y1 ? '–' + (y1 === new Date().getUTCFullYear() ? '' : y1) : ''}</span><span class="cl">${kit(club)}${esc(club)}${loan ? '<span class="ln">loan</span>' : ''}</span></li>`).join('')}</ol>`;
 }
+// One by one: the first club at once, the rest one at a time, all of them on screen by about 13 seconds
+const dripStep = n => Math.max(1500, Math.min(3500, 13000 / Math.max(1, n - 1)));
+const helpsFor = () => G.mode === 'typed' ? HELPS.map(h => h[0] === 'half' ? ['half', 'Initials', 'His initials'] : h) : HELPS;
 function viewQ(){
-  const q = G.qs[G.i], line = LINE[q.ans.pos] || 'MID';
-  const prog = G.mode === 'ten' ? `<div class="prog">${G.qs.map((_, j) => `<i class="${j < G.picks.length ? (G.picks[j].ok ? 'ok' : 'no') : j === G.i ? 'now' : ''}"></i>`).join('')}</div>` : `<div class="streak">Endless · <b class="num">${G.picks.length}</b> in a row</div>`;
+  const q = G.qs[G.i], line = LINE[q.ans.pos] || 'MID', ten = G.mode !== 'endless';
+  const prog = ten ? `<div class="prog">${G.qs.map((_, j) => `<i class="${j < G.picks.length ? (G.picks[j].ok ? 'ok' : 'no') : j === G.i ? 'now' : ''}"></i>`).join('')}</div>` : `<div class="streak">Endless · <b class="num">${G.picks.length}</b> in a row</div>`;
+  const tag = [G.mode !== 'ten' && G.mode !== 'endless' ? MODE_NAME[G.mode] : '', G.theme !== 'all' ? (THEMES.find(t => t[0] === G.theme) || [])[1] : ''].filter(Boolean).join(' · ');
   $('#app').innerHTML = `${header()}
     ${prog}
-    <section class="card"><div class="qhead"><div class="eyebrow">${G.mode === 'ten' ? `Player ${G.i + 1} of ${G.qs.length}` : `Player ${G.i + 1}`}</div><span class="muted num" id="secs">${Q_SECONDS}</span></div>
+    <section class="card"><div class="qhead"><div class="eyebrow">${ten ? `Player ${G.i + 1} of ${G.qs.length}` : `Player ${G.i + 1}`}${tag ? ` <span class="muted">· ${esc(tag)}</span>` : ''}</div><span class="muted num" id="secs">${Q_SECONDS}</span></div>
       <div class="timer"><b id="bar"></b></div>
-      <div class="helps">${HELPS.map(([k, name, desc], i) => `<button class="help${G.help[k] ? ' used' : ''}" data-h="${k}" ${G.help[k] ? 'disabled' : ''} title="${desc}"><span class="hn">${i + 1}</span><b>${name}</b><small>${G.help[k] ? 'Used' : desc}</small></button>`).join('')}</div>
+      <div class="helps">${helpsFor().map(([k, name, desc], i) => `<button class="help${G.help[k] ? ' used' : ''}" data-h="${k}" ${G.help[k] ? 'disabled' : ''} title="${desc}"><span class="hn">${i + 1}</span><b>${name}</b><small>${G.help[k] ? 'Used' : desc}</small></button>`).join('')}</div>
       ${q.info ? `<div class="hint">A ${POS_NAME[line]}, aged ${esc(q.ans.age || '?')}${q.ans.nat ? ', from ' + esc(q.ans.nat) : ''}</div>` : ''}
-      ${careerHTML(q.ans.c)}
-      <div class="opts">${q.opts.map((p, k) => `<button class="opt${q.cut.includes(k) ? ' gone' : ''}" data-k="${k}" ${q.cut.includes(k) ? 'disabled' : ''}>${esc(p.n)}</button>`).join('')}</div>
+      ${q.initials ? `<div class="hint">His initials: <b>${esc(q.ans.n.split(/\s+/).map(w => w[0] + '.').join(' '))}</b></div>` : ''}
+      ${careerHTML(q.ans.c, G.mode === 'drip' ? 1 : null)}
+      ${G.mode === 'typed' ? `<div class="typed"><input id="ty" class="name" placeholder="Type his name" autocomplete="off" autocapitalize="words" spellcheck="false"><div class="sugg" id="sg"></div></div>`
+        : `<div class="opts">${q.opts.map((p, k) => `<button class="opt${q.cut.includes(k) ? ' gone' : ''}" data-k="${k}" ${q.cut.includes(k) ? 'disabled' : ''}>${esc(p.n)}</button>`).join('')}</div>`}
       <div id="after"></div></section>`;
   document.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => answer(+b.dataset.k)));
   document.querySelectorAll('.help').forEach(b => b.addEventListener('click', () => useHelp(b.dataset.h)));
-  if (G.keepClock) G.keepClock = false; else G.t0 = performance.now();   // Info and Fifty-fifty keep the clock running; a swapped player starts it again
+  if (G.mode === 'typed'){
+    const inp = $('#ty'), sg = $('#sg');
+    const draw = () => { const list = suggest(inp.value); sg.innerHTML = list.map((n, j) => `<button class="sg${j === 0 ? ' first' : ''}" data-n="${esc(n)}">${esc(n)}</button>`).join(''); sg.querySelectorAll('.sg').forEach(b => b.addEventListener('click', () => answer(-2, b.dataset.n))); };
+    inp.addEventListener('input', draw);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ const f = sg.querySelector('.sg'); if (f) answer(-2, f.dataset.n); } });
+    if (G.tyText){ inp.value = G.tyText; G.tyText = ''; draw(); }
+    inp.focus();
+  }
+  if (G.keepClock) G.keepClock = false; else G.t0 = performance.now();   // Info and the second help keep the clock running; a swapped player starts it again
   clearInterval(G.timer);
-  const tick = () => { const left = Q_SECONDS - (performance.now() - G.t0) / 1000;
-    if (left <= 0){ answer(-1); return; } $('#bar').style.width = (100 * left / Q_SECONDS) + '%'; $('#secs').textContent = Math.ceil(left); };
+  const rows = G.mode === 'drip' ? [...document.querySelectorAll('.career li')] : [], step = dripStep(rows.length);
+  const tick = () => { const el = performance.now() - G.t0, left = Q_SECONDS - el / 1000;
+    if (left <= 0){ answer(-1); return; }
+    $('#bar').style.width = (100 * left / Q_SECONDS) + '%'; $('#bar').classList.toggle('low', left <= 5); $('#secs').textContent = Math.ceil(left);
+    rows.forEach((r, j) => r.classList.toggle('hid', j > Math.floor(el / step))); };
   tick(); G.timer = setInterval(tick, 100);
 }
 /* three helps, once each per game, in the order they cost you: Info tells his position, age and nationality; Fifty-fifty
-   takes away two wrong names; Swap gives another player of the same difficulty (and a fresh clock) */
+   takes away two wrong names (when you type: his initials); Swap gives another player of the same difficulty (and a fresh clock) */
 const HELPS = [['info', 'Info', 'Position, age, nationality'], ['half', 'Fifty-fifty', 'Two wrong names go'], ['swap', 'Swap', 'Another player']];
 function useHelp(k){
   const q = G.qs[G.i]; if (!q || G.help[k] || G.answered) return;
   G.help[k] = true;
+  const ty = $('#ty'); if (ty) G.tyText = ty.value;
   if (k === 'info'){ q.info = true; G.keepClock = true; }
+  else if (k === 'half' && G.mode === 'typed'){ q.initials = true; G.keepClock = true; }
   else if (k === 'half'){ const wrong = q.opts.map((p, j) => j).filter(j => q.opts[j].id !== q.ans.id).sort(() => Math.random() - .5); q.cut = wrong.slice(0, 2); G.keepClock = true; }
-  else if (k === 'swap'){ const pool = bandPool(DATA.players, q.band, G.used); if (!pool.length){ G.help[k] = false; toast('No other player to swap in.'); return; }
-    const ans = pickR(pool); G.used.add(ans.id); G.qs[G.i] = buildQ(ans, DATA.players, q.band); }
+  else if (k === 'swap'){ const pool = bandPool(G.pool, q.band, G.used); if (!pool.length){ G.help[k] = false; toast('No other player to swap in.'); return; }
+    const ans = pickR(pool); G.used.add(ans.id); G.qs[G.i] = buildQ(ans, G.pool, q.band); G.tyText = ''; }
   viewQ();
 }
 const points = p => p.ok ? 100 + Math.round(50 * Math.max(0, Q_SECONDS * 1000 - p.ms) / (Q_SECONDS * 1000)) : 0;   // 100 for the right name, up to 50 more for speed
-function answer(k){
+// k: the option picked (-1 when time is up, -2 for a typed name)
+function answer(k, typed){
   if (G.done || G.answered) return; G.answered = true; clearInterval(G.timer);
-  const q = G.qs[G.i], ms = Math.round(performance.now() - G.t0), ok = k >= 0 && q.opts[k].id === q.ans.id;
-  G.picks.push({ ok, ms: Math.max(300, Math.min(ms, Q_SECONDS * 1000)) });
+  const q = G.qs[G.i], ms = Math.round(performance.now() - G.t0), pick = k >= 0 ? q.opts[k].n : k === -2 ? typed : null, ok = pick === q.ans.n;
+  G.picks.push({ ok, ms: Math.max(300, Math.min(ms, Q_SECONDS * 1000)), pick, q });
   document.querySelectorAll('.opt').forEach((b, j) => { b.disabled = true; if (q.opts[j].id === q.ans.id) b.classList.add('right'); else if (j === k) b.classList.add('wrong'); });
-  const last = G.mode === 'ten' ? G.i + 1 >= G.qs.length : !ok;
-  if (G.mode === 'endless' && ok){ const band = endlessBand(G.i + 1), pool = bandPool(DATA.players, band, G.used); if (pool.length){ const a = pickR(pool); G.used.add(a.id); G.qs.push(buildQ(a, DATA.players, band)); } }
+  document.querySelectorAll('.career li').forEach(r => r.classList.remove('hid'));
+  const ty = $('#ty'); if (ty){ ty.disabled = true; ty.value = pick || ''; ty.classList.add(ok ? 'right' : 'wrong'); $('#sg').innerHTML = ''; }
+  if (!ok) buzz(160);
+  const last = G.mode !== 'endless' ? G.i + 1 >= G.qs.length : !ok;
+  if (G.mode === 'endless' && ok){ const band = endlessBand(G.i + 1), pool = bandPool(G.pool, band, G.used); if (pool.length){ const a = pickR(pool); G.used.add(a.id); G.qs.push(buildQ(a, G.pool, band)); } }
   const now = q.ans.c[q.ans.c.length - 1];
-  $('#after').innerHTML = `<div class="verdict ${ok ? 'ok' : 'no'}">${ok ? (G.mode === 'ten' ? 'Right! +' + points(G.picks[G.picks.length - 1]) : 'Right! ' + G.picks.length + ' in a row') : k < 0 ? 'Time is up.' : 'Not this time.'}</div>
+  $('#after').innerHTML = `<div class="verdict ${ok ? 'ok' : 'no'}">${ok ? (G.mode !== 'endless' ? 'Right! +' + points(G.picks[G.picks.length - 1]) : 'Right! ' + G.picks.length + ' in a row') : k === -1 ? 'Time is up.' : 'Not this time.'}</div>
     <div class="reveal"><b>${esc(q.ans.n)}</b><span class="muted">${[q.ans.nat, POS_NAME[LINE[q.ans.pos] || 'MID'], now && now[0]].filter(Boolean).map(esc).join(' · ')}</span></div>
-    <button class="btn primary" id="nx" style="margin-top:12px">${last ? (G.mode === 'ten' ? 'See your score' : 'See your run') : 'Next player'}</button>`;
+    <button class="btn primary" id="nx" style="margin-top:12px">${last ? (G.mode !== 'endless' ? 'See your score' : 'See your run') : 'Next player'}</button>`;
   $('#nx').addEventListener('click', () => { G.answered = false; if (last || G.i + 1 >= G.qs.length) finish(); else { G.i++; viewQ(); } });
   $('#nx').focus();
 }
 function finish(){
   G.done = true;
-  const right = G.picks.filter(p => p.ok).length, score = G.mode === 'ten' ? G.picks.reduce((t, p) => t + points(p), 0) : right;
-  const res = { mode: G.mode, score, right, picks: G.picks.map(p => [p.ok ? 1 : 0, p.ms]), name: playerName() };
-  res.pb = addStats(res); push(res); viewDone(res);
+  const right = G.picks.filter(p => p.ok).length, score = G.mode !== 'endless' ? G.picks.reduce((t, p) => t + points(p), 0) : right;
+  const res = { mode: G.mode, theme: G.theme, score, right, picks: G.picks.map(p => [p.ok ? 1 : 0, p.ms]), log: G.picks, helps: Object.keys(G.help).filter(k => G.help[k]).length, name: playerName() };
+  res.pb = addStats(res);
+  if (res.theme === 'all') push(res);
+  viewDone(res);
+  if (res.pb || (G.mode !== 'endless' && right === N_Q) || (G.mode === 'endless' && right >= 10)) confetti();
 }
+const themeName = k => (THEMES.find(t => t[0] === k) || [])[1];
 function shareText(res){
   const d = new Date(today() + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  return res.mode === 'endless' ? `TTNY Guess Who · Endless · ${d}\n${res.score} in a row\n${location.href.split('#')[0]}` : `TTNY Guess Who · ${d}\n${res.right}/${N_Q} · ${res.score}\n${res.picks.map(p => p[0] ? '🟩' : '🟥').join('')}\n${location.href.split('#')[0]}`;
+  const what = ['TTNY Guess Who', res.mode !== 'ten' ? MODE_NAME[res.mode] : '', res.theme !== 'all' ? themeName(res.theme) : '', d].filter(Boolean).join(' · ');
+  const grid = res.picks.map(p => p[0] ? '🟩' : '🟥').join('');
+  const helps = res.helps ? ` · ${res.helps} help${res.helps > 1 ? 's' : ''}` : ' · no helps';
+  return res.mode === 'endless' ? `${what}\n${res.score} in a row${helps}\n${grid}\n${location.href.split('#')[0]}` : `${what}\n${res.right}/${N_Q} · ${res.score}${helps}\n${grid}\n${location.href.split('#')[0]}`;
+}
+// every player of the game, what you said, and his career when you open him
+function reviewHTML(res){
+  return `<section class="card"><div class="eyebrow">Your players</div><div class="review">${res.log.map((p, j) => `<details><summary><span class="rk ${p.ok ? 'ok' : 'no'}">${p.ok ? '✓' : '✗'}</span><span class="rn"><b>${esc(p.q.ans.n)}</b>${p.ok ? '' : `<small class="muted">${p.pick ? 'you said ' + esc(p.pick) : 'time ran out'}</small>`}</span><span class="muted num">${res.mode !== 'endless' ? (p.ok ? '+' + points(p) : '0') : j + 1}</span></summary>${careerHTML(p.q.ans.c)}</details>`).join('')}</div></section>`;
 }
 function viewDone(res){
   $('#app').innerHTML = `${header()}
-    <section class="card" style="text-align:center"><div class="eyebrow">${res.mode === 'endless' ? 'Your endless run' : 'Your score'}</div><div class="big num" style="margin-top:8px">${res.score}</div>
+    <section class="card" style="text-align:center"><div class="eyebrow">${res.mode === 'endless' ? 'Your endless run' : 'Your score'}${res.mode !== 'ten' && res.mode !== 'endless' ? ' · ' + MODE_NAME[res.mode] : ''}${res.theme !== 'all' ? ' · ' + esc(themeName(res.theme)) : ''}</div><div class="big num" style="margin-top:8px">${res.score}</div>
       ${res.pb ? '<div class="pbadge">Personal best!</div>' : ''}
       ${res.mode === 'endless' ? `<div class="muted">${res.score === 1 ? 'player' : 'players'} in a row</div>` : `<div class="muted">${res.right} of ${N_Q} right</div><div class="grid">${res.picks.map(p => p[0] ? '🟩' : '🟥').join('')}</div>`}
-      <div class="row"><button class="btn primary" id="again">Play again</button><button class="btn" id="sh">Share</button></div></section>
+      ${res.theme !== 'all' ? '<div class="muted" style="font-size:13px">A practice game: not in the table.</div>' : ''}
+      <div class="row"><button class="btn primary" id="again">Play again</button><button class="btn" id="sh">Share</button></div>
+      <button class="btn" id="home" style="margin-top:8px">Change mode or players</button></section>
+    ${reviewHTML(res)}
     <section class="card">${tableHead()}<div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section>`;
-  $('#again').addEventListener('click', () => start(res.mode)); bindTabs();
-  LBMODE = res.mode;
+  $('#again').addEventListener('click', () => start(res.mode, res.theme)); $('#home').addEventListener('click', viewStart);
+  LBMODE = res.mode; document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE)); bindTabs();
   $('#sh').addEventListener('click', async () => { const t = shareText(res);
     try { if (navigator.share){ await navigator.share({ text: t }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(t); toast('Copied. Paste it in your group.'); } catch (e) { toast(t); } });
   loadTable();
 }
+function confetti(){
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const box = document.createElement('div'); box.className = 'confetti'; const cols = ['#3D7BFF', '#5CC08A', '#F3EFE6', '#F2C14E', '#E57A62'];
+  for (let i = 0; i < 70; i++){ const b = document.createElement('i'); b.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % cols.length]};animation-delay:${Math.random() * .6}s;animation-duration:${1.8 + Math.random() * 1.4}s;transform:rotate(${Math.random() * 360}deg)`; box.appendChild(b); }
+  document.body.appendChild(box); setTimeout(() => box.remove(), 4200);
+}
 
-/* ---------- today's table (Supabase, table "guesses"): each name's best score of the day ---------- */
+/* ---------- today's table (Supabase, table "guesses"): each name's best score of the day, per mode ---------- */
 let LBMODE = 'ten';
-const tableHead = () => `<div class="qhead"><div class="eyebrow">Today's table</div><div class="tabs"><button class="tab${LBMODE === 'ten' ? ' on' : ''}" data-m="ten">Ten</button><button class="tab${LBMODE === 'endless' ? ' on' : ''}" data-m="endless">Endless</button></div></div>`;
+const tableHead = () => `<div class="qhead"><div class="eyebrow">Today's table</div></div><div class="tabs">${MODES.map(([k, n]) => `<button class="tab${LBMODE === k ? ' on' : ''}" data-m="${k}">${n}</button>`).join('')}</div>`;
 function bindTabs(){ document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { LBMODE = b.dataset.m; document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE)); loadTable(); })); }
 const head = () => Object.assign({ apikey: LB_CFG.key, 'Content-Type': 'application/json' }, /^eyJ/.test(LB_CFG.key) ? { Authorization: 'Bearer ' + LB_CFG.key } : {});
 async function loadTable(){
   const el = $('#lb'); if (!el) return;
+  const mode = LBMODE;
   try {
     const q = LB_CFG.url + '/rest/v1/guesses?select=name,score,at&day=eq.' + today() + '&order=score.desc,at.asc&limit=300';
-    let r = await fetch(q + '&mode=eq.' + LBMODE, { headers: head(), cache: 'no-store' });
-    if (!r.ok && LBMODE === 'ten') r = await fetch(q, { headers: head(), cache: 'no-store' });   // a table from before the endless mode
+    let r = await fetch(q + '&mode=eq.' + mode, { headers: head(), cache: 'no-store' });
+    if (!r.ok && mode === 'ten') r = await fetch(q, { headers: head(), cache: 'no-store' });   // a table from before the modes
     if (!r.ok) throw new Error(r.status);
     const seen = new Set(), rows = (await r.json()).filter(x => { const k = String(x.name || '').trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 10);
     const me = playerName().trim().toLowerCase();
-    if (LBMODE !== (document.querySelector('.tab.on') || {}).dataset?.m) return;
-    el.innerHTML = rows.length ? `<ol class="lb">${rows.map((x, i) => `<li class="${String(x.name).trim().toLowerCase() === me ? 'me' : ''}"><span>${i + 1}. ${esc(x.name)}</span><b class="num">${+x.score || 0}</b></li>`).join('')}</ol>` : '<p class="muted" style="margin:6px 0 0">Nobody has played today yet.</p>';
+    if (mode !== LBMODE) return;
+    el.innerHTML = rows.length ? `<ol class="lb">${rows.map((x, i) => `<li class="${String(x.name).trim().toLowerCase() === me ? 'me' : ''}"><span>${i + 1}. ${esc(x.name)}</span><b class="num">${+x.score || 0}</b></li>`).join('')}</ol>` : '<p class="muted" style="margin:6px 0 0">Nobody has played this today yet.</p>';
   } catch (e) { el.innerHTML = '<p class="muted" style="margin:6px 0 0">The table is not available here.</p>'; }
 }
 async function push(res){
   try {
     const r = await fetch(LB_CFG.url + '/rest/v1/guesses', { method: 'POST', headers: Object.assign(head(), { Prefer: 'return=minimal' }),
-      body: JSON.stringify(Object.assign({ id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), day: today(), name: (res.name || 'Unnamed').slice(0, 20), score: res.score, picks: res.picks }, res.mode === 'endless' ? { mode: 'endless' } : {})) });
+      body: JSON.stringify(Object.assign({ id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), day: today(), name: (res.name || 'Unnamed').slice(0, 20), score: res.score, picks: res.picks }, res.mode !== 'ten' ? { mode: res.mode } : {})) });
     if (!r.ok) throw new Error('status ' + r.status);
     loadTable();
   } catch (e) { toast('Your score could not be saved to the table (' + e.message + ').'); }
