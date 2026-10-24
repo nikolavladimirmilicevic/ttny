@@ -2160,7 +2160,7 @@ function viewHome(){
     </section>
     ${picker}
     ${weeklyCard()}
-    <a class="card gwlink" href="guess.html"><span><span class="eyebrow">New · Guess Who</span><b>Today's ten careers: who is it?</b><small>Four names to choose from, one daily table</small></span><span class="bg">›</span></a>
+    <a class="card gwlink" href="guess.html"><span><span class="eyebrow">New · Guess Who</span><b>Ten careers: who is it?</b><small>Four names to choose from, three helps, a daily table</small></span><span class="bg">›</span></a>
     ${bestRuns()}
     ${cabinet(st)}
     <div class="stats">
@@ -3408,7 +3408,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024181245';
+const BUILD = '20261024181858';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
