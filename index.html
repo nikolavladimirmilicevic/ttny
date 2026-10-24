@@ -2103,7 +2103,7 @@ function weeklyCard(){
   const end = new Date(w.week + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() + 6);
   const clubs = w.pots.flat().map(c => `<span class="wkc" style="${clubKit(W.C[c])}">${esc(W.C[c].name)}</span>`).join('');
   return `<section class="card weekly"><div class="drafthead"><div class="eyebrow">Weekly challenge · ${day(w.week)} to ${day(end.toISOString().slice(0, 10))}</div><span class="muted" style="font-size:12px">Champions League</span></div>
-    <p style="margin:8px 0 10px">The 22 clubs with the most wins from ${day(w.from)} to ${day(w.to)}, one per country, in 11 pots of 2. Everyone gets the same draft; Redraw shows the pot's other club. Play again straight away and your players carry over (not when you miss the top 24): then all 22 clubs make as many pots as you have picks left.</p>
+    <p style="margin:8px 0 10px">This week's 22 clubs, from 22 countries, in 11 pots of 2. Everyone gets the same draft; Redraw shows the pot's other club. Play again straight away and your players carry over (not when you miss the top 24): then all 22 clubs make as many pots as you have picks left.</p>
     <div class="wkcs">${clubs}</div>
     <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="weekly">Play this week's challenge</button></div></section>`;
 }
@@ -2150,7 +2150,7 @@ function viewHome(){
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>Right after a run you can play the next one at once and carry players into it (anyone who played in those linked runs and was let go cannot come back); the further you went, the more: out in the league phase 5 (out of the Conference League's top 24, none), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
         <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) and 1 for each compatriot, at most 3 each. It makes your XI play stronger. You see it as a number from 70 (none) to 99 (full) once your XI is complete.</li>
-        <li>The weekly challenge: from Monday to Sunday everyone drafts from the same 22 clubs, the ones with the most wins in the week before, one per country, in 11 pots of 2 (Redraw shows the pot's other club), in the Champions League. It has its own top 10, This week: each player's best run of the week.</li>
+        <li>The weekly challenge: from Monday to Sunday everyone drafts from the same 22 clubs, from 22 countries, in 11 pots of 2 (Redraw shows the pot's other club), in the Champions League. It has its own top 10, This week: each player's best run of the week.</li>
         <li>Every run gets a run score, like a UEFA club coefficient: 2 for each win and 1 for each draw, a bonus for the furthest round (play-off 2, Round of 16 6, quarter-final 10, semi-final 14, final 18, title 24; the top 8 also get the play-off they skip as two wins) and (37 minus your league-phase position) divided by 4; the sum is weighed by the competition (Champions League 1, Europa League 0.7, Conference League 0.5) and the difficulty (Easy 1, Medium 1.1, Hard 1.2). Shown from 1 (the worst run possible) to 99 (a Champions League title on Hard, every match won). The home page shows the top 10 players by their best run; tap one to see its summary. A new run asks for your name (a run straight after another keeps it).</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
@@ -3357,7 +3357,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024065725';
+const BUILD = '20261024071715';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

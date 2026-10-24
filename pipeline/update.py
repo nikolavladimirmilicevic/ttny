@@ -1235,10 +1235,12 @@ def position_check(world):
 WEEKLY_CLUBS = 22
 
 
-def weekly_challenge(world, fx, prev=None, allow_new=True):
-    """The weekly challenge, the same for everyone from Monday to Sunday (UTC): the 22 clubs with the most wins in the
-    7 days before that Monday (competitive matches only; then goal difference, goals, UEFA rank), at most one per country
-    and only clubs with 11 players to draft. Split by UEFA rank into 11 pots of 2: the club each pot shows first and the
+def weekly_challenge(world, fx, prev=None, allow_new=True, top_pts=None, national=frozenset()):
+    """The weekly challenge, the same for everyone from Monday to Sunday (UTC): the 22 most successful clubs of the 7 days
+    before that Monday, at most one per country and only clubs with 11 players to draft. Success, per competitive match:
+    the points won (3, 1, 0) plus three times how much better the result was than the clubs' ratings before kick-off
+    expected (Elo, with home advantage): two wins count, and a win over a stronger side counts more than one over a weaker
+    side, so neither the giants nor a single upset fill the list. Ties: goal difference, goals, UEFA rank. Split by UEFA rank into 11 pots of 2: the club each pot shows first and the
     order of the pots are drawn once for the week, so everyone gets the same draft; Redraw shows the pot's other club.
     Once made, a week's challenge is kept as it is (later data cannot change it mid-week)."""
     week = TODAY - dt.timedelta(days=TODAY.weekday())
@@ -1250,14 +1252,19 @@ def weekly_challenge(world, fx, prev=None, allow_new=True):
     lo, hi = (week - dt.timedelta(days=7)).isoformat(), (week - dt.timedelta(days=1)).isoformat()
     per = Counter(p['club'] for p in world['players'])
     clubs = {c['id']: c for c in world['clubs'] if per[c['id']] >= 11}
-    rec = {tid: [0, 0, 0] for tid in clubs}   # wins, goal difference, goals
-    for f in fx.values():
+    rec = {tid: [0.0, 0, 0, 0] for tid in clubs}   # success, goal difference, goals, matches
+    pre = model.run_elo(fx, top_pts, hi, national, (week - dt.timedelta(days=372)).isoformat())[1] if top_pts else {}
+    for fid, f in fx.items():
         if f['s'] not in FINISHED or f['hg'] is None or not (lo <= f['d'] <= hi) or 'riendl' in (f.get('lg') or ''):
             continue
-        for t, gf, ga in ((f['h'], f['hg'], f['ag']), (f['a'], f['ag'], f['hg'])):
+        rh, ra = pre.get(fid, (1500.0, 1500.0))
+        eh = 1 / (10 ** (-(rh + model.HFA_ELO - ra) / 400) + 1)
+        for t, gf, ga, ex in ((f['h'], f['hg'], f['ag'], eh), (f['a'], f['ag'], f['hg'], 1 - eh)):
             if t in rec:
-                rec[t][0] += gf > ga; rec[t][1] += gf - ga; rec[t][2] += gf
-    order = sorted(clubs, key=lambda t: (-rec[t][0], -rec[t][1], -rec[t][2], clubs[t]['rank']))
+                res = 1.0 if gf > ga else 0.5 if gf == ga else 0.0
+                rec[t][0] += (3 if gf > ga else 1 if gf == ga else 0) + 3 * (res - ex); rec[t][1] += gf - ga; rec[t][2] += gf; rec[t][3] += 1
+    order = sorted((t for t in clubs if rec[t][3]), key=lambda t: (-rec[t][0], -rec[t][1], -rec[t][2], clubs[t]['rank']))
+    order += sorted((t for t in clubs if not rec[t][3]), key=lambda t: clubs[t]['rank'])
     chosen, ctry = [], set()
     for t in order:
         if clubs[t]['ctry'] in ctry:
@@ -1272,7 +1279,7 @@ def weekly_challenge(world, fx, prev=None, allow_new=True):
     rnd = random.Random('ttny-weekly-' + wid)
     pot_order = list(range(11)); rnd.shuffle(pot_order)
     return {'week': wid, 'from': lo, 'to': hi, 'pots': pots, 'order': pot_order, 'first': [rnd.randint(0, 1) for _ in range(11)],
-            'wins': {str(t): rec[t][0] for t in chosen}}
+            'score': {str(t): round(rec[t][0], 2) for t in chosen}}
 
 
 def main():
@@ -1361,7 +1368,8 @@ def main():
         pass
     # a new week's challenge only from a run that fetched everything (last week's results complete); until then the
     # old one stays in the data and the game shows none for the new week
-    world['weekly'] = weekly_challenge(world, fx, prev_world.get('weekly'), allow_new=stopped is None and core_done)
+    world['weekly'] = weekly_challenge(world, fx, prev_world.get('weekly'), allow_new=stopped is None and core_done,
+                                       top_pts={tid: (c.get('points') or 0.5) for tid, c in top_map.items()}, national=national)
     with open(target, 'w', encoding='utf-8') as f:
         json.dump(world, f, ensure_ascii=False, separators=(',', ':'))
     log(f'Wrote {os.path.basename(target)}')
