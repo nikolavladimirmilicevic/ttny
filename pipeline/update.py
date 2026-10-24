@@ -1273,7 +1273,7 @@ def same_club(a, b):
 
 def write_careers(world, careers, teams):
     """careers.json for the guess-who game: every player in the game whose transfer history gives at least 3 clubs,
-    as stints [club, first year, last year, loan] oldest first (the first club from the club he first left; the current
+    as stints [club, first year, last year, loan (1, or 2 for a loan and then signed)] oldest first (the first club from the club he first left; the current
     club last, to today), with his name, nationality, main position, age and overall (for difficulty and the wrong
     answers). Youth clubs before his first transfer are not in the API, so short histories are left out."""
     club_name = {c['id']: c['name'] for c in world['clubs']}
@@ -1292,7 +1292,9 @@ def write_careers(world, careers, teams):
             if not nm or (who and set(norm(nm).split()) <= who):   # the API sometimes puts the player's own name as a club
                 return
             # the same club under two spellings ('Bayern Munich', 'Bayern München') or a move straight back: one stint
-            if st and same_club(st[-1][0], nm) and bool(loan) == bool(st[-1][3]):
+            # a loan and then a permanent move to the same club is one stint too, marked 2 ('loan, then signed')
+            if st and same_club(st[-1][0], nm) and (bool(loan) == bool(st[-1][3]) or (st[-1][3] and not loan)):
+                if st[-1][3] and not loan: st[-1][3] = 2
                 st[-1][2] = y1
                 if club_name.get(cid): st[-1][0] = nm
                 return
