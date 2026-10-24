@@ -85,6 +85,13 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .tut{position:fixed;left:0;right:0;bottom:96px;z-index:65;display:flex;justify-content:center;padding:0 12px;pointer-events:none}.tut-in{pointer-events:auto;max-width:440px;width:100%;background:linear-gradient(135deg,#22324B,#152338);border:1px solid var(--gold);border-radius:14px;padding:12px 14px;box-shadow:0 12px 40px rgba(0,0,0,.5);animation:fadein .3s}
 .tut-h{display:flex;justify-content:space-between;align-items:baseline}.tut-h span{color:var(--muted);font-size:12px}.tut p{margin:6px 0 10px;font-size:14px;line-height:1.45}.tut-b{display:flex;justify-content:space-between;align-items:center}.tut-b .btn{padding:8px 16px;min-height:0;font-size:13px}
 .lastwin{display:flex;gap:8px;align-items:center;margin-top:14px;padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,rgba(242,193,78,.16),transparent);border:1px solid rgba(242,193,78,.4)}.lw-c{font-size:18px}.hall{margin-top:8px}.hall summary{cursor:pointer;color:var(--muted);font-size:13px}
+.wkend{font-size:12px;color:var(--muted);font-weight:600}.wkend.last{color:var(--loss)}
+.pbadge{display:inline-flex;align-items:baseline;gap:6px;margin:10px 8px 0 0;padding:6px 14px;border-radius:999px;background:rgba(76,201,104,.14);border:1px solid var(--win);color:var(--win);font-weight:700;animation:t10pop .7s cubic-bezier(.2,1.6,.4,1) .2s both}.pbadge small{color:var(--muted);font-weight:400}
+.tline{grid-column:1/-1;position:relative;height:14px;margin-top:4px}.tline::before{content:'';position:absolute;left:0;right:0;top:6px;height:2px;background:var(--line);border-radius:1px}
+.tline i{position:absolute;top:2px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#9AA8BD;opacity:0;transform:scale(.3);transition:opacity .3s,transform .3s}.tline i.us{background:var(--gold)}.tline i.in{opacity:1;transform:none}.tline b{position:absolute;top:0;width:1px;height:14px;background:var(--muted);opacity:.5}
+.formstrip{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px}.formstrip .res{font-style:normal;width:20px;height:20px;line-height:20px;padding:0;text-align:center;font-size:11px}
+.ptsline{width:100%;max-width:420px;height:60px;display:block;margin-bottom:10px}.ptsline polyline{fill:none;stroke:var(--gold);stroke-width:2.5}.ptsline circle{fill:var(--gold)}.ptsline text{fill:var(--muted);font-size:11px}
+.sp{transition:opacity .25s}.sp.dim{opacity:.25}
 .lbtabs{display:flex;gap:4px}.lbt{background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:3px 11px;font:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}.lbt.on{color:var(--text);border-color:var(--gold)}
 .weekly{--gold:#3D7BFF;--gold-ink:#06102A;border:1px solid var(--gold)}   /* always the Champions League, whatever difficulty is picked */.wkcs{display:flex;flex-wrap:wrap;gap:5px}.wkc{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--kit);color:var(--kit-ink);font-weight:600}
 .hello{margin-top:16px;font-size:16px}.linkb{background:none;border:0;padding:0 0 0 6px;color:var(--muted);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
@@ -156,7 +163,7 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .plist{display:flex;flex-direction:column;gap:6px;margin-top:14px}
 .prow{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center;background:var(--panel-2);border-radius:10px;padding:8px 8px 8px 12px;border:1px solid transparent;text-align:left;width:100%}
 .prow:hover:not(:disabled){border-color:var(--gold)}
-.prow.kitcard{background:var(--kit);color:var(--kit-ink);border:2px solid rgba(255,255,255,.08)}
+.prow.kitcard{background:linear-gradient(90deg,var(--kit-ink) 0 5px,var(--kit) 5px);color:var(--kit-ink);border:2px solid rgba(255,255,255,.08)}
 .prow.kitcard:hover:not(:disabled){border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
 .prow.kitcard .pos,.prow.kitcard .pos b,.prow.kitcard .go{color:inherit}
 .prow.kitcard .pos{opacity:.85}
@@ -1504,7 +1511,7 @@ function newRun(carry, weekly){
   const ever = carry ? carry.ever || [] : [], gone = ever.filter(id => !kept.includes(id));
   const potCount = 11 - kept.length, vet = {}; kept.forEach(id => vet[id] = ((carry.vet || {})[id] || 1) + 1);
   S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), form: '4-2-2-2', cup: null, diff, comp, season: (S.stats.runs || 0) + 1, vet, wk: wk ? wk.week : null, ...(wk ? wkSetup(wk, potCount) : {}), player: carry ? carry.player || '' : ((S.pref || {}).name || ''), full: kept.length === 11 };
-  if (wk) S.run.order = S.run.wkOrder.slice();   // the weekly challenge: the same pots in the same order for everyone with as many picks
+  if (wk) S.run.order = S.run.wkOrder.slice();   // the weekly challenge: the week's pots, in a random order
   S.run.intro = 1;
   // champions keep the whole XI: straight to the line-up
   if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; if (!feasible(S.run.picks).includes(S.run.form)) S.run.form = randomForm(S.run.picks); }
@@ -1652,6 +1659,10 @@ function finish(){
   r.doneAt = Date.now(); r.dscr = 'season'; r.celebrate = st === 'champion';
   try { achCheck(r); } catch (e) {}
   try { archive(r); } catch (e) { console.error(e); }
+  // a personal best: the best run score on this device (the weekly challenge counts for its own week)
+  try { const sc = runScore(seasonSummary(r)); st8.pb = st8.pb || {};
+    const key = r.wk ? 'wk:' + r.wk : 'all', old = st8.pb[key];
+    if (old == null || sc > old){ r.pb = old == null ? null : old; r.pbNew = old != null; st8.pb[key] = sc; } } catch (e) {}
 }
 /* RUN SCORE: one number for a run, so runs from any competition, stage and difficulty line up on one list.
    Built like a UEFA club coefficient: every match earns 2 for a win and 1 for a draw (a shootout counts as a draw),
@@ -1672,20 +1683,17 @@ function runScore(h){
   const pts = 2 * num(h.w) + num(h.d) + byeOf(h) + (STAGE_BONUS[h.stage] || 0) + Math.max(0, 37 - num(h.pos || 36)) / 4;
   return Math.round(pts * (COMP_W[h.comp] || .5) * (DIFF_W[h.diff] || 1) * 10) / 10;
 }
-/* the weekly draft for n picks: with 11, the week's 11 pots of 2, their order and the club each shows first; with players
-   kept (fewer picks), all 22 clubs split by UEFA rank into as many pots as picks, the pots' order and each pot's clubs in
-   an order drawn for the week and that number of picks: everyone with as many picks gets the same draft */
+/* the weekly draft for n picks: the week's 11 pots of 2 (with players kept, all 22 clubs split by UEFA rank into as many
+   pots as picks); the order of the pots and the club each pot gives first are random for every run, as in any run */
 function wkSetup(w, n){
-  if (n >= 11) return { wkPots: w.pots, wkOrder: w.order.slice(), wkSeqs: w.pots.map((p, i) => { const f = (w.first || [])[i] || 0; return [p[f], p[1 - f]]; }) };
-  const clubs = w.pots.flat().sort((a, b) => W.C[a].rank - W.C[b].rank), pots = splitPots(clubs, Math.max(1, n));
-  const key = (i, x) => hashU(w.week + '|' + n + '|' + i + '|' + x);
-  return { wkPots: pots, wkOrder: [...pots.keys()].sort((a, b) => key('order', a) - key('order', b)), wkSeqs: pots.map((p, i) => [...p].sort((a, b) => key(i, a) - key(i, b))) };
+  const pots = n >= 11 ? w.pots : splitPots(w.pots.flat().sort((a, b) => W.C[a].rank - W.C[b].rank), Math.max(1, n));
+  return { wkPots: pots, wkOrder: shuffle([...pots.keys()]), wkSeqs: pots.map(p => shuffle([...p])) };
 }
 // the weekly challenge from the data: this week's (Monday to Sunday, UTC) and every club in it still draftable
 const weekOf = d => { const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); x.setUTCDate(x.getUTCDate() - (x.getUTCDay() + 6) % 7); return x.toISOString().slice(0, 10); };
 const weeklyOk = () => { const w = W && W.weekly; return !!(w && w.week === weekOf(new Date()) && Array.isArray(w.pots) && w.pots.length === 11 && w.pots.every(p => p.length === 2 && p.every(c => W.C[c] && W.C[c].elig && W.C[c].elig.length >= 11))); };
 const SCORE_MIN = 0.125, SCORE_MAX = 80.4;
-const score99 = h => Math.max(1, Math.min(99, Math.round(1 + 98 * (runScore(h) - SCORE_MIN) / (SCORE_MAX - SCORE_MIN))));
+const to99 = v => Math.max(1, Math.min(99, Math.round(1 + 98 * (v - SCORE_MIN) / (SCORE_MAX - SCORE_MIN)))), score99 = h => to99(runScore(h));
 // one row per player on the top 10: only his best run counts (players go by name, as the list shows them)
 const lbKey = e => String(e.name || 'Unnamed').trim().toLowerCase();
 function lbTop(list){ const seen = new Set(), out = []; for (const e of list){ const k = lbKey(e); if (seen.has(k)) continue; seen.add(k); out.push(e); } return out; }
@@ -1835,6 +1843,8 @@ function tick(){
   const now = Date.now();
   if (S.run && S.run.stepDl && document.querySelector('.tut')) S.run.stepDl += 1000;   // the clock waits while a first-time tip is open
   if (S.run && S.run.stepDl && now > S.run.stepDl) timeUp();
+  document.querySelectorAll('[data-ends]').forEach(el => { const ms = +el.dataset.ends - now, d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
+    el.textContent = ms <= 0 ? 'Ended' : 'Ends in ' + (d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m + 'm'); el.classList.toggle('last', ms < 864e5); });
   document.querySelectorAll('[data-cd]').forEach(el => { const left = +el.dataset.cd - now; el.textContent = fmt(left); const c = el.closest('.chip'); if (c){ c.classList.toggle('warn', left < (+el.dataset.w || 60000)); c.classList.toggle('last', left > 0 && left < 10000); } });
 }
 // the clock in the top bar, for the decision in front of you
@@ -2125,8 +2135,8 @@ function weeklyCard(){
   const w = W.weekly, day = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const end = new Date(w.week + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() + 6);
   const clubs = w.pots.flat().map(c => `<span class="wkc" style="${clubKit(W.C[c])}">${esc(W.C[c].name)}</span>`).join('');
-  return `<section class="card weekly"><div class="drafthead"><div class="eyebrow">Weekly challenge · ${day(w.week)} to ${day(end.toISOString().slice(0, 10))}</div><span class="muted" style="font-size:12px">Champions League</span></div>
-    <p style="margin:8px 0 10px">This week's 22 clubs, from 22 countries, in 11 pots of 2. Everyone gets the same draft; Redraw shows the pot's other club. Play again straight away and your players carry over (not when you miss the top 24): then all 22 clubs make as many pots as you have picks left.</p>
+  return `<section class="card weekly"><div class="drafthead"><div class="eyebrow">Weekly challenge · ${day(w.week)} to ${day(end.toISOString().slice(0, 10))}</div><span class="wkend" data-ends="${end.getTime() + 12 * 3600e3}"></span></div>
+    <p style="margin:8px 0 10px">This week's 22 clubs, from 22 countries, in 11 pots of 2: the same clubs for everyone, drawn at random as in any run; Redraw gives the pot's other club. Play again straight away and your players carry over (not when you miss the top 24): then all 22 clubs make as many pots as you have picks left.</p>
     <div class="wkcs">${clubs}</div>
     <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="weekly">Play this week's challenge</button></div>
     <div id="wklb">${weeklyMini()}</div><div id="wkhall">${hallHTML()}</div></section>`;
@@ -2174,7 +2184,7 @@ function viewHome(){
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>Right after a run you can play the next one at once and carry players into it (anyone who played in those linked runs and was let go cannot come back); the further you went, the more: out in the league phase 5 (out of the Conference League's top 24, none), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
         <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) and 1 for each compatriot, at most 3 each. It makes your XI play stronger. You see it as a number from 70 (none) to 99 (full) once your XI is complete.</li>
-        <li>The weekly challenge: from Monday to Sunday everyone drafts from the same 22 clubs, from 22 countries, in 11 pots of 2 (Redraw shows the pot's other club), in the Champions League. It has its own top 10, This week: each player's best run of the week.</li>
+        <li>The weekly challenge: from Monday to Sunday everyone drafts from the same 22 clubs, from 22 countries, in 11 pots of 2 drawn at random (Redraw shows the pot's other club), in the Champions League. It has its own top 10, This week: each player's best run of the week.</li>
         <li>Every run gets a run score, like a UEFA club coefficient: 2 for each win and 1 for each draw, a bonus for the furthest round (play-off 2, Round of 16 6, quarter-final 10, semi-final 14, final 18, title 24; the top 8 also get the play-off they skip as two wins) and (37 minus your league-phase position) divided by 4; the sum is weighed by the competition (Champions League 1, Europa League 0.7, Conference League 0.5) and the difficulty (Easy 1, Medium 1.1, Hard 1.2). Shown from 1 (the worst run possible) to 99 (a Champions League title on Hard, every match won). The home page shows the top 10 players by their best run; tap one to see its summary. A new run asks for your name (a run straight after another keeps it).</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
@@ -2390,13 +2400,17 @@ function runLive(){
   const bump = n => { n.textContent = +n.textContent + 1; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); };
   const clk = document.createElement('div'); clk.className = 'lclock'; clk.innerHTML = `<span>0'</span><i><b></b></i><small>Tap to skip</small>`;
   el.querySelector('.score').after(clk);
+  // the match's timeline: each goal lights up where it fell, yours in colour (stays after the whistle)
+  const tl = document.createElement('div'); tl.className = 'tline'; clk.after(tl);
+  goals.forEach(x => { const mk = document.createElement('i'); mk.className = x.ours ? 'us' : 'them'; mk.style.left = Math.min(100, 100 * x.m / end) + '%'; mk.title = x.m + "'"; tl.appendChild(mk); x.mk = mk; });
+  if (end > 90){ const et = document.createElement('b'); et.style.left = (100 * 90 / end) + '%'; tl.appendChild(et); }
   const D = end === 120 ? 5200 : 4000, t0 = performance.now(); let m = 0, lastT = t0, h = 0, a = 0, k = 0, done = false, skipPens = null;
   // a short line when a goal goes in: yours in the competition's colour, theirs plain
   const flash = x => { el.querySelectorAll('.gflash').forEach(f => f.remove()); const f = document.createElement('div');
     const who = (x.g.textContent.replace(/^⚽\s*\d+'\s*/, '').split('(')[0] || '').replace('★', '').trim();
     SND.play(x.ours ? 'roar' : 'groan'); buzz(x.ours ? [70] : [220]); f.className = 'gflash' + (x.ours ? '' : ' them'); f.textContent = x.ours ? `Goal! ${who}` : `Conceded · ${who}`; el.appendChild(f); setTimeout(() => f.remove(), 1300); };
   const kicks = [...el.querySelectorAll('.pens .k')].sort((x, y) => x.dataset.i - y.dataset.i);
-  const finishLive = (skip) => { if (done) return; done = true; goals.forEach(x => x.g.classList.add('in')); sh.textContent = fh; sa.textContent = fa; if (ag){ ah.textContent = agF[0]; aa.textContent = agF[1]; }
+  const finishLive = (skip) => { if (done) return; done = true; goals.forEach(x => { x.g.classList.add('in'); if (x.mk) x.mk.classList.add('in'); }); sh.textContent = fh; sa.textContent = fa; if (ag){ ah.textContent = agF[0]; aa.textContent = agF[1]; }
     const whistle = () => { if (el.dataset.blown) return; el.dataset.blown = 1; el.querySelectorAll('.gflash').forEach(f => f.remove()); if (runLive.cur && runLive.cur.el === el) runLive.cur.over(); el.classList.add('over'); if (el.dataset.won){ buzz([80, 60, 80, 60, 260]); titleMoment(); } else if (skip !== true) SND.play('whistle'); };
     if (!kicks.length || skip === true){ kicks.forEach(k => k.classList.add('in')); whistle(); return; }
     // the shootout, kick by kick
@@ -2441,7 +2455,7 @@ function runLive(){
     if (done || !el.isConnected) return;
     m = Math.min(end, m + (now - lastT) / D * end * simSpeed()); lastT = now;
     clk.querySelector('span').textContent = Math.floor(m) + "'"; clk.querySelector('b').style.width = (100 * m / end) + '%';
-    while (k < goals.length && goals[k].m <= m){ const x = goals[k++]; x.g.classList.add('in'); flash(x); if (ag) bump(x.ours ? ah : aa);
+    while (k < goals.length && goals[k].m <= m){ const x = goals[k++]; x.g.classList.add('in'); if (x.mk) x.mk.classList.add('in'); flash(x); if (ag) bump(x.ours ? ah : aa);
       // the 90-minute score counts goals up to 90'; extra time is in the line under it
       if (x.m <= 90 || end === 90){ if (x.ours && h < fh){ sh.textContent = ++h; sh.classList.remove('pop'); void sh.offsetWidth; sh.classList.add('pop'); }
         else if (!x.ours && a < fa){ sa.textContent = ++a; sa.classList.remove('pop'); void sa.offsetWidth; sa.classList.add('pop'); } } }
@@ -2661,6 +2675,14 @@ function runReveal(){
   return true;
 }
 // the team's numbers run up to their value when a screen with them opens
+function scoreCount(root){
+  const el = root.querySelector('.scorebox .sbig'); if (!el || toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const to = +el.textContent, parts = [...root.querySelectorAll('.scorebox .sp')], t0 = performance.now(), D = 1200;
+  parts.forEach(p => p.classList.add('dim')); el.textContent = 0;
+  const f = now => { const k = Math.min(1, (now - t0) / D); if (!el.isConnected) return; el.textContent = Math.round(to * (1 - Math.pow(1 - k, 3)));
+    parts.forEach((p, i) => { if (k >= (i + 1) / (parts.length + 1)) p.classList.remove('dim'); }); if (k < 1) requestAnimationFrame(f); };
+  requestAnimationFrame(f);
+}
 function countUp(root){
   if (toast.quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const els = [...root.querySelectorAll('.teambox .ovdot.big, .teambox .tnum')].filter(e => /^\d+$/.test(e.textContent.trim()));
@@ -2762,6 +2784,15 @@ function campaign(r){
   return { ms, W_, D, L, GF, GA, CS, big, g, a };
 }
 const RD_SHORT = { 'Knockout play-off': 'PO', 'Round of 16': 'R16', 'Quarter-final': 'QF', 'Semi-final': 'SF', 'Final': 'Final' };
+// the run at a glance: every result in order, and the points through the league phase
+function formStrip(r){
+  const k = campaign(r), res = m => { const f = m.s[0] + (m.et ? m.et[0] : 0), a = m.s[1] + (m.et ? m.et[1] : 0); return f > a ? 'W' : f < a ? 'L' : m.pens ? (m.won ? 'W' : 'L') : 'D'; };
+  const sq = k.ms.map(m => `<i class="res ${res(m)}" title="${esc(nm(m.opp))}">${res(m)}</i>`).join('');
+  const md = k.ms.filter(m => m.k === 'md'); let p = 0; const pts = md.map(m => (p += { W: 3, D: 1, L: 0 }[res(m)]));
+  const Wd = 280, Hd = 60, mx = Math.max(3, 3 * md.length), X = i => 10 + i * (Wd - 20) / Math.max(1, md.length - 1), Y = v => Hd - 8 - (Hd - 16) * v / mx;
+  const line = pts.length > 1 ? `<svg class="ptsline" viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Points through the league phase"><polyline points="${pts.map((v, i) => X(i).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ')}"/>${pts.map((v, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="3"/>`).join('')}<text x="${Wd - 4}" y="12" text-anchor="end">${p} pts</text></svg>` : '';
+  return `<div class="formstrip">${sq}</div>${line}`;
+}
 function seasonBox(r){
   const c = r.cup, k = campaign(r);
   const tile = (t, v, sub) => `<div class="stat"><span>${t}</span><b class="num">${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
@@ -2777,7 +2808,7 @@ function seasonBox(r){
     const who = Object.entries(cnt).map(([n, x]) => x > 1 ? `${n} ${x}` : n).join(', ');
     return `<tr${k.big && m.opp === k.big.opp && f === k.big.f && ag === k.big.ag ? ' class="best" title="Biggest win"' : ''}><td class="rd">${rd}</td><td class="op">${esc(nm(m.opp))}${who || tie ? `<small>${tie}${tie && who ? ' · ' : ''}${esc(who)}</small>` : ''}</td><td class="muted">${ven}</td><td class="sc">${f}:${ag}${m.pens ? ` <small>p ${m.pens.a}:${m.pens.b}</small>` : m.et ? ' <small>aet</small>' : ''}</td><td><span class="res ${r_}">${r_}</span></td></tr>`;
   }).join('');
-  return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your campaign</div>
+  return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Your campaign</div>${formStrip(r)}
     <div class="stats s3">${tile('Played', k.ms.length)}${tile('W-D-L', `${k.W_}-${k.D}-${k.L}`)}${tile('Goals', `${k.GF}:${k.GA}`)}${tile('Clean sheets', k.CS)}${tile('League phase', ord(c.pos))}${tile('Biggest win', k.big ? `${k.big.f}:${k.big.ag}` : '-', k.big ? 'v ' + esc(nm(k.big.opp)) : '')}</div>
     <div class="tblwrap" style="margin-top:12px"><table class="tbl matches"><tbody>${rows}</tbody></table></div></section>`;
 }
@@ -3116,6 +3147,7 @@ function viewSeason(){
   <div class="stack">
     <section class="card verdict${champ ? ' champ' : ''}">
       ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · ${r.arch ? new Date(r.doneAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Your run'}${r.player ? ' · ' + esc(r.player) : ''}</div>
+      ${r.pbNew && !r.arch ? `<div class="pbadge">Personal best! <small>before: ${to99(r.pb)}</small></div>` : ''}
       ${r.rank ? `<div class="t10${r.arch ? '' : ' pop'}"><b class="num">No. ${r.rank}</b><span>${r.rankWk ? 'this week' : 'in the top 10'}</span></div>` : ''}
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
       ${runPath(r)}
@@ -3206,6 +3238,7 @@ function render(){
       if (runIntro(() => { if (card) card.classList.remove('prespin'); runSpin(prevList); })){ if (card) card.classList.add('prespin'); } else runSpin(prevList); }
     runKoSpin(); tutorial();
     if (!runReveal() && fresh) countUp(app);
+    if (fresh) scoreCount(app);
     if (r && r.phase === 'done' && r.celebrate){ r.celebrate = false; save(); if (r.tm) confetti(); else titleMoment(); }
   } catch (e) {
     // a saved run that no longer fits the data (new ratings, new positions): drop it rather than show a blank page
@@ -3412,7 +3445,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024112239';
+const BUILD = '20261024112947';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
