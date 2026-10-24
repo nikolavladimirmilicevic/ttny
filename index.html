@@ -1710,7 +1710,7 @@ function archive(r){
    instead: each player's ten best runs in runs/<their id>, the full runs in runs/<id>/full/<run id>. */
 const LB_CFG = { url: 'https://sadpfbuqocbekvlwxfqz.supabase.co', key: 'sb_publishable_etNezztDu3d9TwRBm5cJ-w_Z2PyvVsP' };   // the Supabase project's URL and its public (anon / publishable) key
 const LB = { wlist: [], flash: null, on: false, mode: null, db: null, uid: null, list: [], warned: false };
-const lbShow = () => { const el = document.getElementById('lb'); if (el) el.outerHTML = bestRuns(); };
+const lbShow = () => { const el = document.getElementById('lb'); if (el) el.outerHTML = bestRuns(); const w = document.getElementById('wklb'); if (w) w.innerHTML = weeklyMini(); };
 const lbClean = x => x && x.h && typeof x.id === 'string' && STAGE_RANK.includes(x.h.stage) && COMP_W[x.h.comp];
 const lbHead = () => Object.assign({ apikey: LB_CFG.key, 'Content-Type': 'application/json' }, /^eyJ/.test(LB_CFG.key) ? { Authorization: 'Bearer ' + LB_CFG.key } : {});
 async function lbFetchTop(){
@@ -1767,7 +1767,7 @@ async function lbPush(e){
     const keep = new Set(mine.map(x => x.id).concat(LB.wlist.filter(x => x.uid === LB.uid).map(x => x.id))), old = await LB.db.collection('runs/' + LB.uid + '/full').get();
     for (const d of old.docs) if (!keep.has(d.id)) await LB.db.doc('runs/' + LB.uid + '/full/' + d.id).delete();
   } catch (err) {
-    if (!LB.warned){ LB.warned = true; setTimeout(() => toast('This run could not be added to the top 10.'), 1200); }
+    console.error('top 10', err); setTimeout(() => toast('This run could not be added to the top 10 (' + (err && err.message || 'error') + ').'), 1200);
   }
 }
 async function openRun(i, wk){
@@ -2097,6 +2097,14 @@ function bestRuns(){
   return `<section class="card" id="lb"><div class="drafthead" style="margin-bottom:10px"><div class="lbtabs"><button class="lbt${wkTab ? '' : ' on'}" data-act="lbtab" data-t="all">Top 10</button><button class="lbt${wkTab ? ' on' : ''}" data-act="lbtab" data-t="week">This week</button></div>${rows ? '<button class="chip quit" data-act="lbimg" style="padding:4px 12px;font-size:12px;color:var(--text)">Share</button>' : '<span class="muted" style="font-size:12px">Run score</span>'}</div>
     ${rows ? `<div class="bruns">${rows}</div>` : `<p class="muted" style="margin:0">${LB.on ? (wkTab ? 'No weekly challenge runs yet this week. Yours could be the first.' : 'No runs yet. Yours could be the first.') : 'The top 10 is not available here.'}</p>`}</section>`;
 }
+// this week's standings inside the challenge card: the best run of each player so far
+function weeklyMini(){
+  if (!LB.on) return '';
+  const L = lbTop(LB.wlist).slice(0, 5);
+  if (!L.length) return '<p class="muted" style="margin:12px 0 0;font-size:13px">No runs yet this week. Yours could be the first.</p>';
+  return `<div class="eyebrow" style="margin:14px 0 6px">This week so far</div><div class="bruns">${L.map((e, i) => `<button class="brun${e.h.stage === 'champion' ? ' champ' : ''}" data-act="open" data-i="${i}" data-wk="1"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span>
+    <span class="bt"><b>${esc(e.name || 'Unnamed')}</b><small>${esc(stageWord(e.h))} · ${num(e.h.w)}-${num(e.h.d)}-${num(e.h.l)}</small></span><span class="bs num">${score99(e.h)}</span><span class="bg">›</span></button>`).join('')}</div>`;
+}
 function weeklyCard(){
   if (!weeklyOk()) return '';
   const w = W.weekly, day = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -2105,7 +2113,8 @@ function weeklyCard(){
   return `<section class="card weekly"><div class="drafthead"><div class="eyebrow">Weekly challenge · ${day(w.week)} to ${day(end.toISOString().slice(0, 10))}</div><span class="muted" style="font-size:12px">Champions League</span></div>
     <p style="margin:8px 0 10px">This week's 22 clubs, from 22 countries, in 11 pots of 2. Everyone gets the same draft; Redraw shows the pot's other club. Play again straight away and your players carry over (not when you miss the top 24): then all 22 clubs make as many pots as you have picks left.</p>
     <div class="wkcs">${clubs}</div>
-    <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="weekly">Play this week's challenge</button></div></section>`;
+    <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="weekly">Play this week's challenge</button></div>
+    <div id="wklb">${weeklyMini()}</div></section>`;
 }
 function viewHome(){
   const st = S.stats, top = [...(S.best || [])].sort(runOrder)[0];
@@ -3363,7 +3372,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024074335';
+const BUILD = '20261024090940';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -3383,6 +3392,5 @@ document.addEventListener('visibilitychange', () => {
   checkBuild();
 });
 addEventListener('pageshow', e => { if (e.persisted) location.reload(); });   // a page restored from the back-forward cache
-boot();
-lbInit();
+boot().then(lbInit, lbInit);   // the lists once the data (and this week's challenge) is in
 </script>
