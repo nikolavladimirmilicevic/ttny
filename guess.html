@@ -71,6 +71,12 @@ input.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-radi
 .grid{font-size:22px;letter-spacing:2px;margin:10px 0}
 .lb{list-style:none;margin:8px 0 0;padding:0}.lb li{display:flex;justify-content:space-between;padding:8px 2px;border-top:1px solid var(--line)}.lb li:first-child{border-top:0}.lb li.me{color:var(--gold);font-weight:700}
 .row{display:flex;gap:8px;margin-top:12px}.row .btn{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted);white-space:nowrap;background:none}.chip.snd{font-size:14px;padding:2px 8px}
+.imgov{position:fixed;inset:0;z-index:60;background:rgba(5,10,20,.88);display:grid;place-items:center;padding:16px;overflow:auto}
+.imgbox{max-width:520px;width:100%;display:flex;flex-direction:column;align-items:center}.imgbox img{max-width:100%;max-height:calc(100vh - 150px);width:auto;height:auto;object-fit:contain;border-radius:12px}.imgbox .btnrow{width:100%;margin-top:12px}
+.revbox{max-width:600px;width:100%;max-height:calc(100vh - 32px);overflow:auto;background:var(--panel);border-radius:14px;padding:18px}.revbox .brun{cursor:default}
+.brun.click{cursor:pointer;width:100%;text-align:left;font:inherit;color:var(--text)}.brun.click:hover{border-color:var(--gold)}.brun .bg{flex:none;color:var(--muted);font-size:20px}
+.lastwin{display:flex;gap:8px;align-items:center;margin:0 0 10px;padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,rgba(242,193,78,.16),transparent);border:1px solid rgba(242,193,78,.4)}.lw-c{font-size:18px}.lastwin:empty{display:none}
 .toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:var(--gold);color:var(--gold-ink);padding:10px 16px;border-radius:10px;font-weight:500;z-index:9;max-width:calc(100% - 32px);text-align:center}
 .mode:last-child:nth-child(odd){grid-column:span 2}.key{display:inline-block;min-width:24px;height:24px;line-height:22px;margin-right:10px;font:700 13px/22px var(--display);color:var(--gold);border:1px solid var(--gold);border-radius:6px;text-align:center}.opt.right .key{background:var(--win);border-color:var(--win);color:#06140C}.opt.wrong .key{background:var(--loss);border-color:var(--loss);color:#1C0703}
 .pair{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-top:12px}.pair .pc{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2);text-align:center;font-weight:700;font-size:16px}.pair .pc .kit{width:30px;height:30px;border-radius:8px;border-width:3px;margin:0}.pair .amp{font:700 22px var(--display);color:var(--gold)}
@@ -149,7 +155,37 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const toast = m => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); };
 const today = () => new Date().toISOString().slice(0, 10);   // the day's table changes at midnight UTC
-const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+/* sound, as in the draft game: off by default, made on the spot with Web Audio, no files; the draft game's choice is
+   the starting point. The phone buzzes on a miss (only with the sound on, as there) */
+const sndOn = () => { const v = store.get().sound; if (v != null) return !!v; try { const t = JSON.parse(localStorage.getItem('ttny.v9') || 'null'); return !!(t && t.pref && t.pref.sound); } catch (e) { return false; } };
+const sndBtn = () => `<button class="chip snd" id="snd" aria-pressed="${sndOn()}" title="Sound ${sndOn() ? 'on' : 'off'}" aria-label="Sound ${sndOn() ? 'on' : 'off'}">${sndOn() ? '🔊' : '🔇'}</button>`;
+const buzz = ms => { try { if (sndOn() && navigator.vibrate) navigator.vibrate(ms); } catch (e) {} };
+const SND = {
+  ctx: null,
+  ac(){ if (!this.ctx){ const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; this.ctx = new A(); } if (this.ctx.state === 'suspended') this.ctx.resume(); return this.ctx; },
+  play(kind, arg){ if (!sndOn()) return; try { const c = this.ac(); if (c) this[kind](c, c.currentTime + .02, arg); } catch (e) {} },
+  tone(c, t, f, d, type, vol){ const o = c.createOscillator(), g = c.createGain(); o.type = type || 'sine'; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol || .18, t + .015); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(c.destination); o.start(t); o.stop(t + d + .02); },
+  right(c, t){ this.tone(c, t, 880, .18); this.tone(c, t + .1, 1320, .28); },
+  wrong(c, t){ this.tone(c, t, 196, .32, 'square', .07); this.tone(c, t + .14, 147, .4, 'square', .07); },
+  noise(c, dur){ const b = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const n = c.createBufferSource(); n.buffer = b; return n; },
+  whistle(c, t, short){
+    for (const [d, l] of short ? [[0, .16]] : [[0, .18], [.28, .18], [.56, .75]]){
+      const o = c.createOscillator(), lfo = c.createOscillator(), lg = c.createGain(), g = c.createGain();
+      o.frequency.value = 2900; lfo.frequency.value = 36; lg.gain.value = 110; lfo.connect(lg).connect(o.frequency);
+      g.gain.setValueAtTime(0, t + d); g.gain.linearRampToValueAtTime(.09, t + d + .02); g.gain.setValueAtTime(.09, t + d + l - .03); g.gain.linearRampToValueAtTime(0, t + d + l);
+      o.connect(g).connect(c.destination); o.start(t + d); lfo.start(t + d); o.stop(t + d + l); lfo.stop(t + d + l);
+    } },
+  applause(c, t){
+    const dur = 3.4, sr = c.sampleRate, b = c.createBuffer(1, Math.floor(sr * dur), sr), d = b.getChannelData(0), len = Math.floor(.012 * sr), tau = .0025 * sr;
+    for (let k = 0; k < 900; k++){
+      const at = Math.random() * (dur - .05), env = Math.min(1, at / .35) * Math.min(1, (dur - at) / 1.4), s0 = Math.floor(at * sr), amp = (.3 + Math.random() * .7) * env;
+      for (let j = 0; j < len && s0 + j < d.length; j++) d[s0 + j] += (Math.random() * 2 - 1) * amp * Math.exp(-j / tau);
+    }
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); n.buffer = b; f.type = 'highpass'; f.frequency.value = 900; g.gain.value = .22;
+    n.connect(f).connect(g).connect(c.destination); n.start(t); }
+};
+document.addEventListener('pointerdown', () => { if (sndOn()) SND.ac(); }, { capture: true });
+document.addEventListener('click', e => { const b = e.target.closest('#snd'); if (!b) return; const s = store.get(); s.sound = !sndOn(); store.set(s); b.outerHTML = sndBtn(); if (s.sound) SND.play('right'); });
 
 /* ---------- modes and themes ---------- */
 // ten: four names to choose from; drip: the same, but the clubs appear one by one (the sooner you know, the more you
@@ -292,7 +328,7 @@ function viewStart(){
       <div class="throw"><span class="muted">Players</span><select id="th">${THEMES.map(([k, n]) => `<option value="${k}"${k === pr.theme ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select><span class="muted" id="thn"></span></div>
       <div class="btnrow" style="margin-top:12px"><button class="btn primary" id="go"></button></div>
       <p class="muted small" id="stl" style="margin-top:10px"></p></div>
-    <section class="card">${tableHead()}<div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section>
+    <section class="card">${tableHead()}<div id="lw" class="lastwin"></div><div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section>
     <details class="rules"><summary>How it works</summary><ol class="steps">
       <li><b>Pick a mode.</b> Ten players with four names to choose from, the clubs one by one, typing the name yourself, who played for both clubs, or endless until your first miss.</li>
       <li><b>Name him.</b> ${Q_SECONDS} seconds a player: 100 for the right name and up to 50 more for speed. Three helps, once each per game: Info, Fifty-fifty and Swap.</li>
@@ -398,7 +434,7 @@ function viewQ(){
   const tag = [G.mode !== 'ten' && G.mode !== 'endless' ? MODE_NAME[G.mode] : '', G.theme !== 'all' ? (THEMES.find(t => t[0] === G.theme) || [])[1] : ''].filter(Boolean).join(' · ');
   $('#app').innerHTML = `${header()}<div class="narrow">
     ${prog}
-    <section class="card"><div class="qhead"><div class="eyebrow">${ten ? `Player ${G.i + 1} of ${G.qs.length}` : `Player ${G.i + 1}`}${tag ? ` <span class="muted">· ${esc(tag)}</span>` : ''}</div><span class="muted num" id="secs">${Q_SECONDS}</span></div>
+    <section class="card"><div class="qhead"><div class="eyebrow">${ten ? `Player ${G.i + 1} of ${G.qs.length}` : `Player ${G.i + 1}`}${tag ? ` <span class="muted">· ${esc(tag)}</span>` : ''}</div><span style="display:flex;gap:8px;align-items:center">${sndBtn()}<span class="muted num" id="secs">${Q_SECONDS}</span></span></div>
       <div class="timer"><b id="bar"></b></div>
       <div class="helps">${helpsFor().map(([k, name, desc], i) => `<button class="help${G.help[k] ? ' used' : ''}" data-h="${k}" ${G.help[k] ? 'disabled' : ''} title="${desc}"><span class="hn">${i + 1}</span><span><b>${name}</b><small>${G.help[k] ? 'Used' : desc}</small></span></button>`).join('')}</div>
       ${q.info ? `<div class="hint">A ${POS_NAME[line]}, aged ${esc(q.ans.age || '?')}${q.ans.nat ? ', from ' + esc(q.ans.nat) : ''}</div>` : ''}
@@ -456,6 +492,7 @@ function answer(k, typed){
   document.querySelectorAll('.opt').forEach((b, j) => { b.disabled = true; if (q.opts[j].id === q.ans.id) b.classList.add('right'); else if (j === k) b.classList.add('wrong'); });
   document.querySelectorAll('.career li').forEach(r => r.classList.remove('hid'));
   const ty = $('#ty'); if (ty){ ty.disabled = true; ty.value = pick || ''; ty.classList.add(ok ? 'right' : 'wrong'); $('#sg').innerHTML = ''; }
+  if (ok) SND.play('right'); else if (k === -1) SND.play('whistle', true); else SND.play('wrong');
   if (!ok) buzz(160);
   const last = G.mode !== 'endless' ? G.i + 1 >= G.qs.length : !ok;
   if (G.mode === 'endless' && ok){ const nq = makeQ('endless', G.pool, endlessBand(G.i + 1), G.used); if (nq) G.qs.push(nq); }
@@ -473,7 +510,8 @@ function finish(){
   res.pb = addStats(res);
   if (res.theme === 'all') push(res);
   viewDone(res);
-  if (res.pb || (G.mode !== 'endless' && right === N_Q) || (G.mode === 'endless' && right >= 10)) confetti();
+  const big = res.pb || (G.mode !== 'endless' && right === N_Q) || (G.mode === 'endless' && right >= 10);
+  if (big){ confetti(); SND.play('applause'); buzz([40, 40, 40]); } else setTimeout(() => SND.play('whistle'), 300);
 }
 const themeName = k => (THEMES.find(t => t[0] === k) || [])[1];
 function shareText(res){
@@ -484,8 +522,8 @@ function shareText(res){
   return res.mode === 'endless' ? `${what}\n${res.score} in a row${helps}\n${grid}\n${location.href.split('#')[0]}` : `${what}\n${res.right}/${N_Q} · ${res.score}${helps}\n${grid}\n${location.href.split('#')[0]}`;
 }
 // every player of the game, what you said, and his career when you open him
-function reviewHTML(res){
-  return `<section class="card"><div class="eyebrow">Your players</div><div class="review">${res.log.map((p, j) => `<details><summary><span class="rk ${p.ok ? 'ok' : 'no'}">${p.ok ? '✓' : '✗'}</span><span class="rn"><b>${esc(p.q.ans.n)}</b>${p.ok ? '' : `<small class="muted">${p.pick ? 'you said ' + esc(p.pick) : 'time ran out'}</small>`}</span><span class="muted num">${res.mode !== 'endless' ? (p.ok ? '+' + points(p) : '0') : j + 1}</span></summary>${p.q.kind === 'both' ? `<div class="hint" style="margin-left:30px">${p.q.pair.map(esc).join(' &amp; ')}</div>` : ''}${careerHTML(p.q.ans.c)}</details>`).join('')}</div></section>`;
+function reviewHTML(res, other){
+  return `<section class="card"${other ? ' style="padding:12px 0 0"' : ''}><div class="eyebrow">${other ? 'The players' : 'Your players'}</div><div class="review">${res.log.map((p, j) => `<details><summary><span class="rk ${p.ok ? 'ok' : 'no'}">${p.ok ? '✓' : '✗'}</span><span class="rn"><b>${esc(p.q.ans.n)}</b>${p.ok ? '' : `<small class="muted">${p.pick ? (other ? 'said ' : 'you said ') + esc(p.pick) : 'time ran out'}</small>`}</span><span class="muted num">${res.mode !== 'endless' ? (p.ok ? '+' + points(p) : '0') : j + 1}</span></summary>${p.q.kind === 'both' ? `<div class="hint" style="margin-left:30px">${p.q.pair.map(esc).join(' &amp; ')}</div>` : ''}${careerHTML(p.q.ans.c)}</details>`).join('')}</div></section>`;
 }
 function viewDone(res){
   $('#app').innerHTML = `${header()}<div class="narrow">
@@ -495,20 +533,65 @@ function viewDone(res){
       ${res.theme !== 'all' ? '<div class="muted" style="font-size:13px">A practice game: not in the table.</div>' : ''}
       ${res.ch ? `<div class="vs"><span class="${res.score > res.ch.s ? 'w' : ''}">You ${res.score}</span><span class="${res.ch.s > res.score ? 'w' : ''}">${esc(res.ch.n)} ${res.ch.s}</span></div><div class="muted">${res.score > res.ch.s ? 'You beat ' + esc(res.ch.n) + '!' : res.score === res.ch.s ? 'A draw.' : esc(res.ch.n) + ' wins this one.'}</div>` : ''}
       <div class="row"><button class="btn primary" id="again">Play again</button><button class="btn" id="sh">Share</button></div>
-      ${res.mode !== 'endless' ? '<button class="btn" id="chl" style="margin-top:8px">Challenge a friend: same ten players</button>' : ''}
+      <div class="row" style="margin-top:8px"><button class="btn" id="img">As an image</button>${res.mode !== 'endless' ? '<button class="btn" id="chl">Challenge a friend</button>' : ''}</div>
       <button class="btn" id="home" style="margin-top:8px">Change mode or players</button></section>
     ${reviewHTML(res)}
-    <section class="card">${tableHead()}<div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section></div>`;
+    <section class="card">${tableHead()}<div id="lw" class="lastwin"></div><div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section></div>`;
   $('#again').addEventListener('click', () => { CH = null; history.replaceState(null, '', location.pathname + location.search); start(res.mode, res.theme); });
   $('#home').addEventListener('click', () => { CH = null; history.replaceState(null, '', location.pathname + location.search); viewStart(); });
   if ($('#chl')) $('#chl').addEventListener('click', async () => { const url = challengeLink(res), t = `I scored ${res.score} (${res.right}/${N_Q}) in TTNY Guess Who, ${MODE_NAME[res.mode]}. Same ten players for you: can you beat it?`;
     try { if (navigator.share){ await navigator.share({ text: t, url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(t + '\n' + url); toast('Link copied. Send it to a friend.'); } catch (e) { toast(url); } });
   LBMODE = res.mode; document.querySelectorAll('.tab[data-m]').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE)); bindTabs();
+  $('#img').addEventListener('click', () => gameImage(res));
   $('#sh').addEventListener('click', async () => { const t = shareText(res);
     try { if (navigator.share){ await navigator.share({ text: t }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(t); toast('Copied. Paste it in your group.'); } catch (e) { toast(t); } });
   loadTable();
+}
+/* the game as an image to share, as the draft game makes its run and top 10: the page's colour and question marks, the
+   score, the green and red row and the ten players */
+async function gameImage(res){
+  try { await document.fonts.load('700 40px Oswald'); await document.fonts.load('400 20px Rubik'); } catch (e) {}
+  const W_ = 1080, H = 1350, acc = getComputedStyle(document.body).getPropertyValue('--gold').trim() || '#FF5FA2';
+  const cv = document.createElement('canvas'); cv.width = W_; cv.height = H; const x = cv.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0B1626'); g.addColorStop(1, '#13233A'); x.fillStyle = g; x.fillRect(0, 0, W_, H);
+  x.save(); x.fillStyle = 'rgba(255,255,255,.045)'; x.font = '700 64px Arial'; x.textAlign = 'center';
+  for (let yy = 70, row = 0; yy < H + 80; yy += 150, row++) for (let xx = row % 2 ? 75 : 0; xx < W_ + 80; xx += 150){ x.save(); x.translate(xx + 40, yy); x.rotate((row + xx / 150) % 2 ? .22 : -.22); x.fillText('?', 0, 0); x.restore(); }
+  x.restore(); x.fillStyle = acc; x.fillRect(0, 0, W_, 10);
+  const T = (s, X, Y, font, col, al, mw) => { x.font = font; x.fillStyle = col; x.textAlign = al || 'left'; let t = String(s); if (mw) while (t.length > 1 && x.measureText(t).width > mw) t = t.slice(0, -2) + '…'; x.fillText(t, X, Y); };
+  const D = '"Oswald","Arial Narrow",Arial,sans-serif', B = 'Rubik,Arial,sans-serif', white = '#F3EFE6', muted = '#A3B1C4';
+  T('THIS TIME NEXT YEAR · GUESS WHO', 60, 90, `500 26px ${B}`, acc);
+  T([MODE_NAME[res.mode], res.theme !== 'all' ? themeName(res.theme) : ''].filter(Boolean).join(' · ').toUpperCase(), 60, 170, `700 64px ${D}`, white, 'left', W_ - 120);
+  T(res.score, 60, 330, `700 150px ${D}`, acc);
+  T(res.mode === 'endless' ? `${res.score === 1 ? 'player' : 'players'} in a row` : `${res.right} of ${N_Q} right`, 60, 390, `400 34px ${B}`, muted);
+  const n = res.picks.length, sq = Math.min(76, (W_ - 120 - (n - 1) * 12) / n);
+  res.picks.forEach((p, i) => { x.fillStyle = p[0] ? '#5CC08A' : '#E57A62'; const X = 60 + i * (sq + 12); x.beginPath(); x.roundRect ? x.roundRect(X, 430, sq, sq, 12) : x.rect(X, 430, sq, sq); x.fill(); });
+  const L = res.log.slice(0, 10), y0 = 430 + sq + 70;
+  L.forEach((p, i) => { const Y = y0 + i * 62; T(p.ok ? '✓' : '✗', 60, Y, `700 34px ${B}`, p.ok ? '#5CC08A' : '#E57A62'); T(p.q.ans.n, 110, Y, `500 34px ${B}`, white, 'left', W_ - 300);
+    if (res.mode !== 'endless') T(p.ok ? '+' + points(p) : '0', W_ - 60, Y, `700 34px ${D}`, p.ok ? white : muted, 'right'); });
+  T(res.name || '', 60, H - 60, `600 30px ${D}`, white);
+  T(location.host + location.pathname.replace(/[^/]*$/, '') + 'guess.html', W_ - 60, H - 60, `400 24px ${B}`, muted, 'right');
+  showCanvas(cv, `ttny-guess-who-${res.mode}.png`, 'Your game');
+}
+// the image in an overlay with Share, Save and Close, as in the draft game
+function showCanvas(cv, name, alt){
+  const url = cv.toDataURL('image/png');
+  const ov = document.createElement('div'); ov.className = 'imgov';
+  ov.innerHTML = `<div class="imgbox"><img src="${url}" alt="${alt} as an image"><div class="btnrow"><button class="btn primary" data-img="share">Share</button><button class="btn" data-img="save">Save</button><button class="btn" data-img="close">Close</button></div><div class="muted" style="font-size:12px;text-align:center;margin-top:8px">On a phone you can also press and hold the image to save it.</div></div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', async e => {
+    if (e.target === ov || e.target.dataset.img === 'close'){ ov.remove(); return; }
+    const saveIt = async () => { const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+      const dl = window.claude && window.claude.use ? await window.claude.use('downloads').catch(() => null) : null;
+      if (dl){ try { await dl.save({ filename: name, data: blob }); toast('Saved.'); } catch (err) { if (err && err.code === 'declined') return; toast('Saving is not available here. Press and hold the image instead.'); } return; }
+      const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
+    if (e.target.dataset.img === 'save'){ await saveIt(); return; }
+    if (e.target.dataset.img === 'share'){
+      try { const blob = await new Promise(r => cv.toBlob(r, 'image/png')), file = new File([blob], name, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], title: 'Guess Who' }); return; } } catch (err) { if (err && err.name === 'AbortError') return; }
+      await saveIt(); }
+  });
 }
 function confetti(){
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -531,20 +614,50 @@ async function loadTable(){
   const el = $('#lb'); if (!el) return;
   const mode = LBMODE, per = LBPER;
   try {
-    const q = LB_CFG.url + '/rest/v1/guesses?select=name,score,at' + (per === 'day' ? '&day=eq.' + today() : per === 'week' ? '&day=gte.' + monday() : '') + '&order=score.desc,at.asc&limit=300';
+    const q = LB_CFG.url + '/rest/v1/guesses?select=id,name,score,at' + (per === 'day' ? '&day=eq.' + today() : per === 'week' ? '&day=gte.' + monday() : '') + '&order=score.desc,at.asc&limit=300';
     let r = await fetch(q + '&mode=eq.' + mode, { headers: head(), cache: 'no-store' });
     if (!r.ok && mode === 'ten') r = await fetch(q, { headers: head(), cache: 'no-store' });   // a table from before the modes
     if (!r.ok) throw new Error(r.status);
     const seen = new Set(), rows = (await r.json()).filter(x => { const k = String(x.name || '').trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 10);
     const me = playerName().trim().toLowerCase();
     if (mode !== LBMODE || per !== LBPER) return;
-    el.innerHTML = rows.length ? `<div class="bruns">${rows.map((x, i) => `<div class="brun${String(x.name).trim().toLowerCase() === me ? ' me' : ''}"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span><span class="bt">${esc(x.name)}</span><span class="bs num">${+x.score || 0}</span></div>`).join('')}</div>` : `<p class="muted" style="margin:6px 0 0">Nobody has played this ${per === 'day' ? 'today' : per === 'week' ? 'this week' : ''} yet.</p>`;
+    el.innerHTML = rows.length ? `<div class="bruns">${rows.map((x, i) => `<button class="brun click${String(x.name).trim().toLowerCase() === me ? ' me' : ''}" data-g="${esc(x.id)}"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span><span class="bt">${esc(x.name)}</span><span class="bs num">${+x.score || 0}</span><span class="bg">›</span></button>`).join('')}</div>` : `<p class="muted" style="margin:6px 0 0">Nobody has played this ${per === 'day' ? 'today' : per === 'week' ? 'this week' : ''} yet.</p>`;
+    el.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', () => openGame(b.dataset.g)));
   } catch (e) { el.innerHTML = '<p class="muted" style="margin:6px 0 0">The table is not available here.</p>'; }
+  lastWinner();
 }
-async function push(res){
+// a game from the table: its ten players (or its run), what was answered, and each career
+async function openGame(id){
+  let g = null;
+  try { const r = await fetch(LB_CFG.url + '/rest/v1/guesses?select=name,score,mode,day,picks,log&id=eq.' + encodeURIComponent(id), { headers: head() }); if (r.ok) g = (await r.json())[0]; } catch (e) {}
+  if (!g){ toast('This game could not be opened.'); return; }
+  const mode = g.mode || 'ten', byId = new Map(DATA.players.map(p => [p.id, p]));
+  const log = (g.log || []).map((l, i) => ({ ok: !!(g.picks[i] || [])[0], ms: (g.picks[i] || [])[1] || 20000, pick: l[1], q: { kind: l[2] ? 'both' : null, pair: l[2], ans: byId.get(l[0]) } })).filter(p => p.q.ans);
+  const day = new Date(g.day + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const ov = document.createElement('div'); ov.className = 'imgov';
+  ov.innerHTML = `<div class="revbox"><div class="lbhead"><div class="eyebrow">${esc(MODE_NAME[mode] || 'Ten')} · ${esc(day)}</div><button class="chip" data-x>Close</button></div>
+    <h2>${esc(g.name)}: ${+g.score || 0}</h2>
+    ${log.length ? reviewHTML({ mode, log }, true) : '<p class="muted">This game was played before the games were kept, so only its score is left.</p>'}</div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); });
+}
+// ---------- last week's winner of the mode shown, above the table (as the weekly challenge's in the draft game)
+async function lastWinner(){
+  const el = $('#lw'); if (!el) return;
+  const mode = LBMODE, end = monday(), d = new Date(end + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 7); const start = d.toISOString().slice(0, 10);
+  try { const r = await fetch(LB_CFG.url + '/rest/v1/guesses?select=id,name,score&mode=eq.' + mode + '&day=gte.' + start + '&day=lt.' + end + '&order=score.desc,at.asc&limit=1', { headers: head(), cache: 'no-store' });
+    const w = r.ok ? (await r.json())[0] : null; if (mode !== LBMODE) return;
+    el.innerHTML = w ? `<span class="lw-c">🏆</span><span>Last week's winner in ${esc(MODE_NAME[mode])}: <b>${esc(w.name)}</b> · ${+w.score || 0}</span>` : '';
+  } catch (e) { el.innerHTML = ''; }
+}
+async function push(res, retry){
+  // the players of the game go with the score, so anyone can open it from the table: [player id, the name picked, the two clubs]
+  const row = Object.assign({ id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), day: today(), name: (res.name || 'Unnamed').slice(0, 20), score: res.score, picks: res.picks }, res.mode !== 'ten' ? { mode: res.mode } : {},
+    retry ? {} : { log: res.log.map(p => [p.q.ans.id, p.pick ? String(p.pick).slice(0, 40) : null, p.q.kind === 'both' ? p.q.pair : null]) });
   try {
     const r = await fetch(LB_CFG.url + '/rest/v1/guesses', { method: 'POST', headers: Object.assign(head(), { Prefer: 'return=minimal' }),
-      body: JSON.stringify(Object.assign({ id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), day: today(), name: (res.name || 'Unnamed').slice(0, 20), score: res.score, picks: res.picks }, res.mode !== 'ten' ? { mode: res.mode } : {})) });
+      body: JSON.stringify(row) });
+    if (!r.ok && r.status === 400 && !retry) return push(res, true);   // a table from before the kept games: without them
     if (!r.ok) throw new Error('status ' + r.status);
     loadTable();
   } catch (e) { toast('Your score could not be saved to the table (' + e.message + ').'); }
