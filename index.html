@@ -97,7 +97,13 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .formstrip{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px}.formstrip .res{font-style:normal;width:20px;height:20px;line-height:20px;padding:0;text-align:center;font-size:11px}
 .ptsline{width:100%;max-width:420px;height:60px;display:block;margin-bottom:10px}.ptsline polyline{fill:none;stroke:var(--gold);stroke-width:2.5}.ptsline circle{fill:var(--gold)}.ptsline text{fill:var(--muted);font-size:11px}
 .sp{transition:opacity .25s}.sp.dim{opacity:.25}
-.gwlink{display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;color:var(--text)}.gwlink>span:first-child{display:flex;flex-direction:column;gap:3px}.gwlink small{color:var(--muted)}.gwlink .bg{font-size:24px;color:var(--muted)}.gwlink:hover{border-color:var(--gold)}.gwlink .gwbest{color:var(--gold)}.gwlink .gwbest:empty{display:none}
+.gw{--gw:var(--gold);border:1px solid color-mix(in srgb,var(--gw) 45%,var(--line));background:linear-gradient(160deg,color-mix(in srgb,var(--gw) 14%,transparent),transparent 60%),var(--panel)}.gw .eyebrow{color:var(--gw)}
+.gwnew{font:700 10px/1 var(--body);letter-spacing:.1em;color:var(--gw);border:1px solid var(--gw);border-radius:999px;padding:3px 7px;margin-left:6px;vertical-align:1px}
+.gwbody{display:flex;gap:16px;align-items:center;margin-top:8px}.gwtext{flex:1;min-width:0}.gw h3{font:600 22px/1.15 var(--display);text-transform:uppercase;margin:0}.gwtext p{margin:6px 0 0;font-size:14px}
+.gw .gwbest{color:var(--gw);font-weight:600}.gw .gwbest:empty{display:none}
+.gwmini{display:flex;flex-direction:column;align-items:center;flex:0 0 auto}.gwmini i{font-style:normal;color:var(--muted);font-size:11px;line-height:13px}.gwp{display:inline-block;padding:4px 11px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap}
+.gw .btn{text-align:center;text-decoration:none;background:transparent;color:var(--gw);box-shadow:inset 0 0 0 2px var(--gw)}.gw .btn:hover{background:color-mix(in srgb,var(--gw) 14%,transparent)}
+@media(min-width:700px){.gwmini{margin-right:24px}}
 .lbtabs{display:flex;gap:4px}.lbt{background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:3px 11px;font:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}.lbt.on{color:var(--text);border-color:var(--gold)}
 .weekly{--gold:#3D7BFF;--gold-ink:#06102A;border:1px solid var(--gold)}   /* always the Champions League, whatever difficulty is picked */.wkcs{display:flex;flex-wrap:wrap;gap:5px}.wkc{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--kit);color:var(--kit-ink);font-weight:600}
 .wkdet{margin-top:8px}.wkdet summary,.more10 summary,.achd summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4px 0}.wkdet .wkcs{margin-top:8px}
@@ -1733,7 +1739,15 @@ const LB_CFG = { url: 'https://sadpfbuqocbekvlwxfqz.supabase.co', key: 'sb_publi
 const LB = { hall: [], wlist: [], flash: null, on: false, mode: null, db: null, uid: null, list: [], warned: false };
 const lbShow = () => { const el = document.getElementById('lb'); if (el) el.outerHTML = bestRuns(); const w = document.getElementById('wklb'); if (w) w.innerHTML = weeklyMini(); const h = document.getElementById('wkhall'); if (h) h.innerHTML = hallHTML(); };
 const lbClean = x => x && x.h && typeof x.id === 'string' && STAGE_RANK.includes(x.h.stage) && COMP_W[x.h.comp];
-// the home card for Guess Who shows the day's best score there (its ten-player mode)
+// the home card for Guess Who: a section like the weekly challenge, with a small career as a taste and the day's best
+// score there (its ten-player mode)
+function gwCard(){
+  const pill = n => { const k = CLUB_KITS[n] || ['#294060', '#A3B1C4']; return `<span class="gwp" style="background:${k[0]};color:${k[1]}">${n === '?' ? '?' : esc(n)}</span>`; };
+  return `<section class="card gw"><div class="eyebrow">Guess Who <span class="gwnew">New</span></div>
+    <div class="gwbody"><div class="gwtext"><h3>Whose career is this?</h3><p class="muted">His clubs, in order. Name the player before the clock runs out. Five modes, three helps, a daily table.</p><p id="gwbest" class="gwbest">${GWBEST}</p></div>
+      <div class="gwmini" aria-hidden="true">${['Benfica', 'Real Madrid', 'Inter', '?'].map(pill).join('<i>↓</i>')}</div></div>
+    <div class="btnrow" style="margin-top:12px"><a class="btn" href="guess.html">Play Guess Who</a></div></section>`;
+}
 let GWBEST = '';
 async function gwBest(){
   try { const r = await fetch(LB_CFG.url + '/rest/v1/guesses?select=name,score&mode=eq.ten&day=eq.' + new Date().toISOString().slice(0, 10) + '&order=score.desc,at.asc&limit=1', { headers: lbHead(), cache: 'no-store' });
@@ -2184,7 +2198,7 @@ function viewHome(){
     </section>
     ${picker}
     ${weeklyCard()}
-    <a class="card gwlink" href="guess.html"><span><span class="eyebrow">New · Guess Who</span><b>A career on screen: who is it?</b><small>Five modes, three helps, a daily table</small><small id="gwbest" class="gwbest">${GWBEST}</small></span><span class="bg">›</span></a>
+    ${gwCard()}
     ${bestRuns()}
     ${cabinet(st, best)}
     <details class="rules">
@@ -3426,7 +3440,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024194035';
+const BUILD = '20261024194402';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
