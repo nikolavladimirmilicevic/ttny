@@ -1646,7 +1646,9 @@ function finish(){
    and the league-phase position adds (37 - position) / 4. That sum is weighed by the competition (Champions League 1,
    Europa League 0.7, Conference League 0.5) and the difficulty (Easy 1, Medium 1.1, Hard 1.2). A Champions League title
    scores about 55, a Conference League title on Hard about 35, a Champions League exit in the league phase under 10.
-   Ties: the bigger goal difference, then the earlier run. */
+   Shown on 1-99: 1 is the worst run anyone can have (out of the Conference League's league phase, last, without a point:
+   0.125) and 99 the best (a Champions League title on Hard winning all 17 matches from 9th place, through the play-off:
+   78), on a straight line in between. Ties: the bigger goal difference, then the earlier run. */
 const STAGE_BONUS = { league: 0, playoff: 2, r16: 6, qf: 10, sf: 14, final: 18, champion: 24 };
 const COMP_W = { cl: 1, el: .7, ecl: .5 }, DIFF_W = { easy: 1, medium: 1.1, hard: 1.2 }, BEST_N = 10;
 const num = v => (typeof v === 'number' && isFinite(v) ? v : 0);
@@ -1654,6 +1656,11 @@ function runScore(h){
   const pts = 2 * num(h.w) + num(h.d) + (STAGE_BONUS[h.stage] || 0) + Math.max(0, 37 - num(h.pos || 36)) / 4;
   return Math.round(pts * (COMP_W[h.comp] || .5) * (DIFF_W[h.diff] || 1) * 10) / 10;
 }
+const SCORE_MIN = 0.125, SCORE_MAX = 78;
+const score99 = h => Math.max(1, Math.min(99, Math.round(1 + 98 * (runScore(h) - SCORE_MIN) / (SCORE_MAX - SCORE_MIN))));
+// one row per player on the top 10: only his best run counts (players go by name, as the list shows them)
+const lbKey = e => String(e.name || 'Unnamed').trim().toLowerCase();
+function lbTop(list){ const seen = new Set(), out = []; for (const e of list){ const k = lbKey(e); if (seen.has(k)) continue; seen.add(k); out.push(e); } return out; }
 function scoreParts(h){
   const m = 2 * num(h.w) + num(h.d), st = STAGE_BONUS[h.stage] || 0, ps = Math.max(0, 37 - num(h.pos || 36)) / 4;
   return { m, st, ps, cw: COMP_W[h.comp] || .5, dw: DIFF_W[h.diff] || 1, total: runScore(h) };
@@ -1666,7 +1673,7 @@ function archive(r){
   const all = [...(S.best || []), e].sort(runOrder);
   S.best = all.slice(0, BEST_N);
   // where it stands among everyone's runs (or among yours, when the shared list is not here)
-  const g = LB.on ? [...LB.list.filter(x => x.id !== e.id), e].sort(runOrder) : [];
+  const g = LB.on ? lbTop([...LB.list.filter(x => x.id !== e.id), e].sort(runOrder)) : [];
   const k = g.findIndex(x => x.id === e.id); r.rank = k > -1 && k < BEST_N ? k + 1 : null; r.rankAll = true;
   if (r.rank) LB.flash = e.id;
   if (LB.mode === 'supa' || S.best.includes(e)) lbPush(e);
@@ -1681,7 +1688,7 @@ const lbShow = () => { const el = document.getElementById('lb'); if (el) el.oute
 const lbClean = x => x && x.h && typeof x.id === 'string' && STAGE_RANK.includes(x.h.stage) && COMP_W[x.h.comp];
 const lbHead = () => Object.assign({ apikey: LB_CFG.key, 'Content-Type': 'application/json' }, /^eyJ/.test(LB_CFG.key) ? { Authorization: 'Bearer ' + LB_CFG.key } : {});
 async function lbFetchTop(){
-  const r = await fetch(LB_CFG.url + '/rest/v1/runs?select=id,at,name,h&order=score.desc,at.asc&limit=30', { headers: lbHead(), cache: 'no-store' });
+  const r = await fetch(LB_CFG.url + '/rest/v1/runs?select=id,at,name,h&order=score.desc,at.asc&limit=300', { headers: lbHead(), cache: 'no-store' });
   if (!r.ok) throw new Error('lb ' + r.status);
   const rows = await r.json();
   LB.list = rows.filter(lbClean).map(x => ({ id: x.id, at: Date.parse(x.at) || 0, name: String(x.name || '').slice(0, 20), h: x.h })).sort(runOrder);
@@ -1708,8 +1715,10 @@ async function lbPush(e){
   try {
     if (LB.mode === 'supa'){
       // only runs that make the current top 10 are sent
-      const tenth = LB.list[BEST_N - 1];
-      if (LB.list.length >= BEST_N && runOrder(e, tenth) > 0) return;
+      // only a run that would show: his best so far, and inside the top 10 of players
+      const top = lbTop(LB.list), mine = top.find(x => lbKey(x) === lbKey(e)), tenth = top[BEST_N - 1];
+      if (mine && runOrder(e, mine) > 0) return;
+      if (!mine && top.length >= BEST_N && runOrder(e, tenth) > 0) return;
       const r = await fetch(LB_CFG.url + '/rest/v1/runs', { method: 'POST', headers: Object.assign(lbHead(), { Prefer: 'return=minimal' }),
         body: JSON.stringify({ id: e.id, name: (e.name || 'Unnamed').slice(0, 20), score: runScore(e.h), h: e.h, run: e.run }) });
       if (!r.ok) throw new Error('lb ' + r.status);
@@ -1727,7 +1736,7 @@ async function lbPush(e){
   }
 }
 async function openRun(i){
-  const e = LB.list[i]; if (!e) return;
+  const e = lbTop(LB.list)[i]; if (!e) return;
   let run = null;
   const local = (S.best || []).find(x => x.id === e.id || (!x.id && x.at === e.at));
   if (local) run = local.run;
@@ -2045,11 +2054,11 @@ function cabinet(st){
     <div class="achs" aria-label="Achievements">${ACH.map(a => achChip(a, (st.ach || {})[a[0]])).join('')}</div>`;
 }
 function bestRuns(){
-  const L = LB.on ? LB.list.slice(0, BEST_N) : [];
+  const L = LB.on ? lbTop(LB.list).slice(0, BEST_N) : [];
   const day = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const rows = L.map((e, i) => { const h = e.h, c = COMP_W[h.comp] ? h.comp : 'ecl';
     return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}${e.id === LB.flash ? ' flash' : ''}" data-act="open" data-i="${i}"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span><span class="bc" style="color:${ACCENT[c]}">${CUP[c]}</span>
-      <span class="bt"><b>${esc(stageWord(h))}</b><small>${esc(e.name || 'Unnamed')} · ${DIFF[h.diff] ? DIFF[h.diff].label : ''} · ${num(h.w)}-${num(h.d)}-${num(h.l)} · ${day(e.at)}</small></span><span class="bs num" title="Run score">${runScore(h).toFixed(1)}</span><span class="bg">›</span></button>`; }).join('');
+      <span class="bt"><b>${esc(stageWord(h))}</b><small>${esc(e.name || 'Unnamed')} · ${DIFF[h.diff] ? DIFF[h.diff].label : ''} · ${num(h.w)}-${num(h.d)}-${num(h.l)} · ${day(e.at)}</small></span><span class="bs num" title="Run score, 1-99">${score99(h)}</span><span class="bg">›</span></button>`; }).join('');
   return `<section class="card" id="lb"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">Top 10</div>${rows ? '<button class="chip quit" data-act="lbimg" style="padding:4px 12px;font-size:12px;color:var(--text)">Share</button>' : '<span class="muted" style="font-size:12px">Run score</span>'}</div>
     ${rows ? `<div class="bruns">${rows}</div>` : `<p class="muted" style="margin:0">${LB.on ? 'No runs yet. Yours could be the first.' : 'The top 10 is not available here.'}</p>`}</section>`;
 }
@@ -2095,7 +2104,7 @@ function viewHome(){
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>Right after a run you can play the next one at once and carry players into it (anyone who played in those linked runs and was let go cannot come back); the further you went, the more: out in the league phase 5 (out of the Conference League's top 24, none), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
         <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) and 1 for each compatriot, at most 3 each. It makes your XI play stronger. You see it as a number from 70 (none) to 99 (full) once your XI is complete.</li>
-        <li>Every run gets a run score, like a UEFA club coefficient: 2 for each win and 1 for each draw, a bonus for the furthest round (play-off 2, Round of 16 6, quarter-final 10, semi-final 14, final 18, title 24) and (37 minus your league-phase position) divided by 4; the sum is weighed by the competition (Champions League 1, Europa League 0.7, Conference League 0.5) and the difficulty (Easy 1, Medium 1.1, Hard 1.2). The home page shows the top 10 runs of everyone playing this page, by that score; tap one to see its summary. A new run asks for your name (a run straight after another keeps it).</li>
+        <li>Every run gets a run score, like a UEFA club coefficient: 2 for each win and 1 for each draw, a bonus for the furthest round (play-off 2, Round of 16 6, quarter-final 10, semi-final 14, final 18, title 24) and (37 minus your league-phase position) divided by 4; the sum is weighed by the competition (Champions League 1, Europa League 0.7, Conference League 0.5) and the difficulty (Easy 1, Medium 1.1, Hard 1.2). Shown from 1 (the worst run possible) to 99 (a Champions League title on Hard, every match won). The home page shows the top 10 players by their best run; tap one to see its summary. A new run asks for your name (a run straight after another keeps it).</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
         <li>Every decision has a clock: 60 seconds for each draft pick (then a random player is picked), 2 minutes to confirm your shape (then a random one is locked in), 60 seconds for each step of the season (then it moves on) and between two runs 60 seconds for each screen (then it moves on) and 2 minutes to choose who stays (then nobody carries over). Missing the top 24 of the league phase drops the next run a level, from the Champions League to the Europa League or from the Europa League to the Conference League.</li>
@@ -2915,7 +2924,7 @@ async function seasonImage(h){
   const PX = 60, PY = 245, PW = W_ - 120, PH = 790, boxes = drawPitch(x, h.xi, PX, PY, PW, PH);
   cv._boxes = boxes; cv._pitch = { x0: PX, x1: PX + PW, y0: PY, y1: PY + PH }; cv._lines = [PY + PH - 175, PY + PH - 28];
   // stats
-  const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Run score', runScore(h).toFixed(1)], ['Chemistry', h.chemN != null ? h.chemN : h.chemG || (h.chemB != null ? bonusTxt(h.chemB) : h.chem)]];
+  const stats = [['League phase', ord(h.pos)], ['W-D-L', `${h.w}-${h.d}-${h.l}`], ['Goals', `${h.gf}:${h.ga}`], ['Run score', score99(h)], ['Chemistry', h.chemN != null ? h.chemN : h.chemG || (h.chemB != null ? bonusTxt(h.chemB) : h.chem)]];
   const SY = 1060, cw = (W_ - 120) / stats.length;
   stats.forEach(([l, v], i) => { const X = 60 + i * cw; rrect(x, X + 6, SY, cw - 12, 120, 16); x.fillStyle = '#1A2E4A'; x.fill();
     let vf = 46; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; while (vf > 26 && x.measureText(String(v)).width > cw - 32){ vf -= 2; x.font = `700 ${vf}px Oswald, "Arial Narrow", Arial, sans-serif`; }
@@ -2931,7 +2940,7 @@ async function seasonImage(h){
 // show the image in an overlay: share it (phones), save it, or long-press it
 async function showTopImage(){
   await fontsReady();
-  const L = LB.list.slice(0, BEST_N), W_ = 1080, H = 1350, [cv, x] = canvasBase(W_, H, ACCENT.cl, 'cl'), white = '#F4F1EA', muted = '#9AA8BD';
+  const L = lbTop(LB.list).slice(0, BEST_N), W_ = 1080, H = 1350, [cv, x] = canvasBase(W_, H, ACCENT.cl, 'cl'), white = '#F4F1EA', muted = '#9AA8BD';
   drawLogo(x, 60, 40, 50); txt(x, 'THIS TIME NEXT YEAR', 140, 80, '600 30px Oswald, "Arial Narrow", Arial, sans-serif', white);
   txt(x, 'TOP 10', 60, 175, '700 84px Oswald, "Arial Narrow", Arial, sans-serif', white);
   txt(x, new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), W_ - 60, 170, '400 26px Rubik, Arial, sans-serif', muted, 'right');
@@ -2943,7 +2952,7 @@ async function showTopImage(){
     txt(x, String(i + 1), 112, Y + 55, '700 28px Oswald, "Arial Narrow", Arial, sans-serif', i < 3 ? '#1A1408' : muted, 'center');
     txt(x, (e.name || 'Unnamed').toUpperCase(), 160, Y + 42, '700 32px Oswald, "Arial Narrow", Arial, sans-serif', white, 'left', 520);
     txt(x, `${CUP[c]} · ${stageWord(h)} · ${DIFF[h.diff] ? DIFF[h.diff].label : ''}`, 160, Y + 74, '400 22px Rubik, Arial, sans-serif', ACCENT[c], 'left', 640);
-    txt(x, runScore(h).toFixed(1), W_ - 90, Y + 58, '700 40px Oswald, "Arial Narrow", Arial, sans-serif', i < 3 ? '#F2C14E' : white, 'right'); });
+    txt(x, String(score99(h)), W_ - 90, Y + 58, '700 40px Oswald, "Arial Narrow", Arial, sans-serif', i < 3 ? '#F2C14E' : white, 'right'); });
   if (!L.length) txt(x, 'No runs yet.', 60, 300, '400 32px Rubik, Arial, sans-serif', muted);
   txt(x, 'Run score: wins, draws, the furthest round and the league phase, weighed by competition and difficulty', 60, H - 70, '400 20px Rubik, Arial, sans-serif', muted, 'left', W_ - 120);
   txt(x, 'This Time Next Year', W_ - 60, H - 34, '600 24px Oswald, "Arial Narrow", Arial, sans-serif', ACCENT.cl, 'right');
@@ -3026,9 +3035,9 @@ function playerOfRun(r){
 function scoreBox(r){
   const h = seasonSummary(r), p = scoreParts(h), f = v => (Math.round(v * 100) / 100).toString();
   const row = (l, v, sub) => `<div class="sp"><span>${l}${sub ? `<small>${sub}</small>` : ''}</span><b class="num">${v}</b></div>`;
-  return `<section class="card scorebox"><div class="drafthead"><div class="eyebrow">Run score</div><b class="num sbig">${p.total.toFixed(1)}</b></div>
+  return `<section class="card scorebox"><div class="drafthead"><div class="eyebrow">Run score</div><b class="num sbig">${score99(h)}</b></div>
     <div class="sparts">${row('Results', '+' + f(p.m), `${num(h.w)} wins × 2, ${num(h.d)} draws × 1`)}${row('Furthest round', '+' + f(p.st), esc(STAGE_SHORT[h.stage] || ''))}${row('League phase', '+' + f(p.ps), `(37 − ${num(h.pos)}) / 4`)}
-    ${row('Competition', '× ' + f(p.cw), esc(COMPS[h.comp] ? COMPS[h.comp].short : ''))}${row('Difficulty', '× ' + f(p.dw), esc(DIFF[h.diff] ? DIFF[h.diff].label : ''))}</div></section>`;
+    ${row('Competition', '× ' + f(p.cw), esc(COMPS[h.comp] ? COMPS[h.comp].short : ''))}${row('Difficulty', '× ' + f(p.dw), esc(DIFF[h.diff] ? DIFF[h.diff].label : ''))}${row('On the 1-99 scale', score99(h), `${p.total.toFixed(1)} of the best possible ${SCORE_MAX}`)}</div></section>`;
 }
 function viewSeason(){
   const r = S.run, champ = r.cup.stage === 'champion';
@@ -3237,7 +3246,7 @@ const TIPS = ['Penalties go in 68.6% of the time, the all-time World Cup rate.',
   'Only the play-off and the Round of 16 are drawn; after that the bracket decides.', 'From 2025/26 the club ranked higher in the league phase plays the second leg at home.',
   'A position a player rarely plays costs him up to 4 points; one he plays often, half a point.', 'Full chemistry adds 33 Elo points on top of your players (measured: an earlier guess was three times that).',
   'A start 90 days old counts half as much toward a player\'s positions as one today.', 'Win a title and carry all 11 into the next run, one competition up.',
-  'Seeds 1 and 2 can only meet in the final; 3 and 4 are split between the halves too.', 'A Champions League title scores about 55; a Conference League title on Hard about 35.'];
+  'Seeds 1 and 2 can only meet in the final; 3 and 4 are split between the halves too.', 'Run score 1-99: 1 is the worst run possible, 99 a Champions League title on Hard with every match won.'];
 function loaderTips(){
   const el = document.querySelector('.ld-tip'); if (!el) return; let i = Math.floor(Math.random() * TIPS.length);
   const show = () => { if (!el.isConnected) return clearInterval(t); el.classList.remove('in'); void el.offsetWidth; el.textContent = TIPS[i++ % TIPS.length]; el.classList.add('in'); };
@@ -3299,7 +3308,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024055656';
+const BUILD = '20261024060523';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
