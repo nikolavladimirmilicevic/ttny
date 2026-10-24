@@ -24,7 +24,7 @@
 }
 *{box-sizing:border-box}
 html,body{background:var(--night);color:var(--text)}
-body{font:15px/1.5 var(--body);margin:0;min-height:100vh;background-attachment:fixed;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%2780%27%20height%3D%2780%27%3E%3Cpath%20d%3D%27M-10%2070L70%20-10M10%2090L90%2010%27%20stroke%3D%27white%27%20stroke-opacity%3D%27.03%27%20stroke-width%3D%2710%27/%3E%3C/svg%3E")}
+body{font:15px/1.5 var(--body);margin:0;min-height:100vh;background-attachment:fixed;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27120%27%20height%3D%27120%27%3E%3Cg%20fill%3D%27white%27%20fill-opacity%3D%27.04%27%20font-family%3D%27Arial%2Csans-serif%27%20font-weight%3D%27700%27%3E%3Ctext%20x%3D%2714%27%20y%3D%2746%27%20font-size%3D%2740%27%20transform%3D%27rotate%28-14%2026%2034%29%27%3E%3F%3C%2Ftext%3E%3Ctext%20x%3D%2772%27%20y%3D%27104%27%20font-size%3D%2730%27%20transform%3D%27rotate%2812%2080%2094%29%27%3E%3F%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E");transition:background-color .3s}
 .wrap{max-width:980px;margin:0 auto;padding:12px 16px 80px}.narrow{max-width:640px;margin:0 auto}.stack{display:flex;flex-direction:column;gap:16px}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
@@ -87,7 +87,7 @@ select.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-rad
 .career .crest{flex:none;width:16px;height:16px;border-radius:50%;background:var(--k1,var(--line));box-shadow:inset 0 0 0 3px var(--k2,var(--line))}
 .career .cl{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .career.two li{padding:8px 10px;gap:8px}.career.two .cl{font-size:14px}
-.career li.hid .crest{--k1:var(--line);--k2:var(--line)}.career li.hid .cl{font-size:0}.career li.hid .cl::after{content:'?';font-size:15px;color:var(--muted)}.career li.hid{opacity:.6}
+.career li.hid .crest{background:var(--line)!important;box-shadow:none!important}.career li.hid .cl{font-size:0}.career li.hid .cl::after{content:'?';font-size:15px;color:var(--muted)}.career li.hid{opacity:.6}
 .review .career{margin:2px 0 12px 30px}.review .career li{padding:6px 10px}.review .career .cl{font-size:14px}
 /* the start screen, as the draft game's home */
 .hero{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px;padding:26px 20px;border-radius:16px;border:1px solid var(--line);background:radial-gradient(120% 90% at 50% -10%,rgba(227,179,65,.22),transparent 60%),repeating-linear-gradient(90deg,var(--grass) 0 40px,var(--grass-2) 40px 80px)}
@@ -96,10 +96,20 @@ select.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-rad
 .hero p{margin:12px 0 0;max-width:46ch}
 .pick .eyebrow{margin-bottom:8px}
 .diffs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
-.diff{--c:#FC9529;text-align:left;display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:12px;border:2px solid color-mix(in srgb,var(--c) 55%,var(--line));background:linear-gradient(160deg,color-mix(in srgb,var(--c) 22%,transparent),transparent 70%),var(--panel);color:var(--text);opacity:.85}
+.diff{--c:var(--gold);text-align:left;display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:12px;border:2px solid color-mix(in srgb,var(--c) 55%,var(--line));background:linear-gradient(160deg,color-mix(in srgb,var(--c) 22%,transparent),transparent 70%),var(--panel);color:var(--text);opacity:.85}
 .diff b{font:700 20px/1.1 var(--display);text-transform:uppercase}.diff small{font-size:12.5px;color:#B8C4D4;line-height:1.4}
 .diff:hover{box-shadow:0 0 0 2px var(--c)}.diff.on{opacity:1;border-color:var(--c);box-shadow:0 0 0 2px var(--c)}
-.diff.m-ten{--c:#FC9529}.diff.m-drip{--c:#3D7BFF}.diff.m-typed{--c:#48D75D}.diff.m-both{--c:#B57BFF}.diff.m-endless{--c:#E8443A}
+
+/* each game has its own colour, none of them the draft game's (blue, orange, green, gold); the page takes the colour of
+   the game picked, and keeps it through the game */
+:root{--c-ten:#FF5FA2;--c-drip:#2ED3E0;--c-typed:#C4F04D;--c-both:#A57BFF;--c-endless:#FF4D6D}
+body[data-mode="ten"]{--gold:var(--c-ten);--gold-ink:#2A0616}body[data-mode="drip"]{--gold:var(--c-drip);--gold-ink:#03201F}
+body[data-mode="typed"]{--gold:var(--c-typed);--gold-ink:#162004}body[data-mode="both"]{--gold:var(--c-both);--gold-ink:#140A2E}
+body[data-mode="endless"]{--gold:var(--c-endless);--gold-ink:#2A050C}
+.diff.m-ten{--c:var(--c-ten)}.diff.m-drip{--c:var(--c-drip)}.diff.m-typed{--c:var(--c-typed)}.diff.m-both{--c:var(--c-both)}.diff.m-endless{--c:var(--c-endless)}
+.hero{background:radial-gradient(120% 90% at 50% -10%,color-mix(in srgb,var(--gold) 26%,transparent),transparent 60%),repeating-linear-gradient(90deg,var(--grass) 0 40px,var(--grass-2) 40px 80px)!important}
+.hero h1 em,.eyebrow,.games a.on,.btn.primary,.diff,.hero{transition:color .3s,background-color .3s,border-color .3s}
+
 @media(max-width:640px){.diffs{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.diff{padding:10px;text-align:center;align-items:center}.diff b{font-size:16px}.diff small{font-size:11px}}
 .hello{margin-top:16px;font-size:16px}.linkb{background:none;border:0;padding:0 0 0 6px;color:var(--muted);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
 .pname{display:block;width:100%;margin-top:8px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;font-size:16px}
@@ -293,7 +303,7 @@ function viewStart(){
       if (name) nm.focus(); }
     else $('#chg').addEventListener('click', () => { editing = true; drawWho(); });
   };
-  const sync = () => { const v = playerName(), p = prefs(), b = $('#go'); b.disabled = !v; b.textContent = v ? `Play ${MODE_NAME[p.mode]}` : 'Type your name to start';
+  const sync = () => { const v = playerName(), p = prefs(), b = $('#go'); document.body.dataset.mode = p.mode; b.disabled = !v; b.textContent = v ? `Play ${MODE_NAME[p.mode]}` : 'Type your name to start';
     if (CH){ const g = $('#gch'); g.disabled = !v; g.textContent = v ? 'Take the challenge' : 'Type your name first'; }
     $('#stl').innerHTML = statsLine(p.mode);
     $('#thn').textContent = p.theme === 'all' ? '' : `${themePool(p.theme).length} players · practice, not in the table`; };
@@ -330,7 +340,7 @@ function start(mode, theme, ch){
   else if (mode !== 'endless') qs = newSet(pool, used, mode);
   else qs = [makeQ(mode, pool, endlessBand(0), used)].filter(Boolean);
   if (!qs.length){ toast('No players yet.'); return; }
-  G = { mode, theme, pool, qs, used, i: 0, picks: [], help: {}, ch }; viewQ();
+  G = { mode, theme, pool, qs, used, i: 0, picks: [], help: {}, ch }; document.body.dataset.mode = mode; viewQ();
 }
 /* ---------- challenges: a link with your ten players, your name and score ---------- */
 const b64 = { enc: o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
@@ -491,7 +501,7 @@ function viewDone(res){
 }
 function confetti(){
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const box = document.createElement('div'); box.className = 'confetti'; const cols = ['#3D7BFF', '#5CC08A', '#F3EFE6', '#F2C14E', '#E57A62'];
+  const box = document.createElement('div'); box.className = 'confetti'; const cols = ['#FF5FA2', '#2ED3E0', '#C4F04D', '#A57BFF', '#FF4D6D', '#F3EFE6'];
   for (let i = 0; i < 70; i++){ const b = document.createElement('i'); b.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % cols.length]};animation-delay:${Math.random() * .6}s;animation-duration:${1.8 + Math.random() * 1.4}s;transform:rotate(${Math.random() * 360}deg)`; box.appendChild(b); }
   document.body.appendChild(box); setTimeout(() => box.remove(), 4200);
 }
