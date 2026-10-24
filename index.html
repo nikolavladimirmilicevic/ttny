@@ -1500,8 +1500,8 @@ function newRun(carry, weekly){
   // runs played one after another remember everyone who played in them: whoever was let go cannot come back
   const ever = carry ? carry.ever || [] : [], gone = ever.filter(id => !kept.includes(id));
   const potCount = 11 - kept.length, vet = {}; kept.forEach(id => vet[id] = ((carry.vet || {})[id] || 1) + 1);
-  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), form: '4-2-2-2', cup: null, diff, comp, season: (S.stats.runs || 0) + 1, vet, wk: wk ? wk.week : null, wkPots: wk ? wk.pots : null, wkFirst: wk ? wk.first : null, player: carry ? carry.player || '' : ((S.pref || {}).name || ''), full: kept.length === 11 };
-  if (wk) S.run.order = wk.order.slice(0, potCount);   // the weekly challenge: the same pots in the same order for everyone (with players kept, the first ones)
+  S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), form: '4-2-2-2', cup: null, diff, comp, season: (S.stats.runs || 0) + 1, vet, wk: wk ? wk.week : null, ...(wk ? wkSetup(wk, potCount) : {}), player: carry ? carry.player || '' : ((S.pref || {}).name || ''), full: kept.length === 11 };
+  if (wk) S.run.order = S.run.wkOrder.slice();   // the weekly challenge: the same pots in the same order for everyone with as many picks
   S.run.intro = 1;
   // champions keep the whole XI: straight to the line-up
   if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; if (!feasible(S.run.picks).includes(S.run.form)) S.run.form = randomForm(S.run.picks); }
@@ -1517,7 +1517,7 @@ const freshCtry = (r, c) => !(r.usedC || []).includes(W.C[c].ctry);
 function drawClub(){
   const r = S.run, pot = r.order[r.step];
   if (r.wkPots){   // weekly: the pot's first club for the week, then its other one (Redraw, or nobody fits); then any weekly club
-    const two = r.wkPots[pot], f = (r.wkFirst || [])[pot] || 0, seq = [two[f], two[1 - f]].filter(c => c && W.C[c] && !r.tried.includes(c));
+    const seq = (r.wkSeqs ? r.wkSeqs[pot] : (p => { const f = (r.wkFirst || [])[pot] || 0; return [p[f], p[1 - f]]; })(r.wkPots[pot])).filter(c => c && W.C[c] && !r.tried.includes(c));
     r.note = ''; r.cut = []; r.tip = null;
     for (const c of seq){ if (pickable(c).length){ r.club = c; return; } r.tried.push(c); r.note = W.C[c].name + ' had nobody who fits your shape, so the pot\'s other club is up.'; }
     const any = r.wkPots.flat().filter(c => W.C[c] && !r.tried.includes(c) && pickable(c).length);
@@ -1643,7 +1643,7 @@ function step(all){
 function finish(){
   const r = S.run; if (r.phase === 'done') return;
   const st = r.cup.stage, st8 = S.stats;
-  r.phase = 'done'; r.keepN = st === 'league' && (r.comp || 'cl') === 'ecl' ? 0 : CFG.KEEP[st]; r.keepSel = [];   // out of the Conference League's top 24: the end   // out of the Conference League's top 24: the end
+  r.phase = 'done'; r.keepN = st === 'league' && (r.wk || (r.comp || 'cl') === 'ecl') ? 0 : CFG.KEEP[st]; r.keepSel = [];   // out of the Conference League's top 24: the end   // out of the Conference League's top 24: the end
   st8.runs++;
   if (!st8.bestStage || STAGE_RANK.indexOf(st) > STAGE_RANK.indexOf(st8.bestStage)) st8.bestStage = st;
   if (st === 'champion'){ st8.titlesBy = st8.titlesBy || {}; st8.titlesBy[r.comp || 'cl'] = (st8.titlesBy[r.comp || 'cl'] || 0) + 1; st8.titles++; st8.streak++; st8.best = Math.max(st8.best, st8.streak); } else st8.streak = 0;
@@ -1669,6 +1669,15 @@ const byeOf = h => num(h.pos) >= 1 && num(h.pos) <= 8 && h.stage !== 'league' ? 
 function runScore(h){
   const pts = 2 * num(h.w) + num(h.d) + byeOf(h) + (STAGE_BONUS[h.stage] || 0) + Math.max(0, 37 - num(h.pos || 36)) / 4;
   return Math.round(pts * (COMP_W[h.comp] || .5) * (DIFF_W[h.diff] || 1) * 10) / 10;
+}
+/* the weekly draft for n picks: with 11, the week's 11 pots of 2, their order and the club each shows first; with players
+   kept (fewer picks), all 22 clubs split by UEFA rank into as many pots as picks, the pots' order and each pot's clubs in
+   an order drawn for the week and that number of picks: everyone with as many picks gets the same draft */
+function wkSetup(w, n){
+  if (n >= 11) return { wkPots: w.pots, wkOrder: w.order.slice(), wkSeqs: w.pots.map((p, i) => { const f = (w.first || [])[i] || 0; return [p[f], p[1 - f]]; }) };
+  const clubs = w.pots.flat().sort((a, b) => W.C[a].rank - W.C[b].rank), pots = splitPots(clubs, Math.max(1, n));
+  const key = (i, x) => hashU(w.week + '|' + n + '|' + i + '|' + x);
+  return { wkPots: pots, wkOrder: [...pots.keys()].sort((a, b) => key('order', a) - key('order', b)), wkSeqs: pots.map((p, i) => [...p].sort((a, b) => key(i, a) - key(i, b))) };
 }
 // the weekly challenge from the data: this week's (Monday to Sunday, UTC) and every club in it still draftable
 const weekOf = d => { const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); x.setUTCDate(x.getUTCDate() - (x.getUTCDay() + 6) % 7); return x.toISOString().slice(0, 10); };
@@ -2094,7 +2103,7 @@ function weeklyCard(){
   const end = new Date(w.week + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() + 6);
   const clubs = w.pots.flat().map(c => `<span class="wkc" style="${clubKit(W.C[c])}">${esc(W.C[c].name)}</span>`).join('');
   return `<section class="card weekly"><div class="drafthead"><div class="eyebrow">Weekly challenge · ${day(w.week)} to ${day(end.toISOString().slice(0, 10))}</div><span class="muted" style="font-size:12px">Champions League</span></div>
-    <p style="margin:8px 0 10px">The 22 clubs with the most wins from ${day(w.from)} to ${day(w.to)}, one per country, in 11 pots of 2. Everyone gets the same draft; Redraw shows the pot's other club. Play again straight away and your players carry over, as in any run.</p>
+    <p style="margin:8px 0 10px">The 22 clubs with the most wins from ${day(w.from)} to ${day(w.to)}, one per country, in 11 pots of 2. Everyone gets the same draft; Redraw shows the pot's other club. Play again straight away and your players carry over (not when you miss the top 24): then all 22 clubs make as many pots as you have picks left.</p>
     <div class="wkcs">${clubs}</div>
     <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="weekly">Play this week's challenge</button></div></section>`;
 }
@@ -3348,7 +3357,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024062425';
+const BUILD = '20261024065725';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
