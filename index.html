@@ -440,7 +440,7 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .pc-g{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;color:var(--muted);min-width:0}
 .pc-g span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc-g .gt{font-size:10px;padding:0 5px;min-width:18px;text-align:center}
 @media (pointer:coarse){.pcard.sheet .pc-g{font-size:13px}.pcard.sheet .pc-g .gt{font-size:12px}}
-.btn.primary.warn{background:var(--loss);color:#fff}
+.btn.primary.warn{background:var(--loss);color:#fff}.btn.ghost.warn{border-color:var(--loss);color:var(--loss)}
 /* on a phone the player sheet sits above the bottom buttons, so they stay tappable */
 @media (pointer:coarse){body:has(.dock) .pcard.sheet{bottom:calc(68px + env(safe-area-inset-bottom,0px));border-radius:16px;border-width:1px;max-height:calc(62vh - 68px)}}
 .ovdot.gr{color:#0B1626}.ovdot.gr.gA,.ovdot.gr.gE{color:#fff}.ovdot.gr.gA{background:var(--gA)}.ovdot.gr.gB{background:var(--gB)}.ovdot.gr.gC{background:var(--gC)}.ovdot.gr.gD{background:var(--gD)}.ovdot.gr.gE{background:var(--gE)}
@@ -3141,7 +3141,7 @@ function viewKeep(){
     </section>
     ${n ? `<div><div class="drafthead" style="margin-bottom:8px"><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div>${n >= r.picks.length ? `<button class="chip quit" data-act="keepall" style="padding:5px 12px;font-size:12px;color:var(--text)">${r.keepSel.length >= r.picks.length ? 'Clear all' : 'Keep all 11'}</button>` : ''}</div><div class="keep">${lst}</div></div>` : ''}
   </div>
-  ${dock(n ? `<button class="btn primary" data-act="cont">${S.armed === 'cont' ? `Sure? Only ${r.keepSel.length} of ${n} kept` : r.keepSel.length ? `Next run · ${r.keepSel.length} kept` : 'Next run'}</button>` : `<button class="btn primary" data-act="cont">New run</button>`, '<button class="btn ghost" data-act="home">Home</button>')}`;
+  ${dock(n ? `<button class="btn primary" data-act="cont">${S.armed === 'cont' ? `Sure? Only ${r.keepSel.length} of ${n} kept` : r.keepSel.length ? `Next run · ${r.keepSel.length} kept` : 'Next run'}</button>` : `<button class="btn primary" data-act="cont">New run</button>`, `<button class="btn ghost${S.armed === 'home' ? ' warn' : ''}" data-act="home">${S.armed === 'home' ? 'Tap again to leave' : 'Home'}</button>`)}`;
 }
 
 function render(){
@@ -3180,7 +3180,7 @@ document.addEventListener('click', e => {
   if (TOUCH() && e.target.closest('.krow .ovdot')) return;
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
   const a = b.dataset.act;
-  if (a !== 'quit' && a !== 'cont' && a !== 'kickoff') S.armed = null;
+  if (a !== 'quit' && a !== 'cont' && a !== 'kickoff' && a !== 'home') S.armed = null;
   if (a === 'snd'){   // in place, so a match being played out is not restarted
     S.pref = S.pref || {}; S.pref.sound = !S.pref.sound; save(); document.querySelectorAll('.chip.snd').forEach(x => x.outerHTML = sndBtn());
     if (S.pref.sound) SND.play('whistle', true); return;
@@ -3243,6 +3243,12 @@ document.addEventListener('click', e => {
   else if (a === 'lbimg') showTopImage();
   else if (a === 'home'){
     const r = S.run;
+    // leaving while players could still carry over loses them: a second tap confirms
+    if (r && r.phase === 'done' && !r.arch && r.keepN > 0 && !r.carryOff && S.armed !== 'home'){
+      S.armed = 'home'; render(); toast('Leaving now means nobody carries over. Tap again to leave.');
+      setTimeout(() => { if (S.armed === 'home'){ S.armed = null; render(); } }, 4000); return;
+    }
+    S.armed = null;
     if (r && r.phase === 'done') S.run = null;
     save(); render(); scrollTo(0, 0);
   }
@@ -3357,7 +3363,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024071715';
+const BUILD = '20261024074335';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
