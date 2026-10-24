@@ -3083,7 +3083,7 @@ function viewKeep(){
       ${st === 'league' && n ? `<p style="margin:8px 0 0">Out of the top 24. Next run drops to the <b>${COMPS[PREV_COMP[r.comp || 'cl']].short}</b>.</p>` : ''}
       <p class="muted" style="margin:10px 0 0">${n ? `Play the next run now and up to <b style="color:var(--text)">${n}</b> player${n > 1 ? 's' : ''} come with you. Choose within <b class="num" style="color:var(--gold)" data-cd="${r.stepDl || Date.now()}">${fmt((r.stepDl || Date.now()) - Date.now())}</b>; after that, or going home, the next run starts with a fresh squad.` : 'No players carry over. Next run starts from scratch.'}</p>
     </section>
-    ${n ? `<div><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div><div class="keep">${lst}</div></div>` : ''}
+    ${n ? `<div><div class="drafthead" style="margin-bottom:8px"><div class="eyebrow">Choose who stays · ${r.keepSel.length} of ${n}</div>${n >= r.picks.length ? `<button class="chip quit" data-act="keepall" style="padding:5px 12px;font-size:12px;color:var(--text)">${r.keepSel.length >= r.picks.length ? 'Clear all' : 'Keep all 11'}</button>` : ''}</div><div class="keep">${lst}</div></div>` : ''}
   </div>
   ${dock(n ? `<button class="btn primary" data-act="cont">${S.armed === 'cont' ? `Sure? Only ${r.keepSel.length} of ${n} kept` : r.keepSel.length ? `Next run · ${r.keepSel.length} kept` : 'Next run'}</button>` : `<button class="btn primary" data-act="cont">New run</button>`, '<button class="btn ghost" data-act="home">Home</button>')}`;
 }
@@ -3165,6 +3165,9 @@ document.addEventListener('click', e => {
   else if (a === 'scr'){ const r = S.run; if (r.phase === 'done') r.dscr = b.dataset.to; else r.scr = b.dataset.to; S.armed = null; save(); render(); scrollTo(0, 0); }
   else if (a === 'next') step(false);
   else if (a === 'all') step(true);
+  else if (a === 'keepall'){   // a title: the whole XI can stay, in one tap (a second tap clears it)
+    const r = S.run; r.keepSel = r.keepSel.length >= r.picks.length ? [] : [...r.picks]; save(); render();
+  }
   else if (a === 'keep'){
     const r = S.run, id = b.dataset.p, i = r.keepSel.indexOf(id);
     if (i > -1) r.keepSel.splice(i, 1); else if (r.keepSel.length < r.keepN) r.keepSel.push(id); else toast('You can keep ' + r.keepN + '. Untick someone first.');
@@ -3296,7 +3299,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261023162705';
+const BUILD = '20261024055656';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
