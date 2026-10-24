@@ -100,6 +100,8 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .gwlink{display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;color:var(--text)}.gwlink>span:first-child{display:flex;flex-direction:column;gap:3px}.gwlink small{color:var(--muted)}.gwlink .bg{font-size:24px;color:var(--muted)}.gwlink:hover{border-color:var(--gold)}.gwlink .gwbest{color:var(--gold)}.gwlink .gwbest:empty{display:none}
 .lbtabs{display:flex;gap:4px}.lbt{background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:3px 11px;font:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}.lbt.on{color:var(--text);border-color:var(--gold)}
 .weekly{--gold:#3D7BFF;--gold-ink:#06102A;border:1px solid var(--gold)}   /* always the Champions League, whatever difficulty is picked */.wkcs{display:flex;flex-wrap:wrap;gap:5px}.wkc{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--kit);color:var(--kit-ink);font-weight:600}
+.wkdet{margin-top:8px}.wkdet summary,.more10 summary,.achd summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4px 0}.wkdet .wkcs{margin-top:8px}
+.record .recline{text-align:center;color:var(--muted);font-size:13px;margin:10px 0 4px}.achd{text-align:center}.more10{margin-top:6px}
 .hello{margin-top:16px;font-size:16px}.linkb{background:none;border:0;padding:0 0 0 6px;color:var(--muted);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
 .radar .rv{transform-origin:var(--cx) var(--cy);animation:rgrow .5s cubic-bezier(.2,.9,.3,1)}@keyframes rgrow{from{transform:scale(0);opacity:.2}}
 @media (prefers-reduced-motion:reduce){.radar .rv,.t10.pop,.brun.flash{animation:none}}
@@ -346,7 +348,7 @@ body[data-comp="ecl"]{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D
 body[data-comp]{background-attachment:fixed}
 body[data-comp="el"]{--gold:#FC9529;--gold-ink:#1A0A00}
 body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
-.diffs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}@media(max-width:640px){.diffs{grid-template-columns:1fr}}
+.diffs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}@media(max-width:640px){.diffs{gap:6px}.diffs .diff{padding:10px 10px;text-align:center;align-items:center}.diffs .diff b{font-size:18px}.diffs .diff small{font-size:11.5px}}
 .diff{--c:#3D7BFF;text-align:left;display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:12px;border:2px solid var(--c);background:linear-gradient(160deg,color-mix(in srgb,var(--c) 22%,transparent),transparent 70%),var(--panel);color:var(--text);cursor:pointer;font:inherit}
 .diff:hover{box-shadow:0 0 0 2px var(--c)}
 .diff.c-el{--c:#FC9529}.diff.c-ecl{--c:#48D75D}
@@ -2114,20 +2116,24 @@ function achCard(keys){
   const go = () => { el.classList.add('out'); setTimeout(() => el.remove(), 400); };
   el.addEventListener('click', go); setTimeout(go, 4200);
 }
-function cabinet(st){
-  const tb = st.titlesBy || {};
+// your record in one card: the three trophies, one line of numbers, the achievements folded away
+function cabinet(st, best){
+  if (!st.runs) return '';
+  const tb = st.titlesBy || {}, got = ACH.filter(a => (st.ach || {})[a[0]]).length;
   const cup = col => TROPHY.replace('class="trophy"', 'class="cabcup"').replace(/var\(--gold\)/g, col);
-  return `<div class="cabinet">${['cl', 'el', 'ecl'].map(k => `<div class="cab${tb[k] ? '' : ' none'}">${cup(ACCENT[k])}<b class="num">${tb[k] || 0}</b><small>${CUP[k]}</small></div>`).join('')}</div>
-    <div class="achs" aria-label="Achievements">${ACH.map(a => achChip(a, (st.ach || {})[a[0]])).join('')}</div>`;
+  return `<section class="card record"><div class="eyebrow">Your record</div>
+    <div class="cabinet" style="margin-top:10px">${['cl', 'el', 'ecl'].map(k => `<div class="cab${tb[k] ? '' : ' none'}">${cup(ACCENT[k])}<b class="num">${tb[k] || 0}</b><small>${CUP[k]}</small></div>`).join('')}</div>
+    <p class="recline">${st.runs} run${st.runs > 1 ? 's' : ''} · ${st.titles} title${st.titles === 1 ? '' : 's'} · best title streak ${st.best}${best && best !== 'None yet' ? ' · best run ' + best : ''}</p>
+    <details class="achd"><summary>Achievements · ${got} of ${ACH.length}</summary><div class="achs" aria-label="Achievements">${ACH.map(a => achChip(a, (st.ach || {})[a[0]])).join('')}</div></details></section>`;
 }
 function bestRuns(){
   const wkTab = (S.pref || {}).lbTab === 'week', L = LB.on ? lbTop(wkTab ? LB.wlist : LB.list).slice(0, BEST_N) : [];
   const day = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const rows = L.map((e, i) => { const h = e.h, c = COMP_W[h.comp] ? h.comp : 'ecl';
     return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}${e.id === LB.flash ? ' flash' : ''}" data-act="open" data-i="${i}" data-wk="${wkTab ? 1 : 0}"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span><span class="bc" style="color:${ACCENT[c]}">${CUP[c]}</span>
-      <span class="bt"><b>${esc(stageWord(h))}</b><small>${esc(e.name || 'Unnamed')} · ${h.wk ? 'Weekly' : DIFF[h.diff] ? DIFF[h.diff].label : ''} · ${num(h.w)}-${num(h.d)}-${num(h.l)} · ${day(e.at)}</small></span><span class="bs num" title="Run score, 1-99">${score99(h)}</span><span class="bg">›</span></button>`; }).join('');
-  return `<section class="card" id="lb"><div class="drafthead" style="margin-bottom:10px"><div class="lbtabs"><button class="lbt${wkTab ? '' : ' on'}" data-act="lbtab" data-t="all">Top 10</button><button class="lbt${wkTab ? ' on' : ''}" data-act="lbtab" data-t="week">This week</button></div>${rows ? '<button class="chip quit" data-act="lbimg" style="padding:4px 12px;font-size:12px;color:var(--text)">Share</button>' : '<span class="muted" style="font-size:12px">Run score</span>'}</div>
-    ${rows ? `<div class="bruns">${rows}</div>` : `<p class="muted" style="margin:0">${LB.on ? (wkTab ? 'No weekly challenge runs yet this week. Yours could be the first.' : 'No runs yet. Yours could be the first.') : 'The top 10 is not available here.'}</p>`}</section>`;
+      <span class="bt"><b>${esc(stageWord(h))}</b><small>${esc(e.name || 'Unnamed')} · ${h.wk ? 'Weekly' : DIFF[h.diff] ? DIFF[h.diff].label : ''} · ${num(h.w)}-${num(h.d)}-${num(h.l)} · ${day(e.at)}</small></span><span class="bs num" title="Run score, 1-99">${score99(h)}</span><span class="bg">›</span></button>`; });
+  return `<section class="card" id="lb"><div class="drafthead" style="margin-bottom:10px"><div class="lbtabs"><button class="lbt${wkTab ? '' : ' on'}" data-act="lbtab" data-t="all">Top 10</button><button class="lbt${wkTab ? ' on' : ''}" data-act="lbtab" data-t="week">This week</button></div>${rows.length ? '<button class="chip quit" data-act="lbimg" style="padding:4px 12px;font-size:12px;color:var(--text)">Share</button>' : '<span class="muted" style="font-size:12px">Run score</span>'}</div>
+    ${rows.length ? `<div class="bruns">${rows.slice(0, 5).join('')}</div>${rows.length > 5 ? `<details class="more10"><summary>Show 6 to ${rows.length}</summary><div class="bruns" style="margin-top:6px">${rows.slice(5).join('')}</div></details>` : ''}` : `<p class="muted" style="margin:0">${LB.on ? (wkTab ? 'No weekly challenge runs yet this week. Yours could be the first.' : 'No runs yet. Yours could be the first.') : 'The top 10 is not available here.'}</p>`}</section>`;
 }
 // this week's standings inside the challenge card: the best run of each player so far
 // last week's winner, and every week's winner before
@@ -2140,7 +2146,7 @@ function hallHTML(){
 }
 function weeklyMini(){
   if (!LB.on) return '';
-  const L = lbTop(LB.wlist).slice(0, 5);
+  const L = lbTop(LB.wlist).slice(0, 3);
   if (!L.length) return '<p class="muted" style="margin:12px 0 0;font-size:13px">No runs yet this week. Yours could be the first.</p>';
   return `<div class="drafthead" style="margin:14px 0 6px"><div class="eyebrow">This week so far</div><button class="chip quit" data-act="lbimg" data-wk="1" style="padding:4px 12px;font-size:12px;color:var(--text)">Share</button></div><div class="bruns">${L.map((e, i) => `<button class="brun${e.h.stage === 'champion' ? ' champ' : ''}" data-act="open" data-i="${i}" data-wk="1"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span>
     <span class="bt"><b>${esc(e.name || 'Unnamed')}</b><small>${esc(stageWord(e.h))} · ${num(e.h.w)}-${num(e.h.d)}-${num(e.h.l)}</small></span><span class="bs num">${score99(e.h)}</span><span class="bg">›</span></button>`).join('')}</div>`;
@@ -2151,8 +2157,8 @@ function weeklyCard(){
   const end = new Date(w.week + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() + 6);
   const clubs = w.pots.flat().map(c => `<span class="wkc" style="${clubKit(W.C[c])}">${esc(W.C[c].name)}</span>`).join('');
   return `<section class="card weekly"><div class="drafthead"><div class="eyebrow">Weekly challenge · ${day(w.week)} to ${day(end.toISOString().slice(0, 10))}</div><span class="wkend" data-ends="${end.getTime() + 12 * 3600e3}"></span></div>
-    <p style="margin:8px 0 10px">This week's 22 clubs, from 22 countries, in 11 pots of 2: the same clubs for everyone, drawn at random as in any run; Redraw gives the pot's other club. Play again straight away and your players carry over (not when you miss the top 24): then all 22 clubs make as many pots as you have picks left.</p>
-    <div class="wkcs">${clubs}</div>
+    <p class="muted" style="margin:8px 0 0">The same 22 clubs for everyone, in the Champions League.</p>
+    <details class="wkdet"><summary>See the 22 clubs</summary><div class="wkcs">${clubs}</div></details>
     <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="weekly">Play this week's challenge</button></div>
     <div id="wklb">${weeklyMini()}</div><div id="wkhall">${hallHTML()}</div></section>`;
 }
@@ -2161,10 +2167,10 @@ function viewHome(){
   const best = top ? `${CUP[top.h.comp]} · ${STAGE_SHORT[top.h.stage]}` : st.bestStage ? STAGE_NAME[st.bestStage] : 'None yet';
   const pref = Object.assign({ diff: 'medium' }, S.pref);
   const picker = `<div class="pick"><div class="eyebrow">Difficulty</div><div class="diffs">${Object.entries(DIFF).map(([k, v]) => `<button class="diff c-${START_COMP[k]}${pref.diff === k ? ' on' : ''}" data-act="pickd" data-d="${k}" aria-pressed="${pref.diff === k}">
-      <b>${v.label}</b><small>${v.pool}. Starts in the ${COMPS[START_COMP[k]].short}.</small></button>`).join('')}</div>
+      <b>${v.label}</b><small>Starts in the ${{ cl: 'UCL', el: 'UEL', ecl: 'UECL' }[START_COMP[k]]}</small></button>`).join('')}</div>
     ${pref.name && !S.editName ? `<div class="hello">Welcome back, <b>${esc(pref.name)}</b> <button class="linkb" data-act="rename">Not you?</button></div>` : `<div class="eyebrow" style="margin-top:16px">Your name</div>
     <input id="pname" class="pname" maxlength="20" autocomplete="nickname" placeholder="Type your name" value="${esc(pref.name || '')}" aria-label="Your name">`}
-    <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="start" ${pref.name ? '' : 'disabled'}>${pref.name ? 'Start a run as ' + esc(pref.name) : 'Type your name to start'}</button></div></div>`;
+    <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="start" ${pref.name ? '' : 'disabled'}>${pref.name ? 'Start a run' : 'Type your name to start'}</button></div></div>`;
   return `
   <header class="topbar">${MARK}<span class="chip">${W.meta.live ? 'Data ' + niceDate(W.meta.updated) : 'Demo data'}</span></header>
   <div class="stack">
@@ -2172,7 +2178,7 @@ function viewHome(){
       <div class="htext">
       <div class="eyebrow">European football draft</div>
       <h1 style="margin-top:10px"><span class="hl">Eleven pots.</span><br><em class="hl">One trophy.</em></h1>
-      <p>Draft one player from each of 11 pots of real clubs, rated on how they played against the clubs of the UEFA ranking in the last year. Then win in Europe, from the Conference League up to the Champions League.</p>
+      <p>Draft one player from each of 11 pots of real clubs, then win in Europe.</p>
       </div>
       <img class="hlogo" src="${LOGO}" alt="This Time Next Year">
     </section>
@@ -2180,13 +2186,7 @@ function viewHome(){
     ${weeklyCard()}
     <a class="card gwlink" href="guess.html"><span><span class="eyebrow">New · Guess Who</span><b>A career on screen: who is it?</b><small>Five modes, three helps, a daily table</small><small id="gwbest" class="gwbest">${GWBEST}</small></span><span class="bg">›</span></a>
     ${bestRuns()}
-    ${cabinet(st)}
-    <div class="stats">
-      <div class="stat"><b class="num">${st.runs}</b><span>Runs</span></div>
-      <div class="stat"><b class="num">${st.titles}</b><span>Titles${st.titlesBy ? ' · ' + ['cl', 'el', 'ecl'].filter(k => st.titlesBy[k]).map(k => ({ cl: 'UCL', el: 'UEL', ecl: 'UECL' }[k]) + ' ' + st.titlesBy[k]).join(', ') : ''}</span></div>
-      <div class="stat"><b class="num">${st.best}</b><span>Best title streak</span></div>
-      <div class="stat"><b style="font-size:18px;line-height:1.55">${best}</b><span>Best run</span></div>
-    </div>
+    ${cabinet(st, best)}
     <details class="rules">
       <summary>How it works</summary>
       <ol>
@@ -2207,7 +2207,7 @@ function viewHome(){
         <li>Every decision has a clock: 60 seconds for each draft pick (then a random player is picked), 2 minutes to confirm your shape (then a random one is locked in), 60 seconds for each step of the season (then it moves on) and between two runs 60 seconds for each screen (then it moves on) and 2 minutes to choose who stays (then nobody carries over). Missing the top 24 of the league phase drops the next run a level, from the Champions League to the Europa League or from the Europa League to the Conference League.</li>
       </ol>
     </details>
-    <p class="foot">${W.meta.live ? 'Live data from API-Football, updated ' + niceDate(W.meta.updated) + '.' : 'Demo world: club names follow the UEFA ranking, players and results are invented.'} ${W.draftable.length} of ${W.meta.ranked || 100} ranked clubs have the 11 players needed for the draft, and ${W.eligCount.toLocaleString('en-GB')} players are rated. Penalties go in ${Math.round(CFG.SHOOTOUT_P * 1000) / 10}% of the time, the all-time World Cup shootout rate.</p>
+    <p class="foot">${W.meta.live ? 'Data from API-Football, updated ' + niceDate(W.meta.updated) + '.' : 'Demo world: club names follow the UEFA ranking, players and results are invented.'} ${W.draftable.length} clubs in the draft, ${W.eligCount.toLocaleString('en-GB')} players rated.</p>
   </div>`;
 }
 
@@ -3426,7 +3426,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024192337';
+const BUILD = '20261024194035';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
