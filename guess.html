@@ -40,9 +40,9 @@ input.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-radi
 .prog{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin:4px 0 12px}.prog i{height:6px;border-radius:3px;background:var(--line)}.prog i.ok{background:var(--win)}.prog i.no{background:var(--loss)}.prog i.now{background:var(--gold)}
 .qhead{display:flex;justify-content:space-between;align-items:baseline}
 .timer{height:4px;border-radius:2px;background:var(--line);overflow:hidden;margin:10px 0 4px}.timer b{display:block;height:100%;background:var(--gold);width:100%}
-.career{list-style:none;margin:10px 0 0;padding:0}
-.career li{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line);align-items:baseline}
-.career li:first-child{border-top:0}.career .yr{color:var(--muted);font-size:13px}.career .cl{font-weight:600}.career .ln{font-size:11px;color:var(--muted);margin-left:6px;font-weight:400;border:1px solid var(--line);border-radius:5px;padding:0 5px}
+.career{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px 0}
+.career li{display:flex;align-items:center}.career li+li::before{content:'→';color:var(--muted);margin:0 8px;font-size:16px}
+.career .cl{display:inline-block;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);font-weight:600;font-size:15px;line-height:1.2;transition:background .35s,color .35s}
 .hint{font-size:13px;color:var(--muted);margin-top:6px}
 .kit{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:8px;vertical-align:-1px;background:var(--line);border:2px solid var(--line)}
 .reveal{display:flex;flex-direction:column;margin-top:6px}.reveal b{font-size:17px}.reveal span{font-size:13px}
@@ -64,16 +64,20 @@ input.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-radi
 .pair{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-top:12px}.pair .pc{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2);text-align:center;font-weight:700;font-size:16px}.pair .pc .kit{width:30px;height:30px;border-radius:8px;border-width:3px;margin:0}.pair .amp{font:700 22px var(--display);color:var(--gold)}
 .chal{border-color:var(--gold)}.vs{display:flex;justify-content:center;gap:18px;margin-top:10px;font-weight:700}.vs .w{color:var(--win)}
 .per{display:flex;gap:4px;margin-top:6px}.per .tab{font-weight:500}
+.hero h2{font-size:24px}.who{margin-top:14px;font-size:15px}.who .name{margin-top:0}.linkbtn{background:none;border:0;color:var(--gold);padding:0 4px;font-size:13px;text-decoration:underline}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}.pill{border:1px solid var(--line);background:var(--panel-2);border-radius:999px;padding:7px 13px;font-weight:600;font-size:14px}.pill.on{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
+.mdesc{margin:8px 0 12px;font-size:13px}.small{font-size:13px;margin:6px 0 0}.small:empty{display:none}
+.more{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;font-size:13px}.more select{background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.mode{display:flex;flex-direction:column;align-items:flex-start;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);text-align:left}.mode b{font-family:var(--display);letter-spacing:.04em;text-transform:uppercase;font-size:14px}.mode small{font-size:12px;color:var(--muted)}.mode.on{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}.mode.on b{color:var(--gold)}
 select.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;font-size:16px}
 .tabs{flex-wrap:wrap;margin-top:8px}
 .timer b{transition:background .3s}.timer b.low{background:var(--loss)}
-.career li{transition:opacity .35s}.career li.hid{opacity:.35}.career li.hid .yr,.career li.hid .cl{color:transparent;background:var(--line);border-radius:5px;user-select:none}.career li.hid .kit,.career li.hid .ln{visibility:hidden}
+.career li.hid .cl{font-size:0;width:48px;height:33px;text-align:center;background:var(--line)!important;border-color:var(--line)!important;user-select:none}.career li.hid .cl::after{content:'?';font-size:15px;color:var(--muted)}
 .typed{margin-top:14px}.typed input{margin-top:0}.typed input.right{border-color:var(--win);background:rgba(92,192,138,.22)}.typed input.wrong{border-color:var(--loss);background:rgba(229,122,98,.22)}
 .sugg{display:grid;gap:6px;margin-top:8px}.sg{text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);font-weight:600}.sg.first{border-color:var(--gold)}.sg:hover{border-color:var(--gold)}
 .opt.right{animation:pop .35s ease-out}@keyframes pop{50%{transform:scale(1.03)}}
 .review details{border-top:1px solid var(--line)}.review details:first-child{border-top:0}.review summary{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:baseline;padding:9px 2px;cursor:pointer;list-style:none}.review summary::-webkit-details-marker{display:none}
-.review .rk{font-weight:700}.review .rk.ok{color:var(--win)}.review .rk.no{color:var(--loss)}.review .rn{display:flex;flex-direction:column}.review .rn small{font-size:12px}.review .career{margin:0 0 10px 30px}
+.review .rk{font-weight:700}.review .rk.ok{color:var(--win)}.review .rk.no{color:var(--loss)}.review .rn{display:flex;flex-direction:column}.review .rn small{font-size:12px}.review .career{margin:0 0 12px 30px}
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:8}.confetti i{position:absolute;top:-12px;width:8px;height:12px;border-radius:2px;animation:fall linear forwards}@keyframes fall{to{top:105%;transform:translateX(30px) rotate(540deg)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -215,37 +219,48 @@ let DATA = null, G = null;   // G: the game { mode, theme, pool, qs, i, picks: [
 /* ---------- screens ---------- */
 const header = () => `<div class="top"><div><div class="eyebrow">This Time Next Year</div><h1 style="font-size:26px;margin-top:4px">Guess Who</h1></div><a href="./">The draft game</a></div>`;
 function viewStart(){
-  const name = playerName(), pr = prefs(), d = new Date(today() + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const name = playerName(), pr = prefs();
   $('#app').innerHTML = `${header()}
     ${CH ? `<section class="card chal"><div class="eyebrow">A challenge</div><h2 style="margin-top:6px">${esc(CH.n)}: ${CH.s}</h2>
       <p class="muted" style="margin:6px 0 0">${CH.r} of ${CH.q.length} right in ${esc(MODE_NAME[CH.m])}${CH.t !== 'all' ? ' · ' + esc(themeName(CH.t)) : ''}. Same players, can you beat it?</p>
-      <button class="btn primary" id="gch" style="margin-top:12px" ${name ? '' : 'disabled'}>${name ? 'Take the challenge' : 'Type your name below first'}</button>
+      <button class="btn primary" id="gch" style="margin-top:12px"></button>
       <button class="btn" id="xch" style="margin-top:8px">No thanks, a game of my own</button></section>` : ''}
-    <section class="card"><div class="eyebrow">${esc(d)}</div><h2 style="margin-top:6px">Whose career is this?</h2>
-      <p class="muted" style="margin:8px 0 0">A player's career, club by club. ${Q_SECONDS} seconds each; the faster you are, the more you score. Three helps, once each per game. A new set of players every game.</p>
-      <div class="eyebrow" style="margin-top:16px">Your name</div>
-      <input id="nm" class="name" maxlength="20" placeholder="Type your name" value="${esc(name)}" autocomplete="nickname">
-      <div class="eyebrow" style="margin-top:16px">Mode</div>
-      <div class="modes">${MODES.map(([k, n, dsc]) => `<button class="mode${k === pr.mode ? ' on' : ''}" data-m="${k}"><b>${n}</b><small>${dsc}</small></button>`).join('')}</div>
-      <div class="eyebrow" style="margin-top:16px">Players</div>
-      <select id="th" class="name">${THEMES.map(([k, n]) => `<option value="${k}"${k === pr.theme ? ' selected' : ''}>${esc(n)}${k === 'all' ? '' : ' (practice)'}</option>`).join('')}</select>
-      <p class="muted" id="thn" style="margin:6px 0 0;font-size:13px"></p>
-      <button class="btn primary" id="go" style="margin-top:14px"></button>
-      ${statsLine()}
+    <section class="card hero"><h2>Whose career is this?</h2>
+      <p class="muted" style="margin:6px 0 0">His clubs, in order. Who is he?</p>
+      <div id="who" class="who"></div>
+      <div class="pills">${MODES.map(([k, n]) => `<button class="pill${k === pr.mode ? ' on' : ''}" data-m="${k}">${n}</button>`).join('')}</div>
+      <p class="muted mdesc" id="mdesc"></p>
+      <button class="btn primary" id="go"></button>
+      <div class="more"><label for="th" class="muted">Players</label><select id="th">${THEMES.map(([k, n]) => `<option value="${k}"${k === pr.theme ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
+      <p class="muted small" id="thn"></p>
+      <p class="muted small" id="stl" style="text-align:center;margin-top:10px"></p>
     </section>
     <section class="card">${tableHead()}<div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section>`;
   bindTabs();
   if (CH){ $('#gch').addEventListener('click', () => start(CH.m, CH.t, CH)); $('#xch').addEventListener('click', () => { CH = null; history.replaceState(null, '', location.pathname + location.search); viewStart(); }); }
-  const sync = () => { const v = playerName(), p = prefs(), b = $('#go'); b.disabled = !v; if (CH){ const g = $('#gch'); g.disabled = !v; g.textContent = v ? 'Take the challenge' : 'Type your name below first'; } b.textContent = v ? `${MODE_NAME[p.mode]} as ${v}` : 'Type your name to start';
-    $('#thn').textContent = p.theme === 'all' ? '' : `${themePool(p.theme).length} players. A themed game is practice: it counts in your own numbers, not in the table.`; };
-  $('#nm').addEventListener('input', e => { const v = e.target.value.replace(/\s+/g, ' ').trim().slice(0, 20), s = store.get(); s.name = v; store.set(s); sync(); });
-  $('#nm').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('#go').disabled) $('#go').click(); });
-  document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => { const s = store.get(); s.mode = b.dataset.m; store.set(s);
-    document.querySelectorAll('.mode').forEach(x => x.classList.toggle('on', x === b)); LBMODE = b.dataset.m; document.querySelectorAll('.tab[data-m]').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE)); loadTable(); sync(); }));
-  $('#th').addEventListener('change', e => { const s = store.get(); s.theme = e.target.value; store.set(s); sync(); });
+  // the name: a field until there is one, then one line with a way to change it
+  let editing = !name;
+  const drawWho = () => {
+    const v = playerName();
+    $('#who').innerHTML = editing ? `<input id="nm" class="name" maxlength="20" placeholder="Your name, for the table" value="${esc(v)}" autocomplete="nickname">`
+      : `<span class="muted">Playing as</span> <b>${esc(v)}</b> <button class="linkbtn" id="chg">change</button>`;
+    if (editing){ const nm = $('#nm');
+      nm.addEventListener('input', e => { const t = e.target.value.replace(/\s+/g, ' ').trim().slice(0, 20), st = store.get(); st.name = t; store.set(st); sync(); });
+      nm.addEventListener('keydown', e => { if (e.key === 'Enter' && playerName()){ editing = false; drawWho(); } });
+      if (name) nm.focus(); }
+    else $('#chg').addEventListener('click', () => { editing = true; drawWho(); });
+  };
+  const sync = () => { const v = playerName(), p = prefs(), b = $('#go'); b.disabled = !v; b.textContent = v ? 'Play' : 'Type your name to play';
+    if (CH){ const g = $('#gch'); g.disabled = !v; g.textContent = v ? 'Take the challenge' : 'Type your name below first'; }
+    $('#mdesc').textContent = (MODES.find(m => m[0] === p.mode) || [])[2] + (p.mode === 'endless' ? '.' : ', ten players.');
+    $('#stl').innerHTML = statsLine(p.mode);
+    $('#thn').textContent = p.theme === 'all' ? '' : `${themePool(p.theme).length} players · practice, not in the table`; };
+  document.querySelectorAll('.pill').forEach(b => b.addEventListener('click', () => { const st = store.get(); st.mode = b.dataset.m; store.set(st);
+    document.querySelectorAll('.pill').forEach(x => x.classList.toggle('on', x === b)); LBMODE = b.dataset.m; document.querySelectorAll('.tab[data-m]').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE)); loadTable(); sync(); }));
+  $('#th').addEventListener('change', e => { const st = store.get(); st.theme = e.target.value; store.set(st); sync(); });
   $('#go').addEventListener('click', () => { const p = prefs(); start(p.mode, p.theme); });
   LBMODE = pr.mode; document.querySelectorAll('.tab[data-m]').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE));
-  sync(); loadTable();
+  drawWho(); sync(); loadTable();
 }
 function start(mode, theme, ch){
   mode = MODE_NAME[mode] ? mode : 'ten'; theme = theme || 'all';
@@ -272,11 +287,10 @@ function readChallenge(){
 const challengeLink = res => location.href.split('#')[0] + '#c=' + b64.enc({ m: res.mode, t: res.theme, q: res.log.map(p => p.q.kind === 'both' ? [p.q.ans.id, p.q.pair] : [p.q.ans.id]), n: res.name, s: res.score, r: res.right });
 let CH = null;
 /* personal numbers on this device: games, share of right answers, the best score in each mode */
-function statsLine(){
+function statsLine(mode){
   const t = store.get().stats; if (!t || !t.games) return '';
-  const best = Object.assign({ ten: t.best || 0, endless: t.streak || 0 }, t.by || {});
-  const parts = MODES.filter(m => best[m[0]] > 0).map(m => `${m[1]} ${best[m[0]]}`);
-  return `<p class="muted" style="margin:12px 0 0;font-size:13px">Your games: ${t.games} · ${t.total ? Math.round(100 * t.right / t.total) : 0}% right${parts.length ? ' · best: ' + parts.join(' · ') : ''}</p>`;
+  const best = Object.assign({ ten: t.best || 0, endless: t.streak || 0 }, t.by || {})[mode] || 0;
+  return `${best ? `Your best in ${MODE_NAME[mode]}: <b>${best}</b> · ` : ''}${t.games} game${t.games > 1 ? 's' : ''}, ${t.total ? Math.round(100 * t.right / t.total) : 0}% right`;
 }
 function addStats(res){
   const s = store.get(), t = s.stats = s.stats || { games: 0, right: 0, total: 0 };
@@ -289,9 +303,11 @@ function addStats(res){
   store.set(s); return pb;
 }
 const kitChip = n => { const k = (DATA.kits || {})[n]; return `<i class="kit" style="${k ? `background:${k[0]};border-color:${k[1]}` : ''}"></i>`; };
+// the clubs in order, each in its home colours, an arrow between two; no years, no loans
 function careerHTML(c, shown){
-  const kit = kitChip;
-  return `<ol class="career">${c.map(([club, y0, y1, loan], j) => `<li class="${shown != null && j >= shown ? 'hid' : ''}"><span class="yr num">${y0 == null ? '' : y0}${y0 == null || y0 !== y1 ? '–' + (y1 === new Date().getUTCFullYear() ? '' : y1) : ''}</span><span class="cl">${kit(club)}${esc(club)}${loan ? `<span class="ln">${loan === 2 ? 'loan, then signed' : 'loan'}</span>` : ''}</span></li>`).join('')}</ol>`;
+  const clubs = c.map(x => x[0]).filter((n, j, a) => j === 0 || n !== a[j - 1]);
+  return `<ol class="career">${clubs.map((club, j) => { const k = (DATA.kits || {})[club];
+    return `<li class="${shown != null && j >= shown ? 'hid' : ''}"><span class="cl"${k ? ` style="background:${k[0]};color:${k[1]};border-color:${k[1]}55"` : ''}>${esc(club)}</span></li>`; }).join('')}</ol>`;
 }
 // One by one: the first club at once, the rest one at a time, all of them on screen by about 13 seconds
 const dripStep = n => Math.max(1500, Math.min(3500, 13000 / Math.max(1, n - 1)));

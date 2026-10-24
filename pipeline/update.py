@@ -1268,7 +1268,12 @@ def same_club(a, b):
         k = norm(x).replace('munich', 'munchen').replace('milano', 'milan').replace('torino', 'turin').replace('lisboa', 'lisbon')
         return ' '.join(w for w in k.split() if w not in ('fc', 'cf', 'sc', 'ac', 'fk', 'sk', 'nk', 'afc', 'club', 'de', 'the'))
     ka, kb = key(a), key(b)
-    return ka == kb or (min(len(ka), len(kb)) >= 5 and difflib.SequenceMatcher(None, ka, kb).ratio() >= .88)
+    # one name inside the other ('Marseille', 'Olympique Marseille'), when the shorter is a real name and not 'Inter'
+    sa, sb = set(ka.split()), set(kb.split())
+    if min(len(ka), len(kb)) >= 7 and (sa <= sb or sb <= sa):
+        return True
+    # near spellings, but the same first word ('M. Tel-Aviv' and 'H. Tel-Aviv' are two clubs)
+    return ka == kb or (min(len(ka), len(kb)) >= 5 and ka.split()[:1] == kb.split()[:1] and difflib.SequenceMatcher(None, ka, kb).ratio() >= .88)
 
 
 def write_careers(world, careers, teams):
