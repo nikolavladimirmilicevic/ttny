@@ -1646,24 +1646,27 @@ function finish(){
    and the league-phase position adds (37 - position) / 4. That sum is weighed by the competition (Champions League 1,
    Europa League 0.7, Conference League 0.5) and the difficulty (Easy 1, Medium 1.1, Hard 1.2). A Champions League title
    scores about 55, a Conference League title on Hard about 35, a Champions League exit in the league phase under 10.
-   Shown on 1-99: 1 is the worst run anyone can have (out of the Conference League's league phase, last, without a point:
-   0.125) and 99 the best (a Champions League title on Hard winning all 17 matches from 9th place, through the play-off:
-   78), on a straight line in between. Ties: the bigger goal difference, then the earlier run. */
+   The top 8 skip the play-off, so its two legs count for them as two wins (4): without that, 9th place, with two more
+   matches to win, could score more than 1st. Shown on 1-99: 1 is the worst run anyone can have (out of the Conference
+   League's league phase, last, without a point: 0.125) and 99 the best (a Champions League title on Hard from 1st place,
+   every match won: (15 wins x 2 + 4 + 24 + 9) x 1.2 = 80.4), on a straight line in between. Ties: the bigger goal difference, then the earlier run. */
 const STAGE_BONUS = { league: 0, playoff: 2, r16: 6, qf: 10, sf: 14, final: 18, champion: 24 };
 const COMP_W = { cl: 1, el: .7, ecl: .5 }, DIFF_W = { easy: 1, medium: 1.1, hard: 1.2 }, BEST_N = 10;
 const num = v => (typeof v === 'number' && isFinite(v) ? v : 0);
+// the top 8 skip the play-off: they get its two legs as two wins (4), so finishing higher is never worth less
+const byeOf = h => num(h.pos) >= 1 && num(h.pos) <= 8 && h.stage !== 'league' ? 4 : 0;
 function runScore(h){
-  const pts = 2 * num(h.w) + num(h.d) + (STAGE_BONUS[h.stage] || 0) + Math.max(0, 37 - num(h.pos || 36)) / 4;
+  const pts = 2 * num(h.w) + num(h.d) + byeOf(h) + (STAGE_BONUS[h.stage] || 0) + Math.max(0, 37 - num(h.pos || 36)) / 4;
   return Math.round(pts * (COMP_W[h.comp] || .5) * (DIFF_W[h.diff] || 1) * 10) / 10;
 }
-const SCORE_MIN = 0.125, SCORE_MAX = 78;
+const SCORE_MIN = 0.125, SCORE_MAX = 80.4;
 const score99 = h => Math.max(1, Math.min(99, Math.round(1 + 98 * (runScore(h) - SCORE_MIN) / (SCORE_MAX - SCORE_MIN))));
 // one row per player on the top 10: only his best run counts (players go by name, as the list shows them)
 const lbKey = e => String(e.name || 'Unnamed').trim().toLowerCase();
 function lbTop(list){ const seen = new Set(), out = []; for (const e of list){ const k = lbKey(e); if (seen.has(k)) continue; seen.add(k); out.push(e); } return out; }
 function scoreParts(h){
   const m = 2 * num(h.w) + num(h.d), st = STAGE_BONUS[h.stage] || 0, ps = Math.max(0, 37 - num(h.pos || 36)) / 4;
-  return { m, st, ps, cw: COMP_W[h.comp] || .5, dw: DIFF_W[h.diff] || 1, total: runScore(h) };
+  return { m, bye: byeOf(h), st, ps, cw: COMP_W[h.comp] || .5, dw: DIFF_W[h.diff] || 1, total: runScore(h) };
 }
 const runOrder = (a, b) => runScore(b.h) - runScore(a.h) || (num(b.h.gf) - num(b.h.ga)) - (num(a.h.gf) - num(a.h.ga)) || num(a.at) - num(b.at);
 function archive(r){
@@ -2104,7 +2107,7 @@ function viewHome(){
         <li>Every club has a rating built from all its matches in the last year, where beating a strong side counts for far more than beating a weak one, and big clubs keep part of their standing. Your XI gets a rating the same way a club's own eleven would. The gap between the two sides sets how many goals each is expected to score, and the score is drawn from that, so a big favourite usually wins and often wins big, while upsets are rare and usually narrow.</li>
         <li>Right after a run you can play the next one at once and carry players into it (anyone who played in those linked runs and was let go cannot come back); the further you went, the more: out in the league phase 5 (out of the Conference League's top 24, none), play-off 6, Round of 16 7, quarter-final 8, semi-final 9, final 10, title 11 (the whole team). The clubs are then split into as many pots as you have picks left.</li>
         <li>Chemistry: every player earns 2 for each team-mate in your XI (same club, or started for the same team, club or national, in the last year) and 1 for each compatriot, at most 3 each. It makes your XI play stronger. You see it as a number from 70 (none) to 99 (full) once your XI is complete.</li>
-        <li>Every run gets a run score, like a UEFA club coefficient: 2 for each win and 1 for each draw, a bonus for the furthest round (play-off 2, Round of 16 6, quarter-final 10, semi-final 14, final 18, title 24) and (37 minus your league-phase position) divided by 4; the sum is weighed by the competition (Champions League 1, Europa League 0.7, Conference League 0.5) and the difficulty (Easy 1, Medium 1.1, Hard 1.2). Shown from 1 (the worst run possible) to 99 (a Champions League title on Hard, every match won). The home page shows the top 10 players by their best run; tap one to see its summary. A new run asks for your name (a run straight after another keeps it).</li>
+        <li>Every run gets a run score, like a UEFA club coefficient: 2 for each win and 1 for each draw, a bonus for the furthest round (play-off 2, Round of 16 6, quarter-final 10, semi-final 14, final 18, title 24; the top 8 also get the play-off they skip as two wins) and (37 minus your league-phase position) divided by 4; the sum is weighed by the competition (Champions League 1, Europa League 0.7, Conference League 0.5) and the difficulty (Easy 1, Medium 1.1, Hard 1.2). Shown from 1 (the worst run possible) to 99 (a Champions League title on Hard, every match won). The home page shows the top 10 players by their best run; tap one to see its summary. A new run asks for your name (a run straight after another keeps it).</li>
         <li>Each competition gets its clubs like a real season: mostly the clubs its UEFA rank and this year's form would put there (the top 36 or so in the Champions League, the next in the Europa League, then the Conference League), with a realistic share of surprises, and at most 5, 4 or 3 clubs from one country.</li>
         <li>The league phase follows the real formats: 36 clubs, eight matches against two clubs from each of four pots in the Champions League and Europa League, six matches against one club from each of six pots in the Conference League. The top 8 go to the Round of 16, places 9 to 24 to the play-off.</li>
         <li>Every decision has a clock: 60 seconds for each draft pick (then a random player is picked), 2 minutes to confirm your shape (then a random one is locked in), 60 seconds for each step of the season (then it moves on) and between two runs 60 seconds for each screen (then it moves on) and 2 minutes to choose who stays (then nobody carries over). Missing the top 24 of the league phase drops the next run a level, from the Champions League to the Europa League or from the Europa League to the Conference League.</li>
@@ -3036,7 +3039,7 @@ function scoreBox(r){
   const h = seasonSummary(r), p = scoreParts(h), f = v => (Math.round(v * 100) / 100).toString();
   const row = (l, v, sub) => `<div class="sp"><span>${l}${sub ? `<small>${sub}</small>` : ''}</span><b class="num">${v}</b></div>`;
   return `<section class="card scorebox"><div class="drafthead"><div class="eyebrow">Run score</div><b class="num sbig">${score99(h)}</b></div>
-    <div class="sparts">${row('Results', '+' + f(p.m), `${num(h.w)} wins × 2, ${num(h.d)} draws × 1`)}${row('Furthest round', '+' + f(p.st), esc(STAGE_SHORT[h.stage] || ''))}${row('League phase', '+' + f(p.ps), `(37 − ${num(h.pos)}) / 4`)}
+    <div class="sparts">${row('Results', '+' + f(p.m), `${num(h.w)} wins × 2, ${num(h.d)} draws × 1`)}${p.bye ? row('Play-off skipped', '+' + p.bye, 'top 8: counted as two wins') : ''}${row('Furthest round', '+' + f(p.st), esc(STAGE_SHORT[h.stage] || ''))}${row('League phase', '+' + f(p.ps), `(37 − ${num(h.pos)}) / 4`)}
     ${row('Competition', '× ' + f(p.cw), esc(COMPS[h.comp] ? COMPS[h.comp].short : ''))}${row('Difficulty', '× ' + f(p.dw), esc(DIFF[h.diff] ? DIFF[h.diff].label : ''))}${row('On the 1-99 scale', score99(h), `${p.total.toFixed(1)} of the best possible ${SCORE_MAX}`)}</div></section>`;
 }
 function viewSeason(){
@@ -3246,7 +3249,7 @@ const TIPS = ['Penalties go in 68.6% of the time, the all-time World Cup rate.',
   'Only the play-off and the Round of 16 are drawn; after that the bracket decides.', 'From 2025/26 the club ranked higher in the league phase plays the second leg at home.',
   'A position a player rarely plays costs him up to 4 points; one he plays often, half a point.', 'Full chemistry adds 33 Elo points on top of your players (measured: an earlier guess was three times that).',
   'A start 90 days old counts half as much toward a player\'s positions as one today.', 'Win a title and carry all 11 into the next run, one competition up.',
-  'Seeds 1 and 2 can only meet in the final; 3 and 4 are split between the halves too.', 'Run score 1-99: 1 is the worst run possible, 99 a Champions League title on Hard with every match won.'];
+  'Seeds 1 and 2 can only meet in the final; 3 and 4 are split between the halves too.', 'Run score 1-99: 1 is the worst run possible, 99 a Champions League title on Hard from 1st place with every match won.'];
 function loaderTips(){
   const el = document.querySelector('.ld-tip'); if (!el) return; let i = Math.floor(Math.random() * TIPS.length);
   const show = () => { if (!el.isConnected) return clearInterval(t); el.classList.remove('in'); void el.offsetWidth; el.textContent = TIPS[i++ % TIPS.length]; el.classList.add('in'); };
@@ -3308,7 +3311,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024060523';
+const BUILD = '20261024060814';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
