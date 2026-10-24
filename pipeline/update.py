@@ -1235,7 +1235,7 @@ def position_check(world):
 WEEKLY_CLUBS = 22
 
 
-def weekly_challenge(world, fx, prev=None):
+def weekly_challenge(world, fx, prev=None, allow_new=True):
     """The weekly challenge, the same for everyone from Monday to Sunday (UTC): the 22 clubs with the most wins in the
     7 days before that Monday (competitive matches only; then goal difference, goals, UEFA rank), at most one per country
     and only clubs with 11 players to draft. Split by UEFA rank into 11 pots of 2: the club each pot shows first and the
@@ -1244,6 +1244,8 @@ def weekly_challenge(world, fx, prev=None):
     week = TODAY - dt.timedelta(days=TODAY.weekday())
     wid = week.isoformat()
     if prev and prev.get('week') == wid and len(prev.get('pots') or []) == 11:
+        return prev
+    if not allow_new:
         return prev
     lo, hi = (week - dt.timedelta(days=7)).isoformat(), (week - dt.timedelta(days=1)).isoformat()
     per = Counter(p['club'] for p in world['players'])
@@ -1357,7 +1359,9 @@ def main():
             if old.get(k): world.setdefault('model', {})[k] = old[k]
     except (OSError, ValueError):
         pass
-    world['weekly'] = weekly_challenge(world, fx, prev_world.get('weekly'))
+    # a new week's challenge only from a run that fetched everything (last week's results complete); until then the
+    # old one stays in the data and the game shows none for the new week
+    world['weekly'] = weekly_challenge(world, fx, prev_world.get('weekly'), allow_new=stopped is None and core_done)
     with open(target, 'w', encoding='utf-8') as f:
         json.dump(world, f, ensure_ascii=False, separators=(',', ':'))
     log(f'Wrote {os.path.basename(target)}')

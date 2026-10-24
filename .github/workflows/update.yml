@@ -5,6 +5,7 @@ on:
     - cron: '17 5,11,17 * * *'   # three times a day (05:17, 11:17, 17:17 UTC): GitHub can delay or skip a scheduled run,
                                   # so the later ones are the backup; each run only fetches what is new
     - cron: '47 8,21 * * *'      # two more backups (08:47, 21:47 UTC): a run with nothing new to fetch costs almost nothing
+    - cron: '3 1,2,3 * * 1'      # Monday 02:03, 03:03, 04:03 CET (01:03-03:03 UTC): last week's results in, then the new weekly challenge
   workflow_dispatch:        # "Run workflow" button for manual runs
 
 permissions:

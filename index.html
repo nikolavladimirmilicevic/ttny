@@ -1495,13 +1495,13 @@ function newRun(carry, weekly){
   // (and its competition: a title moves it up, missing the top 24 down)
   const pref = S.pref || {}, wk = weekly && weeklyOk() ? W.weekly : null;
   const diff = wk ? 'medium' : carry ? carry.diff : DIFF[pref.diff] ? pref.diff : 'medium';
-  const comp = wk ? 'cl' : carry ? carry.comp : START_COMP[diff];
+  const comp = wk ? 'cl' : carry ? carry.comp : START_COMP[diff];   // the weekly challenge is always the Champions League
   const kept = carry ? carry.kept.filter(id => W.P[id] && W.P[id].starts >= MIN_STARTS) : [];
   // runs played one after another remember everyone who played in them: whoever was let go cannot come back
   const ever = carry ? carry.ever || [] : [], gone = ever.filter(id => !kept.includes(id));
   const potCount = 11 - kept.length, vet = {}; kept.forEach(id => vet[id] = ((carry.vet || {})[id] || 1) + 1);
   S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), form: '4-2-2-2', cup: null, diff, comp, season: (S.stats.runs || 0) + 1, vet, wk: wk ? wk.week : null, wkPots: wk ? wk.pots : null, wkFirst: wk ? wk.first : null, player: carry ? carry.player || '' : ((S.pref || {}).name || ''), full: kept.length === 11 };
-  if (wk) S.run.order = wk.order.slice();   // the weekly challenge: the same pots in the same order for everyone
+  if (wk) S.run.order = wk.order.slice(0, potCount);   // the weekly challenge: the same pots in the same order for everyone (with players kept, the first ones)
   S.run.intro = 1;
   // champions keep the whole XI: straight to the line-up
   if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; if (!feasible(S.run.picks).includes(S.run.form)) S.run.form = randomForm(S.run.picks); }
@@ -1643,7 +1643,7 @@ function step(all){
 function finish(){
   const r = S.run; if (r.phase === 'done') return;
   const st = r.cup.stage, st8 = S.stats;
-  r.phase = 'done'; r.keepN = r.wk ? 0 : st === 'league' && (r.comp || 'cl') === 'ecl' ? 0 : CFG.KEEP[st]; r.keepSel = [];   // nobody carries over from a weekly challenge   // out of the Conference League's top 24: the end
+  r.phase = 'done'; r.keepN = st === 'league' && (r.comp || 'cl') === 'ecl' ? 0 : CFG.KEEP[st]; r.keepSel = [];   // out of the Conference League's top 24: the end   // out of the Conference League's top 24: the end
   st8.runs++;
   if (!st8.bestStage || STAGE_RANK.indexOf(st) > STAGE_RANK.indexOf(st8.bestStage)) st8.bestStage = st;
   if (st === 'champion'){ st8.titlesBy = st8.titlesBy || {}; st8.titlesBy[r.comp || 'cl'] = (st8.titlesBy[r.comp || 'cl'] || 0) + 1; st8.titles++; st8.streak++; st8.best = Math.max(st8.best, st8.streak); } else st8.streak = 0;
@@ -1776,9 +1776,9 @@ async function openRun(i, wk){
 const PREV_COMP = { cl: 'el', el: 'ecl', ecl: null };
 const nextComp = r => { const c = r.comp || 'cl', st = r.cup && r.cup.stage; return st === 'champion' ? NEXT_COMP[c] : st === 'league' ? (PREV_COMP[c] || c) : c; };
 function continueRun(){
-  const r = S.run, carry = r.keepN > 0 ? { kept: keptInOrder(r), player: r.player, diff: r.diff || 'medium', comp: nextComp(r), vet: r.vet || {}, ever: [...new Set([...(r.ever || []), ...r.picks])] } : null;
+  const r = S.run, carry = r.keepN > 0 ? { wk: r.wk, kept: keptInOrder(r), player: r.player, diff: r.diff || 'medium', comp: nextComp(r), vet: r.vet || {}, ever: [...new Set([...(r.ever || []), ...r.picks])] } : null;
   S.run = null; save();
-  newRun(carry);
+  newRun(carry, !!(carry && carry.wk && weeklyOk() && W.weekly.week === carry.wk));   // a weekly run goes on as the same week's challenge
 }
 /* step timers: every decision has its own clock; when it runs out the game makes the decision */
 function stepKey(r){
@@ -2094,7 +2094,7 @@ function weeklyCard(){
   const end = new Date(w.week + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() + 6);
   const clubs = w.pots.flat().map(c => `<span class="wkc" style="${clubKit(W.C[c])}">${esc(W.C[c].name)}</span>`).join('');
   return `<section class="card weekly"><div class="drafthead"><div class="eyebrow">Weekly challenge · ${day(w.week)} to ${day(end.toISOString().slice(0, 10))}</div><span class="muted" style="font-size:12px">Champions League</span></div>
-    <p style="margin:8px 0 10px">The 22 clubs with the most wins from ${day(w.from)} to ${day(w.to)}, one per country, in 11 pots of 2. Everyone gets the same draft; Redraw shows the pot's other club. Nobody carries over.</p>
+    <p style="margin:8px 0 10px">The 22 clubs with the most wins from ${day(w.from)} to ${day(w.to)}, one per country, in 11 pots of 2. Everyone gets the same draft; Redraw shows the pot's other club. Play again straight away and your players carry over, as in any run.</p>
     <div class="wkcs">${clubs}</div>
     <div class="btnrow" style="margin-top:12px"><button class="btn primary" data-act="weekly">Play this week's challenge</button></div></section>`;
 }
@@ -3348,7 +3348,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024061901';
+const BUILD = '20261024062425';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
