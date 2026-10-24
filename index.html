@@ -1800,7 +1800,7 @@ const nextComp = r => { const c = r.comp || 'cl', st = r.cup && r.cup.stage; ret
 function continueRun(){
   const r = S.run, carry = r.keepN > 0 ? { wk: r.wk, kept: keptInOrder(r), player: r.player, diff: r.diff || 'medium', comp: nextComp(r), vet: r.vet || {}, ever: [...new Set([...(r.ever || []), ...r.picks])] } : null;
   S.run = null; save();
-  newRun(carry, !!(carry && carry.wk && weeklyOk() && W.weekly.week === carry.wk));   // a weekly run goes on as the same week's challenge
+  newRun(carry, !!(r.wk && weeklyOk() && W.weekly.week === r.wk));   // a weekly run goes on as the same week's challenge (with or without players kept)
 }
 /* step timers: every decision has its own clock; when it runs out the game makes the decision */
 function stepKey(r){
@@ -3173,7 +3173,7 @@ function viewComp(){
     ${topBox(r)}
     ${t ? tableHTML(tableAfter(c, (c.lg || []).length), 'League phase table', `You finished ${ord(t.pos)}`) : ''}
   </div>
-  ${dock(r.arch ? '<button class="btn primary" data-act="back">Back</button>' : r.keepN ? '<button class="btn primary" data-act="scr" data-to="keep">Next run: who stays?</button>' : '<button class="btn primary" data-act="cont">New run</button>', '<button class="btn ghost" data-act="scr" data-to="season">Your run</button>')}`;
+  ${dock(r.arch ? '<button class="btn primary" data-act="back">Back</button>' : r.keepN ? '<button class="btn primary" data-act="scr" data-to="keep">Next run: who stays?</button>' : `<button class="btn primary" data-act="cont">${r.wk && weeklyOk() && W.weekly.week === r.wk ? 'Try the weekly again' : 'New run'}</button>`, '<button class="btn ghost" data-act="scr" data-to="season">Your run</button>')}`;
 }
 /* who stays for the next run */
 function viewKeep(){
@@ -3433,7 +3433,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024113534';
+const BUILD = '20261024113644';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
