@@ -37,6 +37,11 @@ input.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-radi
 .career li{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line);align-items:baseline}
 .career li:first-child{border-top:0}.career .yr{color:var(--muted);font-size:13px}.career .cl{font-weight:600}.career .ln{font-size:11px;color:var(--muted);margin-left:6px;font-weight:400;border:1px solid var(--line);border-radius:5px;padding:0 5px}
 .hint{font-size:13px;color:var(--muted);margin-top:6px}
+.kit{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:8px;vertical-align:-1px;background:var(--line);border:2px solid var(--line)}
+.reveal{display:flex;flex-direction:column;margin-top:6px}.reveal b{font-size:17px}.reveal span{font-size:13px}
+.streak{margin:4px 0 12px;font-size:14px;color:var(--muted)}.streak b{color:var(--gold);font-size:18px}
+.pbadge{display:inline-block;margin:8px 0 2px;padding:4px 12px;border-radius:999px;border:1px solid var(--win);color:var(--win);font-weight:700;font-size:13px}
+.tabs{display:flex;gap:4px}.tab{background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}.tab.on{color:var(--text);border-color:var(--gold)}
 .opts{display:grid;gap:8px;margin-top:14px}.opt.gone{opacity:.25;text-decoration:line-through}
 .helps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 4px}.help{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 9px;border-radius:10px;border:1px solid var(--gold);background:transparent;text-align:left;position:relative}
 .help b{font-size:13px;font-family:var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--gold)}.help small{font-size:11px;color:var(--muted);line-height:1.25}.help .hn{position:absolute;top:6px;right:8px;font-size:11px;color:var(--muted)}.help.used,.help:disabled{opacity:.4;border-color:var(--line);cursor:default}.help.used b{color:var(--muted)}
@@ -71,22 +76,28 @@ function playerName(){
   return '';
 }
 
-/* ---------- the day's ten: the same for everyone, drawn from the date ---------- */
-function rng(seed){ let h = 2166136261; for (const ch of seed){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
-  return () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-// a new game every time: ten players, harder as it goes (three well-known, four from the middle, three from deeper in
-// the list, by overall); a swapped player comes from the same band
+/* ---------- the players for a game ---------- */
+// a new game every time, harder as it goes: three well-known players, four from the middle, three from deeper in the list,
+// by how well known they are (years at big clubs, the national team); a swapped player comes from the same band.
+// Endless: three well-known, then the middle, then deeper and deeper for as long as you keep getting them right
 const BANDS = [[0, .12], [0, .12], [0, .12], [.1, .4], [.1, .4], [.1, .4], [.1, .4], [.35, 1], [.35, 1], [.35, 1]];
 const pickR = arr => arr[Math.floor(Math.random() * arr.length)];
 function bandPool(players, band, used){
-  const byFame = DATA._byFame || (DATA._byFame = [...players].sort((a, b) => (b.ovr || 0) - (a.ovr || 0))), n = byFame.length, lo = Math.floor(band[0] * n);
+  const byFame = DATA._byFame || (DATA._byFame = [...players].sort((a, b) => (b.f != null ? b.f - a.f : (b.ovr || 0) - (a.ovr || 0)))), n = byFame.length, lo = Math.floor(band[0] * n);
   return byFame.slice(lo, Math.max(lo + 1, Math.floor(band[1] * n))).filter(p => !used.has(p.id));
 }
-// three wrong answers: the same line, a similar age and standing, never the same name
+const endlessBand = i => i < 3 ? BANDS[0] : i < 8 ? BANDS[3] : i < 15 ? BANDS[7] : [.6, 1];
+// three wrong answers: the same line, a similar age and standing, never the same name; one of them, when there is one,
+// played for a club in this career too, so the clubs alone do not give it away
 function buildQ(ans, players, band){
   const line = LINE[ans.pos] || 'MID', near = (p, a, o) => p.id !== ans.id && p.n !== ans.n && (LINE[p.pos] || 'MID') === line && Math.abs((p.age || 26) - (ans.age || 26)) <= a && Math.abs((p.ovr || 70) - (ans.ovr || 70)) <= o;
+  const clubs = new Set(ans.c.map(x => x[0])), shares = p => p.c.some(x => clubs.has(x[0]));
+  const wrong = [];
+  let mates = players.filter(p => p.id !== ans.id && p.n !== ans.n && shares(p) && (LINE[p.pos] || 'MID') === line && Math.abs((p.age || 26) - (ans.age || 26)) <= 5);
+  if (!mates.length) mates = players.filter(p => p.id !== ans.id && p.n !== ans.n && shares(p) && (LINE[p.pos] || 'MID') === line);
+  if (mates.length) wrong.push(pickR(mates));
   let cand = players.filter(p => near(p, 3, 6)); if (cand.length < 3) cand = players.filter(p => near(p, 6, 12)); if (cand.length < 3) cand = players.filter(p => p.id !== ans.id && p.n !== ans.n);
-  const wrong = []; while (wrong.length < 3 && cand.length){ const c = cand.splice(Math.floor(Math.random() * cand.length), 1)[0]; if (!wrong.some(w => w.n === c.n)) wrong.push(c); }
+  while (wrong.length < 3 && cand.length){ const c = cand.splice(Math.floor(Math.random() * cand.length), 1)[0]; if (!wrong.some(w => w.n === c.n)) wrong.push(c); }
   return { ans, band, opts: [ans, ...wrong].map(p => ({ p, k: Math.random() })).sort((a, b) => a.k - b.k).map(x => x.p), cut: [], info: false };
 }
 function newSet(players, used){
@@ -96,7 +107,7 @@ function newSet(players, used){
 }
 
 /* ---------- state ---------- */
-let DATA = null, G = null;   // G: the game { qs, i, picks: [{ok, ms}], used, help: {info, half, swap}, t0, timer }
+let DATA = null, G = null;   // G: the game { mode, qs, i, picks: [{ok, ms}], used, help: {info, half, swap}, t0, timer }
 
 /* ---------- screens ---------- */
 const header = () => `<div class="top"><div><div class="eyebrow">This Time Next Year</div><h1 style="font-size:26px;margin-top:4px">Guess Who</h1></div><a href="./">The draft game</a></div>`;
@@ -107,27 +118,47 @@ function viewStart(){
       <p class="muted" style="margin:8px 0 0">A player's career, club by club. Pick who it is from four names. ${Q_SECONDS} seconds each; the faster you are, the more you score. Three helps, once each per game: Info, Fifty-fifty and Swap. A new set of players every game.</p>
       <div class="eyebrow" style="margin-top:16px">Your name</div>
       <input id="nm" class="name" maxlength="20" placeholder="Type your name" value="${esc(name)}" autocomplete="nickname">
-      <button class="btn primary" id="go" style="margin-top:12px" ${name ? '' : 'disabled'}>${name ? 'Start as ' + esc(name) : 'Type your name to start'}</button>
+      <button class="btn primary" id="go" style="margin-top:12px" ${name ? '' : 'disabled'}>${name ? 'Ten players as ' + esc(name) : 'Type your name to start'}</button>
+      <button class="btn" id="goe" style="margin-top:8px" ${name ? '' : 'disabled'}>Endless: until you miss one</button>
+      ${statsLine()}
     </section>
-    <section class="card"><div class="eyebrow">Today's table</div><div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section>`;
-  $('#nm').addEventListener('input', e => { const v = e.target.value.replace(/\s+/g, ' ').trim().slice(0, 20), s = store.get(); s.name = v; store.set(s); const b = $('#go'); b.disabled = !v; b.textContent = v ? 'Start as ' + v : 'Type your name to start'; });
+    <section class="card">${tableHead()}<div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section>`;
+  bindTabs();
+  $('#nm').addEventListener('input', e => { const v = e.target.value.replace(/\s+/g, ' ').trim().slice(0, 20), s = store.get(); s.name = v; store.set(s); const b = $('#go'); b.disabled = !v; b.textContent = v ? 'Ten players as ' + v : 'Type your name to start'; $('#goe').disabled = !v; });
   $('#nm').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('#go').disabled) $('#go').click(); });
-  $('#go').addEventListener('click', start);
+  $('#go').addEventListener('click', () => start('ten')); $('#goe').addEventListener('click', () => start('endless'));
   loadTable();
 }
-function start(){
-  const used = new Set(), qs = newSet(DATA.players, used); if (!qs.length){ toast('No players yet.'); return; }
-  G = { qs, used, i: 0, picks: [], help: {} }; viewQ();
+function start(mode){
+  mode = mode === 'endless' ? 'endless' : 'ten';
+  const used = new Set();
+  let qs;
+  if (mode === 'ten') qs = newSet(DATA.players, used);
+  else { const pool = bandPool(DATA.players, endlessBand(0), used), ans = pickR(pool); used.add(ans.id); qs = [buildQ(ans, DATA.players, endlessBand(0))]; }
+  if (!qs.length){ toast('No players yet.'); return; }
+  G = { mode, qs, used, i: 0, picks: [], help: {} }; viewQ();
+}
+/* personal numbers on this device: games, best score, best endless run, share of right answers */
+function statsLine(){
+  const t = store.get().stats; if (!t || !t.games) return '';
+  return `<p class="muted" style="margin:12px 0 0;font-size:13px">Your games: ${t.games} · best ${t.best || 0} · endless best ${t.streak || 0} · ${t.total ? Math.round(100 * t.right / t.total) : 0}% right</p>`;
+}
+function addStats(res){
+  const s = store.get(), t = s.stats = s.stats || { games: 0, best: 0, streak: 0, right: 0, total: 0 };
+  const key = res.mode === 'endless' ? 'streak' : 'best', pb = (t[key] || 0) > 0 && res.score > t[key];
+  t.games++; t.right += res.right; t.total += res.picks.length; if (res.score > (t[key] || 0)) t[key] = res.score;
+  store.set(s); return pb;
 }
 function careerHTML(c){
-  return `<ol class="career">${c.map(([club, y0, y1, loan]) => `<li><span class="yr num">${y0 == null ? '' : y0}${y0 == null || y0 !== y1 ? '–' + (y1 === new Date().getUTCFullYear() ? '' : y1) : ''}</span><span class="cl">${esc(club)}${loan ? '<span class="ln">loan</span>' : ''}</span></li>`).join('')}</ol>`;
+  const kit = n => { const k = (DATA.kits || {})[n]; return `<i class="kit" style="${k ? `background:${k[0]};border-color:${k[1]}` : ''}"></i>`; };
+  return `<ol class="career">${c.map(([club, y0, y1, loan]) => `<li><span class="yr num">${y0 == null ? '' : y0}${y0 == null || y0 !== y1 ? '–' + (y1 === new Date().getUTCFullYear() ? '' : y1) : ''}</span><span class="cl">${kit(club)}${esc(club)}${loan ? '<span class="ln">loan</span>' : ''}</span></li>`).join('')}</ol>`;
 }
 function viewQ(){
   const q = G.qs[G.i], line = LINE[q.ans.pos] || 'MID';
-  const prog = G.qs.map((_, j) => `<i class="${j < G.picks.length ? (G.picks[j].ok ? 'ok' : 'no') : j === G.i ? 'now' : ''}"></i>`).join('');
+  const prog = G.mode === 'ten' ? `<div class="prog">${G.qs.map((_, j) => `<i class="${j < G.picks.length ? (G.picks[j].ok ? 'ok' : 'no') : j === G.i ? 'now' : ''}"></i>`).join('')}</div>` : `<div class="streak">Endless · <b class="num">${G.picks.length}</b> in a row</div>`;
   $('#app').innerHTML = `${header()}
-    <div class="prog">${prog}</div>
-    <section class="card"><div class="qhead"><div class="eyebrow">Player ${G.i + 1} of ${G.qs.length}</div><span class="muted num" id="secs">${Q_SECONDS}</span></div>
+    ${prog}
+    <section class="card"><div class="qhead"><div class="eyebrow">${G.mode === 'ten' ? `Player ${G.i + 1} of ${G.qs.length}` : `Player ${G.i + 1}`}</div><span class="muted num" id="secs">${Q_SECONDS}</span></div>
       <div class="timer"><b id="bar"></b></div>
       <div class="helps">${HELPS.map(([k, name, desc], i) => `<button class="help${G.help[k] ? ' used' : ''}" data-h="${k}" ${G.help[k] ? 'disabled' : ''} title="${desc}"><span class="hn">${i + 1}</span><b>${name}</b><small>${G.help[k] ? 'Used' : desc}</small></button>`).join('')}</div>
       ${q.info ? `<div class="hint">A ${POS_NAME[line]}, aged ${esc(q.ans.age || '?')}${q.ans.nat ? ', from ' + esc(q.ans.nat) : ''}</div>` : ''}
@@ -160,29 +191,34 @@ function answer(k){
   const q = G.qs[G.i], ms = Math.round(performance.now() - G.t0), ok = k >= 0 && q.opts[k].id === q.ans.id;
   G.picks.push({ ok, ms: Math.max(300, Math.min(ms, Q_SECONDS * 1000)) });
   document.querySelectorAll('.opt').forEach((b, j) => { b.disabled = true; if (q.opts[j].id === q.ans.id) b.classList.add('right'); else if (j === k) b.classList.add('wrong'); });
-  const last = G.i + 1 >= G.qs.length;
-  $('#after').innerHTML = `<div class="verdict ${ok ? 'ok' : 'no'}">${ok ? 'Right! +' + points(G.picks[G.picks.length - 1]) : k < 0 ? 'Time is up.' : 'Not this time.'} <span class="muted" style="font-weight:400">${esc(q.ans.n)}${q.ans.nat ? ', ' + esc(q.ans.nat) : ''}</span></div>
-    <button class="btn primary" id="nx" style="margin-top:12px">${last ? 'See your score' : 'Next player'}</button>`;
-  $('#nx').addEventListener('click', () => { G.answered = false; if (last) finish(); else { G.i++; viewQ(); } });
+  const last = G.mode === 'ten' ? G.i + 1 >= G.qs.length : !ok;
+  if (G.mode === 'endless' && ok){ const band = endlessBand(G.i + 1), pool = bandPool(DATA.players, band, G.used); if (pool.length){ const a = pickR(pool); G.used.add(a.id); G.qs.push(buildQ(a, DATA.players, band)); } }
+  const now = q.ans.c[q.ans.c.length - 1];
+  $('#after').innerHTML = `<div class="verdict ${ok ? 'ok' : 'no'}">${ok ? (G.mode === 'ten' ? 'Right! +' + points(G.picks[G.picks.length - 1]) : 'Right! ' + G.picks.length + ' in a row') : k < 0 ? 'Time is up.' : 'Not this time.'}</div>
+    <div class="reveal"><b>${esc(q.ans.n)}</b><span class="muted">${[q.ans.nat, POS_NAME[LINE[q.ans.pos] || 'MID'], now && now[0]].filter(Boolean).map(esc).join(' · ')}</span></div>
+    <button class="btn primary" id="nx" style="margin-top:12px">${last ? (G.mode === 'ten' ? 'See your score' : 'See your run') : 'Next player'}</button>`;
+  $('#nx').addEventListener('click', () => { G.answered = false; if (last || G.i + 1 >= G.qs.length) finish(); else { G.i++; viewQ(); } });
   $('#nx').focus();
 }
 function finish(){
   G.done = true;
-  const score = G.picks.reduce((t, p) => t + points(p), 0), right = G.picks.filter(p => p.ok).length;
-  const res = { score, right, picks: G.picks.map(p => [p.ok ? 1 : 0, p.ms]), name: playerName() };
-  push(res); viewDone(res);
+  const right = G.picks.filter(p => p.ok).length, score = G.mode === 'ten' ? G.picks.reduce((t, p) => t + points(p), 0) : right;
+  const res = { mode: G.mode, score, right, picks: G.picks.map(p => [p.ok ? 1 : 0, p.ms]), name: playerName() };
+  res.pb = addStats(res); push(res); viewDone(res);
 }
 function shareText(res){
   const d = new Date(today() + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  return `TTNY Guess Who · ${d}\n${res.right}/${N_Q} · ${res.score}\n${res.picks.map(p => p[0] ? '🟩' : '🟥').join('')}\n${location.href.split('#')[0]}`;
+  return res.mode === 'endless' ? `TTNY Guess Who · Endless · ${d}\n${res.score} in a row\n${location.href.split('#')[0]}` : `TTNY Guess Who · ${d}\n${res.right}/${N_Q} · ${res.score}\n${res.picks.map(p => p[0] ? '🟩' : '🟥').join('')}\n${location.href.split('#')[0]}`;
 }
 function viewDone(res){
   $('#app').innerHTML = `${header()}
-    <section class="card" style="text-align:center"><div class="eyebrow">Your score</div><div class="big num" style="margin-top:8px">${res.score}</div>
-      <div class="muted">${res.right} of ${N_Q} right</div><div class="grid">${res.picks.map(p => p[0] ? '🟩' : '🟥').join('')}</div>
+    <section class="card" style="text-align:center"><div class="eyebrow">${res.mode === 'endless' ? 'Your endless run' : 'Your score'}</div><div class="big num" style="margin-top:8px">${res.score}</div>
+      ${res.pb ? '<div class="pbadge">Personal best!</div>' : ''}
+      ${res.mode === 'endless' ? `<div class="muted">${res.score === 1 ? 'player' : 'players'} in a row</div>` : `<div class="muted">${res.right} of ${N_Q} right</div><div class="grid">${res.picks.map(p => p[0] ? '🟩' : '🟥').join('')}</div>`}
       <div class="row"><button class="btn primary" id="again">Play again</button><button class="btn" id="sh">Share</button></div></section>
-    <section class="card"><div class="eyebrow">Today's table</div><div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section>`;
-  $('#again').addEventListener('click', start);
+    <section class="card">${tableHead()}<div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section>`;
+  $('#again').addEventListener('click', () => start(res.mode)); bindTabs();
+  LBMODE = res.mode;
   $('#sh').addEventListener('click', async () => { const t = shareText(res);
     try { if (navigator.share){ await navigator.share({ text: t }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(t); toast('Copied. Paste it in your group.'); } catch (e) { toast(t); } });
@@ -190,21 +226,27 @@ function viewDone(res){
 }
 
 /* ---------- today's table (Supabase, table "guesses"): each name's best score of the day ---------- */
+let LBMODE = 'ten';
+const tableHead = () => `<div class="qhead"><div class="eyebrow">Today's table</div><div class="tabs"><button class="tab${LBMODE === 'ten' ? ' on' : ''}" data-m="ten">Ten</button><button class="tab${LBMODE === 'endless' ? ' on' : ''}" data-m="endless">Endless</button></div></div>`;
+function bindTabs(){ document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { LBMODE = b.dataset.m; document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE)); loadTable(); })); }
 const head = () => Object.assign({ apikey: LB_CFG.key, 'Content-Type': 'application/json' }, /^eyJ/.test(LB_CFG.key) ? { Authorization: 'Bearer ' + LB_CFG.key } : {});
 async function loadTable(){
   const el = $('#lb'); if (!el) return;
   try {
-    const r = await fetch(LB_CFG.url + '/rest/v1/guesses?select=name,score,at&day=eq.' + today() + '&order=score.desc,at.asc&limit=300', { headers: head(), cache: 'no-store' });
+    const q = LB_CFG.url + '/rest/v1/guesses?select=name,score,at&day=eq.' + today() + '&order=score.desc,at.asc&limit=300';
+    let r = await fetch(q + '&mode=eq.' + LBMODE, { headers: head(), cache: 'no-store' });
+    if (!r.ok && LBMODE === 'ten') r = await fetch(q, { headers: head(), cache: 'no-store' });   // a table from before the endless mode
     if (!r.ok) throw new Error(r.status);
     const seen = new Set(), rows = (await r.json()).filter(x => { const k = String(x.name || '').trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 10);
     const me = playerName().trim().toLowerCase();
+    if (LBMODE !== (document.querySelector('.tab.on') || {}).dataset?.m) return;
     el.innerHTML = rows.length ? `<ol class="lb">${rows.map((x, i) => `<li class="${String(x.name).trim().toLowerCase() === me ? 'me' : ''}"><span>${i + 1}. ${esc(x.name)}</span><b class="num">${+x.score || 0}</b></li>`).join('')}</ol>` : '<p class="muted" style="margin:6px 0 0">Nobody has played today yet.</p>';
   } catch (e) { el.innerHTML = '<p class="muted" style="margin:6px 0 0">The table is not available here.</p>'; }
 }
 async function push(res){
   try {
     const r = await fetch(LB_CFG.url + '/rest/v1/guesses', { method: 'POST', headers: Object.assign(head(), { Prefer: 'return=minimal' }),
-      body: JSON.stringify({ id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), day: today(), name: (res.name || 'Unnamed').slice(0, 20), score: res.score, picks: res.picks }) });
+      body: JSON.stringify(Object.assign({ id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), day: today(), name: (res.name || 'Unnamed').slice(0, 20), score: res.score, picks: res.picks }, res.mode === 'endless' ? { mode: 'endless' } : {})) });
     if (!r.ok) throw new Error('status ' + r.status);
     loadTable();
   } catch (e) { toast('Your score could not be saved to the table (' + e.message + ').'); }

@@ -1250,6 +1250,18 @@ def short_club(name):
     return re.sub(r'\s+(FC|CF|SC|AC|FK|SK|NK|AFC|CFC|U19|U21|U23| II)$', '', (name or '').strip()) or name
 
 
+def game_kits():
+    """The clubs' home colours as the game has them (CLUB_KITS and CLUB_ALIAS in index.html), so both games agree."""
+    try:
+        src = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
+    except OSError:
+        return {}, {}
+    body = lambda name: (re.search(r'const ' + name + r' = \{(.*?)\};', src, re.S) or [None, ''])[1]
+    kits = {m.group(2): [m.group(3), m.group(4)] for m in re.finditer(r'([\'"])(.+?)\1\s*:\s*\[\s*\'(#[0-9A-Fa-f]{6})\'\s*,\s*\'(#[0-9A-Fa-f]{6})\'\s*\]', body('CLUB_KITS'))}
+    alias = {m.group(2): m.group(4) for m in re.finditer(r'([\'"])(.+?)\1\s*:\s*([\'"])(.+?)\3', body('CLUB_ALIAS'))}
+    return kits, alias
+
+
 def same_club(a, b):
     """Two spellings of one club: equal once accents, 'FC'-type words and the München/Munich kind of variants go."""
     def key(x):
@@ -1265,7 +1277,10 @@ def write_careers(world, careers, teams):
     club last, to today), with his name, nationality, main position, age and overall (for difficulty and the wrong
     answers). Youth clubs before his first transfer are not in the API, so short histories are left out."""
     club_name = {c['id']: c['name'] for c in world['clubs']}
-    out = []
+    club_rank = {c['id']: c['rank'] for c in world['clubs']}
+    rank_of_name = {c['name']: c['rank'] for c in world['clubs']}
+    kits, alias = game_kits()
+    out, used_kits = [], {}
     for p in world['players']:
         mv = careers.get(str(p['id']))
         if not mv:
@@ -1292,9 +1307,20 @@ def write_careers(world, careers, teams):
             st.append([cur, st[-1][2], TODAY.year, 0])
         if len({s[0] for s in st}) < CAREER_MIN_CLUBS:
             continue
-        out.append({'id': p['id'], 'n': p['name'], 'nat': p.get('nat'), 'pos': p['prim'], 'age': p.get('age'), 'ovr': p.get('ovr'), 'c': st})
+        # how well known he is: years at big clubs (by UEFA rank, the top 120 counting, the higher the more), plus his
+        # national team; the quiz starts with the best known
+        fame = 0.0
+        for nm, y0, y1, loan in st:
+            r = rank_of_name.get(nm)
+            if r and r <= 120:
+                fame += (1 - (r - 1) / 120) ** 2 * min(6, max(1, (y1 or TODAY.year) - (y0 or (y1 or TODAY.year) - 1)))
+        fame += min(10, p.get('nt') or 0) * 0.4 + (p.get('ovr') or 60) / 25
+        for nm, *_ in st:
+            k = kits.get(nm) or kits.get(alias.get(nm, ''))
+            if k: used_kits[nm] = k
+        out.append({'id': p['id'], 'n': p['name'], 'nat': p.get('nat'), 'pos': p['prim'], 'age': p.get('age'), 'ovr': p.get('ovr'), 'f': round(fame, 2), 'c': st})
     with open(os.path.join(ROOT, 'careers.json'), 'w', encoding='utf-8') as f:
-        json.dump({'updated': TODAY.isoformat(), 'players': out}, f, ensure_ascii=False, separators=(',', ':'))
+        json.dump({'updated': TODAY.isoformat(), 'kits': used_kits, 'players': out}, f, ensure_ascii=False, separators=(',', ':'))
     log(f'  careers.json: {len(out)} players')
 
 
