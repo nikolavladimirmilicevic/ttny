@@ -810,8 +810,10 @@ def fetch_arrivals(top_ids, extra, meta, squads, careers=None):
             continue
         try:
             data = api('transfers', team=tid)
-        except RuntimeError as e:
-            log(f'  transfers failed for team {tid}: {e}'); done[str(tid)] = TODAY.isoformat(); continue
+        except OutOfBudget:
+            raise
+        except Exception as e:   # one club's list failing (an API error, a timeout) does not stop the others
+            log(f'  transfers failed for team {tid}: {e!r}'); continue
         for x in data.get('response', []):
             if (x.get('player') or {}).get('id') not in members:
                 continue
@@ -1382,6 +1384,11 @@ def main():
         fetch_lineups(top | set(ext_ids), fx, lu, evs, pst, first=nat_ids, until=until, subs=subs, backfill=True)
     except OutOfBudget:
         stopped = f'Stopped after {used} calls (MAX_REQUESTS={BUDGET}). The next run continues from here.'
+        log(stopped)
+    except Exception as e:   # a network or API failure after results and line-ups are in: build with what we have
+        if not core_done:
+            raise
+        stopped = f'Stopped by an error after {used} calls: {e!r}. The next run continues from here.'
         log(stopped)
     finally:
         cutoff = (TODAY - dt.timedelta(days=400)).isoformat()
