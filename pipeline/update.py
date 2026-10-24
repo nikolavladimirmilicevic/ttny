@@ -800,8 +800,8 @@ def fetch_arrivals(top_ids, extra, meta, squads, careers=None):
         for k in [k for k, v in extra.items() if v.get('kind') == 'club']:
             extra.pop(k)
     done = meta.setdefault('transfers', {})
-    if careers is not None and not careers and meta.get('careers_v') != 1:
-        done.clear(); meta['careers_v'] = 1   # the first time careers are kept: every club once more, to collect them
+    if careers is not None and meta.get('careers_v') != 2:
+        done.clear(); meta['careers_v'] = 2   # careers merged from every club's list: every club once more, to collect them
     top = set(top_ids)
     members = {pid for sq in squads.values() for pid in (sq.get('p') or [])}
     lo, hi = SINCE.isoformat(), TODAY.isoformat()
@@ -816,9 +816,12 @@ def fetch_arrivals(top_ids, extra, meta, squads, careers=None):
             if (x.get('player') or {}).get('id') not in members:
                 continue
             moves = sorted((t for t in x.get('transfers') or [] if t.get('date')), key=lambda t: t['date'])
-            if careers is not None and moves:   # his whole transfer history, for the guess-who game
-                careers[str(x['player']['id'])] = [[t['date'], ((t.get('teams') or {}).get('out') or {}).get('id'), ((t.get('teams') or {}).get('out') or {}).get('name'),
+            if careers is not None and moves:   # his transfer history, for the guess-who game: each club's list holds only part
+                # of it (a past club may list a move or two), so every list he appears in is merged in, never replacing
+                key = str(x['player']['id']); have = {(m[0], m[1], m[3]) for m in careers.get(key, [])}
+                new = [[t['date'], ((t.get('teams') or {}).get('out') or {}).get('id'), ((t.get('teams') or {}).get('out') or {}).get('name'),
                                                     ((t.get('teams') or {}).get('in') or {}).get('id'), ((t.get('teams') or {}).get('in') or {}).get('name'), t.get('type') or ''] for t in moves]
+                careers[key] = sorted(careers.get(key, []) + [m for m in new if (m[0], m[1], m[3]) not in have], key=lambda m: m[0])
             for k, t in enumerate(moves):
                 d = t['date']
                 left = (t.get('teams') or {}).get('out') or {}
