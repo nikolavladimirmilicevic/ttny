@@ -97,14 +97,17 @@ select.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-rad
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:8}.confetti i{position:absolute;top:-12px;width:8px;height:12px;border-radius:2px;animation:fall linear forwards}@keyframes fall{to{top:105%;transform:translateX(30px) rotate(540deg)}}
 
 /* the career: one card per club, as the draft game's player cards, in the club's home colours (shirt and text) */
-.career{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:6px}
-.career.two{grid-template-columns:1fr 1fr;grid-auto-flow:column;column-gap:6px}
-.career li{display:flex;align-items:center;min-width:0;min-height:56px;padding:8px 14px;border-radius:10px;background:var(--k1,var(--panel-2));color:var(--k2,var(--text));border:2px solid rgba(255,255,255,.08);transition:background .35s,color .35s}
-.career .crest{flex:none;width:64px;height:64px;margin:-6px 12px -6px -4px;object-fit:contain;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}.career li.hid .crest{visibility:hidden}.pair .crest.big{width:64px;height:64px;object-fit:contain;margin:0}
-.career .cl{font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.career.two li{padding:6px 10px;min-height:48px}.career.two .crest{width:44px;height:44px;margin:-4px 8px -4px -4px}.career.two .cl{font-size:14px}
-.career li.hid{background:var(--panel-2);color:var(--muted)}.career li.hid .cl{font-size:0}.career li.hid .cl::after{content:'?';font-size:15px}
-.review .career{margin:2px 0 12px 30px}.review .career li{padding:5px 10px;min-height:40px}.review .career .crest{width:32px;height:32px;margin:-4px 8px -4px -2px}.review .career .cl{font-size:14px}
+/* the career: crests in a row, an arrow from one club to the next */
+.career{list-style:none;margin:18px 0 6px;padding:0;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;row-gap:14px}
+.career li{display:flex;flex-direction:column;align-items:center;position:relative}
+.career li+li{padding-left:30px}.career li+li::before{content:'→';position:absolute;left:6px;top:20px;color:var(--muted);font-size:18px;line-height:1}
+.career .crest{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));transition:opacity .35s}
+.pair .crest.pairc{width:64px;height:64px;object-fit:contain;margin:0;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+.career .cname{font-size:13px;max-width:90px;text-align:center;line-height:64px}
+.career .q{display:none;width:60px;height:60px;margin:2px;border-radius:50%;background:var(--panel-2);border:2px dashed var(--line);color:var(--muted);font:700 24px/56px var(--display);text-align:center}
+.career li.hid .crest,.career li.hid .cname{display:none}.career li.hid .q{display:block}
+.career.named small{font-size:11px;color:var(--muted);max-width:80px;text-align:center;line-height:1.2;margin-top:4px}
+.review .career{margin:6px 0 14px 30px;justify-content:flex-start}.review .career .crest{width:40px;height:40px}.review .career li+li{padding-left:24px}.review .career li+li::before{left:4px;top:11px;font-size:14px}.review .career .q{display:none}
 /* the start screen, as the draft game's home */
 .hero{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px;padding:26px 20px;border-radius:16px;border:1px solid var(--line);background:radial-gradient(120% 90% at 50% -10%,rgba(227,179,65,.22),transparent 60%),repeating-linear-gradient(90deg,var(--grass) 0 40px,var(--grass-2) 40px 80px)}
 .hero .hlogo{align-self:start;width:0;height:0;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
@@ -334,7 +337,7 @@ function viewStart(){
       <li><b>Pick a mode.</b> Ten players with four names to choose from, the clubs one by one, typing the name yourself, who played for both clubs, or endless until your first miss.</li>
       <li><b>Name him.</b> ${Q_SECONDS} seconds a player: 100 for the right name and up to 50 more for speed. Three helps, once each per game: Info, Fifty-fifty and Swap.</li>
       <li><b>Climb the table.</b> Each name's best score of the day, the week and all time, per mode. Send your ten to a friend and play the same players.</li></ol></details>
-    <p class="foot">Careers from API-Football's transfer lists: ${DATA.players.length.toLocaleString('en-GB')} players with at least three clubs. Youth clubs before a first transfer are not in them. A new set of players every game. Not affiliated with any club, league, UEFA or API-Football; club names and crests belong to their clubs.</p>
+    <p class="foot">Careers from API-Football's transfer lists: ${DATA.players.length.toLocaleString('en-GB')} players with at least three clubs, every one with its crest. Youth clubs before a first transfer are not in them. A new set of players every game. Not affiliated with any club, league, UEFA or API-Football; club names and crests belong to their clubs.</p>
   </div>`;
   bindTabs(); fitHeroLogo();
   if (CH){ $('#gch').addEventListener('click', () => start(CH.m, CH.t, CH)); $('#xch').addEventListener('click', () => { CH = null; history.replaceState(null, '', location.pathname + location.search); viewStart(); }); }
@@ -420,13 +423,18 @@ const kitChip = n => { const k = (DATA.kits || {})[n]; return `<i class="kit" st
 // in two columns (down the first, then the second)
 // a club's crest, kept with the game (crests/<team id>.png, fetched by the pipeline); none when we do not have it
 const crestImg = club => { const id = (DATA.cr || {})[club]; return id ? `<img class="crest" src="crests/${id}.png" alt="" loading="lazy" onerror="this.remove()">` : ''; };
-function careerHTML(c, shown){
-  // a short stay back at a club between two loans away is left out (Fiorentina, Man Utd on loan, Fiorentina, Fenerbahçe...)
+// the clubs a career shows: a short stay back at a club between two loans away is left out (Fiorentina, Man Utd on loan,
+// Fiorentina, Fenerbahçe...), and the same club twice in a row is one
+function shownClubs(c){
   const keep = c.filter((x, j) => !(j > 0 && j < c.length - 1 && c[j - 1][3] === 1 && (x[2] || 0) - (x[1] || 0) <= 0 && c.slice(0, j - 1).some(y => y[0] === x[0])));
-  const clubs = keep.map(x => x[0]).filter((n, j, a) => j === 0 || n !== a[j - 1]);
-  const two = clubs.length >= 8;
-  return `<ol class="career${two ? ' two' : ''}"${two ? ` style="grid-template-rows:repeat(${Math.ceil(clubs.length / 2)},auto)"` : ''}>${clubs.map((club, j) => { const k = (DATA.kits || {})[club];
-    return `<li class="${shown != null && j >= shown ? 'hid' : ''}"${k ? ` style="--k1:${k[0]};--k2:${k[1]}"` : ''}>${crestImg(club)}<span class="cl">${esc(club)}</span></li>`; }).join('')}</ol>`;
+  return keep.map(x => x[0]).filter((n, j, a) => j === 0 || n !== a[j - 1]);
+}
+// the career as crests only, an arrow from one to the next (the names would give too much away); after the game, in the
+// review, each crest has its club's name under it. Only players whose every club has a crest are in the game.
+function careerHTML(c, shown, named){
+  return `<ol class="career${named ? ' named' : ''}">${shownClubs(c).map((club, j) => { const id = (DATA.cr || {})[club];
+    const img = id ? `<img class="crest" src="crests/${id}.png" alt="" data-n="${esc(club)}" onerror="this.replaceWith(Object.assign(document.createElement('b'), { className: 'cname', textContent: this.dataset.n }))">` : `<b class="cname">${esc(club)}</b>`;
+    return `<li class="${shown != null && j >= shown ? 'hid' : ''}">${img}<span class="q" aria-hidden="true">?</span>${named ? `<small>${esc(club)}</small>` : ''}</li>`; }).join('')}</ol>`;
 }
 // One by one: the first club at once, the rest one at a time, all of them on screen by about 13 seconds
 const dripStep = n => Math.max(1500, Math.min(3500, 13000 / Math.max(1, n - 1)));
@@ -442,7 +450,7 @@ function viewQ(){
       <div class="helps">${helpsFor().map(([k, name, desc], i) => `<button class="help${G.help[k] ? ' used' : ''}" data-h="${k}" ${G.help[k] ? 'disabled' : ''} title="${desc}"><span class="hn">${i + 1}</span><span><b>${name}</b><small>${G.help[k] ? 'Used' : desc}</small></span></button>`).join('')}</div>
       ${q.info ? `<div class="hint">A ${POS_NAME[line]}, aged ${esc(q.ans.age || '?')}${q.ans.nat ? ', from ' + esc(q.ans.nat) : ''}</div>` : ''}
       ${q.initials ? `<div class="hint">His initials: <b>${esc(q.ans.n.split(/\s+/).map(w => w[0] + '.').join(' '))}</b></div>` : ''}
-      ${q.kind === 'both' ? `<div class="hint" style="margin-top:10px">Who played for both?</div><div class="pair">${q.pair.map(c => `<div class="pc">${crestImg(c).replace('class="crest"', 'class="crest big"') || kitChip(c)}${esc(c)}</div>`).join('<span class="amp">&amp;</span>')}</div>` : careerHTML(q.ans.c, G.mode === 'drip' ? 1 : null)}
+      ${q.kind === 'both' ? `<div class="hint" style="margin-top:10px">Who played for both?</div><div class="pair">${q.pair.map(c => `<div class="pc">${crestImg(c).replace('class="crest"', 'class="crest pairc"') || esc(c)}</div>`).join('<span class="amp">&amp;</span>')}</div>` : careerHTML(q.ans.c, G.mode === 'drip' ? 1 : null)}
       ${G.mode === 'typed' ? `<div class="typed"><input id="ty" class="name" placeholder="Type his name" autocomplete="off" autocapitalize="words" spellcheck="false"><div class="sugg" id="sg"></div></div>`
         : `<div class="opts">${q.opts.map((p, k) => `<button class="opt${q.cut.includes(k) ? ' gone' : ''}" data-k="${k}" ${q.cut.includes(k) ? 'disabled' : ''}><span class="key">${'ABCD'[k]}</span>${esc(p.n)}</button>`).join('')}</div>`}
       <div id="after"></div></section></div>`;
@@ -526,7 +534,7 @@ function shareText(res){
 }
 // every player of the game, what you said, and his career when you open him
 function reviewHTML(res, other){
-  return `<section class="card"${other ? ' style="padding:12px 0 0"' : ''}><div class="eyebrow">${other ? 'The players' : 'Your players'}</div><div class="review">${res.log.map((p, j) => `<details><summary><span class="rk ${p.ok ? 'ok' : 'no'}">${p.ok ? '✓' : '✗'}</span><span class="rn"><b>${esc(p.q.ans.n)}</b>${p.ok ? '' : `<small class="muted">${p.pick ? (other ? 'said ' : 'you said ') + esc(p.pick) : 'time ran out'}</small>`}</span><span class="muted num">${res.mode !== 'endless' ? (p.ok ? '+' + points(p) : '0') : j + 1}</span></summary>${p.q.kind === 'both' ? `<div class="hint" style="margin-left:30px">${p.q.pair.map(esc).join(' &amp; ')}</div>` : ''}${careerHTML(p.q.ans.c)}</details>`).join('')}</div></section>`;
+  return `<section class="card"${other ? ' style="padding:12px 0 0"' : ''}><div class="eyebrow">${other ? 'The players' : 'Your players'}</div><div class="review">${res.log.map((p, j) => `<details><summary><span class="rk ${p.ok ? 'ok' : 'no'}">${p.ok ? '✓' : '✗'}</span><span class="rn"><b>${esc(p.q.ans.n)}</b>${p.ok ? '' : `<small class="muted">${p.pick ? (other ? 'said ' : 'you said ') + esc(p.pick) : 'time ran out'}</small>`}</span><span class="muted num">${res.mode !== 'endless' ? (p.ok ? '+' + points(p) : '0') : j + 1}</span></summary>${p.q.kind === 'both' ? `<div class="hint" style="margin-left:30px">${p.q.pair.map(esc).join(' &amp; ')}</div>` : ''}${careerHTML(p.q.ans.c, null, true)}</details>`).join('')}</div></section>`;
 }
 function viewDone(res){
   $('#app').innerHTML = `${header()}<div class="narrow">
@@ -677,6 +685,9 @@ function countVisit(page){
 (async () => {
   try { const r = await fetch('careers.json', { cache: 'no-cache' }); if (r.ok) DATA = await r.json(); } catch (e) {}
   if (!DATA || !DATA.players || DATA.players.length < 40){ $('#app').innerHTML = `${header()}<section class="card"><h2>Coming soon</h2><p class="muted" style="margin:8px 0 0">The players' careers are being collected. Come back tomorrow.</p></section>`; return; }
+  // only the players whose every club has a crest (the career is shown as crests alone)
+  const cr = DATA.cr || {}; DATA.players = DATA.players.filter(p => shownClubs(p.c).every(n => cr[n]));
+  if (DATA.players.length < 40){ $('#app').innerHTML = `${header()}<section class="card"><h2>Coming soon</h2><p class="muted" style="margin:8px 0 0">The clubs' crests are being collected. Come back tomorrow.</p></section>`; return; }
   CH = readChallenge(); viewStart(); countVisit('guess');
 })();
 </script>

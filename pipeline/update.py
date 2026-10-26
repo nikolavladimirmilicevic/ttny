@@ -1278,12 +1278,12 @@ def same_club(a, b):
 
 
 CREST_DIR = os.path.join(ROOT, 'crests')
-CREST_PER_RUN = 400
+CREST_PER_RUN = 1200
 
 
 def fetch_crests(ids):
     """Club crests for both games, kept in the repository (crests/<team id>.png, 64 px): API-Sports asks that its media be
-    saved on your side rather than shown from its servers, and they do not count towards the daily calls. At most 400
+    saved on your side rather than shown from its servers, and they do not count towards the daily calls. At most 1,200
     new ones a run, the draft game's clubs first; a crest the API does not have is not asked for again. Only in the
     GitHub workflow (the shell elsewhere has no access to the media server). Returns the ids that have a crest."""
     os.makedirs(CREST_DIR, exist_ok=True)

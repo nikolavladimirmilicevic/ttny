@@ -31,8 +31,11 @@ const fail = m => { console.error('SMOKE FAILED: ' + m); process.exit(1); };
     // Guess Who
     const g = await page(); await g.goto(base + 'guess.html', { timeout: 60000 });
     await g.waitForSelector('#go', { timeout: 60000 });
-    const n = await g.evaluate(() => DATA.players.length); console.log('guess who: players', n);
+    // every career in the file, and the players in the game (those whose every club has a crest)
+    const n = await g.evaluate(() => fetch('careers.json').then(r => r.json()).then(d => d.players.length)), inGame = await g.evaluate(() => DATA.players.length);
+    console.log('guess who: careers', n, 'in the game', inGame);
     if (n < 1000) fail(`only ${n} careers`);
+    if (inGame < 40) fail(`only ${inGame} players with a crest for every club`);
     if (await g.$('#nm')) await g.fill('#nm', 'Smoke test');
     await g.click('#go'); await g.waitForSelector('.opt', { timeout: 20000 });
     await g.click('.opt'); await g.waitForSelector('#nx', { timeout: 5000 });
