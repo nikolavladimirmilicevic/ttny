@@ -100,6 +100,7 @@ select.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-rad
 .career{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:6px}
 .career.two{grid-template-columns:1fr 1fr;grid-auto-flow:column;column-gap:6px}
 .career li{display:flex;align-items:center;min-width:0;padding:10px 12px;border-radius:10px;background:var(--k1,var(--panel-2));color:var(--k2,var(--text));border:2px solid rgba(255,255,255,.08);transition:background .35s,color .35s}
+.career .crest{flex:none;width:24px;height:24px;object-fit:contain;margin-right:10px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}.career li.hid .crest{visibility:hidden}.pair .crest.big{width:40px;height:40px;object-fit:contain;margin:0}
 .career .cl{font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .career.two li{padding:9px 10px}.career.two .cl{font-size:14px}
 .career li.hid{background:var(--panel-2);color:var(--muted)}.career li.hid .cl{font-size:0}.career li.hid .cl::after{content:'?';font-size:15px}
@@ -333,7 +334,7 @@ function viewStart(){
       <li><b>Pick a mode.</b> Ten players with four names to choose from, the clubs one by one, typing the name yourself, who played for both clubs, or endless until your first miss.</li>
       <li><b>Name him.</b> ${Q_SECONDS} seconds a player: 100 for the right name and up to 50 more for speed. Three helps, once each per game: Info, Fifty-fifty and Swap.</li>
       <li><b>Climb the table.</b> Each name's best score of the day, the week and all time, per mode. Send your ten to a friend and play the same players.</li></ol></details>
-    <p class="foot">Careers from API-Football's transfer lists: ${DATA.players.length.toLocaleString('en-GB')} players with at least three clubs. Youth clubs before a first transfer are not in them. A new set of players every game.</p>
+    <p class="foot">Careers from API-Football's transfer lists: ${DATA.players.length.toLocaleString('en-GB')} players with at least three clubs. Youth clubs before a first transfer are not in them. A new set of players every game. Not affiliated with any club, league, UEFA or API-Football; club names and crests belong to their clubs.</p>
   </div>`;
   bindTabs(); fitHeroLogo();
   if (CH){ $('#gch').addEventListener('click', () => start(CH.m, CH.t, CH)); $('#xch').addEventListener('click', () => { CH = null; history.replaceState(null, '', location.pathname + location.search); viewStart(); }); }
@@ -417,13 +418,15 @@ function addStats(res){
 const kitChip = n => { const k = (DATA.kits || {})[n]; return `<i class="kit" style="${k ? `background:${k[0]};border-color:${k[1]}` : ''}"></i>`; };
 // the clubs in order, one card per club in its home colours (as the draft game's player cards); no years, no loans; from 8 clubs
 // in two columns (down the first, then the second)
+// a club's crest, kept with the game (crests/<team id>.png, fetched by the pipeline); none when we do not have it
+const crestImg = club => { const id = (DATA.cr || {})[club]; return id ? `<img class="crest" src="crests/${id}.png" alt="" loading="lazy" onerror="this.remove()">` : ''; };
 function careerHTML(c, shown){
   // a short stay back at a club between two loans away is left out (Fiorentina, Man Utd on loan, Fiorentina, Fenerbahçe...)
   const keep = c.filter((x, j) => !(j > 0 && j < c.length - 1 && c[j - 1][3] === 1 && (x[2] || 0) - (x[1] || 0) <= 0 && c.slice(0, j - 1).some(y => y[0] === x[0])));
   const clubs = keep.map(x => x[0]).filter((n, j, a) => j === 0 || n !== a[j - 1]);
   const two = clubs.length >= 8;
   return `<ol class="career${two ? ' two' : ''}"${two ? ` style="grid-template-rows:repeat(${Math.ceil(clubs.length / 2)},auto)"` : ''}>${clubs.map((club, j) => { const k = (DATA.kits || {})[club];
-    return `<li class="${shown != null && j >= shown ? 'hid' : ''}"${k ? ` style="--k1:${k[0]};--k2:${k[1]}"` : ''}><span class="cl">${esc(club)}</span></li>`; }).join('')}</ol>`;
+    return `<li class="${shown != null && j >= shown ? 'hid' : ''}"${k ? ` style="--k1:${k[0]};--k2:${k[1]}"` : ''}>${crestImg(club)}<span class="cl">${esc(club)}</span></li>`; }).join('')}</ol>`;
 }
 // One by one: the first club at once, the rest one at a time, all of them on screen by about 13 seconds
 const dripStep = n => Math.max(1500, Math.min(3500, 13000 / Math.max(1, n - 1)));
@@ -439,7 +442,7 @@ function viewQ(){
       <div class="helps">${helpsFor().map(([k, name, desc], i) => `<button class="help${G.help[k] ? ' used' : ''}" data-h="${k}" ${G.help[k] ? 'disabled' : ''} title="${desc}"><span class="hn">${i + 1}</span><span><b>${name}</b><small>${G.help[k] ? 'Used' : desc}</small></span></button>`).join('')}</div>
       ${q.info ? `<div class="hint">A ${POS_NAME[line]}, aged ${esc(q.ans.age || '?')}${q.ans.nat ? ', from ' + esc(q.ans.nat) : ''}</div>` : ''}
       ${q.initials ? `<div class="hint">His initials: <b>${esc(q.ans.n.split(/\s+/).map(w => w[0] + '.').join(' '))}</b></div>` : ''}
-      ${q.kind === 'both' ? `<div class="hint" style="margin-top:10px">Who played for both?</div><div class="pair">${q.pair.map(c => `<div class="pc">${kitChip(c)}${esc(c)}</div>`).join('<span class="amp">&amp;</span>')}</div>` : careerHTML(q.ans.c, G.mode === 'drip' ? 1 : null)}
+      ${q.kind === 'both' ? `<div class="hint" style="margin-top:10px">Who played for both?</div><div class="pair">${q.pair.map(c => `<div class="pc">${crestImg(c).replace('class="crest"', 'class="crest big"') || kitChip(c)}${esc(c)}</div>`).join('<span class="amp">&amp;</span>')}</div>` : careerHTML(q.ans.c, G.mode === 'drip' ? 1 : null)}
       ${G.mode === 'typed' ? `<div class="typed"><input id="ty" class="name" placeholder="Type his name" autocomplete="off" autocapitalize="words" spellcheck="false"><div class="sugg" id="sg"></div></div>`
         : `<div class="opts">${q.opts.map((p, k) => `<button class="opt${q.cut.includes(k) ? ' gone' : ''}" data-k="${k}" ${q.cut.includes(k) ? 'disabled' : ''}><span class="key">${'ABCD'[k]}</span>${esc(p.n)}</button>`).join('')}</div>`}
       <div id="after"></div></section></div>`;

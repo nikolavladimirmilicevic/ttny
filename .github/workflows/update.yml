@@ -25,7 +25,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Fetch and build world.json
-        run: python3 pipeline/update.py
+        run: |
+          pip install --quiet pillow || true   # to shrink the club crests
+          python3 pipeline/update.py
         env:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           MAX_REQUESTS: ${{ vars.MAX_REQUESTS || '90' }}

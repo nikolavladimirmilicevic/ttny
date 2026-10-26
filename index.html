@@ -158,6 +158,10 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 @keyframes land{0%{transform:scale(.85);opacity:.4}60%{transform:scale(1.06);opacity:1}100%{transform:none}}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
 .clubcard h2{font-size:clamp(30px,8vw,44px);font-weight:700}
+/* the club's crest beside its name; hidden while the draw spins, so it never gives the club away early */
+.cchead{display:flex;align-items:center;gap:12px;margin-top:6px}.cchead h2{min-width:0}.ccrest{flex:none;width:clamp(36px,9vw,52px);height:clamp(36px,9vw,52px);object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))}
+.clubcard.prespin .ccrest,.clubcard.spinning .ccrest{visibility:hidden}.clubcard.landed .ccrest{animation:goalin .4s cubic-bezier(.2,1.4,.4,1)}
+.wkc .wcr{width:14px;height:14px;object-fit:contain;margin-right:5px;vertical-align:-2px}
 .clubcard .meta{margin-top:6px;color:var(--muted);font-size:14px}
 .note{margin-top:10px;font-size:13px;color:var(--gold)}
 .helps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
@@ -2201,7 +2205,7 @@ function weeklyCard(){
   if (!weeklyOk()) return '';
   const w = W.weekly, day = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const end = new Date(w.week + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() + 6);
-  const clubs = w.pots.flat().map(c => `<span class="wkc" style="${clubKit(W.C[c])}">${esc(W.C[c].name)}</span>`).join('');
+  const clubs = w.pots.flat().map(c => `<span class="wkc" style="${clubKit(W.C[c])}"><img class="wcr" src="crests/${String(c).replace(/^t/, '')}.png" alt="" loading="lazy" onerror="this.remove()">${esc(W.C[c].name)}</span>`).join('');
   return `<section class="card weekly"><div class="drafthead"><div class="eyebrow">Weekly challenge · ${day(w.week)} to ${day(end.toISOString().slice(0, 10))}</div><span class="wkend" data-ends="${end.getTime() + 12 * 3600e3}"></span></div>
     <p class="muted" style="margin:8px 0 0">The same 22 clubs for everyone, in the Champions League.</p>
     <details class="wkdet"><summary>See the 22 clubs</summary><div class="wkcs">${clubs}</div></details>
@@ -2259,7 +2263,7 @@ function viewHome(){
       </ol>
       </details>
     </details>
-    <p class="foot">${W.meta.live ? 'Data from API-Football, updated ' + niceDate(W.meta.updated) + '.' : 'Demo world: club names follow the UEFA ranking, players and results are invented.'} ${W.draftable.length} clubs in the draft, ${W.eligCount.toLocaleString('en-GB')} players rated.</p>
+    <p class="foot">${W.meta.live ? 'Data from API-Football, updated ' + niceDate(W.meta.updated) + '. Not affiliated with any club, league, UEFA or API-Football; club names and crests belong to their clubs.' : 'Demo world: club names follow the UEFA ranking, players and results are invented.'} ${W.draftable.length} clubs in the draft, ${W.eligCount.toLocaleString('en-GB')} players rated.</p>
   </div>`;
 }
 
@@ -2312,7 +2316,7 @@ function viewDraft(){
   <div class="grid2" style="margin-top:16px">
     <section class="card clubcard${anim ? ' reveal' : ''}" aria-live="polite">
       <div class="eyebrow">Pot ${pot + 1}</div>
-      <h2 style="margin-top:6px">${esc(club.name)}</h2>
+      <div class="cchead"><img class="ccrest" src="crests/${club.id.slice(1)}.png" alt="" onerror="this.remove()"><h2>${esc(club.name)}</h2></div>
       <div class="meta">${COUNTRY[club.ctry] || esc(club.ctry)} · UEFA rank ${club.rank} · ${club.elig.length} rated players</div>
       ${r.note ? `<div class="note">${esc(r.note)}</div>` : ''}
       ${(r.cut || []).length ? `<div class="note">Fifty-fifty: ${r.cut.length} weaker player${r.cut.length > 1 ? 's' : ''} ruled out.</div>` : ''}
@@ -3481,7 +3485,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261026175939';
+const BUILD = '20261026182546';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

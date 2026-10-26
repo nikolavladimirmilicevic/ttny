@@ -20,6 +20,7 @@ Environment:
   TODAY                YYYY-MM-DD override, for testing
   API_BASE             override the API host, for testing
 """
+import urllib.error
 import random, bisect, statistics, csv, datetime as dt, difflib, html, json, math, os, re, sys, time, unicodedata, urllib.parse, urllib.request
 from collections import Counter, defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -1276,6 +1277,52 @@ def same_club(a, b):
     return ka == kb or (min(len(ka), len(kb)) >= 5 and ka.split()[:1] == kb.split()[:1] and difflib.SequenceMatcher(None, ka, kb).ratio() >= .88)
 
 
+CREST_DIR = os.path.join(ROOT, 'crests')
+CREST_PER_RUN = 400
+
+
+def fetch_crests(ids):
+    """Club crests for both games, kept in the repository (crests/<team id>.png, 64 px): API-Sports asks that its media be
+    saved on your side rather than shown from its servers, and they do not count towards the daily calls. At most 400
+    new ones a run, the draft game's clubs first; a crest the API does not have is not asked for again. Only in the
+    GitHub workflow (the shell elsewhere has no access to the media server). Returns the ids that have a crest."""
+    os.makedirs(CREST_DIR, exist_ok=True)
+    have = {int(f[:-4]) for f in os.listdir(CREST_DIR) if f.endswith('.png') and f[:-4].isdigit()}
+    if not os.environ.get('GITHUB_ACTIONS'):
+        return have
+    missing = load('crests_missing', {})
+    todo = [i for i in dict.fromkeys(ids) if i and i not in have and str(i) not in missing][:CREST_PER_RUN]
+    try:
+        from PIL import Image
+        import io
+    except ImportError:
+        Image = None
+    got = 0
+    for i in todo:
+        try:
+            with urllib.request.urlopen(urllib.request.Request(f'https://media.api-sports.io/football/teams/{i}.png', headers={'User-Agent': 'ttny'}), timeout=30) as r:
+                data = r.read()
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                missing[str(i)] = TODAY.isoformat()
+            continue
+        except Exception:
+            continue
+        if Image:
+            try:
+                im = Image.open(io.BytesIO(data)).convert('RGBA'); im.thumbnail((64, 64))
+                b = io.BytesIO(); im.save(b, 'PNG', optimize=True); data = b.getvalue()
+            except Exception:
+                pass
+        with open(os.path.join(CREST_DIR, f'{i}.png'), 'wb') as f:
+            f.write(data)
+        have.add(i); got += 1
+        time.sleep(0.15)
+    save('crests_missing', missing)
+    log(f'  crests: {got} new, {len(have)} in all')
+    return have
+
+
 def write_careers(world, careers, teams):
     """careers.json for the guess-who game: every player in the game whose transfer history gives at least 3 clubs,
     as stints [club, first year, last year, loan (1, or 2 for a loan and then signed)] oldest first (the first club from the club he first left; the current
@@ -1288,6 +1335,7 @@ def write_careers(world, careers, teams):
     out, used_kits = [], {}
     # the API now and then puts a person as a club ('Meunier Thomas', 'Carvajal Daniel') or an all-star side: left out
     people = {frozenset(norm(p['name']).replace('-', ' ').split()) for p in world['players'] if len(norm(p['name']).split()) >= 2}
+    name_id = {}   # each club as the careers show it, and its team id (for its crest)
     for p in world['players']:
         mv = careers.get(str(p['id']))
         if not mv:
@@ -1308,6 +1356,7 @@ def write_careers(world, careers, teams):
                 if club_name.get(cid): st[-1][0] = nm
                 return
             st.append([nm, y0, y1, 1 if loan else 0])
+            if cid: name_id.setdefault(nm, cid)
         first = mv[0]
         add(first[1], first[2], None, int(first[0][:4]), False)
         for i, t in enumerate(mv):
@@ -1316,6 +1365,7 @@ def write_careers(world, careers, teams):
                 continue
             add(t[3], t[4], y0, y1, 'loan' in (t[5] or '').lower() and 'back' not in (t[5] or '').lower())
         cur = club_name.get(p['club'])
+        if cur: name_id[cur] = p['club']
         if cur and st and st[-1][0] != cur:
             st.append([cur, st[-1][2], TODAY.year, 0])
         if len({s[0] for s in st}) < CAREER_MIN_CLUBS:
@@ -1337,8 +1387,15 @@ def write_careers(world, careers, teams):
     # each club's country (UEFA clubs only), for the themed games ('played in England')
     ctry = {c['name']: c['ctry'] for c in world['clubs'] if c.get('ctry')}
     used_cc = {nm: ctry[nm] for p in out for nm, *_ in p['c'] if nm in ctry}
+    # crests: the draft game's clubs first, then the clubs of the careers, the better known players' first
+    seen = Counter()
+    for p in out:
+        for nm, *_ in p['c']:
+            seen[nm] += p['f']
+    have = fetch_crests([c['id'] for c in world['clubs']] + [name_id[nm] for nm, _ in seen.most_common() if nm in name_id])
+    used_cr = {nm: name_id[nm] for nm in seen if name_id.get(nm) in have}
     with open(os.path.join(ROOT, 'careers.json'), 'w', encoding='utf-8') as f:
-        json.dump({'updated': TODAY.isoformat(), 'kits': used_kits, 'cc': used_cc, 'players': out}, f, ensure_ascii=False, separators=(',', ':'))
+        json.dump({'updated': TODAY.isoformat(), 'kits': used_kits, 'cc': used_cc, 'cr': used_cr, 'players': out}, f, ensure_ascii=False, separators=(',', ':'))
     log(f'  careers.json: {len(out)} players')
 
 
