@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<script>window.__wr = fetch('world.json', { cache: 'no-cache' }).catch(() => null);   /* the data starts downloading before the rest of the page */</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <title>This Time Next Year</title>
@@ -954,6 +955,14 @@ function finalize(C, P, meta){
   return w;
 }
 
+/* what the game needs only later (the Scout's tip's match-by-match form, the grades shown once the XI is locked) comes
+   in world-extra.json, loaded in the background once the first screen is up; the tip waits for it if it is still on its way */
+function loadExtra(){
+  W.extraP = fetch('world-extra.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(x => {
+    if (x && x.players){ const F = x.fields; for (const [id, v] of Object.entries(x.players)){ const p = W.P['p' + id]; if (p) F.forEach((k, i) => { if (v[i] != null) p[k] = v[i]; }); } }
+    W.extraDone = true;
+  }).catch(() => { W.extraDone = true; });
+}
 /* Live data produced by pipeline/update.py */
 function worldFromData(raw){
   const C = {}, P = {};
@@ -961,7 +970,7 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, lg: p.lg, lgd: p.lgd, sr: p.sr || 0, lat: p.lat, gr: p.gr,
+    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, lg: p.lg, lgd: p.lgd, sr: p.sr || 0, lat: p.lat, gr: p.gr || [],
       ap: p.ap, mn: p.mn, ga: p.ga, pk: p.pk, aa: p.aa, rt: p.rt, csy: p.csy, csg: p.csg, nt: p.nt, wdl: p.wdl };
     club.squad.push(pid);
   }
@@ -1643,6 +1652,7 @@ function useHelp(k){
     const byOv = ids.map(id => [id, W.P[id].ovr]).sort((x, y) => x[1] - y[1]);
     r.cut = (r.cut || []).concat(byOv.slice(0, Math.floor(ids.length / 2)).map(x => x[0]));
   } else if (k === 'tip'){
+    if (W.extraP && !W.extraDone){ W.extraP.then(() => useHelp(k)); return; }   // the players' recent form is still on its way
     const ids = visible(r); if (!ids.length) return;
     // two kinds of tip, in random order: (1) a stat over his last M games, the shortest run with the most
     // (at least 2; n / M^0.8 over the last 2, 5, 10, 20, 50 or 100 games, so 4 in 5 beats 6 in 10; starts: his club's last matches in a row he started, at least 2); (2) what he did in his last match,
@@ -3417,7 +3427,9 @@ async function boot(){
   let raw = null;
   try {
     const lg = document.querySelector('.ld-logo'); if (lg) lg.style.backgroundImage = `url(${LOGO})`;
-    const r = await fetch('world.json', { cache: 'no-cache' });   // always the latest data: the browser asks the server, and reuses its copy when nothing changed
+    // always the latest data: the browser asks the server, and reuses its copy when nothing changed; the download was
+    // started at the top of the page, while the rest of it was still arriving
+    const r = (await window.__wr) || await fetch('world.json', { cache: 'no-cache' });
     if (r.ok){
       // the data is a few MB: a progress bar while it arrives (the size is a guess when the server compresses it)
       const bar = document.querySelector('.ld-bar b'), len = +r.headers.get('content-length') || 0;
@@ -3433,6 +3445,7 @@ async function boot(){
   W = null;
   if (raw && raw.clubs){ const w = worldFromData(raw); if (w.draftable.length >= 11) W = w; }
   if (!W) W = buildWorld();
+  if (W.meta.live) loadExtra();
   if (W.meta.live) CFG.STORE += '.live';
   window.__ttny = { W, CFG, feasible, assign, simMatch, buildCup, shootout };
   load();
@@ -3468,7 +3481,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261024202126';
+const BUILD = '20261026175939';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

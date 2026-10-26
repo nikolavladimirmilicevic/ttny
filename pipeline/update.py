@@ -1495,9 +1495,15 @@ def main():
     # nor these player fields (monthly form, W-D-L, appearances and clean-sheet splits): about 10% less to download.
     # 'nt' stays, the careers file below needs it
     UNREAD = ('mo', 'wdl', 'ap', 'csy', 'csg')
-    out = dict(world, players=[{k: v for k, v in p.items() if k not in UNREAD} for p in world['players']])
+    # and what the game needs only later (the Scout's tip's match-by-match form, the grades shown once the XI is locked)
+    # goes in a second file the game loads in the background: the first screen comes about a quarter sooner
+    LATER = ('lg', 'lgd', 'lm', 'sr', 'gr')
+    out = dict(world, players=[{k: v for k, v in p.items() if k not in UNREAD and k not in LATER} for p in world['players']])
+    extra = {'fields': list(LATER), 'players': {str(p['id']): [p.get(k) for k in LATER] for p in world['players']}}
     with open(target, 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
+    with open(target.replace('world', 'world-extra'), 'w', encoding='utf-8') as f:
+        json.dump(extra, f, ensure_ascii=False, separators=(',', ':'))
     log(f'Wrote {os.path.basename(target)}')
     position_check(world)
     try:

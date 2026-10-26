@@ -30,8 +30,26 @@ jobs:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           MAX_REQUESTS: ${{ vars.MAX_REQUESTS || '90' }}
           GRID_COL1_IS_RIGHT: ${{ vars.GRID_COL1_IS_RIGHT || '0' }}
+      # before the new data goes live: both games in a real browser (a draft with the Scout's tip, a Guess Who answer)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check both games with the new data
+        id: smoke
+        run: |
+          npm install --prefix /tmp/pw --no-save --no-package-lock playwright@1.64.0
+          /tmp/pw/node_modules/.bin/playwright install --with-deps chromium
+          python3 -m http.server 8000 --bind 127.0.0.1 >/dev/null 2>&1 &
+          sleep 2
+          NODE_PATH=/tmp/pw/node_modules node pipeline/tools/smoke.js http://127.0.0.1:8000/
+      - name: Keep the game's files as they were if the check failed
+        if: failure() && steps.smoke.outcome == 'failure'
+        run: |
+          git checkout HEAD -- world.json careers.json
+          git checkout HEAD -- world-extra.json 2>/dev/null || rm -f world-extra.json
+          echo "::error::The games did not pass the check with the new data: the files the game reads stay as they were (the fetched data is still saved)."
       - name: Commit data
-        if: always()   # keep what was fetched even when the build step fails
+        if: always()   # keep what was fetched even when the build or the check fails
         run: |
           git config user.name "ttny-data-bot"
           git config user.email "ttny-data-bot@users.noreply.github.com"
