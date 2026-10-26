@@ -99,12 +99,12 @@ select.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-rad
 /* the career: one card per club, as the draft game's player cards, in the club's home colours (shirt and text) */
 .career{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:6px}
 .career.two{grid-template-columns:1fr 1fr;grid-auto-flow:column;column-gap:6px}
-.career li{display:flex;align-items:center;min-width:0;padding:10px 12px;border-radius:10px;background:var(--k1,var(--panel-2));color:var(--k2,var(--text));border:2px solid rgba(255,255,255,.08);transition:background .35s,color .35s}
-.career .crest{flex:none;width:24px;height:24px;object-fit:contain;margin-right:10px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}.career li.hid .crest{visibility:hidden}.pair .crest.big{width:40px;height:40px;object-fit:contain;margin:0}
-.career .cl{font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.career.two li{padding:9px 10px}.career.two .cl{font-size:14px}
+.career li{display:flex;align-items:center;min-width:0;min-height:56px;padding:8px 14px;border-radius:10px;background:var(--k1,var(--panel-2));color:var(--k2,var(--text));border:2px solid rgba(255,255,255,.08);transition:background .35s,color .35s}
+.career .crest{flex:none;width:64px;height:64px;margin:-6px 12px -6px -4px;object-fit:contain;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}.career li.hid .crest{visibility:hidden}.pair .crest.big{width:64px;height:64px;object-fit:contain;margin:0}
+.career .cl{font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.career.two li{padding:6px 10px;min-height:48px}.career.two .crest{width:44px;height:44px;margin:-4px 8px -4px -4px}.career.two .cl{font-size:14px}
 .career li.hid{background:var(--panel-2);color:var(--muted)}.career li.hid .cl{font-size:0}.career li.hid .cl::after{content:'?';font-size:15px}
-.review .career{margin:2px 0 12px 30px}.review .career li{padding:7px 10px}.review .career .cl{font-size:14px}
+.review .career{margin:2px 0 12px 30px}.review .career li{padding:5px 10px;min-height:40px}.review .career .crest{width:32px;height:32px;margin:-4px 8px -4px -2px}.review .career .cl{font-size:14px}
 /* the start screen, as the draft game's home */
 .hero{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px;padding:26px 20px;border-radius:16px;border:1px solid var(--line);background:radial-gradient(120% 90% at 50% -10%,rgba(227,179,65,.22),transparent 60%),repeating-linear-gradient(90deg,var(--grass) 0 40px,var(--grass-2) 40px 80px)}
 .hero .hlogo{align-self:start;width:0;height:0;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}

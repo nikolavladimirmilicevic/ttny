@@ -217,7 +217,6 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
   background:linear-gradient(135deg,var(--kit) 0%,color-mix(in srgb,var(--kit) 60%,#0B1626) 100%);position:relative;overflow:hidden}
 .pc-top::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.18) 50%,transparent 60%);pointer-events:none}
 .pc-crest{flex:none;margin-left:auto;width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));position:relative;z-index:1}
-.prow .prc{display:flex;align-items:center}.prow .crs{width:26px;height:26px;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
 .pc-badge{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:46px}
 .pc-prim{font:700 13px/1 var(--display);letter-spacing:.06em}
 .pc-id{min-width:0}.pc-id h4{color:var(--kit-ink)}.pc-top .pc-sub{color:var(--kit-ink);opacity:.85}
@@ -2306,7 +2305,7 @@ function viewDraft(){
     .sort((a, b) => (r.tip && b.id === r.tip.pid) - (r.tip && a.id === r.tip.pid))
     .map(p => `<button class="prow kitcard${r.tip && r.tip.pid === p.id ? ' tipped' : ''}" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
         <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)}${posChips(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
-        <span class="prc">${clubCrest(club)}</span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
+        <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   // the shape stays while it still works; only when it stops working, another one that works, at random
   if (!shp.includes(r.form)) r.form = randomForm(r.picks);
@@ -3489,7 +3488,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261026195954';
+const BUILD = '20261026200140';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
