@@ -145,3 +145,5 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 **Zigzag.** In the game the crests go zigzag, left and right in turn, each one starting halfway down the one before, with a slanted arrow between them (64 px up to 6 clubs, 56 up to 8, 50 beyond, so the four names stay on a phone's screen). The review after a game keeps them in a row, with names.
 
 **Crests on a white square.** A few dozen crests come from the API on an opaque white square (Partizan's among them): the white that touches the edge is made transparent (`clear_white` in the pipeline, for new ones too), the white inside the crest stays.
+
+**Three trophies of our own.** Each competition has its own trophy, drawn for this game and none of them UEFA's (whose logos and trophies the game does not use): the Champions League a crowned chalice with a star, the Europa League the two-handled cup, the Conference League a hexagonal gem on a slender stem. They show in *Your record*, on the title screen and on the run's summary after a title.
