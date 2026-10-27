@@ -106,6 +106,13 @@ select.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-rad
 .career .cname{font-size:13px;max-width:90px;text-align:center;line-height:64px}
 .career .q{display:none;width:60px;height:60px;margin:2px;border-radius:50%;background:var(--panel-2);border:2px dashed var(--line);color:var(--muted);font:700 24px/56px var(--display);text-align:center}
 .career li.hid .crest,.career li.hid .cname{display:none}.career li.hid .q{display:block}
+.career.zz{display:block;position:relative;margin:18px auto 10px;max-width:260px}
+.career.zz li{position:absolute;width:var(--s);height:var(--s);padding:0!important;justify-content:center}.career.zz li::before{display:none}
+.career.zz .crest{width:var(--s);height:var(--s)}.career.zz .q{width:calc(var(--s) - 4px);height:calc(var(--s) - 4px);line-height:calc(var(--s) - 8px)}
+.career.zz li.l{left:calc(50% - var(--s) - 20px)}.career.zz li.r{left:calc(50% + 20px)}
+.career.zz .zarr{position:absolute;top:calc(var(--s) * .6);font-style:normal;color:var(--muted);font-size:20px;line-height:1;pointer-events:none}
+.career.zz li.l .zarr{left:calc(var(--s) + 4px)}.career.zz li.r .zarr{left:-26px}
+.career.zz .cname{line-height:1.2;font-size:12px;width:var(--s);height:var(--s);display:flex;align-items:center;justify-content:center}
 .career.named small{font-size:11px;color:var(--muted);max-width:80px;text-align:center;line-height:1.2;margin-top:4px}
 .review .career{margin:6px 0 14px 30px;justify-content:flex-start}.review .career .crest{width:40px;height:40px}.review .career li+li{padding-left:24px}.review .career li+li::before{left:4px;top:11px;font-size:14px}.review .career .q{display:none}
 /* the start screen, as the draft game's home */
@@ -431,8 +438,16 @@ function shownClubs(c){
 }
 // the career as crests only, an arrow from one to the next (the names would give too much away); after the game, in the
 // review, each crest has its club's name under it. Only players whose every club has a crest are in the game.
+// in the game the crests go zigzag, left and right in turn, each one starting halfway down the one before, with a slanted
+// arrow between them; the review after a game keeps them in a row with names
+// (the longer the career, the smaller and closer, so the four names stay on a phone's screen)
+const zzSize = n => n <= 6 ? 64 : n <= 8 ? 56 : 50;
 function careerHTML(c, shown, named){
-  return `<ol class="career${named ? ' named' : ''}">${shownClubs(c).map((club, j) => { const id = (DATA.cr || {})[club];
+  const clubs = shownClubs(c), sz = zzSize(clubs.length), step = Math.round(sz * .6);
+  if (!named) return `<ol class="career zz" style="--s:${sz}px;height:${(clubs.length - 1) * step + sz}px">${clubs.map((club, j) => { const id = (DATA.cr || {})[club];
+    const img = id ? `<img class="crest" src="crests/${id}.png" alt="" data-n="${esc(club)}" onerror="this.replaceWith(Object.assign(document.createElement('b'), { className: 'cname', textContent: this.dataset.n }))">` : `<b class="cname">${esc(club)}</b>`;
+    return `<li class="${j % 2 ? 'r' : 'l'}${shown != null && j >= shown ? ' hid' : ''}" style="top:${j * step}px">${img}<span class="q" aria-hidden="true">?</span>${j < clubs.length - 1 ? `<i class="zarr" aria-hidden="true">${j % 2 ? '↙' : '↘'}</i>` : ''}</li>`; }).join('')}</ol>`;
+  return `<ol class="career${named ? ' named' : ''}">${clubs.map((club, j) => { const id = (DATA.cr || {})[club];
     const img = id ? `<img class="crest" src="crests/${id}.png" alt="" data-n="${esc(club)}" onerror="this.replaceWith(Object.assign(document.createElement('b'), { className: 'cname', textContent: this.dataset.n }))">` : `<b class="cname">${esc(club)}</b>`;
     return `<li class="${shown != null && j >= shown ? 'hid' : ''}">${img}<span class="q" aria-hidden="true">?</span>${named ? `<small>${esc(club)}</small>` : ''}</li>`; }).join('')}</ol>`;
 }
