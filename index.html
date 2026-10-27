@@ -2173,9 +2173,9 @@ function achCard(keys){
 function cabinet(st, best){
   if (!st.runs) return '';
   const tb = st.titlesBy || {}, got = ACH.filter(a => (st.ach || {})[a[0]]).length;
-  const cup = (col, k) => trophy(k, 'cabcup', col);
+  const cup = col => TROPHY.replace('class="trophy"', 'class="cabcup"').replace(/var\(--gold\)/g, col);
   return `<section class="card record"><div class="eyebrow">Your record</div>
-    <div class="cabinet" style="margin-top:10px">${['cl', 'el', 'ecl'].map(k => `<div class="cab${tb[k] ? '' : ' none'}">${cup(ACCENT[k], k)}<b class="num">${tb[k] || 0}</b><small>${CUP[k]}</small></div>`).join('')}</div>
+    <div class="cabinet" style="margin-top:10px">${['cl', 'el', 'ecl'].map(k => `<div class="cab${tb[k] ? '' : ' none'}">${cup(ACCENT[k])}<b class="num">${tb[k] || 0}</b><small>${CUP[k]}</small></div>`).join('')}</div>
     <p class="recline">${st.runs} run${st.runs > 1 ? 's' : ''} · ${st.titles} title${st.titles === 1 ? '' : 's'} · best title streak ${st.best}${best && best !== 'None yet' ? ' · best run ' + best : ''}</p>
     <details class="achd"><summary>Achievements · ${got} of ${ACH.length}</summary><div class="achs" aria-label="Achievements">${ACH.map(a => achChip(a, (st.ach || {})[a[0]])).join('')}</div></details></section>`;
 }
@@ -2598,7 +2598,7 @@ function titleMoment(){
   const comp = r.comp || 'cl', acc = ACCENT[comp];
   if (matchMedia('(prefers-reduced-motion: reduce)').matches){ confetti(); return; }
   const el = document.createElement('div'); el.id = 'tmom'; el.style.setProperty('--ta', acc);
-  el.innerHTML = `<div>${trophy(comp, 'tm-cup', acc)}<div class="tm-c">${esc(COMPS[comp].name)}</div><h1>Champions</h1><div class="tm-t">${esc(r.player ? r.player + "'s XI" : 'Your XI')}</div></div>`;
+  el.innerHTML = `<div>${TROPHY.replace('class="trophy"', 'class="tm-cup"').replace(/var\(--gold\)/g, acc)}<div class="tm-c">${esc(COMPS[comp].name)}</div><h1>Champions</h1><div class="tm-t">${esc(r.player ? r.player + "'s XI" : 'Your XI')}</div></div>`;
   document.body.appendChild(el);
   const go = () => { if (!el.isConnected || el.classList.contains('out')) return; el.classList.add('out'); setTimeout(() => el.remove(), 400); confetti(); };
   el.addEventListener('click', go); setTimeout(go, 2200);
@@ -2621,14 +2621,6 @@ function confetti(){
 }
 // the trophy, in the competition's colour
 const TROPHY = `<svg class="trophy" viewBox="0 0 64 64" aria-hidden="true"><path fill="var(--gold)" d="M18 6h28v6h8a2 2 0 0 1 2 2c0 9-5 15-12 16-2 5-5 8-9 9v7h8v6H21v-6h8v-7c-4-1-7-4-9-9-7-1-12-7-12-16a2 2 0 0 1 2-2h8V6zm-6 10c.6 5 3 8 6.5 9.3-.4-2-.5-4.1-.5-6.3v-3h-6zm34 0v3c0 2.2-.1 4.3-.5 6.3C49 24 51.4 21 52 16h-6z"/><rect x="17" y="52" width="30" height="6" rx="1.5" fill="var(--gold)" opacity=".8"/><path d="M26 12h4v18h-4z" fill="#fff" opacity=".25"/></svg>`;
-/* each competition its own trophy, drawn for this game (none of them UEFA's): the Champions League a crowned chalice with a
-   star, the Europa League the two-handled cup, the Conference League a hexagonal gem on a slender stem */
-const TROPHIES = {
-  cl: `<svg class="trophy" viewBox="0 0 64 64" aria-hidden="true"><path fill="var(--gold)" d="M17 11 20 3l4 8h4l4-8 4 8h4l4-8 3 8h2c0 15-7 26-18 26S15 26 15 11z"/><path fill="var(--gold)" d="M29 37h6v9h-6z"/><path fill="var(--gold)" d="M21 46h22l3 6H18z" opacity=".9"/><rect x="16" y="52" width="32" height="6" rx="1.5" fill="var(--gold)" opacity=".8"/><path fill="#fff" opacity=".35" d="m32 15 1.9 4.1 4.5.5-3.4 3 1 4.4-4-2.3-4 2.3 1-4.4-3.4-3 4.5-.5z"/></svg>`,
-  el: TROPHY,
-  ecl: `<svg class="trophy" viewBox="0 0 64 64" aria-hidden="true"><path fill="var(--gold)" d="M32 3l15 8.7v17.3L32 37.7 17 29V11.7z"/><path fill="#fff" opacity=".28" d="M32 3v17.3l15-8.6zM17 29l15-8.7v17.4z"/><path fill="#fff" opacity=".12" d="M32 20.3 47 29 32 37.7z"/><path fill="var(--gold)" d="M29.5 37.7h5l2 10.3h-9z"/><rect x="20" y="48" width="24" height="4" rx="1" fill="var(--gold)" opacity=".9"/><rect x="16" y="52" width="32" height="6" rx="1.5" fill="var(--gold)" opacity=".8"/></svg>`
-};
-const trophy = (comp, cls, col) => { let t = TROPHIES[comp] || TROPHY; if (cls) t = t.replace('class="trophy"', `class="${cls}"`); return col ? t.replace(/var\(--gold\)/g, col) : t; };
 /* bookmaker-style odds for your next matches (fair odds, 1 / probability, over 90 minutes); h: 1 home, 0 away, null neutral */
 function oddsHTML(opp, h){
   const sY = strength('YOU'), sO = strength(opp);
@@ -3229,7 +3221,7 @@ function viewSeason(){
   return `${doneTop()}
   <div class="stack">
     <section class="card verdict${champ ? ' champ' : ''}">
-      ${champ ? trophy(r.comp) : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · ${r.arch ? new Date(r.doneAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Your run'}${r.player ? ' · ' + esc(r.player) : ''}</div>
+      ${champ ? TROPHY : ''}<div class="eyebrow">${champ ? 'Champions' : 'Run over'} · ${r.arch ? new Date(r.doneAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Your run'}${r.player ? ' · ' + esc(r.player) : ''}</div>
       ${r.pbNew && !r.arch ? `<div class="pbadge">Personal best! <small>before: ${to99(r.pb)}</small></div>` : ''}
       ${r.rank ? `<div class="t10${r.arch ? '' : ' pop'}"><b class="num">No. ${r.rank}</b><span>${r.rankWk ? 'this week' : 'in the top 10'}</span></div>` : ''}
       <h1 style="margin-top:8px">${verdictHead(r)}</h1>
@@ -3496,7 +3488,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261027002230';
+const BUILD = '20261026200140';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
