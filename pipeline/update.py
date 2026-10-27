@@ -1281,6 +1281,24 @@ CREST_DIR = os.path.join(ROOT, 'crests')
 CREST_PER_RUN = 1200
 
 
+def clear_white(im):
+    """A crest sent on an opaque white square (Partizan's, a few dozen others): the white that touches the edge becomes
+    transparent, so it sits on the game's dark cards like the rest; the white inside the crest stays."""
+    im = im.convert('RGBA'); w, h = im.size; px = im.load()
+    white = lambda p: p[3] > 200 and min(p[:3]) > 228
+    if not all(white(px[x, y]) for x, y in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1))):
+        return im
+    todo = [(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for y in range(h) for x in (0, w - 1)]
+    seen = set()
+    while todo:
+        x, y = todo.pop()
+        if (x, y) in seen or not (0 <= x < w and 0 <= y < h) or not white(px[x, y]):
+            continue
+        seen.add((x, y)); px[x, y] = (255, 255, 255, 0)
+        todo += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+    return im
+
+
 def fetch_crests(ids):
     """Club crests for both games, kept in the repository (crests/<team id>.png, 64 px): API-Sports asks that its media be
     saved on your side rather than shown from its servers, and they do not count towards the daily calls. At most 1,200
@@ -1310,7 +1328,7 @@ def fetch_crests(ids):
             continue
         if Image:
             try:
-                im = Image.open(io.BytesIO(data)).convert('RGBA'); im.thumbnail((64, 64))
+                im = clear_white(Image.open(io.BytesIO(data)).convert('RGBA')); im.thumbnail((64, 64))
                 b = io.BytesIO(); im.save(b, 'PNG', optimize=True); data = b.getvalue()
             except Exception:
                 pass
