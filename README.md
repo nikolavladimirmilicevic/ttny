@@ -145,3 +145,5 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 **Zigzag.** In the game the crests go zigzag, left and right in turn, each one starting halfway down the one before, with a slanted arrow between them (64 px up to 6 clubs, 56 up to 8, 50 beyond, so the four names stay on a phone's screen). The review after a game keeps them in a row, with names.
 
 **Crests on a white square.** A few dozen crests come from the API on an opaque white square (Partizan's among them): the white that touches the edge is made transparent (`clear_white` in the pipeline, for new ones too), the white inside the crest stays.
+
+**Players' photos, in three places.** The player of the run, and the competition's top scorer and top assister (each of them on a tie), show a round photo from API-Football's media server (three small images a finished run, not kept in the repository). One switch turns them off everywhere: `const PHOTOS = true` at the top of the game's script, set to `false`. A photo that cannot load is simply left out.

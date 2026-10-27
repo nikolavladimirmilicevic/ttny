@@ -595,6 +595,8 @@ body.matchon .ev.live .gflash{top:auto;bottom:6%;font-size:24px}
 .rpath i{flex:0 1 12px;min-width:3px;height:2px;background:var(--line)}.rpath i.on{background:var(--gold)}
 .potr{background:linear-gradient(90deg,var(--kit) 0 6px,transparent 6px),var(--panel);cursor:help}
 .potr-row{display:flex;gap:14px;align-items:center;margin-top:10px}
+.pphoto{flex:none;width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:top;background:var(--panel-2);border:2px solid var(--kit)}
+.tbl tr.best td:nth-child(2):has(.tlead)::before{content:none}.tlead{display:flex;align-items:center;gap:10px}.tlead small{display:block}.tphoto{flex:none;width:40px;height:40px;border-radius:50%;object-fit:cover;object-position:top;background:var(--panel-2);border:1px solid var(--line)}
 .potr .ovdot{width:54px;height:54px;font-size:24px;flex:none}
 .potr-nm{font:700 22px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
 .crest{display:inline-block;vertical-align:-4px;margin-right:6px;line-height:0}
@@ -623,6 +625,10 @@ const TRACKER_URL = 'https://github.com/nikolavladimirmilicevic/ttny/issues';   
 const GAMES_NAV = on => `<nav class="games" aria-label="Games"><a class="${on === 'draft' ? 'on' : ''}" href="./"${on === 'draft' ? ' aria-current="page"' : ''}>Draft</a><a class="${on === 'guess' ? 'on' : ''}" href="guess.html">Guess Who</a></nav>`;
 // a club's crest (crests/<team id>.png, kept by the pipeline); nothing when there is none
 const clubCrest = (c, cls) => c && /^t\d+$/.test(c.id) ? `<img class="${cls || 'crs'}" src="crests/${c.id.slice(1)}.png" alt="" loading="lazy" onerror="this.remove()">` : '';
+/* players' photos, only for the player of the run and the competition's top scorer and top assister, shown straight from
+   API-Football's media server (three small images a finished run). Set PHOTOS to false to switch them off everywhere. */
+const PHOTOS = true;
+const playerPhoto = (pid, cls) => PHOTOS && /^p\d+$/.test(pid) ? `<img class="${cls}" src="https://media.api-sports.io/football/players/${pid.slice(1)}.png" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
 const MARK = `<div class="mark"><img class="logo" src="${LOGO_S}" alt="This Time Next Year"><span class="mtxt">This Time <span>Next Year</span></span><a class="trk" href="${TRACKER_URL}" target="_blank" rel="noopener" title="Tracker on GitHub: defects, enhancements, feedback, questions" aria-label="Open the tracker on GitHub"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M4 5h2v2H4zm4 0h12v2H8zm-4 6h2v2H4zm4 0h12v2H8zm-4 6h2v2H4zm4 0h12v2H8z"/></svg><span>Tracker</span></a></div>`;
 const logoImg = new Image(); logoImg.src = LOGO;
 /* ================= CONFIG ================= */
@@ -2900,7 +2906,7 @@ function playersBox(r){
 function topBox(r){
   const c = r.cup; if (!c.top) return '';
   const list = (title, L) => `<div class="card"><div class="eyebrow" style="margin-bottom:8px">${title}</div><div class="tblwrap"><table class="tbl num toplist"><tbody>
-    ${L.length ? L.map(([pid, n], i) => `<tr class="${r.picks.includes(pid) ? 'me' : ''}${n === L[0][1] ? ' best' : ''}"><td>${n === L[0][1] ? '<span class="medal">1</span>' : i + 1}</td><td>${esc(W.P[pid].name)}<small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small></td><td>${n}</td></tr>`).join('') : '<tr><td>No goals</td></tr>'}</tbody></table></div></div>`;
+    ${L.length ? L.map(([pid, n], i) => `<tr class="${r.picks.includes(pid) ? 'me' : ''}${n === L[0][1] ? ' best' : ''}"><td>${n === L[0][1] ? '<span class="medal">1</span>' : i + 1}</td><td>${n === L[0][1] ? `<span class="tlead">${playerPhoto(pid, 'tphoto')}<span>${esc(W.P[pid].name)}<small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small></span></span>` : `${esc(W.P[pid].name)}<small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small>`}</td><td>${n}</td></tr>`).join('') : '<tr><td>No goals</td></tr>'}</tbody></table></div></div>`;
   return `<div class="toplists">${list('Top scorers', c.top.g)}${list('Top assists', c.top.a)}</div>`;
 }
 /* knockout bracket: play-off -> Round of 16 -> quarter-finals -> semi-finals -> final, drawn as a tree */
@@ -3206,7 +3212,7 @@ function playerOfRun(r){
   const p = W.P[best], g = k.g[best] || 0, a = k.a[best] || 0, mm = m[best] || 0;
   const bits = [`average rating ${rt1(mr[best].avg)} in ${mr[best].n} matches`, g && `${g} goal${g > 1 ? 's' : ''}`, a && `${a} assist${a > 1 ? 's' : ''}`, mm && `player of the match ${mm > 1 ? mm + ' times' : 'once'}`].filter(Boolean).join(' · ');
   return `<section class="card potr" data-pid="${best}" style="${clubKit(W.C[p.club])}"><div class="eyebrow">Player of the run</div>
-    <div class="potr-row"><div class="ovdot gr g${rtGrade(matchRatings(r)[best].avg)}" title="Average match rating">${rt1(matchRatings(r)[best].avg)}</div><div style="min-width:0"><div class="potr-nm">${esc(p.name)}</div><div class="muted" style="font-size:13px">${natTag(p)} · ${esc(W.C[p.club].name)}</div><div style="margin-top:6px;font-weight:600">${bits}</div></div></div></section>`;
+    <div class="potr-row">${playerPhoto(best, 'pphoto')}<div class="ovdot gr g${rtGrade(matchRatings(r)[best].avg)}" title="Average match rating">${rt1(matchRatings(r)[best].avg)}</div><div style="min-width:0"><div class="potr-nm">${esc(p.name)}</div><div class="muted" style="font-size:13px">${natTag(p)} · ${esc(W.C[p.club].name)}</div><div style="margin-top:6px;font-weight:600">${bits}</div></div></div></section>`;
 }
 // the run score and what it is made of
 function scoreBox(r){
@@ -3488,7 +3494,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261027002352';
+const BUILD = '20261027134738';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
