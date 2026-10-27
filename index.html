@@ -596,7 +596,7 @@ body.matchon .ev.live .gflash{top:auto;bottom:6%;font-size:24px}
 .potr{background:linear-gradient(90deg,var(--kit) 0 6px,transparent 6px),var(--panel);cursor:help}
 .potr-row{display:flex;gap:14px;align-items:center;margin-top:10px}
 .pphoto{flex:none;width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:top;background:var(--panel-2);border:2px solid var(--kit)}
-.tbl tr.best td:nth-child(2):has(.tlead)::before{content:none}.tlead{display:flex;align-items:center;gap:10px}.tlead small{display:block}.tphoto{flex:none;width:40px;height:40px;border-radius:50%;object-fit:cover;object-position:top;background:var(--panel-2);border:1px solid var(--line)}
+.tbl tr.best td:nth-child(2):has(.tlead)::before,.tbl tr.best td:nth-child(2) .tlead::before{content:none!important;display:none}.tstar{color:var(--best)}.tlead{display:flex;align-items:center;gap:10px}.tlead small{display:block}.tphoto{flex:none;width:40px;height:40px;border-radius:50%;object-fit:cover;object-position:top;background:var(--panel-2);border:1px solid var(--line)}
 .potr .ovdot{width:54px;height:54px;font-size:24px;flex:none}
 .potr-nm{font:700 22px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
 .crest{display:inline-block;vertical-align:-4px;margin-right:6px;line-height:0}
@@ -2906,7 +2906,7 @@ function playersBox(r){
 function topBox(r){
   const c = r.cup; if (!c.top) return '';
   const list = (title, L) => `<div class="card"><div class="eyebrow" style="margin-bottom:8px">${title}</div><div class="tblwrap"><table class="tbl num toplist"><tbody>
-    ${L.length ? L.map(([pid, n], i) => `<tr class="${r.picks.includes(pid) ? 'me' : ''}${n === L[0][1] ? ' best' : ''}"><td>${n === L[0][1] ? '<span class="medal">1</span>' : i + 1}</td><td>${n === L[0][1] ? `<span class="tlead">${playerPhoto(pid, 'tphoto')}<span>${esc(W.P[pid].name)}<small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small></span></span>` : `${esc(W.P[pid].name)}<small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small>`}</td><td>${n}</td></tr>`).join('') : '<tr><td>No goals</td></tr>'}</tbody></table></div></div>`;
+    ${L.length ? L.map(([pid, n], i) => `<tr class="${r.picks.includes(pid) ? 'me' : ''}${n === L[0][1] ? ' best' : ''}"><td>${n === L[0][1] ? '<span class="medal">1</span>' : i + 1}</td><td>${n === L[0][1] ? `<span class="tlead">${playerPhoto(pid, 'tphoto')}<span>${esc(W.P[pid].name)}<span class="tstar"> ★</span><small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small></span></span>` : `${esc(W.P[pid].name)}<small>${r.picks.includes(pid) ? 'Your XI' : esc(W.C[W.P[pid].club].name)}</small>`}</td><td>${n}</td></tr>`).join('') : '<tr><td>No goals</td></tr>'}</tbody></table></div></div>`;
   return `<div class="toplists">${list('Top scorers', c.top.g)}${list('Top assists', c.top.a)}</div>`;
 }
 /* knockout bracket: play-off -> Round of 16 -> quarter-finals -> semi-finals -> final, drawn as a tree */
@@ -3494,7 +3494,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261027134738';
+const BUILD = '20261027134857';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
