@@ -475,7 +475,8 @@ function viewQ(){
     const inp = $('#ty'), sg = $('#sg');
     const draw = () => { const list = suggest(inp.value); sg.innerHTML = list.map((n, j) => `<button class="sg${j === 0 ? ' first' : ''}" data-n="${esc(n)}">${esc(n)}</button>`).join(''); sg.querySelectorAll('.sg').forEach(b => b.addEventListener('click', () => answer(-2, b.dataset.n))); };
     inp.addEventListener('input', draw);
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ const f = sg.querySelector('.sg'); if (f) answer(-2, f.dataset.n); } });
+    // Enter takes the first name suggested; the key press stops here, so it does not also press "Next player"
+    inp.addEventListener('keydown', e => { if (e.key !== 'Enter') return; e.preventDefault(); e.stopPropagation(); const f = sg.querySelector('.sg'); if (f) answer(-2, f.dataset.n); else toast('No player by that name. Keep typing.'); });
     if (G.tyText){ inp.value = G.tyText; G.tyText = ''; draw(); }
     inp.focus();
   }
@@ -527,7 +528,7 @@ function answer(k, typed){
     <div class="reveal"><b>${esc(q.ans.n)}</b><span class="muted">${[q.ans.nat, POS_NAME[LINE[q.ans.pos] || 'MID'], now && now[0]].filter(Boolean).map(esc).join(' · ')}</span></div>
     <button class="btn primary" id="nx" style="margin-top:12px">${last ? (G.mode !== 'endless' ? 'See your score' : 'See your run') : 'Next player'}</button>`;
   $('#nx').addEventListener('click', () => { G.answered = false; if (last || G.i + 1 >= G.qs.length) finish(); else { G.i++; viewQ(); } });
-  $('#nx').focus();
+  setTimeout(() => { const b = $('#nx'); if (b) b.focus(); }, 250);   // a moment later, so the key that answered does not also press it
 }
 function finish(){
   G.done = true;
