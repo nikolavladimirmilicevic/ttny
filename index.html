@@ -326,7 +326,7 @@ tr.me.moved td{animation:rowflash 1.2s ease-out}@keyframes rowflash{0%{backgroun
 .form5{display:inline-flex;gap:3px;vertical-align:middle;margin-left:6px}.form5 i{width:8px;height:8px;border-radius:50%;display:block}
 .form5 i.W{background:var(--win)}.form5 i.D{background:var(--muted)}.form5 i.L{background:var(--loss)}
 .motm{color:var(--gold);margin-left:3px}
-.boot{position:absolute;top:-8px;left:calc(50% - 30px);font-size:15px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.boot{position:absolute;top:22px;left:calc(50% + 14px);z-index:2;font-size:15px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
 /* home: the trophy cabinet */
 .cabinet{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .cab{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:78px;padding:10px 8px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line)}
@@ -473,6 +473,7 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 @media (pointer:coarse){body:has(.dock) .pcard.sheet{bottom:calc(68px + env(safe-area-inset-bottom,0px));border-radius:16px;border-width:1px;max-height:calc(62vh - 68px)}}
 .ovdot.gr{color:#0B1626}.ovdot.gr.gA,.ovdot.gr.gE{color:#fff}.ovdot.gr.gA{background:var(--gA)}.ovdot.gr.gB{background:var(--gB)}.ovdot.gr.gC{background:var(--gC)}.ovdot.gr.gD{background:var(--gD)}.ovdot.gr.gE{background:var(--gE)}
 .pitch.tall{aspect-ratio:68/118}
+/* rating badge */.slot .rtc{position:absolute;top:-4px;left:calc(50% - 35px);width:max-content;min-width:0;max-width:none;display:block;white-space:nowrap;z-index:2;padding:1px 3px;border-radius:4px;font:700 9px/1.15 var(--display);color:#0B1626;box-shadow:0 0 0 1.5px #0B1626}.slot .rtc.edge{left:50%;top:-16px;transform:translateX(-50%)}.rtc.gA{background:var(--gA);color:#fff}.rtc.gB{background:var(--gB)}.rtc.gC{background:var(--gC)}.rtc.gD{background:var(--gD)}.rtc.gE{background:var(--gE);color:#fff}.rtc.gX{background:#4A5C78;color:#fff}
 .slot .sub{font-size:10px;line-height:1.1;font-weight:600;white-space:nowrap}.slot .sub.fit0{color:#5CC08A}.slot .sub.fit1{color:#F2C14E}.slot .sub.fit2{color:#E8604C}
 .slot .lbl.fit0{color:#5CC08A}.slot .lbl.fit1{color:#F2C14E}.slot .lbl.fit2{color:#E8604C}
 .slot .lbl.fit0,.slot .lbl.fit1,.slot .lbl.fit2{font-weight:600}
@@ -2164,9 +2165,13 @@ function shapes(pids, active, clickable){
 /* the XI as on the images: grade, captain, name, and the position with his goals and assists (coloured by fit) */
 function xiPitch(xi, form){
   return `<div class="pitch tall" role="img" aria-label="Formation ${form}">` + xi.map(p => {
+    // the shirt number in the circle, in his colours as on every pitch; the average rating moves to the line under the name
+    // (a run from before the numbers keeps the rating in the circle)
+    const rtc = p.no ? `<b class="rtc g${p.rt == null ? 'X' : rtGrade(p.rt)}${p.x < 15 ? ' edge' : ''}" title="Average match rating">${rt1(p.rt)}</b>` : '';   // by the left touchline: on the circle's right
     const bits = [p.code, p.g ? '⚽' + p.g : '', p.a ? '🅰' + p.a : ''].filter(Boolean).join(' ');
+    const circle = p.no ? `<div class="dot no" style="${W.P[p.id] ? kit(W.P[p.id]) : ''}" title="${p.code}">${p.no}</div>` : `<div class="ovdot gr g${p.rt == null ? 'X' : rtGrade(p.rt)}" title="Average match rating">${rt1(p.rt)}</div>`;
     const boot = S.run && S.run.cup && S.run.phase === 'done' && S.run.cup.top && S.run.cup.top.g[0] && S.run.cup.top.g[0][0] === p.id && xi.length;
-    return `<div class="slot full"${W.P[p.id] ? ` data-pid="${p.id}"` : ''} style="left:${p.x}%;top:${p.y}%">${boot ? '<span class="boot" title="Top scorer of the competition">👟</span>' : ''}${p.cap ? '<span class="cap" title="Captain">C</span>' : ''}<div class="ovdot gr g${p.rt == null ? 'X' : rtGrade(p.rt)}" title="Average match rating">${rt1(p.rt)}</div><div class="lbl">${esc(short(p.n))}</div><div class="sub fit${Math.min(2, p.fit || 0)}">${bits}</div></div>`;
+    return `<div class="slot full"${W.P[p.id] ? ` data-pid="${p.id}"` : ''} style="left:${p.x}%;top:${p.y}%">${boot ? '<span class="boot" title="Top scorer of the competition">👟</span>' : ''}${p.cap ? '<span class="cap" title="Captain">C</span>' : ''}${circle}${rtc}<div class="lbl">${esc(short(p.n))}</div><div class="sub fit${Math.min(2, p.fit || 0)}">${bits}</div></div>`;
   }).join('') + `</div>`;
 }
 const xiBox = (title, xi, form) => `<section class="card"><div class="drafthead" style="margin-bottom:10px"><div class="eyebrow">${title}</div><span class="muted" style="font-size:13px">${form}</span></div>${xiPitch(xi, form)}</section>`;
@@ -3015,7 +3020,7 @@ function seasonSummary(r){
   const cap = captainOf(arr.filter(Boolean));
   const mr = matchRatings(r);
   const xi = arr.map((id, j) => { if (!id) return null; const p = W.P[id], s = FORMS[r.form][j];
-    return { id, n: p.name, nat: p.nat, code: s[0], x: s[1], y: s[2], g: k.g[id] || 0, a: k.a[id] || 0, rt: mr[id] ? +mr[id].avg.toFixed(2) : null, mp: mr[id] ? mr[id].n : 0, fit: fitTier(p, s[0]), cap: id === cap, o: r.picks.indexOf(id) }; }).filter(Boolean);
+    return { id, n: p.name, nat: p.nat, code: s[0], x: s[1], y: s[2], g: k.g[id] || 0, a: k.a[id] || 0, rt: mr[id] ? +mr[id].avg.toFixed(2) : null, mp: mr[id] ? mr[id].n : 0, fit: fitTier(p, s[0]), cap: id === cap, o: r.picks.indexOf(id), no: (r.nums || {})[id] }; }).filter(Boolean);
   const lt = c.top && c.top.g[0];
   return { season: r.season || 1, wk: r.wk || undefined, comp: r.comp || 'cl', diff: r.diff || 'medium', stage: c.stage, pos: c.pos, champ: c.champ === 'YOU' ? 'YOU' : nm(c.champ),
     w: k.W_, d: k.D, l: k.L, gf: k.GF, ga: k.GA, cs: k.CS, big: k.big ? [k.big.f, k.big.ag, nm(k.big.opp)] : null,
@@ -3096,14 +3101,16 @@ function drawPitch(x, xi, PX, PY, PW, PH){
     row.forEach((p, i) => {
       const cx = cxs[i], left = i ? (cx - cxs[i - 1]) : 2 * (cx - PX - 6), right = i < row.length - 1 ? (cxs[i + 1] - cx) : 2 * (PX + PW - 6 - cx);
       const room = Math.min(left, right, 230) - 10; // the label never reaches past half way to a neighbour
-      x.beginPath(); x.arc(cx, cy, 32, 0, 2 * Math.PI); const rg = p.rt == null ? null : rtGrade(p.rt); x.fillStyle = GC[rg] || '#4A5C78'; x.fill(); x.lineWidth = 4; x.strokeStyle = '#0B1626'; x.stroke();
-      txt(x, rt1(p.rt), cx, cy + 11, '700 27px Oswald, "Arial Narrow", Arial, sans-serif', rg === 'C' || rg === 'B' || rg === 'D' ? '#0B1626' : '#fff', 'center');
+      const rg = p.rt == null ? null : rtGrade(p.rt), ni = p.no && W.P[p.id] ? natInfo(W.P[p.id].nat) : null;
+      x.beginPath(); x.arc(cx, cy, 32, 0, 2 * Math.PI); x.fillStyle = ni ? ni[1] : GC[rg] || '#4A5C78'; x.fill(); x.lineWidth = 4; x.strokeStyle = '#0B1626'; x.stroke();
+      if (ni) txt(x, String(p.no), cx, cy + 11, '700 30px Oswald, "Arial Narrow", Arial, sans-serif', ni[2], 'center');   // his shirt number
+      else txt(x, rt1(p.rt), cx, cy + 11, '700 27px Oswald, "Arial Narrow", Arial, sans-serif', rg === 'C' || rg === 'B' || rg === 'D' ? '#0B1626' : '#fff', 'center');
       if (p.cap){ x.beginPath(); x.arc(cx + 27, cy - 22, 14, 0, 2 * Math.PI); x.fillStyle = '#0B1626'; x.fill(); x.lineWidth = 3; x.strokeStyle = '#F2C14E'; x.stroke();
         txt(x, 'C', cx + 27, cy - 15, '700 19px Oswald, "Arial Narrow", Arial, sans-serif', '#F2C14E', 'center'); }
       const nm_ = surname(p.n), nf = fit(nm_, room - 20, 500, 24, 17), tw = Math.min(room, x.measureText(nm_).width + 20);
       rrect(x, cx - tw / 2, cy + 38, tw, 32, 8); x.fillStyle = 'rgba(11,22,38,.85)'; x.fill();
       txt(x, nm_, cx, cy + 62, nf, white, 'center', room - 20);
-      const bits = [p.code, p.g ? `⚽${p.g}` : '', p.a ? `🅰${p.a}` : ''].filter(Boolean).join('  ');
+      const bits = [p.code, ni && p.rt != null ? rt1(p.rt) : '', p.g ? `⚽${p.g}` : '', p.a ? `🅰${p.a}` : ''].filter(Boolean).join('  ');
       const bf = fit(bits, room, 500, 20, 15);
       txt(x, bits, cx, cy + 92, bf, FITC[Math.min(2, p.fit || 0)], 'center', room);
       const bw = Math.max(p.cap ? 84 : 64, tw, Math.min(room, x.measureText(bits).width));
@@ -3513,7 +3520,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261028065351';
+const BUILD = '20261028070443';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

@@ -668,11 +668,11 @@ def fetch_squads(top_ids, squads, people):
     stale = sorted(top_ids, key=lambda t: squads.get(str(t), {}).get('f', ''))
     for tid in stale:
         s = squads.get(str(tid))
-        if s and days_old(s['f']) < SQUAD_MAX_AGE and s.get('v') == 2:   # v2: the squad's positions are kept too
+        if s and days_old(s['f']) < SQUAD_MAX_AGE and s.get('v') == 3:   # v2: the squad's positions are kept too; v3: the shirt numbers
             continue
         data = api('players/squads', team=tid)
         players = (data.get('response') or [{}])[0].get('players', []) if data.get('response') else []
-        squads[str(tid)] = {'f': TODAY.isoformat(), 'p': [p['id'] for p in players], 'v': 2}
+        squads[str(tid)] = {'f': TODAY.isoformat(), 'p': [p['id'] for p in players], 'v': 3}
         for p in players:
             e = people.setdefault(str(p['id']), {})
             e['sq'] = p.get('name')
