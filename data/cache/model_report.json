@@ -2,78 +2,78 @@
  "big12_in_top15": 12,
  "top25_players_from_top10_clubs": 19,
  "best_forward_rank": 2,
- "line_share_gap": 0.0445,
+ "line_share_gap": 0.0408,
  "top10_players": [
   "Michael Olise 97",
   "Harry Kane 97",
   "Ousmane Dembélé 97",
-  "Pedri 97",
+  "Pedri 97.0",
   "Lamine Yamal 97",
   "Raphinha 97",
+  "Luis Díaz 96.4",
   "Joshua Kimmich 96.3",
-  "Luis Díaz 96.3",
   "Erling Haaland 94.9",
   "Nicolas Jackson 94.9"
  ],
  "top10_clubs": [
   "Bayern München 2123",
-  "Arsenal 2066",
+  "Arsenal 2058",
   "Man City 2053",
   "Barcelona 2047",
   "Paris 2041",
   "Real Madrid 2034",
   "Inter 2020",
   "Benfica 1978",
-  "B. Dortmund 1971",
-  "Aston Villa 1959"
+  "B. Dortmund 1973",
+  "Aston Villa 1958"
  ],
  "competitions": {
   "cl": {
-   "title_share_top8_of_field": 0.896,
-   "title_share_bottom_half": 0.004,
+   "title_share_top8_of_field": 0.899,
+   "title_share_bottom_half": 0.008,
    "favourites": [
-    "Bayern München 29.8%",
-    "Arsenal 13.0%",
-    "Man City 11.7%",
-    "Barcelona 10.0%",
-    "Paris 8.9%",
-    "Real Madrid 8.2%"
+    "Bayern München 32.0%",
+    "Arsenal 12.7%",
+    "Man City 11.3%",
+    "Barcelona 10.9%",
+    "Paris 8.0%",
+    "Real Madrid 7.7%"
    ]
   },
   "el": {
-   "title_share_top8_of_field": 0.777,
-   "title_share_bottom_half": 0.021,
+   "title_share_top8_of_field": 0.766,
+   "title_share_bottom_half": 0.03,
    "favourites": [
-    "Aston Villa 5.5%",
-    "Porto 3.8%",
-    "Atleti 3.8%",
-    "Liverpool 3.2%",
-    "Union SG 3.1%",
-    "Man Utd 3.0%"
+    "Union SG 4.5%",
+    "Porto 4.3%",
+    "Benfica 3.8%",
+    "Aston Villa 3.5%",
+    "Bodø/Glimt 3.5%",
+    "Liverpool 3.4%"
    ]
   },
   "ecl": {
-   "title_share_top8_of_field": 0.837,
-   "title_share_bottom_half": 0.013,
+   "title_share_top8_of_field": 0.826,
+   "title_share_bottom_half": 0.012,
    "favourites": [
-    "AEK Athens 2.6%",
-    "Man Utd 2.5%",
-    "Chelsea 2.4%",
-    "Slavia Praha 2.4%",
-    "Union SG 2.3%",
-    "Stuttgart 2.3%"
+    "Union SG 3.8%",
+    "Brighton 3.5%",
+    "Monaco 2.6%",
+    "Bournemouth 2.6%",
+    "Ferencváros 2.5%",
+    "Leipzig 2.3%"
    ]
   }
  },
- "title_share_top8_of_field": 0.896,
+ "title_share_top8_of_field": 0.899,
  "max_title_share_outside_top30": 0.0005,
  "title_favourites": [
-  "Bayern München 29.8%",
-  "Arsenal 13.0%",
-  "Man City 11.7%",
-  "Barcelona 10.0%",
-  "Paris 8.9%",
-  "Real Madrid 8.2%"
+  "Bayern München 32.0%",
+  "Arsenal 12.7%",
+  "Man City 11.3%",
+  "Barcelona 10.9%",
+  "Paris 8.0%",
+  "Real Madrid 7.7%"
  ],
  "pass": {
   "big12_in_top15": true,
@@ -87,22 +87,22 @@
   "bottom_half": true
  },
  "backtest": {
-  "train": 3801,
-  "test": 1471,
+  "train": 3808,
+  "test": 1455,
   "base_rates": {
-   "logloss": 1.0586,
-   "brier": 0.6397,
-   "hit": 0.458
+   "logloss": 1.0591,
+   "brier": 0.6401,
+   "hit": 0.457
   },
   "uefa_only": {
-   "logloss": 1.0058,
-   "brier": 0.6016,
+   "logloss": 1.0063,
+   "brier": 0.6021,
    "hit": 0.515
   },
   "model": {
-   "logloss": 0.9798,
-   "brier": 0.5834,
-   "hit": 0.536
+   "logloss": 0.9794,
+   "brier": 0.5832,
+   "hit": 0.535
   }
  }
 }
