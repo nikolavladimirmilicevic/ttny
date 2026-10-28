@@ -677,6 +677,7 @@ def fetch_squads(top_ids, squads, people):
             e = people.setdefault(str(p['id']), {})
             e['sq'] = p.get('name')
             e['n'] = e.get('n') or p.get('name')
+            e['no'] = p.get('number')   # his shirt number at the club now (none when the API has none)
             if p.get('age'):
                 e['age'] = p['age']
             sp = {'Goalkeeper': 'G', 'Defender': 'D', 'Midfielder': 'M', 'Attacker': 'F'}.get(p.get('position'))
@@ -1194,7 +1195,7 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             # clean sheets that count for him: only matches he started in a defensive position
             cs = sum(1 for s in st[:10] if s[2] == 0 and s[3] in DEF_POS)
             e = people.get(str(pid), {})
-            out_players.append({'id': pid, 'name': fix_text(display_name(e, pid)), 'nat': e.get('nat'), 'age': e.get('age'),
+            out_players.append({'id': pid, 'name': fix_text(display_name(e, pid)), 'nat': e.get('nat'), 'age': e.get('age'), 'no': e.get('no'),
                                 'club': tid, 'prim': pos[0], 'pos': pos, 'pc': [round(cnt[k], 2) for k in pos] if cnt else [1], 'starts': len(st), 'g': g, 'a': a, 'cs': cs,
                                 'sc': [s[1] for s in st[:10]], 'co': [s[2] for s in st[:10]],
                                 'or': [s[5] for s in st[:10]], 'm': m,
@@ -1401,7 +1402,7 @@ def write_careers(world, careers, teams):
             base = re.sub(r'\s+(II|B|U\d\d|Reserves|Youth)$', '', re.sub(r'^Jong\s+', '', nm))
             k = kits.get(nm) or kits.get(alias.get(nm, '')) or kits.get(base) or kits.get(alias.get(base, ''))
             if k: used_kits[nm] = k
-        out.append({'id': p['id'], 'n': p['name'], 'nat': p.get('nat'), 'pos': p['prim'], 'age': p.get('age'), 'ovr': p.get('ovr'), 'f': round(fame, 2), 'c': st})
+        out.append({'id': p['id'], 'n': p['name'], 'nat': p.get('nat'), 'pos': p['prim'], 'age': p.get('age'), 'no': p.get('no'), 'ovr': p.get('ovr'), 'f': round(fame, 2), 'c': st})
     # each club's country (UEFA clubs only), for the themed games ('played in England')
     ctry = {c['name']: c['ctry'] for c in world['clubs'] if c.get('ctry')}
     used_cc = {nm: ctry[nm] for p in out for nm, *_ in p['c'] if nm in ctry}

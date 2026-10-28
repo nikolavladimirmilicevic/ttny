@@ -218,6 +218,8 @@ details.rules ol{margin:0 0 16px;padding-left:20px;display:flex;flex-direction:c
 .pc-top::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.18) 50%,transparent 60%);pointer-events:none}
 .pc-crest{flex:none;margin-left:auto;width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));position:relative;z-index:1}
 .pc-badge{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:46px}
+.shirt{display:inline-block;min-width:22px;margin-right:6px;padding:0 5px;border-radius:5px;border:1px solid currentColor;font:600 11px/16px var(--display);text-align:center;opacity:.9}
+.pc-no{font:700 26px/1 var(--display)}.slot .dot.no{font-size:15px}
 .pc-prim{font:700 13px/1 var(--display);letter-spacing:.06em}
 .pc-id{min-width:0}.pc-id h4{color:var(--kit-ink)}.pc-top .pc-sub{color:var(--kit-ink);opacity:.85}
 .pc-top .pc-ov{box-shadow:0 2px 8px rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.6)}
@@ -983,7 +985,7 @@ function worldFromData(raw){
   for (const p of raw.players){
     const club = C['t' + p.club]; if (!club) continue;
     const prim = p.prim, pid = 'p' + p.id;
-    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, lg: p.lg, lgd: p.lgd, sr: p.sr || 0, lat: p.lat, gr: p.gr || [],
+    P[pid] = { id: pid, name: unent(p.name), nat: p.nat, age: p.age, no: p.no, club: club.id, prim, pos: p.pos, line: LINE[prim], starts: p.starts, sc: p.sc, co: p.co, g: p.g || 0, a: p.a || 0, cs: p.cs, pc: p.pc, ovr: p.ovr, lvl: p.lvl, rl: p.rol, pf: p.prf, fm: p.frm, tm: p.tm || [], mo: p.mo, lm: p.lm, lg: p.lg, lgd: p.lgd, sr: p.sr || 0, lat: p.lat, gr: p.gr || [],
       ap: p.ap, mn: p.mn, ga: p.ga, pk: p.pk, aa: p.aa, rt: p.rt, csy: p.csy, csg: p.csg, nt: p.nt, wdl: p.wdl };
     club.squad.push(pid);
   }
@@ -1580,6 +1582,7 @@ function newRun(carry, weekly){
   const potCount = 11 - kept.length, vet = {}; kept.forEach(id => vet[id] = ((carry.vet || {})[id] || 1) + 1);
   S.run = { phase: 'draft', kept, picks: [...kept], potsN: potCount, order: shuffle([...Array(potCount).keys()]), step: 0, club: null, tried: [], ever, gone, note: '', start: Date.now(), form: '4-2-2-2', cup: null, diff, comp, season: (S.stats.runs || 0) + 1, vet, wk: wk ? wk.week : null, ...(wk ? wkSetup(wk, potCount) : {}), player: carry ? carry.player || '' : ((S.pref || {}).name || ''), full: kept.length === 11 };
   if (wk) S.run.order = S.run.wkOrder.slice();   // the weekly challenge: the week's pots, in a random order
+  S.run.nums = {}; kept.forEach(id => { const n = carry && carry.nums && carry.nums[id]; if (n) S.run.nums[id] = n; }); kept.forEach(id => assignNum(S.run, id));   // the kept keep their numbers
   S.run.intro = 1;
   // champions keep the whole XI: straight to the line-up
   if (!potCount){ S.run.phase = 'lineup'; S.run.manual = null; if (!feasible(S.run.picks).includes(S.run.form)) S.run.form = randomForm(S.run.picks); }
@@ -1618,9 +1621,25 @@ function drawClub(){
     r.note = r.note || (W.C[c].name + ' had nobody who fits your shape, so the pot was drawn again.');
   }
 }
+/* shirt numbers: a drafted player keeps his club number when it is free in your XI; otherwise he gets the number players
+   of his main position wear most often that is still free (from every player in the game, then the usual ones) */
+const NUM_USUAL = { GK: [1, 12, 13, 23, 30, 31, 99], CB: [4, 5, 3, 6, 15, 2, 14, 24], LB: [3, 22, 23, 25, 26], RB: [2, 22, 12, 20, 24], DMF: [6, 8, 4, 16, 18, 5],
+  CMF: [8, 6, 10, 14, 18, 20], LMF: [11, 7, 17, 23], RMF: [7, 11, 17, 20], AMF: [10, 8, 7, 11, 20], LWF: [11, 7, 17, 19, 21], RWF: [7, 11, 17, 19, 20], CF: [9, 19, 18, 20, 21, 14] };
+let NUM_FREQ = null;
+function numsFor(prim){
+  if (!NUM_FREQ){ const f = {}; for (const p of Object.values(W.P)) if (p.no >= 1 && p.no <= 99){ const m = f[p.prim] = f[p.prim] || {}; m[p.no] = (m[p.no] || 0) + 1; }
+    NUM_FREQ = {}; for (const k in f) NUM_FREQ[k] = Object.entries(f[k]).sort((a, b) => b[1] - a[1]).map(x => +x[0]); }
+  return [...new Set([...(NUM_FREQ[prim] || []), ...(NUM_USUAL[prim] || []), ...Array.from({ length: 99 }, (_, i) => i + 1)])];
+}
+function assignNum(r, pid){
+  r.nums = r.nums || {}; if (r.nums[pid]) return r.nums[pid];
+  const taken = new Set(r.picks.filter(x => x !== pid).map(x => r.nums[x]).filter(Boolean)), p = W.P[pid];
+  return r.nums[pid] = p.no >= 1 && p.no <= 99 && !taken.has(p.no) ? p.no : numsFor(p.prim).find(n => !taken.has(n));
+}
+const shirtNo = pid => S.run && S.run.nums && S.run.nums[pid];
 function choose(pid){
   const r = S.run; if (!r || r.phase !== 'draft' || !visible(r).includes(pid)) return;
-  r.picks.push(pid); r.usedC = [...(r.usedC || []), W.C[r.club].ctry]; r.step++; r.tried = []; r.cut = []; r.tip = null;
+  r.picks.push(pid); assignNum(r, pid); r.usedC = [...(r.usedC || []), W.C[r.club].ctry]; r.step++; r.tried = []; r.cut = []; r.tip = null;
   r.sel = null;
   if (r.picks.length === 11){ r.phase = 'lineup'; r.manual = null; if (!feasible(r.picks).includes(r.form)) r.form = randomForm(r.picks); }
   else drawClub();
@@ -1876,7 +1895,7 @@ async function openRun(i, wk, hall){
 const PREV_COMP = { cl: 'el', el: 'ecl', ecl: null };
 const nextComp = r => { const c = r.comp || 'cl', st = r.cup && r.cup.stage; return st === 'champion' ? NEXT_COMP[c] : st === 'league' ? (PREV_COMP[c] || c) : c; };
 function continueRun(){
-  const r = S.run, carry = r.keepN > 0 ? { wk: r.wk, kept: keptInOrder(r), player: r.player, diff: r.diff || 'medium', comp: nextComp(r), vet: r.vet || {}, ever: [...new Set([...(r.ever || []), ...r.picks])] } : null;
+  const r = S.run, carry = r.keepN > 0 ? { wk: r.wk, kept: keptInOrder(r), player: r.player, diff: r.diff || 'medium', comp: nextComp(r), vet: r.vet || {}, nums: r.nums || {}, ever: [...new Set([...(r.ever || []), ...r.picks])] } : null;
   S.run = null; save();
   newRun(carry, !!(r.wk && weeklyOk() && W.weekly.week === r.wk));   // a weekly run goes on as the same week's challenge (with or without players kept)
 }
@@ -2071,7 +2090,7 @@ function cardHTML(p){
   const chip = (x, i) => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}</span>`;
   const tags = [r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : offHere ? `<span class="tag">Slightly below his level at ${slot}</span>` : ''].join('');
   // the top of the card in his club's colours, like a collectible card: grade and main position on the left
-  const head = `<div class="pc-top" style="${clubKit(c)}"><div class="pc-badge"><span class="pc-prim" title="${slot ? 'Where he plays for you' : 'Main position'}">${slot || p.prim}</span></div>
+  const head = `<div class="pc-top" style="${clubKit(c)}"><div class="pc-badge"><span class="pc-prim" title="${slot ? 'Where he plays for you' : 'Main position'}">${slot || p.prim}</span>${(mine && shirtNo(p.id)) || p.no ? `<span class="pc-no" title="${mine && shirtNo(p.id) ? 'His number in your XI' : 'Shirt number'}">${(mine && shirtNo(p.id)) || p.no}</span>` : ''}</div>
       <div class="pc-id"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age} · ${esc(c.name)}</div></div>${clubCrest(c, 'pc-crest')}</div>
     <div class="pc-pos">${p.pos.map(chip).join('')}</div>${tags ? `<div class="pc-tags">${tags}</div>` : ''}`;
   if (!rt) return head;
@@ -2129,7 +2148,7 @@ function pitch(pids, form, kept, rated, editable, fit){
     const p = W.P[pid];
     const rt = null;   // overalls are never shown
     const vn = kept && kept.includes(pid) ? vetRuns(pid) : 0;
-    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${pid === cap ? '<span class="cap" title="Captain">C</span>' : ''}${vn > 1 ? `<span class="vet" title="${vn} runs with you">×${vn}</span>` : ''}${rt ? ovDot(rt, p) : `<div class="dot">${code}</div>`}<div class="lbl${fit ? ' fit' + Math.min(2, fitTier(p, code)) : ''}">${esc(short(p.name))}</div></div>`;
+    return `<div class="slot full${kept && kept.includes(pid) ? ' kept' : ''}${cls(j)}"${act(j)} data-pid="${pid}" style="left:${x}%;top:${y}%;${kit(p)}">${pid === cap ? '<span class="cap" title="Captain">C</span>' : ''}${vn > 1 ? `<span class="vet" title="${vn} runs with you">×${vn}</span>` : ''}${rt ? ovDot(rt, p) : `<div class="dot${shirtNo(pid) ? ' no' : ''}" title="${code}">${shirtNo(pid) || code}</div>`}<div class="lbl${fit ? ' fit' + Math.min(2, fitTier(p, code)) : ''}">${esc(short(p.name))}</div></div>`;
   }).join('') + `</div>`;
 }
 function shapes(pids, active, clickable){
@@ -2310,7 +2329,7 @@ function viewDraft(){
     .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || byPositions(a, b) || a.name.localeCompare(b.name))
     .sort((a, b) => (r.tip && b.id === r.tip.pid) - (r.tip && a.id === r.tip.pid))
     .map(p => `<button class="prow kitcard${r.tip && r.tip.pid === p.id ? ' tipped' : ''}" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
-        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)}${posChips(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
+        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)}${p.no ? `<span class="shirt" title="Shirt number">${p.no}</span>` : ''}${posChips(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   // the shape stays while it still works; only when it stops working, another one that works, at random
@@ -3494,7 +3513,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261027134857';
+const BUILD = '20261028065351';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
