@@ -412,9 +412,10 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .pc-chem{font-size:12px;color:var(--muted);line-height:1.4}.pc-chem b{color:var(--text);font-weight:500}
 @media (pointer:coarse){
   .pcard.sheet{left:0;right:0;top:auto;bottom:0;width:auto;max-height:62vh;overflow:auto;pointer-events:auto;z-index:40;
-    border-radius:16px 16px 0 0;border-width:1px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom));font-size:14px;
+    border-radius:16px 16px 0 0;border-width:1px 0 0;padding:12px 14px calc(14px + env(safe-area-inset-bottom));font-size:13px;
     box-shadow:0 -12px 32px rgba(0,0,0,.55);animation:sheetUp .18s ease-out}
-  .pcard.sheet h4{font-size:20px;padding-right:36px}
+  .pcard.sheet h4{font-size:18px;padding-right:36px}
+  .pcard.sheet .radar{max-width:200px}.pcard.sheet .pc-crest{width:40px;height:40px}.pcard.sheet .pc-no{font-size:22px}
   .pcard.sheet .pc-top{padding-right:52px}
   .pcard.sheet .sheet-x{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:15px}
 }
@@ -457,7 +458,7 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .pc-tags{display:block;line-height:1}.pc-tags .tag{white-space:nowrap;display:inline-block;line-height:1.4;margin:0 4px 0 0;vertical-align:middle}
 .pc-part{grid-template-columns:1fr auto 34px}.pc-part>:last-child{justify-self:end}
 .pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
-.radar{display:block;width:100%;max-width:250px;margin:0 auto;overflow:visible}
+.radar{display:block;width:100%;max-width:220px;margin:0 auto;overflow:visible}
 .radar .rg polygon,.radar .rg line{fill:none;stroke:rgba(243,239,230,.12);stroke-width:1}
 .radar .rg polygon:first-child{fill:rgba(243,239,230,.045);stroke:rgba(243,239,230,.32);stroke-width:1.4}
 .radar .rv{transform-origin:var(--cx) var(--cy);animation:rgrow .55s cubic-bezier(.2,.9,.3,1.1)}
@@ -3520,7 +3521,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261029065556';
+const BUILD = '20261029174657';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
