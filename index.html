@@ -2091,7 +2091,7 @@ function cardHTML(p){
   const chip = (x, i) => `<span class="pp${x === p.prim ? ' main' : isWeak(p, x) ? ' wk' : ''}${x === slot ? ' here' : ''}">${x}</span>`;
   const tags = [r && r.kept && r.kept.includes(p.id) ? '<span class="tag keep">Kept</span>' : '', weakHere ? `<span class="tag warn">Below his level at ${slot}</span>` : offHere ? `<span class="tag">Slightly below his level at ${slot}</span>` : ''].join('');
   // the top of the card in his club's colours, like a collectible card: grade and main position on the left
-  const head = `<div class="pc-top" style="${clubKit(c)}"><div class="pc-badge"><span class="pc-prim" title="${slot ? 'Where he plays for you' : 'Main position'}">${slot || p.prim}</span>${(mine && shirtNo(p.id)) || p.no ? `<span class="pc-no" title="${mine && shirtNo(p.id) ? 'His number in your XI' : 'Shirt number'}">${(mine && shirtNo(p.id)) || p.no}</span>` : ''}</div>
+  const head = `<div class="pc-top" style="${clubKit(c)}"><div class="pc-badge"><span class="pc-prim" title="${slot ? 'Where he plays for you' : 'Main position'}">${slot || p.prim}</span>${mine && shirtNo(p.id) ? `<span class="pc-no" title="His number in your XI">${shirtNo(p.id)}</span>` : ''}</div>
       <div class="pc-id"><h4>${esc(p.name)}</h4><div class="pc-sub">${natTag(p)} · ${p.age} · ${esc(c.name)}</div></div>${clubCrest(c, 'pc-crest')}</div>
     <div class="pc-pos">${p.pos.map(chip).join('')}</div>${tags ? `<div class="pc-tags">${tags}</div>` : ''}`;
   if (!rt) return head;
@@ -2334,7 +2334,7 @@ function viewDraft(){
     .sort((a, b) => (ok.has(b.id) - ok.has(a.id)) || byPositions(a, b) || a.name.localeCompare(b.name))
     .sort((a, b) => (r.tip && b.id === r.tip.pid) - (r.tip && a.id === r.tip.pid))
     .map(p => `<button class="prow kitcard${r.tip && r.tip.pid === p.id ? ' tipped' : ''}" style="${clubKit(club)}" data-act="pick" data-p="${p.id}" data-pid="${p.id}" ${ok.has(p.id) ? '' : 'disabled'}>
-        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)}${p.no ? `<span class="shirt" title="Shirt number">${p.no}</span>` : ''}${posChips(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
+        <span style="min-width:0">${r.tip && r.tip.pid === p.id ? `<div class="tiptag">★ ${tipText(r.tip)}</div>` : ''}<div class="nm">${esc(p.name)}</div><div class="pos">${natTag(p)}${posChips(p)}${ok.has(p.id) ? '' : why(p.id)}</div></span>
         <span></span><span></span><span class="go" aria-hidden="true">${ok.has(p.id) ? 'Pick' : ''}</span></button>`).join('');
   const shp = feasible(r.picks);
   // the shape stays while it still works; only when it stops working, another one that works, at random
@@ -3520,7 +3520,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261028070443';
+const BUILD = '20261029065556';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
