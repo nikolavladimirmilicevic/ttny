@@ -2,7 +2,7 @@
  "big12_in_top15": 10,
  "top25_players_from_top10_clubs": 20,
  "best_forward_rank": 1,
- "line_share_gap": 0.0299,
+ "line_share_gap": 0.0303,
  "top10_players": [
   "Harry Kane 97",
   "Ousmane Dembélé 97",
@@ -29,51 +29,51 @@
  ],
  "competitions": {
   "cl": {
-   "title_share_top8_of_field": 0.897,
-   "title_share_bottom_half": 0.005,
+   "title_share_top8_of_field": 0.887,
+   "title_share_bottom_half": 0.008,
    "favourites": [
-    "Bayern München 31.5%",
-    "Arsenal 12.9%",
-    "Barcelona 10.7%",
-    "Paris 10.0%",
-    "Real Madrid 9.2%",
-    "Man City 8.3%"
+    "Bayern München 30.8%",
+    "Barcelona 11.9%",
+    "Arsenal 11.2%",
+    "Paris 10.4%",
+    "Real Madrid 8.9%",
+    "Man City 8.2%"
    ]
   },
   "el": {
-   "title_share_top8_of_field": 0.787,
-   "title_share_bottom_half": 0.024,
+   "title_share_top8_of_field": 0.814,
+   "title_share_bottom_half": 0.019,
    "favourites": [
-    "Benfica 4.2%",
-    "Porto 4.2%",
-    "Roma 3.5%",
-    "Club Brugge 3.4%",
-    "Union SG 3.4%",
-    "Aston Villa 3.3%"
+    "Union SG 5.7%",
+    "Benfica 3.9%",
+    "Aston Villa 3.8%",
+    "Real Betis 3.8%",
+    "Bodø/Glimt 3.3%",
+    "Liverpool 3.0%"
    ]
   },
   "ecl": {
-   "title_share_top8_of_field": 0.842,
-   "title_share_bottom_half": 0.006,
+   "title_share_top8_of_field": 0.816,
+   "title_share_bottom_half": 0.016,
    "favourites": [
-    "Bournemouth 3.7%",
-    "Stuttgart 2.8%",
-    "Union SG 2.6%",
-    "Monaco 2.6%",
-    "Brighton 2.6%",
-    "Crvena Zvezda 2.5%"
+    "Brighton 4.3%",
+    "Bournemouth 3.8%",
+    "Union SG 3.1%",
+    "Shakhtar 2.6%",
+    "Como 2.5%",
+    "Bodø/Glimt 2.3%"
    ]
   }
  },
- "title_share_top8_of_field": 0.897,
+ "title_share_top8_of_field": 0.887,
  "max_title_share_outside_top30": 0.001,
  "title_favourites": [
-  "Bayern München 31.5%",
-  "Arsenal 12.9%",
-  "Barcelona 10.7%",
-  "Paris 10.0%",
-  "Real Madrid 9.2%",
-  "Man City 8.3%"
+  "Bayern München 30.8%",
+  "Barcelona 11.9%",
+  "Arsenal 11.2%",
+  "Paris 10.4%",
+  "Real Madrid 8.9%",
+  "Man City 8.2%"
  ],
  "pass": {
   "big12_in_top15": true,
@@ -88,20 +88,20 @@
  },
  "backtest": {
   "train": 3864,
-  "test": 1420,
+  "test": 1432,
   "base_rates": {
-   "logloss": 1.0625,
-   "brier": 0.6425,
+   "logloss": 1.0621,
+   "brier": 0.6422,
    "hit": 0.45
   },
   "uefa_only": {
-   "logloss": 1.0121,
-   "brier": 0.6059,
+   "logloss": 1.0125,
+   "brier": 0.6061,
    "hit": 0.509
   },
   "model": {
-   "logloss": 0.9831,
-   "brier": 0.5856,
+   "logloss": 0.9839,
+   "brier": 0.5861,
    "hit": 0.535
   }
  }
