@@ -1154,7 +1154,9 @@ function youElo(picks, form){
   const ov = teamOvr(picks, form), comp = (S.run && S.run.comp) || 'el';
   return xiElo(ov) + lift[comp] * Math.max(0, ov - LIFT_FROM) + ce * chemOf(picks).total;
 }
-const strength = id => id === 'YOU' ? youElo(S.run.picks, S.run.form) : W.C[id].elo;
+// a club's strength in a match: its rating plus its form this season (drawn once per competition, pipeline/model.py SEASON_SD)
+const SEASON_SD = 90;
+const strength = id => id === 'YOU' ? youElo(S.run.picks, S.run.form) : W.C[id].elo + ((S.run && S.run.cform && S.run.cform[id]) || 0);
 const clubOv = id => eloOv(strength(id));
 // opponents show only a letter, never a 40-99 number
 // opponents show no rating at all
@@ -1385,7 +1387,8 @@ function compField(comp){
   const pool = W.oppPool, eloRank = {};
   pool.slice().sort((a, b) => W.C[b].elo - W.C[a].elo).forEach((id, i) => eloRank[id] = i + 1);
   const gauss = () => { let u = 0, v = 0; while (!u) u = MR(); while (!v) v = MR(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
-  const order = pool.map(id => [id, 0.5 * Math.log(W.C[id].rank) + 0.5 * Math.log(eloRank[id]) + FIELD_SIGMA * gauss()]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+  // the luck shrinks for the biggest clubs (a top-5 side does not land in the Conference League): full from 30th down
+  const order = pool.map(id => { const b = 0.5 * Math.log(W.C[id].rank) + 0.5 * Math.log(eloRank[id]); return [id, b + FIELD_SIGMA * Math.min(1, Math.exp(b) / 30) * gauss()]; }).sort((a, b) => a[1] - b[1]).map(x => x[0]);
   const fields = { cl: [], el: [], ecl: [] }, cnt = { cl: {}, el: {}, ecl: {} };
   for (const id of order) for (const c of ['cl', 'el', 'ecl']){
     const ct = W.C[id].ctry;
@@ -1484,6 +1487,8 @@ function drawCard(c){
 }
 function buildCup(T){
   const opps = compField((S.run && S.run.comp) || 'cl').sort((a, b) => W.C[b].elo - W.C[a].elo);
+  if (S.run){ const gs = () => { let u = 0, v = 0; while (!u) u = MR(); while (!v) v = MR(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    S.run.cform = {}; opps.forEach(id => S.run.cform[id] = Math.round(SEASON_SD * gs())); }
   const mine = strength('YOU'), at = opps.filter(id => W.C[id].elo > mine).length;
   const teams = [...opps.slice(0, at), 'YOU', ...opps.slice(at)];
   const six = (S.run && S.run.comp) === 'ecl', myPot = Math.floor(at / (six ? 6 : 9)) + 1;
@@ -3521,7 +3526,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261029174657';
+const BUILD = '20261102130011';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

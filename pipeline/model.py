@@ -381,9 +381,15 @@ def player_ratings(world, fx, lu, evs, pst, rating_now, since, until, national=f
     out = {}
     for i in score:
         ovr = v2[i] if i in v2 else OVR_MEAN + OVR_SD * ND.inv_cdf(min(0.9995, max(0.0005, pct[i])))
-        out[i] = {'ovr': round(max(45, min(97, ovr)), 1), 'lvl': round(lvl_p[i], 3), 'rol': round(rol_p[i], 3),
+        out[i] = {'ovr': round(max(45, soft_top(ovr)), 1), 'lvl': round(lvl_p[i], 3), 'rol': round(rol_p[i], 3),
                   'prf': round(prf_p[i], 3), 'frm': round(frm_p[i], 3)}
     return out, {'slope': round(slope, 4), 'rated_starts': len(xs)}
+
+
+def soft_top(x):
+    """No hard ceiling at the top: above 90 the overall is squeezed smoothly toward 99 (never reached), so the very best
+    keep their order instead of all sitting on the same number."""
+    return x if x <= 90 else 90 + 9 * (1 - math.exp(-(x - 90) / 9))
 
 
 def zscores(d):
@@ -485,16 +491,16 @@ def credibility(world, G, top_clubs, sims=2000, seed_=7):
     # (Champions and Europa League 8 matches, Conference League 6), then the knockouts
     rnd = random.Random(seed_)
     rank_of = {c['id']: i + 1 for i, c in enumerate(by_elo)}
-    name = {c['id']: c['name'] for c in clubs}
+    name = {c['id']: c['name'] for c in clubs}; by_id = {c['id']: c for c in clubs}
     rep['competitions'] = {}
     for comp in ('cl', 'el', 'ecl'):
         titles = Counter(); top8 = bottom = 0
         n = sims if comp == 'cl' else sims // 2
         for _ in range(n):
-            field = comp_fields(clubs, rnd)[comp]
+            field = [dict(c, elo=c['elo'] + rnd.gauss(0, SEASON_SD)) for c in comp_fields(clubs, rnd)[comp]]
             champ = sim_cup(field, G, rnd, six=(comp == 'ecl'))
             titles[champ['id']] += 1
-            order = [c['id'] for c in sorted(field, key=lambda c: -c['elo'])]
+            order = [c['id'] for c in sorted(field, key=lambda c: -by_id[c['id']]['elo'])]
             top8 += champ['id'] in order[:8]; bottom += champ['id'] in order[18:]
         rep['competitions'][comp] = {'title_share_top8_of_field': round(top8 / n, 3), 'title_share_bottom_half': round(bottom / n, 3),
                                      'favourites': [f"{name[k]} {v / n:.1%}" for k, v in titles.most_common(6)]}
@@ -513,13 +519,18 @@ def credibility(world, G, top_clubs, sims=2000, seed_=7):
 
 
 FIELD_SIGMA, COUNTRY_CAP = 0.85, {'cl': 5, 'el': 4, 'ecl': 3}
+# each club's form for a season, drawn once per competition (injuries, form, the draw): a spread of 90 Elo brings the
+# favourite's title chances near the bookmakers' (about 20%) while the field's best still win three titles in four
+SEASON_SD = 90
 
 
 def comp_fields(clubs, rnd, size=36):
     """Who plays where, as in the game: UEFA rank and rating rank, half each on a log scale, plus luck, then the
     Champions League, Europa League and Conference League in that order with a cap per country."""
     erank = {c['id']: i + 1 for i, c in enumerate(sorted(clubs, key=lambda c: -c['elo']))}
-    key = {c['id']: 0.5 * math.log(c['rank']) + 0.5 * math.log(erank[c['id']]) + FIELD_SIGMA * rnd.gauss(0, 1) for c in clubs}
+    # the luck shrinks for the biggest clubs (a top-5 side does not land in the Conference League): full from 30th down
+    base = {c['id']: 0.5 * math.log(c['rank']) + 0.5 * math.log(erank[c['id']]) for c in clubs}
+    key = {k: v + FIELD_SIGMA * min(1.0, math.exp(v) / 30) * rnd.gauss(0, 1) for k, v in base.items()}
     fields = {k: [] for k in COUNTRY_CAP}; cnt = {k: Counter() for k in COUNTRY_CAP}
     for c in sorted(clubs, key=lambda c: key[c['id']]):
         for k in ('cl', 'el', 'ecl'):
