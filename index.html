@@ -2284,7 +2284,7 @@ function viewHome(){
       </ol>
       <details class="fullrules"><summary>Full rules</summary>
       <ol>
-        <li>The world is every club on the UEFA 5-year ranking. A player counts with at least one start for one of those clubs in the last 365 days, against any opponent; with only a few starts his grade leans toward a squad player's.</li>
+        <li>The world is every club on the UEFA 5-year ranking. A player plays for the club whose squad list he is on today (refreshed every day, so a transfer shows the day after his new club registers him) and counts with at least one start in the last 365 days for any team whose line-ups the game has: a club on the ranking, any of their opponents, a national team. That start does not have to be for his new club. With only a few starts his grade leans toward a squad player's.</li>
         <li>A club enters the draft only if it has 11 such players. Clubs are split into 11 pots by ranking.</li>
         <li>Pots are revealed one at a time in random order. You get one club from each and pick one player.</li>
         <li>A run starts with one choice, the difficulty. It sets where you start (Easy in the Champions League, Medium in the Europa League, Hard in the Conference League) and how big the clubs you draft from are: the harder it is, the more smaller clubs appear in the pots. Win a competition and a run played straight after it moves up a level.</li>
@@ -3526,7 +3526,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261103013211';
+const BUILD = '20261103133135';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
