@@ -487,6 +487,7 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .imgov{position:fixed;inset:0;z-index:60;background:rgba(5,10,20,.88);display:grid;place-items:center;padding:16px}
 .imgbox{max-width:520px;width:100%;display:flex;flex-direction:column;align-items:center}.imgbox img{max-width:100%;max-height:calc(100vh - 150px);width:auto;height:auto;object-fit:contain;border-radius:12px;display:block;box-shadow:0 12px 40px rgba(0,0,0,.6)}
 .imgbox .btnrow,.imgbox .muted{width:100%}
+.imgov.tall{overflow-y:auto;place-items:start center}.imgov.tall .imgbox img{max-height:none;width:100%}.imgov.tall .imgbox .btnrow{position:sticky;bottom:0;padding:10px 0;background:rgba(5,10,20,.92)}
 .imgbox .btnrow{margin-top:12px}.imgbox a.btn{text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}
 
 
@@ -3194,9 +3195,30 @@ async function showImage(kind){
   const cv = await seasonImage(Object.assign(seasonSummary(r), { player: r.player || '' }));
   showCanvas(cv, `ttny-run-${r.season || 1}.png`, 'Your run');
 }
-function showCanvas(cv, name, alt){
+/* the whole page as one tall image (everything on this tab, top to bottom): drawn from the page itself
+   by html2canvas, loaded only when asked for; the buttons, the dock and the floating clock are left out */
+let h2cP = null;
+const loadH2C = () => h2cP || (h2cP = new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; sc.onload = () => ok(window.html2canvas); sc.onerror = () => { h2cP = null; no(new Error('load')); }; document.head.appendChild(sc); }));
+async function pageShot(name){
+  const r = S.run, app = document.getElementById('app'); if (!app) return;
+  toast('Making the screenshot…');
+  try {
+    const h2c = await loadH2C(); await fontsReady();
+    // a wide bracket or table that scrolls sideways on the page is shown whole: the image grows wider by what is hidden
+    const extra = Math.max(0, ...[...app.querySelectorAll('.bracket-wrap,.tblwrap')].map(e => e.scrollWidth - e.clientWidth));
+    const w = app.offsetWidth + extra;
+    const cv = await h2c(app, { backgroundColor: '#0B1626', scale: Math.min(2, Math.max(1, 1080 / w)), useCORS: true, logging: false,
+      width: w, windowWidth: document.documentElement.clientWidth + extra, scrollX: 0, scrollY: -window.scrollY,
+      onclone: doc => { const st = doc.createElement('style'); st.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}.bracket-wrap,.tblwrap{overflow:visible!important}';
+        doc.head.appendChild(st); const a = doc.getElementById('app'); a.classList.remove('enter'); a.style.width = w + 'px'; a.style.maxWidth = 'none'; a.style.margin = '0';
+        const tb = a.querySelector('.topbar > div:last-child'); if (tb) tb.remove(); },   // no clock or buttons in the picture
+      ignoreElements: el => el.classList && (el.classList.contains('dock') || el.classList.contains('shotrow') || el.classList.contains('toast')) || el.id === 'fclk' || el.id === 'confetti' });
+    showCanvas(cv, `ttny-${name || 'page'}-${(r && r.season) || 1}.png`, 'This page', true);
+  } catch (e) { toast('The screenshot could not be made here.'); }
+}
+function showCanvas(cv, name, alt, tall){
   const url = cv.toDataURL('image/png'), kind = alt;
-  const ov = document.createElement('div'); ov.className = 'imgov';
+  const ov = document.createElement('div'); ov.className = 'imgov' + (tall ? ' tall' : '');
   ov.innerHTML = `<div class="imgbox"><img src="${url}" alt="${kind} as an image"><div class="btnrow"><button class="btn primary" data-img="share">Share</button><button class="btn ghost" data-img="save">Save</button><button class="btn ghost" data-img="close">Close</button></div><div class="muted" style="font-size:12px;text-align:center;margin-top:8px">On a phone you can also press and hold the image to save it.</div></div>`;
   document.body.appendChild(ov);
   ov.addEventListener('click', async e => {
@@ -3282,7 +3304,7 @@ function viewSeason(){
       ${runPath(r)}
       ${(r.ach || []).length ? `<div class="achnew">${r.ach.map(k => achChip(ACH.find(a => a[0] === k), true)).join('')}</div>` : ''}
       ${runStory(r) ? `<p class="story" style="margin:12px 0 0;font-size:16px;line-height:1.45">${runStory(r)}</p>` : ''}
-      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="season" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button></div>
+      <div class="shotrow" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="img" data-kind="season" style="padding:6px 14px;font-size:13px;color:var(--text)">Share as image</button><button class="chip quit" data-act="shot" data-name="run" style="padding:6px 14px;font-size:13px;color:var(--text)">Screenshot of this page</button></div>
     </section>
     <div class="endgrid">
       <div class="stack">${scoreBox(r)}${playerOfRun(r)}${seasonBox(r)}</div>
@@ -3298,7 +3320,8 @@ function viewComp(){
   return `${doneTop()}
   <div class="stack">
     <section class="card verdict${champ ? ' champ' : ''}"><div class="eyebrow">${compOf(r).name}</div>
-      <h1 style="margin-top:8px">${champ ? 'Your XI' : esc(nm(c.champ))}</h1><p style="margin:8px 0 0">won the ${compOf(r).short}.</p></section>
+      <h1 style="margin-top:8px">${champ ? 'Your XI' : esc(nm(c.champ))}</h1><p style="margin:8px 0 0">won the ${compOf(r).short}.</p>
+      <div class="shotrow" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="chip quit" data-act="shot" data-name="competition" style="padding:6px 14px;font-size:13px;color:var(--text)">Screenshot of this page</button></div></section>
     ${koBox(c)}
     ${topBox(r)}
     ${t ? tableHTML(tableAfter(c, (c.lg || []).length), 'League phase table', `You finished ${ord(t.pos)}`) : ''}
@@ -3426,6 +3449,7 @@ document.addEventListener('click', e => {
     else { S.armed = null; continueRun(); }
   }
   else if (a === 'img') showImage(b.dataset.kind);
+  else if (a === 'shot') pageShot(b.dataset.name);
   else if (a === 'fresh2'){ S.run = null; save(); render(); }
   else if (a === 'lbimg') showTopImage(b.dataset.wk === '1' || (b.dataset.wk == null && (S.pref || {}).lbTab === 'week'));
   else if (a === 'home'){
@@ -3542,7 +3566,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261104125335';
+const BUILD = '20261104135930';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
