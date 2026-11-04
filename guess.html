@@ -581,7 +581,7 @@ function viewDone(res){
 async function gameImage(res){
   try { await document.fonts.load('700 40px Oswald'); await document.fonts.load('400 20px Rubik'); } catch (e) {}
   const W_ = 1080, H = 1350, acc = getComputedStyle(document.body).getPropertyValue('--gold').trim() || '#FF5FA2';
-  const cv = document.createElement('canvas'); cv.width = W_; cv.height = H; const x = cv.getContext('2d');
+  const cv = document.createElement('canvas'); cv.width = W_ * 2; cv.height = H * 2; const x = cv.getContext('2d'); x.scale(2, 2);   // stored at 2160 px wide: sharp when zoomed
   const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0B1626'); g.addColorStop(1, '#13233A'); x.fillStyle = g; x.fillRect(0, 0, W_, H);
   x.save(); x.fillStyle = 'rgba(255,255,255,.045)'; x.font = '700 64px Arial'; x.textAlign = 'center';
   for (let yy = 70, row = 0; yy < H + 80; yy += 150, row++) for (let xx = row % 2 ? 75 : 0; xx < W_ + 80; xx += 150){ x.save(); x.translate(xx + 40, yy); x.rotate((row + xx / 150) % 2 ? .22 : -.22); x.fillText('?', 0, 0); x.restore(); }

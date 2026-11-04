@@ -3099,8 +3099,10 @@ function fitHeroLogo(){
 }
 addEventListener('resize', () => requestAnimationFrame(fitHeroLogo));
 if (document.fonts) document.fonts.ready.then(() => fitHeroLogo());
+const IMG_X = 2;
 function canvasBase(w, h, acc, comp){
-  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d');
+  // drawn in 1080-wide units, stored at twice that (2160 px wide) so the details stay sharp when zoomed
+  const cv = document.createElement('canvas'); cv.width = w * IMG_X; cv.height = h * IMG_X; const x = cv.getContext('2d'); x.scale(IMG_X, IMG_X);
   const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0B1626'); g.addColorStop(1, '#13233A'); x.fillStyle = g; x.fillRect(0, 0, w, h);
   // the competition's motif, as in the game: stars, stripes, hexagons
   x.save();
@@ -3233,7 +3235,9 @@ async function pageShot(name){
     // a wide bracket or table that scrolls sideways on the page is shown whole: the image grows wider by what is hidden
     const extra = Math.max(0, ...[...app.querySelectorAll('.bracket-wrap,.tblwrap')].map(e => e.scrollWidth - e.clientWidth));
     const w = app.offsetWidth + extra;
-    const cv = await h2c(app, { backgroundColor: '#0B1626', scale: Math.min(2, Math.max(1, 1080 / w)), useCORS: true, logging: false,
+    // as sharp as it can be: three device pixels per CSS pixel, less only where a phone's canvas limit (about 16.7 million pixels) would be passed
+    const sc = Math.max(1, Math.min(3, Math.sqrt(16e6 / (w * app.scrollHeight))));
+    const cv = await h2c(app, { backgroundColor: '#0B1626', scale: sc, useCORS: true, logging: false,
       width: w, windowWidth: document.documentElement.clientWidth + extra, scrollX: 0, scrollY: -window.scrollY,
       onclone: doc => { const st = doc.createElement('style'); st.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}.bracket-wrap,.tblwrap{overflow:visible!important}';
         doc.head.appendChild(st); const a = doc.getElementById('app'); a.classList.remove('enter'); a.style.width = w + 'px'; a.style.maxWidth = 'none'; a.style.margin = '0';
@@ -3592,7 +3596,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261104180116';
+const BUILD = '20261104180822';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

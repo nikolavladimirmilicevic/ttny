@@ -163,3 +163,5 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 **One clock.** The countdown no longer sits in the top bar: there is a single clock, fixed at the top centre of the screen on every step that has one, so it stays in view while scrolling. In a phone's draft it sits in the sticky strip beside "Pick X of 11" instead.
 
 **The bracket on a phone.** Under 600px the knockout bracket is no longer a wide chart to swipe sideways: it becomes a list, one round under the other, the latest round on top (the final first once the run is over), in bigger type, with your ties outlined in gold. The screenshot of the competition page on a phone is then a readable phone-width image.
+
+**Sharper images.** The drawn images (your run, the top 10, the Guess Who result) are laid out in 1080-wide units as before but stored at twice that, 2160 × 2700. The page screenshot uses three device pixels per CSS pixel, less only where a phone's canvas limit (about 16.7 million pixels) would be passed by a very long page.
