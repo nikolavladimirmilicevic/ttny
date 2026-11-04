@@ -382,6 +382,16 @@ body[data-comp="ecl"]{--gold:#48D75D;--gold-ink:#03170A}
 .narrow-only{display:none}@media(max-width:899px){.narrow-only{display:inline}.wide-only{display:none}}
 .bracket-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
 .bracket{position:relative}
+.bracket-list{display:none}
+@media(max-width:600px){.bracket-wrap{display:none}.bracket-list{display:block}}
+.bkr h5{margin:14px 0 8px;font:600 14px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}.bkr:first-child h5{margin-top:2px}
+.bkr .ties{display:grid;gap:8px}
+.bxl{position:relative;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-size:15px}
+.bxl .bl{line-height:1.75;gap:8px}.bxl .bl .sd{width:20px;font-size:12px}.bxl .bl .s1,.bxl .bl .s2{width:20px;font-size:14px}.bxl .bl .sa{min-width:28px;font-size:16px}.bxl .bl .sa small{font-size:11px}
+.bxl .bn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bxl.mine{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 12px -2px var(--gold)}
+.bxl.fin{border-color:rgba(227,179,65,.7);background:linear-gradient(180deg,rgba(227,179,65,.12),var(--panel-2));font-size:18px;padding:10px 14px}.bxl.fin .bl .sa{font-size:20px}
+.bxl .pl{position:absolute;right:10px;top:-8px;padding:0 6px;border-radius:4px;background:var(--panel-2);border:1px solid var(--line);font-size:10px;line-height:14px;color:var(--muted)}
 .bracket svg{position:absolute;left:0;top:0}.bracket path{fill:none;stroke:rgba(255,255,255,.18);stroke-width:1.5}.bracket path.hot{stroke:var(--gold);stroke-width:3.5;stroke-linecap:round;filter:drop-shadow(0 0 4px var(--gold))}
 .bl.beaten .bn{text-decoration:line-through;text-decoration-thickness:1.5px;opacity:.6}.bx.mine{box-shadow:0 0 0 1px var(--gold),0 0 12px -2px var(--gold)}
 .bh{position:absolute;top:0;font:600 11px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
@@ -3023,6 +3033,19 @@ function koBox(c, st){
       }
     }
   }));
+  // on a phone the bracket is a list instead, one round under the other, the latest round on top, in bigger type
+  let list = '';
+  for (let ci = 4; ci >= 0; ci--){
+    const ts = cols[ci].filter(Boolean), mode = st[KO_KEYS[ci]] || 'full';
+    if (!ts.length || (mode === 'hidden' && ci !== 1)) continue;
+    list += `<div class="bkr"><h5>${ci === 4 ? '🏆 ' : ''}${names[ci]}</h5><div class="ties">` + cols[ci].map((t, i) => {
+      if (!t) return '';
+      const mine = mode !== 'hidden' && (t.a === 'YOU' || t.b === 'YOU');
+      const up = ci >= 2 && cols[ci - 1][2 * i] ? cols[ci - 1][2 * i].w : t.a, ab = up === t.b ? [t.b, t.a] : [t.a, t.b];
+      const inner = ci === 1 && c.brk && !drawn ? ghost(i) : line(ab[0], t, mode, ci) + line(ab[1], t, mode, ci);
+      return `<div class="bxl${mine ? ' mine' : ''}${ci === 4 ? ' fin' : ''}">${ci === 0 ? poLab(i) : ''}${inner}</div>`;
+    }).join('') + `</div></div>`;
+  }
   const heads = names.map((n, ci) => `<div class="bh" style="left:${x(ci)}px;width:${BW}px">${n}</div>`).join('');
   const W_ = x(4) + BW;
   // keep the round that matters in view: the one being played, or after the season the last one you reached
@@ -3032,7 +3055,8 @@ function koBox(c, st){
   if (fc < 0) fc = 0;
   return `<section class="card"><div class="eyebrow" style="margin-bottom:10px">Knockout stage</div>
     <div class="bracket-wrap" data-focus="${Math.max(0, x(fc) - 12)}"><div class="bracket" style="width:${W_}px;height:${H}px">${heads}<svg width="${W_}" height="${H}" aria-hidden="true">${paths}</svg>${boxes}</div></div>
-    <div class="muted" style="font-size:12px;margin-top:8px">League-phase position, first leg, second leg, aggregate. <span class="wide-only">Hover a tie for the details.</span><span class="narrow-only">Swipe sideways for the later rounds.</span></div></section>`;
+    <div class="bracket-list">${list}</div>
+    <div class="muted" style="font-size:12px;margin-top:8px">League-phase position, first leg, second leg, aggregate. <span class="wide-only">Hover a tie for the details.</span></div></section>`;
 }
 /* a short text summary of the run, for sending to friends */
 /* ================= CHALLENGE: 10 SEASONS, A HISTORY, AND IMAGES TO SHARE ================= */
@@ -3568,7 +3592,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261104173528';
+const BUILD = '20261104180116';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

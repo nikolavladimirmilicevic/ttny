@@ -161,3 +161,5 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 **Screenshot of a whole page.** Both end-of-run pages (Your run and The competition) have a "Screenshot of this page" button. It draws everything on that page, top to bottom, as one tall image with html2canvas (1.4.1 from cdnjs, loaded only when the button is pressed): a bracket or table that scrolls sideways on the page is shown whole, and the buttons, the dock and the clock are left out. The image opens in the same overlay as the other images, with Share and Save.
 
 **One clock.** The countdown no longer sits in the top bar: there is a single clock, fixed at the top centre of the screen on every step that has one, so it stays in view while scrolling. In a phone's draft it sits in the sticky strip beside "Pick X of 11" instead.
+
+**The bracket on a phone.** Under 600px the knockout bracket is no longer a wide chart to swipe sideways: it becomes a list, one round under the other, the latest round on top (the final first once the run is over), in bigger type, with your ties outlined in gold. The screenshot of the competition page on a phone is then a readable phone-width image.
