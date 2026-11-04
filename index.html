@@ -51,7 +51,9 @@ h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.1;tex
 .hero{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px}.hero .hlogo{align-self:start;width:0;height:0;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
 .hero h1 .hl{display:inline-block;white-space:nowrap}
 .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
-.chip.hot{border-color:var(--gold);color:var(--gold)}.chip .ico{display:none}
+.chip.hot{border-color:var(--gold);color:var(--gold)}
+#fclk{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:12px;z-index:45}#fclk .chip{background:rgba(11,22,38,.94);backdrop-filter:blur(6px);font-size:14px;padding:5px 12px;box-shadow:0 4px 14px rgba(0,0,0,.45)}#fclk .ico{display:inline}
+.strip .sh{display:flex;align-items:center;gap:8px}.strip .sh .sclk{margin-left:auto;padding:1px 8px;font-size:12px}.strip .sh .sclk .ico{display:inline}.chip .ico{display:none}
 .chip.warn{border-color:var(--loss);color:var(--loss)}
 .chip.quit{background:transparent;cursor:pointer}
 
@@ -1942,8 +1944,22 @@ function timeUp(){
   const b = document.querySelector('.dock .btn.primary');
   if (b) b.click(); else save();
 }
+// the clock must always be in view: when the top bar's clock is scrolled away (and the draft's sticky strip, which has its
+// own, is not showing), a copy floats at the top right
+function floatClock(){
+  let f = document.getElementById('fclk');
+  const r = S.run, chip = document.querySelector('.topbar .chip.hot'), strip = document.querySelector('.strip');
+  const stripOn = strip && getComputedStyle(strip).display !== 'none';
+  const show = !!(r && r.stepDl && chip && chip.getBoundingClientRect().bottom < 0 && !stripOn);
+  if (!show){ if (f) f.hidden = true; return; }
+  if (!f){ f = document.createElement('div'); f.id = 'fclk'; document.body.appendChild(f); }
+  if (f.dataset.dl !== String(r.stepDl)){ f.dataset.dl = r.stepDl; f.innerHTML = `<span class="chip hot"><span class="ico">⏱</span> <span class="num" data-cd="${r.stepDl}" data-w="15000">${fmt(r.stepDl - Date.now())}</span></span>`; }
+  f.hidden = false;
+}
+addEventListener('scroll', () => floatClock(), { passive: true });
 function tick(){
   const now = Date.now();
+  floatClock();
   if (S.run && S.run.stepDl && now > S.run.stepDl) timeUp();
   document.querySelectorAll('[data-ends]').forEach(el => { const ms = +el.dataset.ends - now, d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
     el.textContent = ms <= 0 ? 'Ended' : 'Ends in ' + (d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m + 'm'); el.classList.toggle('last', ms < 864e5); });
@@ -2308,7 +2324,7 @@ function viewHome(){
 
 /* phone only: a sticky strip above the club with the shape and which spots are filled, so the pitch below need not be scrolled to */
 function shapeStrip(r, cells, nP){
-  return `<div class="strip hasmini"><div class="sbody"><div class="sh"><b>Pick ${r.picks.length + 1} of 11</b><span>${r.form}</span></div>
+  return `<div class="strip hasmini"><div class="sbody"><div class="sh"><b>Pick ${r.picks.length + 1} of 11</b><span>${r.form}</span>${r.stepDl ? `<span class="chip hot sclk"><span class="ico">⏱</span> <span class="num" data-cd="${r.stepDl}" data-w="15000">${fmt(r.stepDl - Date.now())}</span></span>` : ''}</div>
     <div class="pots mini" style="grid-template-columns:repeat(${nP},1fr)">${cells}</div></div>${miniPitch(r)}</div>`;
 }
 // on a phone the pitch is far below the list: a small one in the bar, where the player you just picked drops into his place
@@ -3526,7 +3542,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261103133135';
+const BUILD = '20261104125335';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
