@@ -52,7 +52,7 @@ h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.1;tex
 .hero h1 .hl{display:inline-block;white-space:nowrap}
 .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
 .chip.hot{border-color:var(--gold);color:var(--gold)}
-#fclk{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:12px;z-index:45}#fclk .chip{background:rgba(11,22,38,.94);backdrop-filter:blur(6px);font-size:14px;padding:5px 12px;box-shadow:0 4px 14px rgba(0,0,0,.45)}#fclk .ico{display:inline}
+#fclk{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:45}#fclk .chip{background:rgba(11,22,38,.94);backdrop-filter:blur(6px);font-size:14px;padding:5px 12px;box-shadow:0 4px 14px rgba(0,0,0,.45)}#fclk .ico{display:inline}
 .strip .sh{display:flex;align-items:center;gap:8px}.strip .sh .sclk{margin-left:auto;padding:1px 8px;font-size:12px}.strip .sh .sclk .ico{display:inline}.chip .ico{display:none}
 .chip.warn{border-color:var(--loss);color:var(--loss)}
 .chip.quit{background:transparent;cursor:pointer}
@@ -1949,12 +1949,14 @@ function timeUp(){
 // own, is not showing), a copy floats at the top right
 function floatClock(){
   let f = document.getElementById('fclk');
-  const r = S.run, chip = document.querySelector('.topbar .chip.hot'), strip = document.querySelector('.strip');
-  const stripOn = strip && getComputedStyle(strip).display !== 'none';
-  const show = !!(r && r.stepDl && chip && chip.getBoundingClientRect().bottom < 0 && !stripOn);
+  // the one clock: always in view at the top (in a phone's draft it sits in the sticky strip instead)
+  const r = S.run, strip = document.querySelector('.strip');
+  const stripOn = strip && getComputedStyle(strip).display !== 'none' && strip.querySelector('.sclk');
+  const show = !!(r && r.stepDl && r.phase !== 'home' && !stripOn);
   if (!show){ if (f) f.hidden = true; return; }
   if (!f){ f = document.createElement('div'); f.id = 'fclk'; document.body.appendChild(f); }
-  if (f.dataset.dl !== String(r.stepDl)){ f.dataset.dl = r.stepDl; f.innerHTML = `<span class="chip hot"><span class="ico">⏱</span> <span class="num" data-cd="${r.stepDl}" data-w="15000">${fmt(r.stepDl - Date.now())}</span></span>`; }
+  const fk = r.stepDl + '|' + r.stepK;
+  if (f.dataset.dl !== fk){ f.dataset.dl = fk; f.innerHTML = `<span class="chip hot"><span class="lbl">${STEP_LBL[(r.stepK || '').split(':')[0]] || 'Time left'}</span><span class="ico">⏱</span> <span class="num" data-cd="${r.stepDl}" data-w="15000">${fmt(r.stepDl - Date.now())}</span></span>`; }
   f.hidden = false;
 }
 addEventListener('scroll', () => floatClock(), { passive: true });
@@ -2364,7 +2366,7 @@ function viewDraft(){
   if (!shp.includes(r.form)) r.form = randomForm(r.picks);
   const anim = r.anim !== r.club; r.anim = r.club; setTimeout(() => { r.rbw = r.picks[r.picks.length - 1]; }, 0);
   return `
-  <header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${stepChip(r)}${quitBtn()}</div></header>
+  <header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${quitBtn()}</div></header>
   <div class="drafthead"><div><div class="eyebrow">Draft · ${seasonTag()}</div><h2>Pick ${r.picks.length + 1} of 11</h2></div><span class="muted" style="font-size:13px">${r.kept.length ? r.kept.length + ' kept from last run' : 'Fresh squad'}</span></div>
   <div class="pots" aria-label="Pots" style="grid-template-columns:repeat(${nP},1fr)">${cells}</div>
   ${rainbow(r)}
@@ -2391,7 +2393,7 @@ function viewDraft(){
 function viewLineup(){
   const r = S.run;
   return `
-  <header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${stepChip(r)}${quitBtn()}</div></header>
+  <header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${quitBtn()}</div></header>
   <div class="stack">
     <div><div class="eyebrow">Your XI · ${seasonTag()}</div><h2 style="font-size:30px;margin-top:4px">${feasible(r.picks).length > 1 ? 'Pick your shape' : 'Your shape'}</h2>
     </div>
@@ -2757,7 +2759,7 @@ function teamBox(r){
 /* ================= THE SEASON, SCREEN BY SCREEN =================
    team -> draw -> league phase (table after every matchday) -> knockouts (bracket after every match)
    -> your season -> the competition -> who stays */
-const cupTop = r => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${sndBtn()}${stepChip(r)}${quitBtn()}</div></header>`;
+const cupTop = r => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${sndBtn()}${quitBtn()}</div></header>`;
 // which run this is (all runs you have played, this one included)
 const seasonTag = () => S.run && S.run.wk ? 'Weekly challenge' : 'Run ' + ((S.run && S.run.season) || 1);
 const cupHead = (eyebrow, title, side) => { const f = S.run && S.run.cup ? formDots(S.run.cup) : ''; return `<div class="drafthead" style="margin-bottom:14px"><div><div class="eyebrow">${eyebrow} · ${seasonTag()}</div><h2>${title}</h2></div>${side || f ? `<span class="muted" style="font-size:13px;text-align:right">${side || ''}${f ? `<br>Form ${f}` : ''}</span>` : ''}</div>`; };
@@ -3242,7 +3244,7 @@ function viewDone(){
   const r = S.run, d = r.dscr || 'season';
   return d === 'comp' ? viewComp() : d === 'keep' && !r.arch ? viewKeep() : viewSeason();
 }
-const doneTop = () => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${sndBtn()}${stepChip(S.run)}${S.stats.streak > 1 ? `<span class="chip hot wide-only">${S.stats.streak} titles in a row</span>` : ''}<span class="chip wide-only">${seasonTag()}</span>${quitBtn()}</div></header>`;
+const doneTop = () => `<header class="topbar">${MARK}<div style="display:flex;gap:8px;align-items:center">${sndBtn()}${S.stats.streak > 1 ? `<span class="chip hot wide-only">${S.stats.streak} titles in a row</span>` : ''}<span class="chip wide-only">${seasonTag()}</span>${quitBtn()}</div></header>`;
 const verdictHead = r => { const st = r.cup.stage; return st === 'champion' ? (r.comp === 'cl' || !r.comp ? 'Champions of Europe' : `${compOf(r).short} winners`) : st === 'final' ? 'Lost the final' : st === 'league' ? 'Out in the league phase' : 'Out in the ' + STAGE_NAME[st].toLowerCase(); };
 /* your season: the verdict, every match you played, your players */
 /* the run in one sentence, from what happened: the league phase, every knockout tie, the final */
@@ -3566,7 +3568,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261104135930';
+const BUILD = '20261104173528';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
