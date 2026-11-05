@@ -165,3 +165,5 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 **The bracket on a phone.** Under 600px the knockout bracket is no longer a wide chart to swipe sideways: it becomes a list, one round under the other, the latest round on top (the final first once the run is over), in bigger type, with your ties outlined in gold. The screenshot of the competition page on a phone is then a readable phone-width image.
 
 **Sharper images.** The drawn images (your run, the top 10, the Guess Who result) are laid out in 1080-wide units as before but stored at twice that, 2160 × 2700. The page screenshot uses three device pixels per CSS pixel, less only where a phone's canvas limit (about 16.7 million pixels) would be passed by a very long page.
+
+**The helps give nothing away during the draw.** While a club is being drawn (the run's title card, then the spinning names) a help that is unavailable only because of the club still hidden (Fifty-fifty with a single player to pick, Redraw with no club left in the pot) looks available, and no help can be pressed. Their real state shows the moment the club lands.
