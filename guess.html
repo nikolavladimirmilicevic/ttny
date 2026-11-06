@@ -128,10 +128,12 @@ select.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-rad
 
 /* each game has its own colour, none of them the draft game's (blue, orange, green, gold); the page takes the colour of
    the game picked, and keeps it through the game */
-:root{--c-ten:#FF5FA2;--c-drip:#2ED3E0;--c-typed:#C4F04D;--c-both:#A57BFF;--c-endless:#FF4D6D}
+:root{--c-ten:#FF5FA2;--c-drip:#2ED3E0;--c-typed:#C4F04D;--c-both:#A57BFF;--c-endless:#FF4D6D;--c-week:#D9DEE8}   /* the weekly challenge: silver */
 body[data-mode="ten"]{--gold:var(--c-ten);--gold-ink:#2A0616}body[data-mode="drip"]{--gold:var(--c-drip);--gold-ink:#03201F}
 body[data-mode="typed"]{--gold:var(--c-typed);--gold-ink:#162004}body[data-mode="both"]{--gold:var(--c-both);--gold-ink:#140A2E}
-body[data-mode="endless"]{--gold:var(--c-endless);--gold-ink:#2A050C}
+body[data-mode="endless"]{--gold:var(--c-endless);--gold-ink:#2A050C}body[data-mode="week"]{--gold:var(--c-week);--gold-ink:#141821}
+.card.weekly{--gold:var(--c-week);--gold-ink:#141821;border:1px solid var(--c-week);background:linear-gradient(160deg,rgba(217,222,232,.10),transparent 60%),var(--panel)}
+.weekly .bruns{margin-top:6px}.weekly details.hall{margin-top:12px}.weekly details.hall summary{cursor:pointer;color:var(--muted);font-size:13px}.wst{display:block;font-size:12px;color:var(--muted);margin:2px 0 0 30px}
 .diff.m-ten{--c:var(--c-ten)}.diff.m-drip{--c:var(--c-drip)}.diff.m-typed{--c:var(--c-typed)}.diff.m-both{--c:var(--c-both)}.diff.m-endless{--c:var(--c-endless)}
 .hero{background:radial-gradient(120% 90% at 50% -10%,color-mix(in srgb,var(--gold) 26%,transparent),transparent 60%),repeating-linear-gradient(90deg,var(--grass) 0 40px,var(--grass-2) 40px 80px)!important}
 .hero h1 em,.eyebrow,.games a.on,.btn.primary,.diff,.hero{transition:color .3s,background-color .3s,border-color .3s}
@@ -211,6 +213,7 @@ const MODES = [
 ];
 const TEN_MODES = ['ten', 'drip', 'typed', 'both'];
 const MODE_NAME = Object.fromEntries(MODES.map(m => [m[0], m[1]]));
+const WEEK_NAME = 'Weekly challenge';   // the week's ten, played as Ten (four names), in a table of its own
 // a theme narrows the players (and the wrong names); themed games are practice and do not go in the table
 const THEMES = [
   ['all', 'All players', null],
@@ -339,14 +342,17 @@ function viewStart(){
       <div class="throw"><span class="muted">Players</span><select id="th">${THEMES.map(([k, n]) => `<option value="${k}"${k === pr.theme ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select><span class="muted" id="thn"></span></div>
       <div class="btnrow" style="margin-top:12px"><button class="btn primary" id="go"></button></div>
       <p class="muted small" id="stl" style="margin-top:10px"></p></div>
+    ${weeklyCard()}
     <section class="card">${tableHead()}<div id="lw" class="lastwin"></div><div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section>
     <details class="rules"><summary>How it works</summary><ol class="steps">
       <li><b>Pick a mode.</b> Ten players with four names to choose from, the clubs one by one, typing the name yourself, who played for both clubs, or endless until your first miss.</li>
       <li><b>Name him.</b> ${Q_SECONDS} seconds a player: 100 for the right name and up to 50 more for speed. Three helps, once each per game: Info, Fifty-fifty and Swap.</li>
-      <li><b>Climb the table.</b> Each name's best score of the day, the week and all time, per mode. Send your ten to a friend and play the same players.</li></ol></details>
+      <li><b>The weekly challenge.</b> The same ten players for everyone from Monday to Sunday: the best of the week before, by match ratings, goals and assists. Your first game of the week counts; the best score wins the week.</li>
+      <li><b>Climb the table.</b> Top 10: each name's best score ever, per mode. This week: the weekly challenge. Send your ten to a friend and play the same players.</li></ol></details>
     <p class="foot">Careers from API-Football's transfer lists: ${DATA.players.length.toLocaleString('en-GB')} players with at least three clubs, every one with its crest. Youth clubs before a first transfer are not in them. A new set of players every game. Not affiliated with any club, league, UEFA or API-Football; club names and crests belong to their clubs.</p>
   </div>`;
   bindTabs(); fitHeroLogo();
+  if ($('#wkgo')) $('#wkgo').addEventListener('click', () => startWeek());
   if (CH){ $('#gch').addEventListener('click', () => start(CH.m, CH.t, CH)); $('#xch').addEventListener('click', () => { CH = null; history.replaceState(null, '', location.pathname + location.search); viewStart(); }); }
   // the name: a field until there is one, then "Welcome back" with a way to change it (as in the draft game)
   let editing = !name;
@@ -361,6 +367,7 @@ function viewStart(){
     else $('#chg').addEventListener('click', () => { editing = true; drawWho(); });
   };
   const sync = () => { const v = playerName(), p = prefs(), b = $('#go'); document.body.dataset.mode = p.mode; b.disabled = !v; b.textContent = v ? `Play ${MODE_NAME[p.mode]}` : 'Type your name to start';
+    if ($('#wkgo')) $('#wkgo').disabled = !v;
     if (CH){ const g = $('#gch'); g.disabled = !v; g.textContent = v ? 'Take the challenge' : 'Type your name first'; }
     $('#stl').innerHTML = statsLine(p.mode);
     $('#thn').textContent = p.theme === 'all' ? '' : `${themePool(p.theme).length} players · practice, not in the table`; };
@@ -369,7 +376,7 @@ function viewStart(){
   $('#th').addEventListener('change', e => { const st = store.get(); st.theme = e.target.value; store.set(st); sync(); });
   $('#go').addEventListener('click', () => { const p = prefs(); start(p.mode, p.theme); });
   LBMODE = pr.mode; document.querySelectorAll('.tab[data-m]').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE));
-  drawWho(); sync(); loadTable();
+  drawWho(); sync(); loadTable(); if (WEEK()) loadWeek().catch(() => {});
 }
 /* the logo on the hero, as on the draft game's home: as big as it fits beside the two lines */
 const LOGO_AR = 250 / 320;
@@ -397,7 +404,7 @@ function start(mode, theme, ch){
   else if (mode !== 'endless') qs = newSet(pool, used, mode);
   else qs = [makeQ(mode, pool, endlessBand(0), used)].filter(Boolean);
   if (!qs.length){ toast('No players yet.'); return; }
-  G = { mode, theme, pool, qs, used, i: 0, picks: [], help: {}, ch }; document.body.dataset.mode = mode; viewQ();
+  G = { mode, theme, pool, qs, used, i: 0, picks: [], help: {}, ch, wk: ch && ch.wk || null, practice: !!(ch && ch.practice) }; document.body.dataset.mode = G.wk ? 'week' : mode; viewQ();
 }
 /* ---------- challenges: a link with your ten players, your name and score ---------- */
 const b64 = { enc: o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
@@ -419,7 +426,7 @@ function addStats(res){
   const s = store.get(), t = s.stats = s.stats || { games: 0, right: 0, total: 0 };
   t.by = Object.assign({ ten: t.best || 0, endless: t.streak || 0 }, t.by || {});
   t.games++; t.right += res.right; t.total += res.picks.length;
-  if (res.theme !== 'all'){ store.set(s); return false; }   // practice games do not set a best
+  if (res.theme !== 'all' || res.wk){ store.set(s); return false; }   // practice games and the weekly challenge do not set a best   // practice games do not set a best
   const pb = (t.by[res.mode] || 0) > 0 && res.score > t.by[res.mode];
   if (res.score > (t.by[res.mode] || 0)) t.by[res.mode] = res.score;
   t.best = t.by.ten; t.streak = t.by.endless;
@@ -457,7 +464,7 @@ const helpsFor = () => G.mode === 'typed' ? HELPS.map(h => h[0] === 'half' ? ['h
 function viewQ(){
   const q = G.qs[G.i], line = LINE[q.ans.pos] || 'MID', ten = G.mode !== 'endless';
   const prog = ten ? `<div class="prog">${G.qs.map((_, j) => `<i class="${j < G.picks.length ? (G.picks[j].ok ? 'ok' : 'no') : j === G.i ? 'now' : ''}"></i>`).join('')}</div>` : `<div class="streak">Endless · <b class="num">${G.picks.length}</b> in a row</div>`;
-  const tag = [G.mode !== 'ten' && G.mode !== 'endless' ? MODE_NAME[G.mode] : '', G.theme !== 'all' ? (THEMES.find(t => t[0] === G.theme) || [])[1] : ''].filter(Boolean).join(' · ');
+  const tag = [G.wk ? WEEK_NAME + (G.practice ? ' (practice)' : '') : G.mode !== 'ten' && G.mode !== 'endless' ? MODE_NAME[G.mode] : '', G.theme !== 'all' ? (THEMES.find(t => t[0] === G.theme) || [])[1] : ''].filter(Boolean).join(' · ');
   $('#app').innerHTML = `${header()}<div class="narrow">
     ${prog}
     <section class="card"><div class="qhead"><div class="eyebrow">${ten ? `Player ${G.i + 1} of ${G.qs.length}` : `Player ${G.i + 1}`}${tag ? ` <span class="muted">· ${esc(tag)}</span>` : ''}</div><span style="display:flex;gap:8px;align-items:center">${sndBtn()}<span class="muted num" id="secs">${Q_SECONDS}</span></span></div>
@@ -533,9 +540,10 @@ function answer(k, typed){
 function finish(){
   G.done = true;
   const right = G.picks.filter(p => p.ok).length, score = G.mode !== 'endless' ? G.picks.reduce((t, p) => t + points(p), 0) : right;
-  const res = { ch: G.ch, mode: G.mode, theme: G.theme, score, right, picks: G.picks.map(p => [p.ok ? 1 : 0, p.ms]), log: G.picks, helps: Object.keys(G.help).filter(k => G.help[k]).length, name: playerName() };
+  const res = { ch: G.wk ? null : G.ch, mode: G.mode, theme: G.theme, score, right, picks: G.picks.map(p => [p.ok ? 1 : 0, p.ms]), log: G.picks, helps: Object.keys(G.help).filter(k => G.help[k]).length, name: playerName(), wk: G.wk, practice: G.practice };
   res.pb = addStats(res);
-  if (res.theme === 'all') push(res);
+  if (res.wk && !res.practice){ const st = store.get(); st.wkScore = { week: res.wk, score }; store.set(st); }
+  if (res.theme === 'all' && !res.practice) push(res);
   viewDone(res);
   const big = res.pb || (G.mode !== 'endless' && right === N_Q) || (G.mode === 'endless' && right >= 10);
   if (big){ confetti(); SND.play('applause'); buzz([40, 40, 40]); } else setTimeout(() => SND.play('whistle'), 300);
@@ -543,33 +551,34 @@ function finish(){
 const themeName = k => (THEMES.find(t => t[0] === k) || [])[1];
 function shareText(res){
   const d = new Date(today() + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  const what = ['TTNY Guess Who', res.mode !== 'ten' ? MODE_NAME[res.mode] : '', res.theme !== 'all' ? themeName(res.theme) : '', d].filter(Boolean).join(' · ');
+  const what = ['TTNY Guess Who', res.wk ? WEEK_NAME : res.mode !== 'ten' ? MODE_NAME[res.mode] : '', res.theme !== 'all' ? themeName(res.theme) : '', d].filter(Boolean).join(' · ');
   const grid = res.picks.map(p => p[0] ? '🟩' : '🟥').join('');
   const helps = res.helps ? ` · ${res.helps} help${res.helps > 1 ? 's' : ''}` : ' · no helps';
   return res.mode === 'endless' ? `${what}\n${res.score} in a row${helps}\n${grid}\n${location.href.split('#')[0]}` : `${what}\n${res.right}/${N_Q} · ${res.score}${helps}\n${grid}\n${location.href.split('#')[0]}`;
 }
 // every player of the game, what you said, and his career when you open him
 function reviewHTML(res, other){
-  return `<section class="card"${other ? ' style="padding:12px 0 0"' : ''}><div class="eyebrow">${other ? 'The players' : 'Your players'}</div><div class="review">${res.log.map((p, j) => `<details><summary><span class="rk ${p.ok ? 'ok' : 'no'}">${p.ok ? '✓' : '✗'}</span><span class="rn"><b>${esc(p.q.ans.n)}</b>${p.ok ? '' : `<small class="muted">${p.pick ? (other ? 'said ' : 'you said ') + esc(p.pick) : 'time ran out'}</small>`}</span><span class="muted num">${res.mode !== 'endless' ? (p.ok ? '+' + points(p) : '0') : j + 1}</span></summary>${p.q.kind === 'both' ? `<div class="hint" style="margin-left:30px">${p.q.pair.map(esc).join(' &amp; ')}</div>` : ''}${careerHTML(p.q.ans.c, null, true)}</details>`).join('')}</div></section>`;
+  return `<section class="card"${other ? ' style="padding:12px 0 0"' : ''}><div class="eyebrow">${other ? 'The players' : 'Your players'}</div><div class="review">${res.log.map((p, j) => `<details><summary><span class="rk ${p.ok ? 'ok' : 'no'}">${p.ok ? '✓' : '✗'}</span><span class="rn"><b>${esc(p.q.ans.n)}</b>${p.ok ? '' : `<small class="muted">${p.pick ? (other ? 'said ' : 'you said ') + esc(p.pick) : 'time ran out'}</small>`}</span><span class="muted num">${res.mode !== 'endless' ? (p.ok ? '+' + points(p) : '0') : j + 1}</span></summary>${p.q.kind === 'both' ? `<div class="hint" style="margin-left:30px">${p.q.pair.map(esc).join(' &amp; ')}</div>` : ''}${res.wkst && res.wkst[p.q.ans.id] ? `<span class="wst">${weekLine(res.wkst[p.q.ans.id])}</span>` : ''}${careerHTML(p.q.ans.c, null, true)}</details>`).join('')}</div></section>`;
 }
 function viewDone(res){
+  if (res.wk && DATA.weekly && DATA.weekly.week === res.wk) res.wkst = DATA.weekly.st;
   $('#app').innerHTML = `${header()}<div class="narrow">
-    <section class="card" style="text-align:center"><div class="eyebrow">${res.mode === 'endless' ? 'Your endless run' : 'Your score'}${res.mode !== 'ten' && res.mode !== 'endless' ? ' · ' + MODE_NAME[res.mode] : ''}${res.theme !== 'all' ? ' · ' + esc(themeName(res.theme)) : ''}</div><div class="big num" style="margin-top:8px">${res.score}</div>
+    <section class="card" style="text-align:center"><div class="eyebrow">${res.mode === 'endless' ? 'Your endless run' : 'Your score'}${res.wk ? ' · ' + WEEK_NAME : res.mode !== 'ten' && res.mode !== 'endless' ? ' · ' + MODE_NAME[res.mode] : ''}${res.theme !== 'all' ? ' · ' + esc(themeName(res.theme)) : ''}</div><div class="big num" style="margin-top:8px">${res.score}</div>
       ${res.pb ? '<div class="pbadge">Personal best!</div>' : ''}
       ${res.mode === 'endless' ? `<div class="muted">${res.score === 1 ? 'player' : 'players'} in a row</div>` : `<div class="muted">${res.right} of ${N_Q} right</div><div class="grid">${res.picks.map(p => p[0] ? '🟩' : '🟥').join('')}</div>`}
-      ${res.theme !== 'all' ? '<div class="muted" style="font-size:13px">A practice game: not in the table.</div>' : ''}
+      ${res.theme !== 'all' || res.practice ? `<div class="muted" style="font-size:13px">A practice game: not in the table${res.practice ? ' (only your first game of the week counts)' : ''}.</div>` : ''}
       ${res.ch ? `<div class="vs"><span class="${res.score > res.ch.s ? 'w' : ''}">You ${res.score}</span><span class="${res.ch.s > res.score ? 'w' : ''}">${esc(res.ch.n)} ${res.ch.s}</span></div><div class="muted">${res.score > res.ch.s ? 'You beat ' + esc(res.ch.n) + '!' : res.score === res.ch.s ? 'A draw.' : esc(res.ch.n) + ' wins this one.'}</div>` : ''}
-      <div class="row"><button class="btn primary" id="again">Play again</button><button class="btn" id="sh">Share</button></div>
-      <div class="row" style="margin-top:8px"><button class="btn" id="img">As an image</button>${res.mode !== 'endless' ? '<button class="btn" id="chl">Challenge a friend</button>' : ''}</div>
+      <div class="row"><button class="btn primary" id="again">${res.wk ? 'Play a game of my own' : 'Play again'}</button><button class="btn" id="sh">Share</button></div>
+      <div class="row" style="margin-top:8px"><button class="btn" id="img">As an image</button>${res.mode !== 'endless' && !res.wk ? '<button class="btn" id="chl">Challenge a friend</button>' : ''}</div>
       <button class="btn" id="home" style="margin-top:8px">Change mode or players</button></section>
     ${reviewHTML(res)}
     <section class="card">${tableHead()}<div id="lw" class="lastwin"></div><div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section></div>`;
-  $('#again').addEventListener('click', () => { CH = null; history.replaceState(null, '', location.pathname + location.search); start(res.mode, res.theme); });
+  $('#again').addEventListener('click', () => { CH = null; history.replaceState(null, '', location.pathname + location.search); if (res.wk) viewStart(); else start(res.mode, res.theme); });
   $('#home').addEventListener('click', () => { CH = null; history.replaceState(null, '', location.pathname + location.search); viewStart(); });
   if ($('#chl')) $('#chl').addEventListener('click', async () => { const url = challengeLink(res), t = `I scored ${res.score} (${res.right}/${N_Q}) in TTNY Guess Who, ${MODE_NAME[res.mode]}. Same ten players for you: can you beat it?`;
     try { if (navigator.share){ await navigator.share({ text: t, url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(t + '\n' + url); toast('Link copied. Send it to a friend.'); } catch (e) { toast(url); } });
-  LBMODE = res.mode; document.querySelectorAll('.tab[data-m]').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE)); bindTabs();
+  LBMODE = res.mode; if (res.wk) setPer('week'); document.querySelectorAll('.tab[data-m]').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE)); bindTabs();
   $('#img').addEventListener('click', () => gameImage(res));
   $('#sh').addEventListener('click', async () => { const t = shareText(res);
     try { if (navigator.share){ await navigator.share({ text: t }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
@@ -589,7 +598,7 @@ async function gameImage(res){
   const T = (s, X, Y, font, col, al, mw) => { x.font = font; x.fillStyle = col; x.textAlign = al || 'left'; let t = String(s); if (mw) while (t.length > 1 && x.measureText(t).width > mw) t = t.slice(0, -2) + '…'; x.fillText(t, X, Y); };
   const D = '"Oswald","Arial Narrow",Arial,sans-serif', B = 'Rubik,Arial,sans-serif', white = '#F3EFE6', muted = '#A3B1C4';
   T('THIS TIME NEXT YEAR · GUESS WHO', 60, 90, `500 26px ${B}`, acc);
-  T([MODE_NAME[res.mode], res.theme !== 'all' ? themeName(res.theme) : ''].filter(Boolean).join(' · ').toUpperCase(), 60, 170, `700 64px ${D}`, white, 'left', W_ - 120);
+  T([res.wk ? WEEK_NAME : MODE_NAME[res.mode], res.theme !== 'all' ? themeName(res.theme) : ''].filter(Boolean).join(' · ').toUpperCase(), 60, 170, `700 64px ${D}`, white, 'left', W_ - 120);
   T(res.score, 60, 330, `700 150px ${D}`, acc);
   T(res.mode === 'endless' ? `${res.score === 1 ? 'player' : 'players'} in a row` : `${res.right} of ${N_Q} right`, 60, 390, `400 34px ${B}`, muted);
   const n = res.picks.length, sq = Math.min(76, (W_ - 120 - (n - 1) * 12) / n);
@@ -627,31 +636,80 @@ function confetti(){
   document.body.appendChild(box); setTimeout(() => box.remove(), 4200);
 }
 
-/* ---------- the table (Supabase, table "guesses"): each name's best score, per mode, today, this week or ever ---------- */
-let LBMODE = 'ten', LBPER = 'day';
-const PERIODS = [['day', 'Today'], ['week', 'This week'], ['all', 'All time']];
+/* ---------- the table (Supabase, table "guesses"), as in the draft game: Top 10 (each name's best score ever, per mode)
+   and This week (the weekly challenge); the tab picked is kept on this device ---------- */
+let LBMODE = 'ten', LBPER = store.get().lbt === 'week' ? 'week' : 'all';
+const PERIODS = [['all', 'Top 10'], ['week', 'This week']];
 const monday = () => { const d = new Date(today() + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7); return d.toISOString().slice(0, 10); };
-const tableHead = () => `<div class="lbhead"><div class="tabs">${PERIODS.map(([k, n]) => `<button class="tab${LBPER === k ? ' on' : ''}" data-p="${k}">${n}</button>`).join('')}</div><span class="muted" style="font-size:12px">Best score</span></div><div class="tabs" style="margin-bottom:10px">${MODES.map(([k, n]) => `<button class="tab${LBMODE === k ? ' on' : ''}" data-m="${k}">${n}</button>`).join('')}</div>`;
+const tableHead = () => `<div class="lbhead"><div class="tabs">${PERIODS.map(([k, n]) => `<button class="tab${LBPER === k ? ' on' : ''}" data-p="${k}">${n}</button>`).join('')}</div><span class="muted" style="font-size:12px">Best score</span></div><div class="tabs" id="mtabs" style="margin-bottom:10px${LBPER === 'week' ? ';display:none' : ''}">${MODES.map(([k, n]) => `<button class="tab${LBMODE === k ? ' on' : ''}" data-m="${k}">${n}</button>`).join('')}</div>`;
+function setPer(k){
+  LBPER = k; const st = store.get(); st.lbt = k; store.set(st);
+  document.querySelectorAll('.tab[data-p]').forEach(x => x.classList.toggle('on', x.dataset.p === LBPER));
+  const m = $('#mtabs'); if (m) m.style.display = LBPER === 'week' ? 'none' : '';
+}
 function bindTabs(){
   document.querySelectorAll('.tab[data-m]').forEach(b => b.addEventListener('click', () => { LBMODE = b.dataset.m; document.querySelectorAll('.tab[data-m]').forEach(x => x.classList.toggle('on', x.dataset.m === LBMODE)); loadTable(); }));
-  document.querySelectorAll('.tab[data-p]').forEach(b => b.addEventListener('click', () => { LBPER = b.dataset.p; document.querySelectorAll('.tab[data-p]').forEach(x => x.classList.toggle('on', x.dataset.p === LBPER)); loadTable(); }));
+  document.querySelectorAll('.tab[data-p]').forEach(b => b.addEventListener('click', () => { setPer(b.dataset.p); loadTable(); }));
 }
 const head = () => Object.assign({ apikey: LB_CFG.key, 'Content-Type': 'application/json' }, /^eyJ/.test(LB_CFG.key) ? { Authorization: 'Bearer ' + LB_CFG.key } : {});
+const bestPerName = rows => { const seen = new Set(); return rows.filter(x => { const k = String(x.name || '').trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }); };
+const rowsHTML = rows => { const me = playerName().trim().toLowerCase();
+  return `<div class="bruns">${rows.map((x, i) => `<button class="brun click${String(x.name).trim().toLowerCase() === me ? ' me' : ''}" data-g="${esc(x.id)}"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span><span class="bt">${esc(x.name)}</span><span class="bs num">${+x.score || 0}</span><span class="bg">›</span></button>`).join('')}</div>`; };
+const bindRows = el => el.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', () => openGame(b.dataset.g)));
 async function loadTable(){
   const el = $('#lb'); if (!el) return;
   const mode = LBMODE, per = LBPER;
   try {
-    const q = LB_CFG.url + '/rest/v1/guesses?select=id,name,score,at' + (per === 'day' ? '&day=eq.' + today() : per === 'week' ? '&day=gte.' + monday() : '') + '&order=score.desc,at.asc&limit=300';
-    let r = await fetch(q + '&mode=eq.' + mode, { headers: head(), cache: 'no-store' });
-    if (!r.ok && mode === 'ten') r = await fetch(q, { headers: head(), cache: 'no-store' });   // a table from before the modes
-    if (!r.ok) throw new Error(r.status);
-    const seen = new Set(), rows = (await r.json()).filter(x => { const k = String(x.name || '').trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 10);
-    const me = playerName().trim().toLowerCase();
+    let rows;
+    if (per === 'week') rows = (await loadWeek()).list;
+    else {
+      const q = LB_CFG.url + '/rest/v1/guesses?select=id,name,score,at&order=score.desc,at.asc&limit=300';
+      let r = await fetch(q + '&mode=eq.' + mode, { headers: head(), cache: 'no-store' });
+      if (!r.ok && mode === 'ten') r = await fetch(q, { headers: head(), cache: 'no-store' });   // a table from before the modes
+      if (!r.ok) throw new Error(r.status);
+      rows = bestPerName(await r.json());
+    }
+    rows = rows.slice(0, 10);
     if (mode !== LBMODE || per !== LBPER) return;
-    el.innerHTML = rows.length ? `<div class="bruns">${rows.map((x, i) => `<button class="brun click${String(x.name).trim().toLowerCase() === me ? ' me' : ''}" data-g="${esc(x.id)}"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span><span class="bt">${esc(x.name)}</span><span class="bs num">${+x.score || 0}</span><span class="bg">›</span></button>`).join('')}</div>` : `<p class="muted" style="margin:6px 0 0">Nobody has played this ${per === 'day' ? 'today' : per === 'week' ? 'this week' : ''} yet.</p>`;
-    el.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', () => openGame(b.dataset.g)));
+    el.innerHTML = rows.length ? rowsHTML(rows) : `<p class="muted" style="margin:6px 0 0">${per === 'week' ? "Nobody has played this week's challenge yet. Yours could be the first." : `No games yet in ${esc(MODE_NAME[mode])}.`}</p>`;
+    bindRows(el);
   } catch (e) { el.innerHTML = '<p class="muted" style="margin:6px 0 0">The table is not available here.</p>'; }
   lastWinner();
+}
+/* ---------- the weekly challenge: the week's ten from careers.json (the pipeline picks them every Monday), each name's
+   first counted game in the table, the top 3 so far and every past week's winner in its card ---------- */
+const WEEK = () => { const w = DATA && DATA.weekly; return w && w.week === monday() && Array.isArray(w.q) && w.q.length === 10 ? w : null; };
+const dayOf = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const addDays = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+const weekLine = ([g, a, m]) => `Last week: ${[g ? `${g} goal${g > 1 ? 's' : ''}` : '', a ? `${a} assist${a > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ') || 'a top match rating'} in ${m} match${m > 1 ? 'es' : ''}`;
+function weeklyCard(){
+  const w = WEEK(); if (!w) return '';
+  const st = store.get(), mine = st.wkScore && st.wkScore.week === w.week ? st.wkScore.score : null, tried = st.wkTry === w.week;
+  return `<section class="card weekly"><div class="lbhead"><div class="eyebrow">Weekly challenge · ${dayOf(w.week)} to ${dayOf(addDays(w.week, 6))}</div></div>
+    <p class="muted" style="margin:4px 0 0">The same ten players for everyone: the best of last week (${dayOf(addDays(w.week, -7))} to ${dayOf(addDays(w.week, -1))}), by match ratings, goals and assists. Four names to choose from. Only your first game counts.</p>
+    ${tried ? `<p style="margin:10px 0 0">${mine != null ? `Your score this week: <b class="num">${mine}</b>` : 'You have played this week\'s challenge.'}</p>` : ''}
+    <div class="btnrow" style="margin-top:12px"><button class="btn primary" id="wkgo" ${playerName() ? '' : 'disabled'}>${tried ? 'Play it again (practice)' : "Play this week's challenge"}</button></div>
+    <div id="wkmini"></div><div id="wkhall"></div></section>`;
+}
+function startWeek(){
+  const w = WEEK(); if (!w || !playerName()) return;
+  const st = store.get(), practice = st.wkTry === w.week;
+  if (!practice){ st.wkTry = w.week; store.set(st); }   // the first game counts, even one left halfway
+  CH = null; start('ten', 'all', { q: w.q.map(id => [id]), wk: w.week, practice });
+}
+let WK = null;
+async function loadWeek(){
+  const mon = monday(), q = LB_CFG.url + '/rest/v1/guesses?select=id,name,score,day,at&mode=eq.week&order=score.desc,at.asc';
+  const [now, past] = await Promise.all([fetch(q + '&day=gte.' + mon + '&limit=300', { headers: head(), cache: 'no-store' }), fetch(q + '&day=lt.' + mon + '&limit=1000', { headers: head(), cache: 'no-store' })]);
+  if (!now.ok) throw new Error(now.status);
+  const list = bestPerName(await now.json()), byWk = {};
+  if (past.ok) for (const e of await past.json()){ const k = addDays(e.day, -((new Date(e.day + 'T12:00:00Z').getUTCDay() + 6) % 7)); if (!byWk[k]) byWk[k] = e; }
+  WK = { list, hall: Object.keys(byWk).sort().reverse().map(k => Object.assign({ week: k }, byWk[k])) };
+  const mini = $('#wkmini');
+  if (mini){ mini.innerHTML = list.length ? `<div class="eyebrow" style="margin-top:14px">This week so far</div>${rowsHTML(list.slice(0, 3))}` : '<p class="muted" style="margin:12px 0 0;font-size:13px">No games yet this week. Yours could be the first.</p>'; bindRows(mini); }
+  const hall = $('#wkhall');
+  if (hall){ hall.innerHTML = WK.hall.length ? `<details class="hall"><summary>Hall of fame · ${WK.hall.length} week${WK.hall.length > 1 ? 's' : ''}</summary><div class="bruns" style="margin-top:8px">${WK.hall.map(e => `<button class="brun click" data-g="${esc(e.id)}"><span class="bi">🏆</span><span class="bt">${esc(e.name)}<small class="muted" style="display:block;font-size:12px">${dayOf(e.week)} to ${dayOf(addDays(e.week, 6))}</small></span><span class="bs num">${+e.score || 0}</span><span class="bg">›</span></button>`).join('')}</div></details>` : ''; bindRows(hall); }
+  return WK;
 }
 // a game from the table: its ten players (or its run), what was answered, and each career
 async function openGame(id){
@@ -662,31 +720,30 @@ async function openGame(id){
   const log = (g.log || []).map((l, i) => ({ ok: !!(g.picks[i] || [])[0], ms: (g.picks[i] || [])[1] || 20000, pick: l[1], q: { kind: l[2] ? 'both' : null, pair: l[2], ans: byId.get(l[0]) } })).filter(p => p.q.ans);
   const day = new Date(g.day + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const ov = document.createElement('div'); ov.className = 'imgov';
-  ov.innerHTML = `<div class="revbox"><div class="lbhead"><div class="eyebrow">${esc(MODE_NAME[mode] || 'Ten')} · ${esc(day)}</div><button class="chip" data-x>Close</button></div>
+  ov.innerHTML = `<div class="revbox"><div class="lbhead"><div class="eyebrow">${esc(mode === 'week' ? WEEK_NAME : MODE_NAME[mode] || 'Ten')} · ${esc(day)}</div><button class="chip" data-x>Close</button></div>
     <h2>${esc(g.name)}: ${+g.score || 0}</h2>
-    ${log.length ? reviewHTML({ mode, log }, true) : '<p class="muted">This game was played before the games were kept, so only its score is left.</p>'}</div>`;
+    ${log.length ? reviewHTML({ mode, log, wkst: mode === 'week' && DATA.weekly && g.day >= DATA.weekly.week ? DATA.weekly.st : null }, true) : '<p class="muted">This game was played before the games were kept, so only its score is left.</p>'}</div>`;
   document.body.appendChild(ov);
   ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); });
 }
-// ---------- last week's winner of the mode shown, above the table (as the weekly challenge's in the draft game)
+// ---------- last week's winner of the weekly challenge, above This week (as in the draft game)
 async function lastWinner(){
   const el = $('#lw'); if (!el) return;
-  const mode = LBMODE, end = monday(), d = new Date(end + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 7); const start = d.toISOString().slice(0, 10);
-  try { const r = await fetch(LB_CFG.url + '/rest/v1/guesses?select=id,name,score&mode=eq.' + mode + '&day=gte.' + start + '&day=lt.' + end + '&order=score.desc,at.asc&limit=1', { headers: head(), cache: 'no-store' });
-    const w = r.ok ? (await r.json())[0] : null; if (mode !== LBMODE) return;
-    el.innerHTML = w ? `<span class="lw-c">🏆</span><span>Last week's winner in ${esc(MODE_NAME[mode])}: <b>${esc(w.name)}</b> · ${+w.score || 0}</span>` : '';
+  if (LBPER !== 'week'){ el.innerHTML = ''; return; }
+  try { const w = (WK || await loadWeek()).hall[0]; if (LBPER !== 'week') return;
+    el.innerHTML = w && w.week === addDays(monday(), -7) ? `<span class="lw-c">🏆</span><span>Last week's winner: <b>${esc(w.name)}</b> · ${+w.score || 0}</span>` : '';
   } catch (e) { el.innerHTML = ''; }
 }
 async function push(res, retry){
   // the players of the game go with the score, so anyone can open it from the table: [player id, the name picked, the two clubs]
-  const row = Object.assign({ id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), day: today(), name: (res.name || 'Unnamed').slice(0, 20), score: res.score, picks: res.picks }, res.mode !== 'ten' ? { mode: res.mode } : {},
+  const row = Object.assign({ id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), day: today(), name: (res.name || 'Unnamed').slice(0, 20), score: res.score, picks: res.picks }, res.wk ? { mode: 'week' } : res.mode !== 'ten' ? { mode: res.mode } : {},
     retry ? {} : { log: res.log.map(p => [p.q.ans.id, p.pick ? String(p.pick).slice(0, 40) : null, p.q.kind === 'both' ? p.q.pair : null]) });
   try {
     const r = await fetch(LB_CFG.url + '/rest/v1/guesses', { method: 'POST', headers: Object.assign(head(), { Prefer: 'return=minimal' }),
       body: JSON.stringify(row) });
     if (!r.ok && r.status === 400 && !retry) return push(res, true);   // a table from before the kept games: without them
     if (!r.ok) throw new Error('status ' + r.status);
-    loadTable();
+    loadTable(); loadWeek();
   } catch (e) { toast('Your score could not be saved to the table (' + e.message + ').'); }
 }
 

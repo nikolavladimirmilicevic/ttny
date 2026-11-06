@@ -1342,7 +1342,7 @@ def fetch_crests(ids):
     return have
 
 
-def write_careers(world, careers, teams):
+def write_careers(world, careers, teams, fx=None, evs=None, pst=None):
     """careers.json for the guess-who game: every player in the game whose transfer history gives at least 3 clubs,
     as stints [club, first year, last year, loan (1, or 2 for a loan and then signed)] oldest first (the first club from the club he first left; the current
     club last, to today), with his name, nationality, main position, age and overall (for difficulty and the wrong
@@ -1413,9 +1413,60 @@ def write_careers(world, careers, teams):
             seen[nm] += p['f']
     have = fetch_crests([c['id'] for c in world['clubs']] + [name_id[nm] for nm, _ in seen.most_common() if nm in name_id])
     used_cr = {nm: name_id[nm] for nm in seen if name_id.get(nm) in have}
-    with open(os.path.join(ROOT, 'careers.json'), 'w', encoding='utf-8') as f:
-        json.dump({'updated': TODAY.isoformat(), 'kits': used_kits, 'cc': used_cc, 'cr': used_cr, 'players': out}, f, ensure_ascii=False, separators=(',', ':'))
+    path = os.path.join(ROOT, 'careers.json')
+    try:
+        with open(path, encoding='utf-8') as f:
+            prev = json.load(f).get('weekly')
+    except Exception:
+        prev = None
+    weekly = weekly_quiz(out, used_cr, fx or {}, evs or {}, pst or {}, prev)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(dict({'updated': TODAY.isoformat(), 'kits': used_kits, 'cc': used_cc, 'cr': used_cr, 'players': out}, **({'weekly': weekly} if weekly else {})),
+                  f, ensure_ascii=False, separators=(',', ':'))
     log(f'  careers.json: {len(out)} players')
+
+
+def weekly_quiz(out, crests, fx, evs, pst, prev=None):
+    """Guess Who's weekly challenge, the same ten players for everyone from Monday to Sunday (UTC): the ten most successful
+    players of the 7 days before that Monday, among those whose every club has a crest, at most one per club. Success, summed
+    over his matches: his match rating above 6.6 (the API's own, 6.6 when it has none), plus 1 per goal (not own goals) and
+    0.6 per assist; so two good games beat one. The order of the ten is drawn once for the week. With each, his goals, assists
+    and matches of that week, for the review after a game. Once made, a week's ten are kept (later data cannot change them)."""
+    week = TODAY - dt.timedelta(days=TODAY.weekday())
+    wid = week.isoformat()
+    if prev and prev.get('week') == wid and len(prev.get('q') or []) == 10:
+        return prev
+    lo, hi = (week - dt.timedelta(days=7)).isoformat(), (week - dt.timedelta(days=1)).isoformat()
+    ok = {p['id']: p for p in out if all(c[0] in crests for c in p['c'])}
+    pts, st = Counter(), {}
+    for fid, f in fx.items():
+        if f.get('s') not in FINISHED or not (lo <= (f.get('d') or '') <= hi):
+            continue
+        for pid, v in (pst.get(fid) or {}).items():
+            pid = int(pid)
+            if pid in ok:
+                pts[pid] += (v[1] or 6.6) - 6.6
+                st.setdefault(pid, [0, 0, 0])[2] += 1
+        for e in evs.get(fid) or []:
+            if e[3] == 'o':
+                continue
+            for pid, w, k in ((e[1], 1.0, 0), (e[2], 0.6, 1)):
+                if pid in ok:
+                    pts[pid] += w
+                    st.setdefault(pid, [0, 0, 0])[k] += 1
+    chosen, clubs = [], set()
+    for pid in sorted((p for p in pts if st.get(p, [0, 0, 0])[2]), key=lambda p: (-pts[p], -(ok[p].get('ovr') or 0))):
+        club = ok[pid]['c'][-1][0]
+        if club in clubs:
+            continue
+        chosen.append(pid); clubs.add(club)
+        if len(chosen) == 10:
+            break
+    if len(chosen) < 10:
+        return prev if prev and prev.get('week') == wid else None
+    random.Random('ttny-guess-weekly-' + wid).shuffle(chosen)
+    log(f"  Guess Who weekly {wid}: " + ', '.join(ok[p]['n'] for p in chosen))
+    return {'week': wid, 'q': chosen, 'st': {str(p): st[p] for p in chosen}}
 
 
 WEEKLY_CLUBS = 22
@@ -1583,7 +1634,7 @@ def main():
     log(f'Wrote {os.path.basename(target)}')
     position_check(world)
     try:
-        write_careers(world, careers, teams)
+        write_careers(world, careers, teams, fx, evs, pst)
     except Exception as e:   # the guess-who file never stops the main game's data
         log(f'  careers.json not written: {e}')
     eligible_clubs = Counter(p['club'] for p in world['players'])
