@@ -836,6 +836,10 @@ for (const [f, rows] of Object.entries(FORM_DEF)){
     const wy = cm != null ? cm : dm != null ? Math.round((dm + am) / 2) : null;
     if (wy != null) wideIdx.forEach(k => { out[k][2] = wy; });
   }
+  // then every line the eye sees (players at one height) is the same distance from the next, in every formation: the gap of
+  // a five-line shape (back line 75, front 16), and a shape with fewer lines is centred on the middle of that span
+  const lv = [...new Set(out.slice(1).map(e => e[2]))].sort((a, b) => b - a), GAP = 59 / 4, top = 45.5 + (lv.length - 1) * GAP / 2;
+  out.slice(1).forEach(e => { e[2] = Math.round((top - lv.indexOf(e[2]) * GAP) * 10) / 10; });
   FORMS[f] = out;
 }
 // alphabetical: 3-2-2-3, 3-2-3-2 ... 5-3-2
@@ -3616,7 +3620,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261109061146';
+const BUILD = '20261109061514';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
