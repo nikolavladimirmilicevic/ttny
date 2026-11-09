@@ -172,4 +172,4 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 
 **Wide midfielders' height.** On every pitch LMF and RMF stand level with the CMFs; in a formation with no CMF, exactly halfway between the DMFs and the AMFs (in 5-2-2-1, which has no AMF, halfway between the DMFs and where an AMF would stand in the wide men's own line).
 
-**Equal gaps between lines.** Every line the eye sees (players standing at one height) is the same distance from the next in every formation: the gap of a five-line shape (back line at 75, front at 16, on a pitch 100 high). A shape with three or four lines is centred on the middle of that span, so the goalkeeper stays where he is and the team stands a little higher.
+**Equal gaps between lines.** The lines the eye sees (players standing at one height, the goalkeeper's line too) are spread evenly in every formation: the goalkeeper 10 from the bottom of the pitch, the front line 10 from the top (on a pitch 100 high), the same gap between each two lines in between.
