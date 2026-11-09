@@ -826,6 +826,16 @@ for (const [f, rows] of Object.entries(FORM_DEF)){
     const y = 75 - i * (59 / Math.max(1, L - 1));
     codes.forEach((c, j) => out.push([c, xs[j], Math.round(y + (YNUDGE[c] || 0)), role(i)]));
   });
+  // LMF and RMF sit level with the CMFs; with no CMF, exactly halfway between the DMFs and the AMFs (where no AMF, where one
+  // would stand in the wide men's own line)
+  const yOf = c => { const e = out.find(x => x[0] === c); return e ? e[2] : null; };
+  const wideIdx = out.map((e, k) => /^[LR]MF$/.test(e[0]) ? k : -1).filter(k => k >= 0);
+  if (wideIdx.length){
+    const own = out[wideIdx[0]][2] - (YNUDGE[out[wideIdx[0]][0]] || 0);
+    const cm = yOf('CMF'), dm = yOf('DMF'), am = yOf('AMF') != null ? yOf('AMF') : own + YNUDGE.AMF;
+    const wy = cm != null ? cm : dm != null ? Math.round((dm + am) / 2) : null;
+    if (wy != null) wideIdx.forEach(k => { out[k][2] = wy; });
+  }
   FORMS[f] = out;
 }
 // alphabetical: 3-2-2-3, 3-2-3-2 ... 5-3-2
@@ -3606,7 +3616,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261105003229';
+const BUILD = '20261109061146';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
