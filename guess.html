@@ -128,10 +128,12 @@ select.name{display:block;width:100%;margin-top:8px;padding:12px 14px;border-rad
 
 /* each game has its own colour, none of them the draft game's (blue, orange, green, gold); the page takes the colour of
    the game picked, and keeps it through the game */
-:root{--c-ten:#FF5FA2;--c-drip:#2ED3E0;--c-typed:#C4F04D;--c-both:#A57BFF;--c-endless:#FF4D6D;--c-week:#D9DEE8}   /* the weekly challenge: silver */
+:root{--c-ten:#FF5FA2;--c-drip:#2ED3E0;--c-typed:#C4F04D;--c-both:#A57BFF;--c-endless:#FF4D6D;--c-week:#D9DEE8;--c-club:#E8C9A0}   /* the weekly challenge: silver */
 body[data-mode="ten"]{--gold:var(--c-ten);--gold-ink:#2A0616}body[data-mode="drip"]{--gold:var(--c-drip);--gold-ink:#03201F}
 body[data-mode="typed"]{--gold:var(--c-typed);--gold-ink:#162004}body[data-mode="both"]{--gold:var(--c-both);--gold-ink:#140A2E}
-body[data-mode="endless"]{--gold:var(--c-endless);--gold-ink:#2A050C}body[data-mode="week"]{--gold:var(--c-week);--gold-ink:#141821}
+body[data-mode="endless"]{--gold:var(--c-endless);--gold-ink:#2A050C}body[data-mode="week"]{--gold:var(--c-week);--gold-ink:#141821}body[data-mode="club"]{--gold:var(--c-club);--gold-ink:#241A0C}
+.duo{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin:12px 0 4px}.duo .pp{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}.duo .pp b{display:block;font:600 17px/1.2 var(--display)}.duo .pp small{color:var(--muted);font-size:12px}.duo .amp{color:var(--muted);font-size:20px}
+.opt .ocr{width:26px;height:26px;object-fit:contain;margin-right:8px;vertical-align:middle}
 .card.weekly{--gold:var(--c-week);--gold-ink:#141821;border:1px solid var(--c-week);background:linear-gradient(160deg,rgba(217,222,232,.10),transparent 60%),var(--panel)}
 .weekly .bruns{margin-top:6px}.weekly details.hall{margin-top:12px}.weekly details.hall summary{cursor:pointer;color:var(--muted);font-size:13px}.wst{display:block;font-size:12px;color:var(--muted);margin:2px 0 0 30px}
 .diff.m-ten{--c:var(--c-ten)}.diff.m-drip{--c:var(--c-drip)}.diff.m-typed{--c:var(--c-typed)}.diff.m-both{--c:var(--c-both)}.diff.m-endless{--c:var(--c-endless)}
@@ -209,9 +211,10 @@ const MODES = [
   ['drip', 'One by one', 'Clubs appear one at a time'],
   ['typed', 'Type it', 'No names given'],
   ['both', 'Both clubs', 'Who played for both?'],
+  ['club', 'Same club', 'Where did both play?'],
   ['endless', 'Endless', 'Until you miss one'],
 ];
-const TEN_MODES = ['ten', 'drip', 'typed', 'both'];
+const TEN_MODES = ['ten', 'drip', 'typed', 'both', 'club'];
 const MODE_NAME = Object.fromEntries(MODES.map(m => [m[0], m[1]]));
 const WEEK_NAME = 'Weekly challenge';   // the week's ten, played as Ten (four names), in a table of its own
 // a theme narrows the players (and the wrong names); themed games are practice and do not go in the table
@@ -293,10 +296,42 @@ function buildBoth(ans, players, band, pair){
   while (wrong.length < 3){ const c = pickR(src); if (!wrong.some(w => w.n === c.n)) wrong.push(c); }
   return { kind: 'both', ans, band, pair: [A, B], opts: [ans, ...wrong].map(p => ({ p, k: Math.random() })).sort((a, b) => a.k - b.k).map(x => x.p), cut: [], info: false };
 }
+/* Same club: two players and four clubs; the right one is where both played (at any time), the wrong ones are a club of
+   each of the two that the other never played for, and one more from the same circles; pair = ['c', his id, the club] */
+function buildClub(ans, players, band, pair){
+  const byId = new Map(DATA.players.map(p => [p.id, p])), clubsOf = p => new Set(p.c.map(x => x[0]));
+  const A = clubsOf(ans);
+  let mate, club;
+  if (pair && pair[0] === 'c'){ mate = byId.get(pair[1]); club = pair[2]; if (!mate || !A.has(club) || !clubsOf(mate).has(club)) return null; }
+  else {
+    // a partner better known than most, sharing one club with him (two or more would be ambiguous)
+    const fame = byFame(players), top = new Set(fame.slice(0, Math.max(60, Math.floor(fame.length * .6))).map(p => p.id));
+    const cands = DATA.players.filter(p => p.id !== ans.id && p.n !== ans.n && top.has(p.id) && [...clubsOf(p)].filter(c => A.has(c)).length === 1);
+    if (!cands.length) return null;
+    mate = pickR(cands); club = [...clubsOf(mate)].find(c => A.has(c));
+  }
+  const M = clubsOf(mate), notBoth = c => !(A.has(c) && M.has(c)), wrong = [];
+  const onlyA = [...A].filter(c => !M.has(c)), onlyM = [...M].filter(c => !A.has(c));
+  if (onlyA.length) wrong.push(pickR(onlyA));
+  if (onlyM.length) wrong.push(pickR(onlyM));
+  const near = [...new Set(DATA.players.filter(p => p.c.some(x => x[0] === club)).flatMap(p => p.c.map(x => x[0])))].filter(c => c !== club && notBoth(c) && !wrong.includes(c) && (DATA.cr || {})[c]);
+  while (wrong.length < 3 && near.length) wrong.push(near.splice(Math.floor(Math.random() * near.length), 1)[0]);
+  if (wrong.length < 3) return null;
+  return { kind: 'club', ans, mate, key: club, band, opts: [club, ...wrong].map(c => ({ id: c, n: c, club: true, k: Math.random() })).sort((a, b) => a.k - b.k), cut: [], info: false };
+}
+const isAns = (q, o) => q.kind === 'club' ? o.n === q.key : o.id === q.ans.id;
+// both at the club: the years they overlap there, or when each was there
+function togetherLine(q){
+  const span = (p, c) => p.c.filter(x => x[0] === c).map(x => [x[1] || x[2], x[2] || x[1]]);
+  const a = span(q.ans, q.key), b = span(q.mate, q.key);
+  for (const [a1, a2] of a) for (const [b1, b2] of b){ const lo = Math.max(a1, b1), hi = Math.min(a2, b2); if (lo && hi && lo <= hi) return `Team-mates there around ${lo === hi ? lo : lo + ' to ' + hi}`; }
+  const y = s => s.length ? s[0][0] + (s[0][1] && s[0][1] !== s[0][0] ? '-' + s[0][1] : '') : '?';
+  return `Not at the same time: ${esc(q.ans.n)} ${y(a)}, ${esc(q.mate.n)} ${y(b)}`;
+}
 function makeQ(mode, players, band, used, ans, pair){
   for (let t = 0; t < 25; t++){
     const a = ans || pickR(bandPool(players, band, used)); if (!a) return null;
-    const q = mode === 'both' ? buildBoth(a, players, band, pair) : buildQ(a, players, band);
+    const q = mode === 'both' ? buildBoth(a, players, band, pair) : mode === 'club' ? buildClub(a, players, band, pair) : buildQ(a, players, band);
     if (q){ used.add(a.id); return q; }
     if (ans) { ans = null; pair = null; }
   }
@@ -345,9 +380,9 @@ function viewStart(){
     ${weeklyCard()}
     <section class="card">${tableHead()}<div id="lw" class="lastwin"></div><div id="lb"><p class="muted" style="margin:6px 0 0">Loading…</p></div></section>
     <details class="rules"><summary>How it works</summary><ol class="steps">
-      <li><b>Pick a mode.</b> Ten players with four names to choose from, the clubs one by one, typing the name yourself, who played for both clubs, or endless until your first miss.</li>
+      <li><b>Pick a mode.</b> Ten players with four names to choose from, the clubs one by one, typing the name yourself, who played for both clubs, where two players both played (Same club), or endless until your first miss.</li>
       <li><b>Name him.</b> ${Q_SECONDS} seconds a player: 100 for the right name and up to 50 more for speed. Three helps, once each per game: Info, Fifty-fifty and Swap.</li>
-      <li><b>The weekly challenge.</b> The same ten players for everyone from Monday to Sunday: the best of the week before, by match ratings, goals and assists. Your first game of the week counts; the best score wins the week.</li>
+      <li><b>The weekly challenge.</b> The same ten players for everyone from Monday to Sunday: the best of the week before, by match ratings, goals and assists, from the best known to the least known. Your first game of the week counts; the best score wins the week.</li>
       <li><b>Climb the table.</b> Top 10: each name's best score ever, per mode. This week: the weekly challenge. Send your ten to a friend and play the same players.</li></ol></details>
     <p class="foot">Careers from API-Football's transfer lists: ${DATA.players.length.toLocaleString('en-GB')} players with at least three clubs, every one with its crest. Youth clubs before a first transfer are not in them. A new set of players every game. Not affiliated with any club, league, UEFA or API-Football; club names and crests belong to their clubs.</p>
   </div>`;
@@ -414,7 +449,7 @@ function readChallenge(){
   try { const c = b64.dec(m[1]); if (TEN_MODES.includes(c.m) && Array.isArray(c.q) && c.q.length) return { m: c.m, t: THEMES.some(x => x[0] === c.t) ? c.t : 'all', q: c.q.slice(0, N_Q), n: String(c.n || 'A friend').slice(0, 20), s: +c.s || 0, r: +c.r || 0 }; } catch (e) {}
   return null;
 }
-const challengeLink = res => location.href.split('#')[0] + '#c=' + b64.enc({ m: res.mode, t: res.theme, q: res.log.map(p => p.q.kind === 'both' ? [p.q.ans.id, p.q.pair] : [p.q.ans.id]), n: res.name, s: res.score, r: res.right });
+const challengeLink = res => location.href.split('#')[0] + '#c=' + b64.enc({ m: res.mode, t: res.theme, q: res.log.map(p => p.q.kind === 'both' ? [p.q.ans.id, p.q.pair] : p.q.kind === 'club' ? [p.q.ans.id, ['c', p.q.mate.id, p.q.key]] : [p.q.ans.id]), n: res.name, s: res.score, r: res.right });
 let CH = null;
 /* personal numbers on this device: games, share of right answers, the best score in each mode */
 function statsLine(mode){
@@ -460,21 +495,22 @@ function careerHTML(c, shown, named){
 }
 // One by one: the first club at once, the rest one at a time, all of them on screen by about 13 seconds
 const dripStep = n => Math.max(1500, Math.min(3500, 13000 / Math.max(1, n - 1)));
-const helpsFor = () => G.mode === 'typed' ? HELPS.map(h => h[0] === 'half' ? ['half', 'Initials', 'His initials'] : h) : HELPS;
+const helpsFor = () => G.mode === 'typed' ? HELPS.map(h => h[0] === 'half' ? ['half', 'Initials', 'His initials'] : h) : G.mode === 'club' ? HELPS_CLUB : HELPS;
 function viewQ(){
   const q = G.qs[G.i], line = LINE[q.ans.pos] || 'MID', ten = G.mode !== 'endless';
   const prog = ten ? `<div class="prog">${G.qs.map((_, j) => `<i class="${j < G.picks.length ? (G.picks[j].ok ? 'ok' : 'no') : j === G.i ? 'now' : ''}"></i>`).join('')}</div>` : `<div class="streak">Endless · <b class="num">${G.picks.length}</b> in a row</div>`;
   const tag = [G.wk ? WEEK_NAME + (G.practice ? ' (practice)' : '') : G.mode !== 'ten' && G.mode !== 'endless' ? MODE_NAME[G.mode] : '', G.theme !== 'all' ? (THEMES.find(t => t[0] === G.theme) || [])[1] : ''].filter(Boolean).join(' · ');
   $('#app').innerHTML = `${header()}<div class="narrow">
     ${prog}
-    <section class="card"><div class="qhead"><div class="eyebrow">${ten ? `Player ${G.i + 1} of ${G.qs.length}` : `Player ${G.i + 1}`}${tag ? ` <span class="muted">· ${esc(tag)}</span>` : ''}</div><span style="display:flex;gap:8px;align-items:center">${sndBtn()}<span class="muted num" id="secs">${Q_SECONDS}</span></span></div>
+    <section class="card"><div class="qhead"><div class="eyebrow">${ten ? `${G.mode === 'club' ? 'Pair' : 'Player'} ${G.i + 1} of ${G.qs.length}` : `Player ${G.i + 1}`}${tag ? ` <span class="muted">· ${esc(tag)}</span>` : ''}</div><span style="display:flex;gap:8px;align-items:center">${sndBtn()}<span class="muted num" id="secs">${Q_SECONDS}</span></span></div>
       <div class="timer"><b id="bar"></b></div>
       <div class="helps">${helpsFor().map(([k, name, desc], i) => `<button class="help${G.help[k] ? ' used' : ''}" data-h="${k}" ${G.help[k] ? 'disabled' : ''} title="${desc}"><span class="hn">${i + 1}</span><span><b>${name}</b><small>${G.help[k] ? 'Used' : desc}</small></span></button>`).join('')}</div>
-      ${q.info ? `<div class="hint">A ${POS_NAME[line]}, aged ${esc(q.ans.age || '?')}${q.ans.nat ? ', from ' + esc(q.ans.nat) : ''}${q.ans.no ? `, wears number ${q.ans.no} now` : ''}</div>` : ''}
+      ${q.info && q.kind !== 'club' ? `<div class="hint">A ${POS_NAME[line]}, aged ${esc(q.ans.age || '?')}${q.ans.nat ? ', from ' + esc(q.ans.nat) : ''}${q.ans.no ? `, wears number ${q.ans.no} now` : ''}</div>` : ''}
       ${q.initials ? `<div class="hint">His initials: <b>${esc(q.ans.n.split(/\s+/).map(w => w[0] + '.').join(' '))}</b></div>` : ''}
-      ${q.kind === 'both' ? `<div class="hint" style="margin-top:10px">Who played for both?</div><div class="pair">${q.pair.map(c => `<div class="pc">${crestImg(c).replace('class="crest"', 'class="crest pairc"') || esc(c)}</div>`).join('<span class="amp">&amp;</span>')}</div>` : careerHTML(q.ans.c, G.mode === 'drip' ? 1 : null)}
+      ${q.kind === 'club' ? `<div class="hint" style="margin-top:10px">Where did both play?</div><div class="duo">${[q.ans, q.mate].map(p => `<div class="pp"><b>${esc(p.n)}</b><small>${esc(POS_NAME[LINE[p.pos] || 'MID'] || '')}${p.nat ? ' · ' + esc(p.nat) : ''}</small></div>`).join('<span class="amp">&amp;</span>')}</div>${q.info ? `<div class="hint">${togetherLine(q)}</div>` : ''}`
+      : q.kind === 'both' ? `<div class="hint" style="margin-top:10px">Who played for both?</div><div class="pair">${q.pair.map(c => `<div class="pc">${crestImg(c).replace('class="crest"', 'class="crest pairc"') || esc(c)}</div>`).join('<span class="amp">&amp;</span>')}</div>` : careerHTML(q.ans.c, G.mode === 'drip' ? 1 : null)}
       ${G.mode === 'typed' ? `<div class="typed"><input id="ty" class="name" placeholder="Type his name" autocomplete="off" autocapitalize="words" spellcheck="false"><div class="sugg" id="sg"></div></div>`
-        : `<div class="opts">${q.opts.map((p, k) => `<button class="opt${q.cut.includes(k) ? ' gone' : ''}" data-k="${k}" ${q.cut.includes(k) ? 'disabled' : ''}><span class="key">${'ABCD'[k]}</span>${esc(p.n)}</button>`).join('')}</div>`}
+        : `<div class="opts">${q.opts.map((p, k) => `<button class="opt${q.cut.includes(k) ? ' gone' : ''}" data-k="${k}" ${q.cut.includes(k) ? 'disabled' : ''}><span class="key">${'ABCD'[k]}</span>${p.club ? crestImg(p.n).replace('class="crest"', 'class="ocr"') : ''}${esc(p.n)}</button>`).join('')}</div>`}
       <div id="after"></div></section></div>`;
   document.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => answer(+b.dataset.k)));
   document.querySelectorAll('.help').forEach(b => b.addEventListener('click', () => useHelp(b.dataset.h)));
@@ -506,13 +542,14 @@ document.addEventListener('keydown', e => {
 /* three helps, once each per game, in the order they cost you: Info tells his position, age and nationality; Fifty-fifty
    takes away two wrong names (when you type: his initials); Swap gives another player of the same difficulty (and a fresh clock) */
 const HELPS = [['info', 'Info', 'Position, age, nationality, number'], ['half', 'Fifty-fifty', 'Two wrong names go'], ['swap', 'Swap', 'Another player']];
+const HELPS_CLUB = [['info', 'Info', 'When they were there'], ['half', 'Fifty-fifty', 'Two wrong clubs go'], ['swap', 'Swap', 'Another pair']];
 function useHelp(k){
   const q = G.qs[G.i]; if (!q || G.help[k] || G.answered) return;
   G.help[k] = true;
   const ty = $('#ty'); if (ty) G.tyText = ty.value;
   if (k === 'info'){ q.info = true; G.keepClock = true; }
   else if (k === 'half' && G.mode === 'typed'){ q.initials = true; G.keepClock = true; }
-  else if (k === 'half'){ const wrong = q.opts.map((p, j) => j).filter(j => q.opts[j].id !== q.ans.id).sort(() => Math.random() - .5); q.cut = wrong.slice(0, 2); G.keepClock = true; }
+  else if (k === 'half'){ const wrong = q.opts.map((p, j) => j).filter(j => !isAns(q, q.opts[j])).sort(() => Math.random() - .5); q.cut = wrong.slice(0, 2); G.keepClock = true; }
   else if (k === 'swap'){ const nq = bandPool(G.pool, q.band, G.used).length ? makeQ(G.mode, G.pool, q.band, G.used) : null; if (!nq){ G.help[k] = false; toast('No other player to swap in.'); return; }
     G.qs[G.i] = nq; G.tyText = ''; }
   viewQ();
@@ -521,9 +558,9 @@ const points = p => p.ok ? 100 + Math.round(50 * Math.max(0, Q_SECONDS * 1000 - 
 // k: the option picked (-1 when time is up, -2 for a typed name)
 function answer(k, typed){
   if (G.done || G.answered) return; G.answered = true; clearInterval(G.timer);
-  const q = G.qs[G.i], ms = Math.round(performance.now() - G.t0), pick = k >= 0 ? q.opts[k].n : k === -2 ? typed : null, ok = pick === q.ans.n;
+  const q = G.qs[G.i], ms = Math.round(performance.now() - G.t0), pick = k >= 0 ? q.opts[k].n : k === -2 ? typed : null, ok = q.kind === 'club' ? pick === q.key : pick === q.ans.n;
   G.picks.push({ ok, ms: Math.max(300, Math.min(ms, Q_SECONDS * 1000)), pick, q });
-  document.querySelectorAll('.opt').forEach((b, j) => { b.disabled = true; if (q.opts[j].id === q.ans.id) b.classList.add('right'); else if (j === k) b.classList.add('wrong'); });
+  document.querySelectorAll('.opt').forEach((b, j) => { b.disabled = true; if (isAns(q, q.opts[j])) b.classList.add('right'); else if (j === k) b.classList.add('wrong'); });
   document.querySelectorAll('.career li').forEach(r => r.classList.remove('hid'));
   const ty = $('#ty'); if (ty){ ty.disabled = true; ty.value = pick || ''; ty.classList.add(ok ? 'right' : 'wrong'); $('#sg').innerHTML = ''; }
   if (ok) SND.play('right'); else if (k === -1) SND.play('whistle', true); else SND.play('wrong');
@@ -558,7 +595,7 @@ function shareText(res){
 }
 // every player of the game, what you said, and his career when you open him
 function reviewHTML(res, other){
-  return `<section class="card"${other ? ' style="padding:12px 0 0"' : ''}><div class="eyebrow">${other ? 'The players' : 'Your players'}</div><div class="review">${res.log.map((p, j) => `<details><summary><span class="rk ${p.ok ? 'ok' : 'no'}">${p.ok ? '✓' : '✗'}</span><span class="rn"><b>${esc(p.q.ans.n)}</b>${p.ok ? '' : `<small class="muted">${p.pick ? (other ? 'said ' : 'you said ') + esc(p.pick) : 'time ran out'}</small>`}</span><span class="muted num">${res.mode !== 'endless' ? (p.ok ? '+' + points(p) : '0') : j + 1}</span></summary>${p.q.kind === 'both' ? `<div class="hint" style="margin-left:30px">${p.q.pair.map(esc).join(' &amp; ')}</div>` : ''}${res.wkst && res.wkst[p.q.ans.id] ? `<span class="wst">${weekLine(res.wkst[p.q.ans.id])}</span>` : ''}${careerHTML(p.q.ans.c, null, true)}</details>`).join('')}</div></section>`;
+  return `<section class="card"${other ? ' style="padding:12px 0 0"' : ''}><div class="eyebrow">${other ? 'The players' : 'Your players'}</div><div class="review">${res.log.map((p, j) => `<details><summary><span class="rk ${p.ok ? 'ok' : 'no'}">${p.ok ? '✓' : '✗'}</span><span class="rn"><b>${esc(p.q.ans.n)}${p.q.kind === 'club' ? ' &amp; ' + esc(p.q.mate.n) : ''}</b>${p.ok ? '' : `<small class="muted">${p.pick ? (other ? 'said ' : 'you said ') + esc(p.pick) : 'time ran out'}</small>`}</span><span class="muted num">${res.mode !== 'endless' ? (p.ok ? '+' + points(p) : '0') : j + 1}</span></summary>${p.q.kind === 'club' ? `<div class="hint" style="margin-left:30px">Both at <b>${esc(p.q.key)}</b>. ${togetherLine(p.q)}</div>` : ''}${p.q.kind === 'both' ? `<div class="hint" style="margin-left:30px">${p.q.pair.map(esc).join(' &amp; ')}</div>` : ''}${res.wkst && res.wkst[p.q.ans.id] ? `<span class="wst">${weekLine(res.wkst[p.q.ans.id])}</span>` : ''}${careerHTML(p.q.ans.c, null, true)}${p.q.kind === 'club' ? careerHTML(p.q.mate.c, null, true) : ''}</details>`).join('')}</div></section>`;
 }
 function viewDone(res){
   if (res.wk && DATA.weekly && DATA.weekly.week === res.wk) res.wkst = DATA.weekly.st;
@@ -695,7 +732,9 @@ function startWeek(){
   const w = WEEK(); if (!w || !playerName()) return;
   const st = store.get(), practice = st.wkTry === w.week;
   if (!practice){ st.wkTry = w.week; store.set(st); }   // the first game counts, even one left halfway
-  CH = null; start('ten', 'all', { q: w.q.map(id => [id]), wk: w.week, practice });
+  // from the best known to the least: the same order for everyone
+  const byId = new Map(DATA.players.map(p => [p.id, p])), q = w.q.slice().sort((a, b) => ((byId.get(b) || {}).f || 0) - ((byId.get(a) || {}).f || 0));
+  CH = null; start('ten', 'all', { q: q.map(id => [id]), wk: w.week, practice });
 }
 let WK = null;
 async function loadWeek(){
@@ -717,7 +756,7 @@ async function openGame(id){
   try { const r = await fetch(LB_CFG.url + '/rest/v1/guesses?select=name,score,mode,day,picks,log&id=eq.' + encodeURIComponent(id), { headers: head() }); if (r.ok) g = (await r.json())[0]; } catch (e) {}
   if (!g){ toast('This game could not be opened.'); return; }
   const mode = g.mode || 'ten', byId = new Map(DATA.players.map(p => [p.id, p]));
-  const log = (g.log || []).map((l, i) => ({ ok: !!(g.picks[i] || [])[0], ms: (g.picks[i] || [])[1] || 20000, pick: l[1], q: { kind: l[2] ? 'both' : null, pair: l[2], ans: byId.get(l[0]) } })).filter(p => p.q.ans);
+  const log = (g.log || []).map((l, i) => ({ ok: !!(g.picks[i] || [])[0], ms: (g.picks[i] || [])[1] || 20000, pick: l[1], q: l[2] && l[2][0] === 'c' ? { kind: 'club', ans: byId.get(l[0]), mate: byId.get(l[2][1]), key: l[2][2] } : { kind: l[2] ? 'both' : null, pair: l[2], ans: byId.get(l[0]) } })).filter(p => p.q.ans && (p.q.kind !== 'club' || p.q.mate));
   const day = new Date(g.day + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const ov = document.createElement('div'); ov.className = 'imgov';
   ov.innerHTML = `<div class="revbox"><div class="lbhead"><div class="eyebrow">${esc(mode === 'week' ? WEEK_NAME : MODE_NAME[mode] || 'Ten')} · ${esc(day)}</div><button class="chip" data-x>Close</button></div>
@@ -737,7 +776,7 @@ async function lastWinner(){
 async function push(res, retry){
   // the players of the game go with the score, so anyone can open it from the table: [player id, the name picked, the two clubs]
   const row = Object.assign({ id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), day: today(), name: (res.name || 'Unnamed').slice(0, 20), score: res.score, picks: res.picks }, res.wk ? { mode: 'week' } : res.mode !== 'ten' ? { mode: res.mode } : {},
-    retry ? {} : { log: res.log.map(p => [p.q.ans.id, p.pick ? String(p.pick).slice(0, 40) : null, p.q.kind === 'both' ? p.q.pair : null]) });
+    retry ? {} : { log: res.log.map(p => [p.q.ans.id, p.pick ? String(p.pick).slice(0, 40) : null, p.q.kind === 'both' ? p.q.pair : p.q.kind === 'club' ? ['c', p.q.mate.id, p.q.key] : null]) });
   try {
     const r = await fetch(LB_CFG.url + '/rest/v1/guesses', { method: 'POST', headers: Object.assign(head(), { Prefer: 'return=minimal' }),
       body: JSON.stringify(row) });

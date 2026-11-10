@@ -1430,7 +1430,7 @@ def weekly_quiz(out, crests, fx, evs, pst, prev=None):
     """Guess Who's weekly challenge, the same ten players for everyone from Monday to Sunday (UTC): the ten most successful
     players of the 7 days before that Monday, among those whose every club has a crest, at most one per club. Success, summed
     over his matches: his match rating above 6.6 (the API's own, 6.6 when it has none), plus 1 per goal (not own goals) and
-    0.6 per assist; so two good games beat one. The order of the ten is drawn once for the week. With each, his goals, assists
+    0.6 per assist; so two good games beat one. The ten go from the best known to the least known. With each, his goals, assists
     and matches of that week, for the review after a game. Once made, a week's ten are kept (later data cannot change them)."""
     week = TODAY - dt.timedelta(days=TODAY.weekday())
     wid = week.isoformat()
@@ -1464,7 +1464,7 @@ def weekly_quiz(out, crests, fx, evs, pst, prev=None):
             break
     if len(chosen) < 10:
         return prev if prev and prev.get('week') == wid else None
-    random.Random('ttny-guess-weekly-' + wid).shuffle(chosen)
+    chosen.sort(key=lambda p: -(ok[p].get('f') or 0))   # from the best known to the least (the game sorts them so too)
     log(f"  Guess Who weekly {wid}: " + ', '.join(ok[p]['n'] for p in chosen))
     return {'week': wid, 'q': chosen, 'st': {str(p): st[p] for p in chosen}}
 
