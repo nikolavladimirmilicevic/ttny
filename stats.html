@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>TTNY numbers</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Rubik:wght@400;500&display=swap">
+<style>
+/* The owner's numbers: visitors (devices) and finished games per day, for both games, from Supabase (pipeline/stats.sql).
+   Only daily counts can be read; nothing personal is stored. */
+:root{
+  --night:#0B1626; --panel:#13233A; --panel-2:#1A2E4A; --line:#294060;
+  --text:#F3EFE6; --muted:#A3B1C4; --draft:#FC9529; --guess:#FF5FA2;
+  --display:'Oswald','Arial Narrow',Arial,sans-serif; --body:'Rubik','Segoe UI',Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--night);color:var(--text)}
+body{font:15px/1.5 var(--body);margin:0}
+.wrap{max-width:980px;margin:0 auto;padding:16px 16px 60px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:center;gap:10px}
+header img{height:36px}
+h1{font:600 24px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em;margin:0}
+h2{font:500 13px/1.2 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.tile{background:var(--panel-2);border-radius:10px;padding:10px 12px}
+.tile small{display:block;color:var(--muted);font-size:12px}
+.tile b{font:600 26px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.tile .sub{font-size:12px;color:var(--muted)}
+.d{color:var(--draft)}.g{color:var(--guess)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto}
+.chart .tip{position:absolute;pointer-events:none;background:#08111E;border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px;white-space:nowrap;transform:translate(-50%,-100%);display:none}
+.seg{display:flex;gap:6px}
+.seg button{font:inherit;font-size:13px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:4px 12px;cursor:pointer}
+.seg button.on{color:#0B1626;background:var(--text);border-color:var(--text)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.msg{color:var(--muted)}
+td:first-child{white-space:nowrap}
+@media(max-width:640px){.tiles{grid-template-columns:repeat(2,1fr)}table{font-size:13px}th,td{padding:6px 5px}th{font-size:10.5px;letter-spacing:.02em}}
+</style>
+</head><body>
+<div class="wrap">
+  <header><a href="./"><img src="logo80.png" alt="This Time Next Year"></a><h1>Numbers</h1></header>
+  <div id="app"><p class="msg">Loading…</p></div>
+</div>
+<script>
+const LB_CFG = { url: 'https://sadpfbuqocbekvlwxfqz.supabase.co', key: 'sb_publishable_etNezztDu3d9TwRBm5cJ-w_Z2PyvVsP' };   // the public key, as in the games
+const head = () => Object.assign({ apikey: LB_CFG.key, 'Content-Type': 'application/json' }, /^eyJ/.test(LB_CFG.key) ? { Authorization: 'Bearer ' + LB_CFG.key } : {});
+const $ = s => document.querySelector(s);
+let ROWS = [], SPAN = 30, METRIC = 'visitors', CW = 900;   // the chart's width in its own units: narrower on a phone, so its text stays readable
+const fmtDay = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+async function load(){
+  try {
+    const r = await fetch(LB_CFG.url + '/rest/v1/rpc/ttny_stats', { method: 'POST', headers: head(), body: JSON.stringify({ days: 120 }) });
+    if (!r.ok) throw new Error(r.status);
+    ROWS = await r.json(); draw();
+  } catch (e) {
+    $('#app').innerHTML = `<div class="card"><p class="msg" style="margin:0">The numbers are not available yet (${e.message}). Run <b>pipeline/stats.sql</b> once in the Supabase SQL editor, then reload.</p></div>`;
+  }
+}
+// per day: { draft: {visitors, new, plays}, guess: {...} }
+function byDay(){
+  const m = new Map();
+  for (const x of ROWS){ if (!m.has(x.day)) m.set(x.day, {}); m.get(x.day)[x.page] = { visitors: +x.visitors, new: +x.new_visitors, plays: +x.plays }; }
+  return [...m.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([day, v]) => ({ day, draft: v.draft || { visitors: 0, new: 0, plays: 0 }, guess: v.guess || { visitors: 0, new: 0, plays: 0 } }));
+}
+const sum = (L, g, k) => L.reduce((t, d) => t + d[g][k], 0);
+function tile(label, L){
+  return `<div class="tile"><small>${label}</small><b><span class="d">${sum(L, 'draft', 'visitors')}</span> · <span class="g">${sum(L, 'guess', 'visitors')}</span></b>
+    <div class="sub">games <span class="d">${sum(L, 'draft', 'plays')}</span> · <span class="g">${sum(L, 'guess', 'plays')}</span> · new devices ${sum(L, 'draft', 'new') + sum(L, 'guess', 'new')}</div></div>`;
+}
+function chart(L){
+  const W = CW, H = CW < 900 ? 240 : 260, P = { l: 34, r: 8, t: 10, b: 26 }, n = L.length, key = METRIC;
+  const max = Math.max(1, ...L.map(d => Math.max(d.draft[key], d.guess[key])));
+  const nice = Math.ceil(max / (max > 50 ? 10 : max > 10 ? 5 : 1)) * (max > 50 ? 10 : max > 10 ? 5 : 1);
+  const x = i => P.l + (n === 1 ? (W - P.l - P.r) / 2 : i * (W - P.l - P.r) / (n - 1)), y = v => H - P.b - v * (H - P.t - P.b) / nice;
+  const line = (g, col) => `<polyline fill="none" stroke="${col}" stroke-width="2.2" stroke-linejoin="round" points="${L.map((d, i) => `${x(i).toFixed(1)},${y(d[g][key]).toFixed(1)}`).join(' ')}"/>`
+    + L.map((d, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(d[g][key]).toFixed(1)}" r="${n > 60 ? 1.6 : 2.6}" fill="${col}"/>`).join('');
+  const ticks = [0, nice / 2, nice].map(v => `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="#294060" stroke-width="1"/><text x="${P.l - 6}" y="${y(v) + 4}" text-anchor="end" fill="#A3B1C4" font-size="11">${v}</text>`).join('');
+  const every = Math.max(1, Math.ceil(n / (CW < 900 ? 4 : 8))), labels = L.map((d, i) => i % every === 0 || (i === n - 1 && (n - 1) % every > every / 2) ? `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === n - 1 ? 'end' : i === 0 ? 'start' : 'middle'}" fill="#A3B1C4" font-size="11">${fmtDay(d.day)}</text>` : '').join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${key} per day">${ticks}${labels}${line('draft', 'var(--draft)')}${line('guess', 'var(--guess)')}<rect id="hit" x="${P.l}" y="${P.t}" width="${W - P.l - P.r}" height="${H - P.t - P.b}" fill="transparent"/></svg><div class="tip" id="tip"></div>`;
+}
+function draw(){
+  CW = innerWidth < 640 ? 420 : 900;
+  const all = byDay(), L = all.slice(-SPAN), today = all.slice(-1), week = all.slice(-7), month = all.slice(-30);
+  $('#app').innerHTML = `<div style="display:flex;flex-direction:column;gap:16px">
+    <section class="card"><h2>Visitors (devices) · <span class="d">Draft</span> · <span class="g">Guess Who</span></h2>
+      <div class="tiles">${tile('Today', today)}${tile('Last 7 days', week)}${tile('Last 30 days', month)}${tile('Last 120 days', all)}</div>
+      <p class="msg" style="font-size:12px;margin:10px 0 0">A visitor is one device on one day, so the sums count a device once a day. Games are finished games (a draft run, a Guess Who game), counted from ${fmtDay(firstPlay(all))}.</p></section>
+    <section class="card"><div class="top"><h2 style="margin:0">Per day</h2>
+      <div class="seg" id="met">${[['visitors', 'Visitors'], ['new', 'New devices'], ['plays', 'Games']].map(([k, n]) => `<button data-k="${k}" class="${METRIC === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+      <div class="seg" id="span">${[[7, '7 days'], [30, '30 days'], [120, '120 days']].map(([k, n]) => `<button data-k="${k}" class="${SPAN === k ? 'on' : ''}">${n}</button>`).join('')}</div></div>
+      <div class="legend" style="margin-top:10px"><span><i style="background:var(--draft)"></i>Draft</span><span><i style="background:var(--guess)"></i>Guess Who</span></div>
+      <div class="chart" id="chart">${chart(L)}</div></section>
+    <section class="card"><h2>Day by day</h2><div style="overflow-x:auto"><table><thead><tr><th>Day</th><th class="d">Visitors</th><th class="d">New</th><th class="d">Games</th><th class="g">Visitors</th><th class="g">New</th><th class="g">Games</th></tr></thead>
+      <tbody>${L.slice().reverse().map(d => `<tr><td>${fmtDay(d.day)}</td><td>${d.draft.visitors}</td><td>${d.draft.new}</td><td>${d.draft.plays}</td><td>${d.guess.visitors}</td><td>${d.guess.new}</td><td>${d.guess.plays}</td></tr>`).join('')}</tbody></table></div></section></div>`;
+  document.querySelectorAll('#met button').forEach(b => b.addEventListener('click', () => { METRIC = b.dataset.k; draw(); }));
+  document.querySelectorAll('#span button').forEach(b => b.addEventListener('click', () => { SPAN = +b.dataset.k; draw(); }));
+  const box = $('#chart'), svg = box.querySelector('svg'), tip = $('#tip');
+  svg.addEventListener('pointermove', e => {
+    const r = svg.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width * CW, n = L.length;
+    const i = Math.max(0, Math.min(n - 1, Math.round((fx - 34) / ((CW - 42) / Math.max(1, n - 1))))), d = L[i];
+    tip.style.display = 'block'; tip.style.left = ((n === 1 ? .5 : i / (n - 1)) * (r.width - 42 * r.width / CW) + 34 * r.width / CW) + 'px'; tip.style.top = '8px';
+    tip.innerHTML = `<b>${fmtDay(d.day)}</b><br><span class="d">Draft ${d.draft[METRIC]}</span> · <span class="g">Guess Who ${d.guess[METRIC]}</span>`;
+  });
+  svg.addEventListener('pointerleave', () => { tip.style.display = 'none'; });
+}
+const firstPlay = all => (all.find(d => d.draft.plays || d.guess.plays) || all[all.length - 1] || { day: new Date().toISOString().slice(0, 10) }).day;
+load();
+</script>
+</body></html>
