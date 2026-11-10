@@ -1179,9 +1179,9 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             main, tot_w = pos[0], sum(cnt.values()) or 1
             if raw[main] >= 3:
                 pos = [k for k in pos if k == main or raw[k] > 1 or not (abs(BAND.get(k, 2) - BAND.get(main, 2)) >= 2 or 'GK' in (k, main))]
-            # a second position needs at least 2 starts there, or a tenth of his (weighted) starts: one start among many
-            # says little (and is often a line-up the API got wrong)
-            pos = [k for k in pos if k == main or raw[k] >= 2 or cnt[k] / tot_w >= 0.10]
+            # a second position needs at least 2 starts there: one start says little (a wing-back for one night, or a
+            # line-up the API got wrong), however few starts he has
+            pos = [k for k in pos if k == main or raw[k] >= 2]
             # goals and assists per start (own goals and missed penalties do not count)
             g = a = 0
             m = []

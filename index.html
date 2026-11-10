@@ -562,6 +562,7 @@ body.matchon .ev.live .gflash{top:auto;bottom:6%;font-size:24px}
 /* round 6: watch out, achievements, the run's title card */
 .ev .watch{grid-column:1/-1;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ev .watch b{color:var(--text);font-weight:500}
 .achs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+details.hist summary{cursor:pointer;list-style:none}details.hist summary::-webkit-details-marker{display:none}details.hist summary::after{content:' ›';color:var(--muted)}details.hist[open] summary::after{content:' ˅'}
 .ach{display:flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);font-size:12px;cursor:help}
 .ach i{font-style:normal;font-size:15px;line-height:1}
 .ach.on{border-color:rgba(242,193,78,.6);background:rgba(242,193,78,.1)}
@@ -579,6 +580,8 @@ body.matchon .ev.live .gflash{top:auto;bottom:6%;font-size:24px}
 .tags{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .tag{font:600 11px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:999px;background:rgba(242,193,78,.13);color:#F2C14E;border:1px solid rgba(242,193,78,.35)}
 .ev.live .tags{visibility:hidden}.ev.live.over .tags{visibility:visible;animation:rise .3s ease-out}
+.sum{grid-column:1/-1;margin-top:6px;font-size:13px;color:var(--text);opacity:.9}.sum .potm{display:block;color:var(--muted);font-size:12px;margin-top:2px}.sum .potm b{color:var(--gold);font-weight:600}
+.ev.live .sum{visibility:hidden}.ev.live.over .sum{visibility:visible;animation:rise .3s ease-out}
 .drawn.spinning{opacity:.75;filter:blur(.4px)}.drawn.landed{display:inline-block;animation:goalin .4s cubic-bezier(.2,1.4,.4,1)}
 .ev.fin{border:2px solid #F2C14E;background:radial-gradient(ellipse 55% 75% at 10% -15%,rgba(255,244,214,.17),transparent 70%),radial-gradient(ellipse 55% 75% at 90% -15%,rgba(255,244,214,.17),transparent 70%),var(--panel);box-shadow:0 0 0 1px rgba(242,193,78,.2),0 10px 30px rgba(0,0,0,.35)}
 .ev.fin .rd{color:#F2C14E}
@@ -1821,6 +1824,28 @@ function archive(r){
   const k = g.findIndex(x => x.id === e.id); r.rank = k > -1 && k < BEST_N ? k + 1 : null; r.rankAll = true; r.rankWk = !!r.wk;
   if (r.rank) LB.flash = e.id;
   if (LB.mode === 'supa' || r.wk || S.best.includes(e)) lbPush(e);
+  histAdd(e);
+}
+/* your runs on this device: every finished run, newest first (the last 30), each one opens as its season recap */
+const HIST_KEY = CFG.STORE + '.hist', HIST_N = 30;
+const histGet = () => { try { const L = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); return Array.isArray(L) ? L : []; } catch (e) { return []; } };
+function histAdd(e){
+  let L = [e, ...histGet().filter(x => x.id !== e.id)].slice(0, HIST_N);
+  while (L.length){ try { localStorage.setItem(HIST_KEY, JSON.stringify(L)); return; } catch (err) { L = L.slice(0, Math.floor(L.length * .7)); } }   // a full store keeps fewer
+}
+function histHTML(){
+  const L = histGet(); if (!L.length) return '';
+  const day = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const row = (e, i) => { const h = e.h, c = COMP_W[h.comp] ? h.comp : 'ecl';
+    return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}" data-act="openhist" data-i="${i}"><span class="bc" style="color:${ACCENT[c]}">${CUP[c]}</span>
+      <span class="bt"><b>${esc(stageWord(h))}</b><small>${h.wk ? 'Weekly' : DIFF[h.diff] ? DIFF[h.diff].label : ''}${h.season > 1 ? ' · run ' + h.season : ''} · ${esc(h.form || '')} · ${num(h.w)}-${num(h.d)}-${num(h.l)} · ${day(e.at)}</small></span><span class="bs num" title="Run score, 1-99">${score99(h)}</span><span class="bg">›</span></button>`; };
+  return `<section class="card"><details class="hist"><summary><span class="eyebrow">Your runs</span> <span class="muted" style="font-size:13px">· ${L.length} on this device</span></summary>
+    <div class="bruns" style="margin-top:10px">${L.map(row).join('')}</div></details></section>`;
+}
+function openHist(i){
+  const e = histGet()[i]; if (!e || !e.run || !e.run.cup){ toast('That run cannot be opened.'); return; }
+  S.run = Object.assign(JSON.parse(JSON.stringify(e.run)), { arch: 1, dscr: 'season', rank: null, rankAll: false, player: e.name || e.run.player || '' });
+  render(); scrollTo(0, 0);
 }
 /* the shared top 10. Where the game runs from its own address (GitHub Pages), every run goes to one public table
    (Supabase, below): anyone who plays can add a run, nobody can change or delete one, and everyone reads the top 10.
@@ -2214,14 +2239,20 @@ const xiBox = (title, xi, form) => `<section class="card"><div class="drafthead"
 /* achievements: earned once, kept for good */
 const ACH = [['title', '🏆', 'First title', 'Win any competition'], ['hattrick', '⚽', 'Hat-trick', 'One of your players scores three in a match'],
   ['unbeaten', '🛡️', 'Unbeaten', 'A whole run without a defeat'], ['hard', '💎', 'Hard title', 'Win a title on Hard'],
-  ['treble', '⭐', 'All three', 'Win the Champions League, Europa League and Conference League'], ['again', '🔁', 'Again', 'Keep all 11 after a title and win the next run too']];
+  ['treble', '⭐', 'All three', 'Win the Champions League, Europa League and Conference League'], ['again', '🔁', 'Again', 'Keep all 11 after a title and win the next run too'],
+  ['pure', '🧤', 'No help needed', 'Win a title without using any of the three helps'], ['world', '🌍', 'Eleven nations', 'Finish a run with 11 players from 11 different countries'],
+  ['underdog', '🐺', 'Underdog', 'Win a title with a team rating under 80'], ['wall', '🧱', 'The wall', 'Keep 6 clean sheets in one run'],
+  ['goals', '🎯', 'Goal machine', 'Score 25 goals in one run']];
 const achChip = ([k, ic, name, how], on) => `<span class="ach${on ? ' on' : ''}" title="${esc(name)}: ${esc(how)}"><i>${ic}</i>${esc(name)}</span>`;
 function achCheck(r){
   const st = S.stats, tb = st.titlesBy || {}, c = r.cup, champ = c.stage === 'champion'; st.ach = st.ach || {};
   const ms = c.ev.filter(e => e.k === 'md' || e.k === 'leg' || e.k === 'final');
   const lost = m => { const f = m.s[0] + (m.et ? m.et[0] : 0), a = m.s[1] + (m.et ? m.et[1] : 0); return f < a || (f === a && m.pens && !m.won); };
   const ht = ms.some(m => { const n = {}; return (m.gl || []).some(([sc, , , og]) => !og && (n[sc] = (n[sc] || 0) + 1) >= 3); });
-  const ok = { title: champ, hattrick: ht, unbeaten: ms.length > 0 && !ms.some(lost), hard: champ && r.diff === 'hard', treble: tb.cl && tb.el && tb.ecl, again: champ && !!r.full };
+  const k = campaign(r), team = teamRating(r.picks, r.form).ov;
+  const ok = { title: champ, hattrick: ht, unbeaten: ms.length > 0 && !ms.some(lost), hard: champ && r.diff === 'hard', treble: tb.cl && tb.el && tb.ecl, again: champ && !!r.full,
+    pure: champ && !Object.values(r.help || {}).some(Boolean), world: new Set(r.picks.map(id => W.P[id] && W.P[id].nat)).size >= 11,
+    underdog: champ && team < 80, wall: k.CS >= 6, goals: k.GF >= 25 };
   const fresh = ACH.filter(([k]) => ok[k] && !st.ach[k]).map(([k]) => k);
   fresh.forEach(k => st.ach[k] = Date.now()); r.ach = fresh;
   if (fresh.length) setTimeout(() => achCard(fresh), 600);
@@ -2249,7 +2280,7 @@ function bestRuns(){
   const day = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const rows = L.map((e, i) => { const h = e.h, c = COMP_W[h.comp] ? h.comp : 'ecl';
     return `<button class="brun${h.stage === 'champion' ? ' champ' : ''}${e.id === LB.flash ? ' flash' : ''}" data-act="open" data-i="${i}" data-wk="${wkTab ? 1 : 0}"><span class="bi num${i < 3 ? ' md' + (i + 1) : ''}">${i + 1}</span><span class="bc" style="color:${ACCENT[c]}">${CUP[c]}</span>
-      <span class="bt"><b>${esc(stageWord(h))}</b><small>${esc(e.name || 'Unnamed')} · ${h.wk ? 'Weekly' : DIFF[h.diff] ? DIFF[h.diff].label : ''} · ${num(h.w)}-${num(h.d)}-${num(h.l)} · ${day(e.at)}</small></span><span class="bs num" title="Run score, 1-99">${score99(h)}</span><span class="bg">›</span></button>`; });
+      <span class="bt"><b>${esc(stageWord(h))}</b><small>${esc(e.name || 'Unnamed')} · ${h.wk ? 'Weekly' : DIFF[h.diff] ? DIFF[h.diff].label : ''} · ${num(h.w)}-${num(h.d)}-${num(h.l)} · ${day(e.at)}${h.ach ? ` · <span title="Achievements unlocked">🏅${num(h.ach)}</span>` : ''}</small></span><span class="bs num" title="Run score, 1-99">${score99(h)}</span><span class="bg">›</span></button>`; });
   return `<section class="card" id="lb"><div class="drafthead" style="margin-bottom:10px"><div class="lbtabs"><button class="lbt${wkTab ? '' : ' on'}" data-act="lbtab" data-t="all">Top 10</button><button class="lbt${wkTab ? ' on' : ''}" data-act="lbtab" data-t="week">This week</button></div>${rows.length ? '<button class="chip quit" data-act="lbimg" style="padding:4px 12px;font-size:12px;color:var(--text)">Share</button>' : '<span class="muted" style="font-size:12px">Run score</span>'}</div>
     ${rows.length ? `<div class="bruns">${rows.slice(0, 5).join('')}</div>${rows.length > 5 ? `<details class="more10"><summary>Show 6 to ${rows.length}</summary><div class="bruns" style="margin-top:6px">${rows.slice(5).join('')}</div></details>` : ''}` : `<p class="muted" style="margin:0">${LB.on ? (wkTab ? 'No weekly challenge runs yet this week. Yours could be the first.' : 'No runs yet. Yours could be the first.') : 'The top 10 is not available here.'}</p>`}</section>`;
 }
@@ -2304,6 +2335,7 @@ function viewHome(){
     ${weeklyCard()}
     ${bestRuns()}
     ${cabinet(st, best)}
+    ${histHTML()}
     <details class="rules">
       <summary>How it works</summary>
       <ol class="steps">
@@ -2449,6 +2481,43 @@ function tagsHTML(e){
   if (a(e) === 0) out.push('Clean sheet');
   return out.length ? `<div class="tags">${out.map(t => `<span class="tag">${t}</span>`).join('')}</div>` : '';
 }
+/* a short word on each of your matches, once it is over: one line on how it went, and a player of the match every time
+   (the scorer by the star's rule; with no scorer of yours, your keeper or best defender after a clean sheet, otherwise
+   your best player that night, by rating and a small draw fixed by the match) */
+function potm(e){
+  const m = motm(e); if (m) return m;
+  const r = S.run, ids = (r && r.picks || []).filter(id => W.P[id]); if (!ids.length) return null;
+  const a = e.s[1] + (e.et ? e.et[1] : 0), key = [e.k, e.n, e.round, e.leg].join('|');
+  const jit = id => { let h = 0; for (const ch of key + id) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return (h % 1000) / 1000 * 6; };
+  const pool = a === 0 ? ids.filter(id => W.P[id].line === 'GK' || W.P[id].line === 'DEF') : ids;
+  return (pool.length ? pool : ids).slice().sort((x, y) => (W.P[y].ovr + jit(y)) - (W.P[x].ovr + jit(x)))[0];
+}
+function sumHTML(e){
+  const f = e.s[0] + (e.et ? e.et[0] : 0), a = e.s[1] + (e.et ? e.et[1] : 0), nmOf = id => W.P[id] ? esc(short(W.P[id].name)) : '';
+  const ours = (e.gl || []).slice().sort((x, y) => x[2] - y[2]), theirs = (e.og || []).slice().sort((x, y) => x[2] - y[2]);
+  const by = {}; ours.forEach(g => { if (!g[3]) by[g[0]] = (by[g[0]] || 0) + 1; });
+  const top = Object.keys(by).sort((x, y) => by[y] - by[x])[0], last = ours[ours.length - 1], names = Object.keys(by).map(nmOf);
+  // the lead (or the level score) made by your last goal, and whether you were ever behind
+  const tl = [...ours.map(g => [g[2], 1]), ...theirs.map(g => [g[2], -1])].sort((x, y) => x[0] - y[0] || y[1] - x[1]);
+  let d = 0, low = 0, lastD = null; for (const [mn, v] of tl){ d += v; low = Math.min(low, d); if (v > 0 && last && mn === last[2]) lastD = d; }
+  const late = last && last[2] >= 85 && !last[3], who = last && !last[3] ? nmOf(last[0]) : '';
+  let line;
+  if (e.pens) line = e.won ? `Through on penalties after ${f}:${a}.` : `Out on penalties after ${f}:${a}.`;
+  else if (f > a){
+    if (late && lastD === 1 && f - a === 1 && who) line = `${who} won it in the ${last[2]}th minute.`;
+    else if (low < 0) line = `Came from behind to win ${f}:${a}.`;
+    else if (f - a >= 3) line = `A ${f}:${a} rout${top ? `, ${nmOf(top)} leading the way` : ''}.`;
+    else if (top && by[top] > 1) line = `${nmOf(top)} scored ${by[top] === 2 ? 'twice' : by[top] + ' times'} in a ${f}:${a} win.`;
+    else if (f === 1 && top) line = `${nmOf(top)} scored the only goal.`;
+    else if (names.length === 2) line = `${names[0]} and ${names[1]} scored in a ${f}:${a} win.`;
+    else line = a === 0 ? `A ${f}:${a} win and nothing let in.` : `A ${f}:${a} win.`;
+  } else if (f === a){
+    if (late && lastD === 0 && who) line = `${who} rescued a draw in the ${last[2]}th minute.`;
+    else line = f === 0 ? 'A goalless draw.' : names.length === 1 && f === 1 ? `${names[0]}'s goal earned a 1:1 draw.` : `Level at ${f}:${a}.`;
+  } else line = a - f >= 3 ? `A heavy ${f}:${a} defeat.` : theirs.length && theirs[theirs.length - 1][2] >= 85 && a - f === 1 ? `Beaten late on, ${f}:${a}.` : a - f === 1 ? `A narrow ${f}:${a} defeat.` : `A ${f}:${a} defeat.`;
+  const p = potm(e);
+  return `<div class="sum">${line}${p ? ` <span class="potm">Player of the match: <b>${nmOf(p)}</b></span>` : ''}</div>`;
+}
 // penalty takers: forwards first, then midfielders, defenders, the keeper last
 const PEN_ORDER = { CF: 0, LWF: 1, RWF: 1, AMF: 2, CMF: 3, LMF: 3, RMF: 3, DMF: 4, LB: 5, RB: 5, CB: 6, GK: 7 };
 const takers = ids => ids.map(id => W.P[id]).filter(Boolean).sort((x, y) => (PEN_ORDER[x.prim] ?? 6) - (PEN_ORDER[y.prim] ?? 6) || y.ovr - x.ovr).map(p => short(p.name));
@@ -2461,7 +2530,7 @@ function evHTML(e){
   const hv = e => e.h === 1 ? ' · Home' : e.h === 0 ? ' · Away' : '';
   const score = (s, r) => `<div class="score num"><span class="sh">${s[0]}</span><span class="muted" style="font-size:16px">:</span><span class="sa">${s[1]}</span>${r ? `<span class="res ${r}">${r}</span>` : ''}</div>`;
   const live = e === (S.run && S.run.cup && S.run.cup.ev[S.run.cup.live]) ? ' live' : '';
-  if (e.k === 'md') return `<div class="ev${live}"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}${tagsHTML(e)}</div>`;
+  if (e.k === 'md') return `<div class="ev${live}"><div class="rd">League phase · Matchday ${e.n}${e.pot ? ' · Pot ' + e.pot : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, res(e.s))}${gls(e)}${tagsHTML(e)}${sumHTML(e)}</div>`;
   if (e.k === 'table'){
     const z = e.pos <= 8 ? 'Straight into the Round of 16.' : e.pos <= 24 ? 'Into the knockout play-off.' : 'Out in the league phase.';
     return `<div class="ev big" style="display:block"><div class="rd">League phase final table</div>
@@ -2481,8 +2550,8 @@ function evHTML(e){
   };
   const aggLine = e => { const c = S.run.cup, f = c.ev.find(x => x.k === 'leg' && x.leg === 1 && x.round === e.round && x.opp === e.opp); if (!f || !e.agg) return '';
     return `<div class="aggline" data-f="${f.s[0]}:${f.s[1]}">Aggregate <b class="num"><span class="ah">${e.agg[0]}</span>:<span class="aa">${e.agg[1]}</span></b></div>`; };
-  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}${live}"><div class="rd">${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${e.leg === 2 ? aggLine(e) : ''}${gls(e)}${tagsHTML(e)}${e.leg === 2 ? pensHTML(e.pens, e.opp) + tail({ ...e, agg: null }) : ''}</div>`;
-  if (e.k === 'final') return `<div class="ev big fin${live}"${e.won ? ' data-won="1"' : ''}><div class="rd">Final</div><div class="opp">${venue(null)} ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tagsHTML(e)}${pensHTML(e.pens, e.opp)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
+  if (e.k === 'leg') return `<div class="ev${e.leg === 2 ? ' big' : ''}${live}"><div class="rd">${e.round} · Leg ${e.leg}${e.leg === 2 && firstLeg(e) ? ' · ' + firstLeg(e) : ''}</div><div class="opp">${venue(e.h)} ${opp(e.opp)}</div>${score(e.s, e.leg === 1 ? res(e.s) : '')}${e.leg === 2 ? aggLine(e) : ''}${gls(e)}${tagsHTML(e)}${sumHTML(e)}${e.leg === 2 ? pensHTML(e.pens, e.opp) + tail({ ...e, agg: null }) : ''}</div>`;
+  if (e.k === 'final') return `<div class="ev big fin${live}"${e.won ? ' data-won="1"' : ''}><div class="rd">Final</div><div class="opp">${venue(null)} ${opp(e.opp)}</div>${score(e.s)}${gls(e)}${tagsHTML(e)}${sumHTML(e)}${pensHTML(e.pens, e.opp)}${tail({ et: e.et, pens: e.pens, won: undefined })}<div class="extra" style="font-size:16px;color:${e.won ? 'var(--gold)' : 'var(--loss)'}"><b>${e.won ? (S.run.comp === 'cl' || !S.run.comp ? 'Champions of Europe' : compOf(S.run).short + ' winners') : 'Runners-up'}</b></div></div>`;
   if (e.k === 'podone'){
     const tie = t => `<tr class="${t[0] === e.opp || t[1] === e.opp ? 'me' : ''}"><td style="text-align:left">${t[3] === t[0] ? `<b>${esc(nm(t[0]))}</b>` : esc(nm(t[0]))}</td><td class="sc">${t[2][0]}:${t[2][1]}${t[4] === 1 ? ' <small>p</small>' : t[4] === 2 ? ' <small>aet</small>' : ''}</td><td style="text-align:right">${t[3] === t[1] ? `<b>${esc(nm(t[1]))}</b>` : esc(nm(t[1]))}</td></tr>`;
     return `<div class="ev big" style="display:block"><div class="rd">Knockout play-off · Done</div>
@@ -3083,7 +3152,7 @@ function seasonSummary(r){
   const lt = c.top && c.top.g[0];
   return { season: r.season || 1, wk: r.wk || undefined, comp: r.comp || 'cl', diff: r.diff || 'medium', stage: c.stage, pos: c.pos, champ: c.champ === 'YOU' ? 'YOU' : nm(c.champ),
     w: k.W_, d: k.D, l: k.L, gf: k.GF, ga: k.GA, cs: k.CS, big: k.big ? [k.big.f, k.big.ag, nm(k.big.opp)] : null,
-    team: Math.round(Math.min(99, t.ov)), chem: chemNum(t.chem), chemB: +chemBonus(t.chem).toFixed(1), chemG: chemGrade(t.chem), chemN: chemNum(t.chem), form: r.form, xi, top: lt ? [W.P[lt[0]].name, lt[1], r.picks.includes(lt[0])] : null };
+    team: Math.round(Math.min(99, t.ov)), chem: chemNum(t.chem), chemB: +chemBonus(t.chem).toFixed(1), chemG: chemGrade(t.chem), chemN: chemNum(t.chem), form: r.form, ach: Object.keys((S.stats && S.stats.ach) || {}).length || undefined, xi, top: lt ? [W.P[lt[0]].name, lt[1], r.picks.includes(lt[0])] : null };
 }
 const stageWord = h => h.stage === 'champion' ? 'Champions' : h.stage === 'final' ? 'Lost the final' : h.stage === 'league' ? `League phase · ${ord(h.pos)}` : 'Out in the ' + STAGE_SHORT[h.stage].toLowerCase();
 
@@ -3447,6 +3516,7 @@ document.addEventListener('click', e => {
   else if (a === 'pickd'){ S.pref = Object.assign({ diff: 'medium' }, S.pref, { diff: b.dataset.d }); save(); render(); }
   else if (a === 'open') openRun(+b.dataset.i, b.dataset.wk === '1');
   else if (a === 'openhall') openRun(+b.dataset.i, true, true);
+  else if (a === 'openhist') openHist(+b.dataset.i);
   else if (a === 'lbtab'){ S.pref = Object.assign({}, S.pref, { lbTab: b.dataset.t }); save(); lbShow(); }
   else if (a === 'weekly'){ S.editName = 0; if (!(S.pref && S.pref.name)){ toast('Type your name first.'); const x = document.getElementById('pname'); if (x) x.focus(); return; } if (!weeklyOk()){ toast('This week\'s challenge is not ready yet.'); return; } newRun(null, true); }
   else if (a === 'rename'){ S.editName = 1; render(); const x = document.getElementById('pname'); if (x){ x.focus(); x.select(); } }
@@ -3578,7 +3648,8 @@ async function boot(){
   if (S.run && S.run.picks && S.run.picks.some(bad)) S.run = null;
   // a run from before a data update whose players no longer fit together: start again
   if (S.run && S.run.picks && S.run.picks.length === 11 && !feasible(S.run.picks).length) S.run = null;
-  delete S.dyn; S.best = S.best || [];   // challenges are gone: nothing carries over from an old save
+  delete S.dyn; S.best = S.best || [];
+  try { if (localStorage.getItem(HIST_KEY) == null && S.best.length) localStorage.setItem(HIST_KEY, JSON.stringify([...S.best].filter(x => x.run).sort((a, b) => b.at - a.at))); } catch (e) {}   // your runs start with the best ones already kept   // challenges are gone: nothing carries over from an old save
   if (S.run && S.run.phase === 'done' && S.run.dscr === 'dynasty') S.run.dscr = 'season';
   catchUp();
   render();
@@ -3606,7 +3677,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261109071501';
+const BUILD = '20261110164146';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
