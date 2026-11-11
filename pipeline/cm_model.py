@@ -8,6 +8,7 @@ shrunk toward the middle when he has played little), by his height and weight (h
 balance) and by his age (pace fades after 28, stamina after 31), with a small fixed draw per player so no two are alike.
 """
 import math, random, re, statistics
+from statistics import NormalDist
 
 ATTRS = [
     ('oa', 'Offensive awareness'), ('bc', 'Ball control'), ('dr', 'Dribbling'), ('tp', 'Tight possession'),
@@ -52,6 +53,15 @@ POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', '
 ST = ['apps', 'xi', 'min', 'rt', 'g', 'a', 'sh', 'sot', 'pas', 'kp', 'acc', 'tk', 'blk', 'int', 'du', 'duw', 'dra', 'drs',
       'drp', 'fd', 'fc', 'yc', 'rc', 'sv', 'gc', 'pks', 'pkm']
 IX = {k: i for i, k in enumerate(ST)}
+
+
+def ability(w):
+    """A player's standing on a PES-like scale from the draft game's long-run percentiles (level and performance among
+    every rated player in Europe, as normal scores), with a little of its overall (which carries his recent form), so an
+    injury or a bad month does not make a star ordinary."""
+    z = lambda q: NormalDist().inv_cdf(min(.995, max(.01, q if q is not None else .5)))
+    a = 74 + 6 * (.6 * z(w.get('lvl')) + .4 * z(w.get('prf')))
+    return .85 * a + .15 * (.9 * w['ovr'] + 3)
 
 
 def clip(v, lo=40, hi=99):
@@ -157,7 +167,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today):
     if not rows:
         return None
     # an overall for those the draft game does not rate: from the season's rating, starts and club, fitted on those it does
-    fit = [(r['w']['ovr'], r['p90']['rt'], r['p90']['share'], math.log1p(r['p90']['min'])) for r in rows
+    fit = [(ability(r['w']), r['p90']['rt'], r['p90']['share'], math.log1p(r['p90']['min'])) for r in rows
            if r['w'] and r['w'].get('ovr') and r['p90'] and r['p90']['rt'] and r['p90']['min'] >= 300]
     coef = None
     if len(fit) >= 40:
@@ -178,12 +188,12 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today):
         coef = b
     club_ovr = {}
     for t in teams:
-        known = sorted((r['w']['ovr'] for r in rows if r['tid'] == t['id'] and r['w'] and r['w'].get('ovr')), reverse=True)[:14]
+        known = sorted((ability(r['w']) for r in rows if r['tid'] == t['id'] and r['w'] and r['w'].get('ovr')), reverse=True)[:14]
         club_ovr[t['id']] = statistics.mean(known) if len(known) >= 8 else None
     league_mid = statistics.median([v for v in club_ovr.values() if v] or [72])
     for r in rows:
         if r['w'] and r['w'].get('ovr'):
-            r['ovr'] = r['w']['ovr']; continue
+            r['ovr'] = ability(r['w']); continue
         base = (club_ovr.get(r['tid']) or league_mid - 4)
         p = r['p90']
         if coef and p and p['rt'] and p['min'] >= 200:
@@ -217,7 +227,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today):
         e, p, pos = r['e'], r['p90'], r['prim']
         g = _GROUP[pos]
         rnd = random.Random(f"cm-{r['pid']}")
-        o = 0.9 * r['ovr'] + 3   # the draft game's scale to a PES-like one: its 97 is about 90, its 75 about 70
+        o = r['ovr']   # already on the PES-like scale
         def z(m):
             if not p or p.get(m) is None or (g, m) not in norm:
                 return 0.0

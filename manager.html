@@ -368,7 +368,7 @@ function shot(M, S1, S2, u1, u2, kind){
   const gk = S2.on.find(y => y.pos === 'GK');
   const skill = kind === 'head' ? .55 * A(x.p, 'he') + .25 * A(x.p, 'ju') + .2 * A(x.p, 'oa') : kind === 'fk' ? .7 * A(x.p, 'pk') + .3 * A(x.p, 'cu') : .5 * A(x.p, 'fi') + .25 * A(x.p, 'oa') + .15 * A(x.p, 'bc') + .1 * A(x.p, 'kp');
   const keep = gk ? u2.gk : 35;
-  const base = { open: .135, head: .1, fk: .065, far: .04, pen: .76 }[kind];
+  const base = { open: .15, head: .11, fk: .065, far: .045, pen: .76 }[kind];
   const q = kind === 'pen' ? base * (0.8 + 0.2 * A(x.p, 'pk') / 75) * (1.08 - 0.08 * keep / 75)
     : base * Math.exp((skill * eff(S1, x) - keep) / 26) * (kind === 'open' ? (0.8 + 0.4 * logit((u1.cre - u2.def) / 14)) : 1);
   // on target in all (goals included): about a third of shots, a little more for a good finisher
@@ -437,14 +437,14 @@ function aiSubs(M, side){
 function minute(M){
   const H = M.H, Aw = M.A, uh = units(H), ua = units(Aw);
   // possession: the midfields against each other
-  const pH = logit((uh.mid - ua.mid) / 20 + (uh.cre - ua.cre) / 40);
+  const pH = logit((uh.mid - ua.mid) / 26 + (uh.cre - ua.cre) / 50);
   const att = Math.random() < pH ? H : Aw, def = att === H ? Aw : H, u1 = att === H ? uh : ua, u2 = att === H ? ua : uh;
   att.poss++;
   // tiredness: everyone loses energy, more with pressing and less stamina
   for (const s of [H, Aw]) for (const x of s.on) x.e = Math.max(15, x.e - (0.13 + (100 - x.st) / 100 * 0.32) * (1 + (s.t.press - 1) * .25));
   const r = Math.random();
   if (r < .5){
-    const q = logit((u1.att * .55 + u1.cre * .45 - u2.def) / 22);
+    const q = logit((u1.att * .55 + u1.cre * .45 - u2.def) / 28);
     if (Math.random() < q * .74){
       const k = Math.random();
       if (k < .017) { const x = who(def, 'foul', 'ag'); say(M, att, 'big', `Penalty! ${nm(x)} brings his man down in the box.`); rateAdd(def, x, -.4); shot(M, att, def, u1, u2, 'pen'); }
