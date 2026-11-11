@@ -1,0 +1,291 @@
+"""The manager game's data (cm.json): one league's clubs, squads and fixture list, and for every player a set of
+attributes on a 40-99 scale in the manner of PES 2021 (the kinds of attributes and the positions, not its values).
+
+Each attribute starts from the player's overall (the draft game's, where he has one; otherwise estimated from his
+season), moved by his position's profile (a centre-forward finishes better than he tackles), then by what his season
+says (goals, passes, dribbles, tackles, duels, saves, each per 90 minutes and compared with players in his position,
+shrunk toward the middle when he has played little), by his height and weight (heading, jumping, physical contact,
+balance) and by his age (pace fades after 28, stamina after 31), with a small fixed draw per player so no two are alike.
+"""
+import math, random, re, statistics
+
+ATTRS = [
+    ('oa', 'Offensive awareness'), ('bc', 'Ball control'), ('dr', 'Dribbling'), ('tp', 'Tight possession'),
+    ('lp', 'Low pass'), ('lf', 'Lofted pass'), ('fi', 'Finishing'), ('he', 'Heading'), ('pk', 'Place kicking'),
+    ('cu', 'Curl'), ('sp', 'Speed'), ('ac', 'Acceleration'), ('kp', 'Kicking power'), ('ju', 'Jump'),
+    ('pc', 'Physical contact'), ('ba', 'Balance'), ('st', 'Stamina'), ('da', 'Defensive awareness'),
+    ('bw', 'Ball winning'), ('ag', 'Aggression'), ('ga', 'GK awareness'), ('gc', 'GK catching'),
+    ('gl', 'GK clearing'), ('gr', 'GK reflexes'), ('gh', 'GK reach')]
+KEYS = [k for k, _ in ATTRS]
+OUT = KEYS[:20]
+GKA = KEYS[20:]
+
+# each position's profile: how far each outfield attribute sits from the overall
+_P = {
+    #       oa  bc  dr  tp  lp  lf  fi  he  pk  cu  sp  ac  kp  ju  pc  ba  st  da   bw   ag
+    'CF':  (6,  0,  -2, -2, -10, -14, 6,  0, -12, -8, -1, -1,  2, -2,  2, -4, -8, -35, -38, -15),
+    'SS':  (4,  3,  2,  2,  -4, -8,  2, -10, -6, -2,  0,  2, -1, -12, -8, 0, -4, -33, -35, -18),
+    'WF':  (2,  2,  5,  2,  -5, -7, -3, -16, -8,  0,  5,  6, -3, -14, -12, 2, -3, -32, -34, -20),
+    'AMF': (2,  3,  1,  3,   3, -1, -4, -18, -4,  0, -4, -1, -3, -16, -12, 1, -3, -26, -28, -18),
+    'WM':  (-2, 0,  2, -1,   0,  0, -8, -16, -6,  0,  3,  3, -4, -12, -10, 0,  4, -18, -18, -12),
+    'CMF': (-4, 0, -3,  1,   4,  2, -10, -12, -6, -4, -6, -4, -2, -8, -4, -2,  6, -6, -4, -6),
+    'DMF': (-14, -4, -8, -2,  2,  0, -20, -6, -12, -12, -8, -8, -4, -4,  2, -6,  4,  3,  4,  0),
+    'CB':  (-26, -12, -18, -10, -6, -8, -30, 2, -20, -20, -8, -10, -6,  2,  4, -12, -4,  5,  4,  0),
+    'FB':  (-14, -6, -6, -6,  -4, -2, -24, -8, -14, -8,  2,  1, -8, -6, -6, -4,  5,  0,  0, -4),
+}
+_GROUP = {'CF': 'CF', 'SS': 'SS', 'LWF': 'WF', 'RWF': 'WF', 'AMF': 'AMF', 'LMF': 'WM', 'RMF': 'WM', 'CMF': 'CMF',
+          'DMF': 'DMF', 'CB': 'CB', 'LB': 'FB', 'RB': 'FB', 'GK': 'GK'}
+# what a position's rating weighs (PES-like): the attributes that matter most there
+_W = {
+    'CF': {'oa': 3, 'fi': 3, 'bc': 2, 'he': 1.5, 'kp': 1, 'pc': 1, 'sp': 1, 'ac': 1, 'dr': 1},
+    'SS': {'oa': 3, 'fi': 2, 'bc': 2, 'dr': 2, 'tp': 1, 'lp': 1, 'ac': 1, 'ba': 1},
+    'WF': {'dr': 3, 'sp': 2, 'ac': 2, 'oa': 2, 'bc': 2, 'fi': 1, 'cu': 1, 'lp': 1},
+    'AMF': {'lp': 3, 'bc': 2, 'tp': 2, 'oa': 2, 'dr': 2, 'lf': 1, 'fi': 1, 'cu': 1},
+    'WM': {'lp': 2, 'lf': 2, 'dr': 2, 'sp': 2, 'st': 2, 'bc': 1, 'ac': 1, 'cu': 1},
+    'CMF': {'lp': 3, 'lf': 2, 'bc': 2, 'tp': 1, 'st': 2, 'bw': 1, 'da': 1, 'oa': 1},
+    'DMF': {'da': 3, 'bw': 3, 'lp': 2, 'pc': 1, 'st': 1, 'ag': 1, 'bc': 1, 'he': 1},
+    'CB': {'da': 3, 'bw': 3, 'he': 2, 'pc': 2, 'ju': 1, 'sp': 1, 'ag': 1},
+    'FB': {'da': 2, 'bw': 2, 'sp': 2, 'st': 2, 'lp': 1, 'lf': 1, 'ac': 1, 'dr': 1},
+    'GK': {'ga': 3, 'gr': 3, 'gc': 2, 'gh': 2, 'gl': 1},
+}
+POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'SS', 'CF']
+ST = ['apps', 'xi', 'min', 'rt', 'g', 'a', 'sh', 'sot', 'pas', 'kp', 'acc', 'tk', 'blk', 'int', 'du', 'duw', 'dra', 'drs',
+      'drp', 'fd', 'fc', 'yc', 'rc', 'sv', 'gc', 'pks', 'pkm']
+IX = {k: i for i, k in enumerate(ST)}
+
+
+def clip(v, lo=40, hi=99):
+    return max(lo, min(hi, v))
+
+
+def pos_rating(a, pos):
+    w = _W[_GROUP[pos]]
+    return sum(a[k] * x for k, x in w.items()) / sum(w.values())
+
+
+def _stats(entry, season, tid):
+    ss = (entry or {}).get('ss') or {}
+    s = ss.get(f'{season}:{tid}')
+    if not s:   # this season with another club, or last season: still him
+        for k in sorted(ss, key=lambda k: -int(k.split(':')[0])):
+            s = ss[k]; break
+    return s
+
+
+def _per90(s):
+    m = s[IX['min']] if s else 0
+    if not s or m < 1:
+        return None
+    f = 90.0 / m
+    pas = s[IX['pas']]
+    acc = s[IX['acc']]
+    if acc > 100 and pas:      # some seasons give accurate passes as a count
+        acc = 100.0 * acc / pas
+    return {
+        'min': m, 'rt': s[IX['rt']] or None,
+        'g90': (s[IX['g']] - s[IX['pks']]) * f, 'a90': s[IX['a']] * f, 'sh90': s[IX['sh']] * f,
+        'sot': s[IX['sot']] / s[IX['sh']] if s[IX['sh']] >= 5 else None,
+        'kp90': s[IX['kp']] * f, 'acc': acc if pas >= 50 and 30 <= acc <= 100 else None,
+        'def90': (s[IX['tk']] + s[IX['int']]) * f, 'int90': s[IX['int']] * f, 'past90': s[IX['drp']] * f,
+        'drs90': s[IX['drs']] * f, 'drpct': s[IX['drs']] / s[IX['dra']] if s[IX['dra']] >= 8 else None,
+        'duw': s[IX['duw']] / s[IX['du']] if s[IX['du']] >= 20 else None,
+        'fc90': s[IX['fc']] * f, 'cards90': (s[IX['yc']] + 3 * s[IX['rc']]) * f,
+        'sv90': s[IX['sv']] * f, 'gc90': s[IX['gc']] * f, 'share': s[IX['xi']] / max(1, s[IX['apps']]),
+    }
+
+
+def _rough_pos(sp, p90, ht, no):
+    """A position for a player the draft game does not know, from the squad list's rough one and his season."""
+    if sp == 'G':
+        return 'GK'
+    if sp == 'D':
+        if ht and ht >= 183 or (p90 and p90['def90'] > 4.5 and p90['kp90'] < .6):
+            return 'CB'
+        return 'LB' if no in (3, 13, 23, 33) else 'RB' if no in (2, 12, 22, 32) else 'CB'
+    if sp == 'M':
+        if p90 and p90['def90'] > 3.8:
+            return 'DMF'
+        if p90 and (p90['drs90'] > 1.4 or p90['kp90'] > 1.8):
+            return 'AMF'
+        return 'CMF'
+    if sp == 'F':
+        if p90 and p90['drs90'] > 1.6 and (ht or 180) < 182:
+            return 'LWF' if (no or 0) % 2 else 'RWF'
+        return 'CF'
+    return 'CMF'
+
+
+def _style(a, pos):
+    g = _GROUP[pos]
+    if g == 'GK':
+        return 'Offensive goalkeeper' if a['gl'] >= a['gc'] + 3 else 'Defensive goalkeeper'
+    if g == 'CF':
+        if a['he'] >= 80 and a['pc'] >= 80: return 'Target man'
+        if a['oa'] >= a['bc'] + 4: return 'Goal poacher'
+        if a['dr'] >= 80: return 'Fox in the box'
+        return 'Deep-lying forward'
+    if g == 'SS': return 'Creative playmaker' if a['lp'] >= a['fi'] else 'Dummy runner'
+    if g == 'WF': return 'Prolific winger' if a['fi'] >= a['lp'] else 'Roaming flank'
+    if g == 'AMF': return 'Hole player' if a['fi'] >= a['lp'] - 2 else 'Classic No. 10'
+    if g == 'WM': return 'Cross specialist' if a['lf'] >= a['dr'] else 'Roaming flank'
+    if g == 'CMF':
+        if a['st'] >= 85 and a['bw'] >= 75: return 'Box-to-box'
+        return 'Orchestrator' if a['lp'] >= 82 else 'Box-to-box'
+    if g == 'DMF': return 'Anchor man' if a['bw'] >= a['lp'] else 'Orchestrator'
+    if g == 'CB': return 'Build up' if a['lp'] >= 72 else 'Destroyer' if a['ag'] >= 75 else 'Extra frontman' if a['oa'] >= 62 else 'Build up'
+    if g == 'FB': return 'Offensive full-back' if a['oa'] >= 68 else 'Defensive full-back'
+    return ''
+
+
+def build(world, people, squads, cm, cm_fx, kits, alias, season, today):
+    """cm.json as a dict, or None while the league's clubs are not all in."""
+    teams = cm.get('teams') or []
+    if not teams:
+        return None
+    wp = {p['id']: p for p in world.get('players', [])}
+    wc = {c['id']: c for c in world.get('clubs', [])}
+    rows = []
+    for t in teams:
+        sq = squads.get(str(t['id']))
+        if not sq:
+            continue
+        for pid in sq['p']:
+            e = people.get(str(pid)) or {}
+            w = wp.get(pid)
+            s = _stats(e, season, t['id'])
+            rows.append({'pid': pid, 'tid': t['id'], 'e': e, 'w': w, 'p90': _per90(s), 'st': s})
+    if not rows:
+        return None
+    # an overall for those the draft game does not rate: from the season's rating, starts and club, fitted on those it does
+    fit = [(r['w']['ovr'], r['p90']['rt'], r['p90']['share'], math.log1p(r['p90']['min'])) for r in rows
+           if r['w'] and r['w'].get('ovr') and r['p90'] and r['p90']['rt'] and r['p90']['min'] >= 300]
+    coef = None
+    if len(fit) >= 40:
+        # least squares on [1, rating, share, log minutes]
+        X = [[1, f[1], f[2], f[3]] for f in fit]; y = [f[0] for f in fit]
+        n = 4
+        A = [[sum(X[k][i] * X[k][j] for k in range(len(X))) for j in range(n)] for i in range(n)]
+        b = [sum(X[k][i] * y[k] for k in range(len(X))) for i in range(n)]
+        for i in range(n):   # Gauss-Jordan
+            piv = A[i][i] or 1e-9
+            for j in range(n): A[i][j] /= piv
+            b[i] /= piv
+            for r2 in range(n):
+                if r2 != i:
+                    fct = A[r2][i]
+                    for j in range(n): A[r2][j] -= fct * A[i][j]
+                    b[r2] -= fct * b[i]
+        coef = b
+    club_ovr = {}
+    for t in teams:
+        known = sorted((r['w']['ovr'] for r in rows if r['tid'] == t['id'] and r['w'] and r['w'].get('ovr')), reverse=True)[:14]
+        club_ovr[t['id']] = statistics.mean(known) if len(known) >= 8 else None
+    league_mid = statistics.median([v for v in club_ovr.values() if v] or [72])
+    for r in rows:
+        if r['w'] and r['w'].get('ovr'):
+            r['ovr'] = r['w']['ovr']; continue
+        base = (club_ovr.get(r['tid']) or league_mid - 4)
+        p = r['p90']
+        if coef and p and p['rt'] and p['min'] >= 200:
+            est = coef[0] + coef[1] * p['rt'] + coef[2] * p['share'] + coef[3] * math.log1p(p['min'])
+            k = min(1, p['min'] / 1200)
+            r['ovr'] = k * est + (1 - k) * (base - 6)
+        else:
+            r['ovr'] = base - 8 - (0 if p else 4)
+    # positions
+    for r in rows:
+        w, e = r['w'], r['e']
+        if w and w.get('prim'):
+            r['pos'] = list(w.get('pos') or [w['prim']]); r['prim'] = w['prim']
+        else:
+            r['prim'] = _rough_pos(e.get('sp'), r['p90'], e.get('ht'), e.get('no')); r['pos'] = [r['prim']]
+    # z-scores of season numbers within each position group, shrunk toward 0 by minutes
+    metrics = ['g90', 'a90', 'sot', 'kp90', 'acc', 'def90', 'int90', 'past90', 'drs90', 'drpct', 'duw', 'fc90', 'cards90', 'sv90', 'gc90']
+    groups = {}
+    for r in rows:
+        if r['p90'] and r['p90']['min'] >= 270:
+            groups.setdefault(_GROUP[r['prim']], []).append(r)
+    norm = {}
+    for g, L in groups.items():
+        for m in metrics:
+            vals = [x['p90'][m] for x in L if x['p90'].get(m) is not None]
+            if len(vals) >= 6:
+                mu = statistics.mean(vals); sd = statistics.pstdev(vals) or 1
+                norm[(g, m)] = (mu, sd)
+    out_players = []
+    for r in rows:
+        e, p, pos = r['e'], r['p90'], r['prim']
+        g = _GROUP[pos]
+        rnd = random.Random(f"cm-{r['pid']}")
+        o = 0.9 * r['ovr'] + 3   # the draft game's scale to a PES-like one: its 97 is about 90, its 75 about 70
+        def z(m):
+            if not p or p.get(m) is None or (g, m) not in norm:
+                return 0.0
+            mu, sd = norm[(g, m)]
+            return max(-2.5, min(2.5, (p[m] - mu) / sd)) * min(1, p['min'] / 1500)
+        a = {}
+        if g == 'GK':
+            for k in OUT:
+                a[k] = clip(42 + rnd.uniform(0, 8) + (o - 70) * .15)
+            a['lp'] = clip(o - 22 + rnd.uniform(-4, 4)); a['lf'] = clip(o - 18 + rnd.uniform(-4, 4)); a['kp'] = clip(o - 8 + rnd.uniform(-4, 4))
+            a['ju'] = clip(o - 12 + rnd.uniform(-4, 4)); a['pc'] = clip(o - 20 + rnd.uniform(-4, 4)); a['st'] = clip(o - 30 + rnd.uniform(-4, 4))
+            for k, off in (('ga', 2), ('gc', 0), ('gl', -4), ('gr', 1), ('gh', 0)):
+                a[k] = o + off + rnd.uniform(-3, 3)
+            a['gr'] += 3 * z('sv90'); a['ga'] -= 2 * z('gc90'); a['gc'] += 1.5 * z('sv90')
+        else:
+            prof = _P[g]
+            for i, k in enumerate(OUT):
+                a[k] = o + prof[i] + rnd.uniform(-3, 3)
+            for k in GKA:
+                a[k] = clip(40 + rnd.uniform(0, 6))
+            a['fi'] += 3 * z('g90') + 1.5 * z('sot'); a['oa'] += 2.5 * z('g90') + 1.5 * z('a90')
+            a['lp'] += 3 * z('acc') + 1.5 * z('kp90'); a['lf'] += 2.5 * z('kp90'); a['tp'] += 1.5 * z('acc')
+            a['dr'] += 3 * z('drs90') + 1.5 * z('drpct'); a['ba'] += 1.5 * z('drpct')
+            a['bw'] += 3 * z('def90'); a['da'] += 2 * z('int90') - 2 * z('past90')
+            a['pc'] += 3 * z('duw'); a['ag'] += 2 * z('fc90') + 1.5 * z('cards90')
+            a['cu'] += 1.5 * z('a90'); a['pk'] += 1.0 * z('a90')
+        ht, wt, age = e.get('ht'), e.get('wt'), e.get('age') or 25
+        if ht:
+            d = max(-12, min(12, ht - 182))
+            a['he'] += d * .6; a['ju'] += d * .5; a['ba'] -= d * .35; a['ac'] -= d * .15
+            if g == 'GK': a['gh'] += d * .4
+        if wt:
+            a['pc'] += max(-8, min(8, (wt - 76) * .35))
+        fade = max(0, age - 28)
+        a['sp'] -= fade * 1.6 + (fade > 3) * (fade - 3) * .8; a['ac'] -= fade * 1.8
+        a['st'] -= max(0, age - 31) * 2
+        if age <= 20:
+            a['sp'] += 1; a['ac'] += 1
+        if p and g != 'GK':
+            a['st'] += 2 * max(-1, min(1, (p['share'] - .6) * 2))
+        # the position's rating lands on his overall: the profile and his season move attributes against each other
+        own = GKA if g == 'GK' else OUT
+        shift = o - pos_rating(a, pos)
+        for k in own:
+            a[k] += shift
+        a = {k: int(round(clip(a[k]))) for k in KEYS}
+        ratings = {q: int(round(clip(pos_rating(a, q) + (0 if q in r['pos'] else -6 if _GROUP[q] == g else -14)))) for q in POSITIONS}
+        rating = ratings[pos]
+        val = round(max(.2, (math.exp((rating - 60) / 7.5) * .9) * (1.25 if age <= 23 else 1 if age <= 28 else max(.25, 1 - (age - 28) * .12))), 1)
+        w = r['w'] or {}
+        st = r['st']
+        out_players.append({'id': r['pid'], 'n': e.get('n') or w.get('name') or e.get('sq'), 'nat': e.get('nat') or w.get('nat'),
+                            'age': age, 'no': e.get('no'), 'club': r['tid'], 'prim': pos, 'pos': r['pos'], 'ht': ht, 'wt': wt,
+                            'ovr': rating, 'r': ratings, 'a': a, 'style': _style(a, pos), 'val': val,
+                            'frm': w.get('frm'), 'inj': rnd.choice([1, 2, 2, 2, 3]),
+                            's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None})
+    clubs = []
+    for t in teams:
+        mine = sorted((p['ovr'] for p in out_players if p['club'] == t['id']), reverse=True)[:16]
+        if not mine:
+            continue
+        c = wc.get(t['id']) or {}
+        nm = c.get('name') or t['name']
+        kit = kits.get(nm) or kits.get(alias.get(nm, '')) or kits.get(t['name']) or kits.get(alias.get(t['name'], ''))
+        clubs.append({'id': t['id'], 'name': nm, 'code': t.get('code'), 'city': t.get('city'), 'venue': t.get('venue'), 'cap': t.get('cap'),
+                      'kit': kit, 'elo': c.get('elo'), 'q': round(statistics.mean(mine), 1)})
+    clubs.sort(key=lambda c: -c['q'])
+    have = {c['id'] for c in clubs}
+    fixtures = [[m[1], m[2], m[3], m[4]] for m in (cm_fx or {}).get('m', []) if m[3] in have and m[4] in have]
+    return {'season': season, 'updated': today, 'league': 'Premier League', 'complete': len(clubs) == len(teams) and len(teams) >= 18,
+            'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures}

@@ -685,6 +685,52 @@ def fetch_squads(top_ids, squads, people):
                 e['sp'] = sp   # his rough position on the club's squad list
 
 
+CM_LEAGUE = int(os.environ.get('CM_LEAGUE', '39'))   # the manager game's league: the Premier League
+CM_MAX = int(os.environ.get('CM_MAX', '15'))           # its calls per run at most, so the draft game's data keeps priority
+CM_STATS_MAX_AGE = 14                                  # days between a club's season-stats refreshes
+
+
+def update_cm(squads, people, meta):
+    """The manager game's league: its clubs (once a season), its fixture list (weekly), and for every club the squad
+    and the players' season stats (every 14 days), a few clubs per run (CM_MAX calls at most)."""
+    global BUDGET
+    cs = current_season()
+    cm = meta.setdefault('cm', {})
+    cap, saved = used + CM_MAX, BUDGET
+    BUDGET = min(BUDGET, cap)
+    try:
+        if cm.get('season') != cs or not cm.get('teams'):
+            data = api('teams', league=CM_LEAGUE, season=cs)
+            cm['teams'] = [{'id': x['team']['id'], 'name': x['team']['name'], 'code': x['team'].get('code'),
+                            'city': (x.get('venue') or {}).get('city'), 'venue': (x.get('venue') or {}).get('name'),
+                            'cap': (x.get('venue') or {}).get('capacity')} for x in data.get('response', [])]
+            cm['season'] = cs
+            cm.pop('stats', None)
+        fx = load('cm_fixtures', {})
+        if fx.get('season') != cs or days_old(fx.get('f')) >= 7:
+            data = api('fixtures', league=CM_LEAGUE, season=cs)
+            fx = {'season': cs, 'f': TODAY.isoformat(), 'm': [[x['fixture']['id'], x['fixture']['date'][:10], (x['league'].get('round') or ''),
+                    x['teams']['home']['id'], x['teams']['away']['id'], x['fixture']['status']['short'], x['goals']['home'], x['goals']['away']]
+                    for x in data.get('response', [])]}
+            save('cm_fixtures', fx)
+        done = cm.setdefault('stats', {})
+        for t in sorted(cm['teams'], key=lambda t: done.get(str(t['id']), '')):
+            tid = t['id']
+            sq = squads.get(str(tid))
+            if not sq or days_old(sq['f']) >= 7 or sq.get('v') != 3:
+                fetch_squads([tid], squads, people)
+            if days_old(done.get(str(tid))) >= CM_STATS_MAX_AGE:
+                read_players(tid, cs, people)
+                done[str(tid)] = TODAY.isoformat()
+    except OutOfBudget:
+        if BUDGET == saved:
+            raise
+    finally:
+        BUDGET = saved
+    have = sum(1 for t in cm.get('teams', []) if str(t['id']) in done and str(t['id']) in squads)
+    log(f"  manager game: {have}/{len(cm.get('teams', []))} clubs with squad and season stats")
+
+
 def current_season():
     return TODAY.year if TODAY.month >= 7 else TODAY.year - 1
 
@@ -769,7 +815,50 @@ def read_players(tid, season, people):
                 e['fn'] = p.get('firstname') or ''
                 if p.get('age'):
                     e['age'] = p['age']
+                for k, src in (('ht', 'height'), ('wt', 'weight')):   # '183 cm', '76 kg'
+                    m = re.match(r'(\d+)', str(p.get(src) or ''))
+                    if m: e[k] = int(m.group(1))
+                # his season with this club in every competition, summed (the manager game's attributes come from it)
+                agg = season_stats(x.get('statistics') or [], tid)
+                if agg:
+                    ss = e.setdefault('ss', {})
+                    ss[f'{season}:{tid}'] = agg
+                    for k in sorted(ss, key=lambda k: -int(k.split(':')[0]))[4:]:   # the last few seasons only
+                        ss.pop(k, None)
             page += 1
+
+
+ST_KEYS = ['apps', 'xi', 'min', 'rt', 'g', 'a', 'sh', 'sot', 'pas', 'kp', 'acc', 'tk', 'blk', 'int', 'du', 'duw', 'dra', 'drs',
+           'drp', 'fd', 'fc', 'yc', 'rc', 'sv', 'gc', 'pks', 'pkm']
+
+
+def season_stats(stats, tid):
+    """A player's season for one club, every competition summed, as a list in ST_KEYS order: appearances, starts,
+    minutes, rating (minutes-weighted), goals, assists, shots, on target, passes, key passes, pass accuracy (%), tackles,
+    blocks, interceptions, duels, duels won, dribbles tried, dribbles won, dribbled past, fouls drawn, fouls committed,
+    yellow, red, saves, goals conceded, penalties scored, penalties missed."""
+    n = lambda v: float(v) if v not in (None, '') else 0.0
+    tot = [0.0] * len(ST_KEYS); rt_w = acc_w = 0.0
+    for s in stats:
+        if (s.get('team') or {}).get('id') != tid:
+            continue
+        g = s.get('games') or {}; mins = n(g.get('minutes'))
+        sh, go, pa, tk, du, dr, fo, ca, pe = (s.get(k) or {} for k in ('shots', 'goals', 'passes', 'tackles', 'duels', 'dribbles', 'fouls', 'cards', 'penalty'))
+        vals = [n(g.get('appearences')), n(g.get('lineups')), mins, 0, n(go.get('total')), n(go.get('assists')), n(sh.get('total')), n(sh.get('on')),
+                n(pa.get('total')), n(pa.get('key')), 0, n(tk.get('total')), n(tk.get('blocks')), n(tk.get('interceptions')), n(du.get('total')),
+                n(du.get('won')), n(dr.get('attempts')), n(dr.get('success')), n(dr.get('past')), n(fo.get('drawn')), n(fo.get('committed')),
+                n(ca.get('yellow')), n(ca.get('red')), n(go.get('saves')), n(go.get('conceded')), n(pe.get('scored')), n(pe.get('missed'))]
+        for i, v in enumerate(vals):
+            tot[i] += v
+        if g.get('rating') and mins:
+            tot[3] += n(g['rating']) * mins; rt_w += mins
+        if pa.get('accuracy') not in (None, '') and n(pa.get('total')):
+            tot[10] += n(pa['accuracy']) * n(pa['total']); acc_w += n(pa['total'])
+    if not tot[0] and not tot[2]:
+        return None
+    tot[3] = round(tot[3] / rt_w, 2) if rt_w else 0
+    tot[10] = round(tot[10] / acc_w, 1) if acc_w else 0
+    return [round(v, 2) if i in (3, 10) else int(v) for i, v in enumerate(tot)]
 
 
 # ---------------- beyond the ranked clubs: national teams and clubs players came from ----------------
@@ -1585,6 +1674,8 @@ def main():
         log('6/6 Nationality and age')
         fetch_profiles(top_ids, squads, people, meta)
         fetch_missing_nat(squads, people, lu, fx)
+        log('6b Manager game league')
+        update_cm(squads, people, meta)
         log('7/7 National teams and the clubs players came from')
         fetch_nations(people, squads, extra, meta)
         fetch_arrivals(top_ids, extra, meta, squads, careers)
@@ -1623,6 +1714,17 @@ def main():
     report = model.build(world, fx, lu, evs, pst, top_map, SINCE.isoformat(), TODAY.isoformat(), log=log, national=national)
     with open(os.path.join(CACHE_DIR, 'model_report.json'), 'w', encoding='utf-8') as f:
         json.dump(report, f, ensure_ascii=False, indent=1)
+    # the manager game's league (cm.json), from the same squads and people plus its own season stats and fixture list
+    try:
+        import cm_model
+        kits, alias = game_kits()
+        cmd = cm_model.build(world, people, squads, meta.get('cm') or {}, load('cm_fixtures', {}), kits, alias, current_season(), TODAY.isoformat())
+        if cmd and cmd['clubs']:
+            with open(os.path.join(ROOT, 'cm.json'), 'w', encoding='utf-8') as f:
+                json.dump(cmd, f, ensure_ascii=False, separators=(',', ':'))
+            log(f"  manager game: cm.json with {len(cmd['clubs'])} clubs, {len(cmd['players'])} players, {len(cmd['fixtures'])} fixtures")
+    except Exception as e:
+        log(f'  manager game data not built: {e!r}')
     failed = [k for k, v in report['pass'].items() if not v]
     if failed:
         log(f"  CREDIBILITY TESTS FAILED: {', '.join(failed)}. world.json is kept as it was; see data/cache/model_report.json")
