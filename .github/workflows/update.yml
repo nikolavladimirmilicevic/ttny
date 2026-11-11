@@ -60,5 +60,5 @@ jobs:
           git add -A
           git diff --cached --quiet || git commit -m "Data update $(date -u +%F)"
           # code may have been pushed while the run was fetching: put the data on top of it
-          git pull --rebase origin main
+          git pull --rebase -X theirs origin main   # on a clash in a data file, this run's newer data wins
           git push
