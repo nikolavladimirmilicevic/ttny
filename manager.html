@@ -239,6 +239,33 @@ button.frow:hover{border-color:var(--gold)}
 .cred a{color:var(--text)}
 @keyframes flash{0%,100%{box-shadow:0 0 0 0 rgba(79,209,139,0)}50%{box-shadow:0 0 0 6px rgba(79,209,139,.45)}}
 .big.flash{animation:flash .5s ease-in-out 4}
+
+.lg{display:flex;flex-direction:column;gap:3px}
+.lg>div{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:10px;align-items:center;padding:7px 10px;border-radius:8px;background:var(--panel-2)}
+.lg>div.on b{color:var(--gold)}
+.lg .sel{color:var(--gold);border:1px solid var(--gold);border-radius:6px;padding:1px 8px;justify-self:start}
+@media(max-width:600px){.lg>div{grid-template-columns:1fr 1fr}}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:3px 18px}
+@media(max-width:600px){.two{grid-template-columns:1fr}}
+.nat{display:flex;justify-content:space-between;align-items:center;background:none;border:1px solid transparent;border-radius:8px;padding:5px 8px;text-align:left;font-size:15px}
+.nat:hover{background:var(--panel-2)}
+.nat.on{border-color:var(--gold)}
+.nat span{color:var(--gold);font-size:11.5px;font-weight:600}.nat em{font-style:normal;color:var(--warn);margin-left:8px}
+.strip2{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:10px}
+.strip2 button{min-width:38px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:4px 3px;font:600 11px/1 var(--body);color:var(--muted)}
+.strip2 button.on{background:#1E6B43;border-color:#2E9B5F;color:#fff}
+.strip2 button.tg{outline:2px solid var(--gold);color:var(--gold)}
+.pgbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.pg{display:flex;align-items:center;gap:3px;font-weight:600}
+.pg button{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+.pg button:disabled{opacity:.35;cursor:default}
+.pg span{padding:0 8px;color:var(--gold)}
+.dlg{display:grid;place-items:center;min-height:300px;text-align:center}
+.dlg p{font-size:18px;max-width:560px}
+.bn1{display:grid}
+.bn1 button,.bn .ok{background:var(--gold)!important;color:var(--gold-ink)!important}
+.bn1 button{border:0;border-radius:10px;font:600 16px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:13px 0}
+.sb.newsflag{color:var(--hot);font-weight:700;text-align:center;margin-top:auto}
 </style>
 </head><body>
 <div id="app"><p class="loading">Loading…</p></div>
@@ -291,8 +318,11 @@ const FORMS = {
    the saved game
    ===================================================================================================================== */
 let S = null;
-const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { toast('This device could not save the game.'); } };
-const loadSave = () => { try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } };
+// the game in play saves itself into its file as you go (see the saved games further down)
+const save = () => { if (!S) return; S.slot = S.slot || (typeof NEWG !== 'undefined' && NEWG.file) || 'Game in play';
+  try { localStorage.setItem(slotKey(S.slot), JSON.stringify(S)); localStorage.setItem('ttny.manager.last', S.slot); } catch (e) { toast('This device could not save the game: there is no room left. Delete an old save.'); return; }
+  try { const L = slotList().filter(x => x.name !== S.slot); L.unshift({ name: S.slot, at: Date.now(), ...slotInfo(S) }); localStorage.setItem(SLOTS, JSON.stringify(L)); } catch (e) {} };
+const loadSave = () => { try { const last = localStorage.getItem('ttny.manager.last'); if (last){ const s = JSON.parse(localStorage.getItem(slotKey(last)) || 'null'); if (s) return s; } return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } };
 const club = id => C.get(id) || { id, name: '?', kit: ['#888', '#fff'], q: 70 };
 const kitOf = id => (club(id).kit || ['#8899AA', '#FFFFFF']);
 const me = () => S && S.club;
@@ -430,7 +460,7 @@ const piOf = (t, id, k, dflt) => { const v = t.pi && t.pi[id] && t.pi[id][k]; re
 const WEATHER = [['Sunny', 0], ['Overcast', 0], ['Light rain', 1], ['Heavy rain', 2], ['Windy', 3], ['Cold', 4], ['Hot', 5], ['Snow', 6]];
 function matchConditions(h, a, date){
   const r0 = rng(`${S.seed}-${date}-${h}-${a}`), m = +date.slice(5, 7);
-  const L = m >= 11 || m <= 2 ? [0, 1, 1, 2, 2, 3, 4, 4, 7] : m === 8 ? [0, 0, 0, 1, 5, 5, 2] : [0, 0, 1, 1, 2, 3, 3];
+  const L = m >= 11 || m <= 2 ? [0, 1, 1, 2, 2, 3, 4, 4, 7] : m === 8 ? [0, 0, 0, 1, 6, 6, 2] : [0, 0, 1, 1, 2, 3, 3];
   const w = WEATHER[L[Math.floor(r0() * L.length)]];
   return { weather: w[0], wk: w[1], ref: S.refs[Math.floor(r0() * S.refs.length)], temp: m >= 11 || m <= 2 ? 1 + Math.floor(r0() * 8) : m === 8 ? 20 + Math.floor(r0() * 10) : 9 + Math.floor(r0() * 10) };
 }
@@ -701,7 +731,7 @@ function apply(M, kind){
   // the gate: your home matches fill the stadium by how the season is going; TV money for every match
   if (M.h === me() || M.a === me()){
     const home = M.h === me(), c = club(me()), fill = clamp(.82 + (S.conf - 50) / 400 + Math.random() * .08, .6, 1), price = 38 + (c.q - 70) * 2.2;
-    const gate = home ? Math.round((c.cap || 30000) * fill * price) : 0, tv = 1.9e6 + (kind === 'cup' ? .5e6 : 0);
+    const gate = home ? Math.round((c.cap || 30000) * ((S.fac || {}).ground ? 1.08 : 1) * fill * price) : 0, tv = 1.9e6 + (kind === 'cup' ? .5e6 : 0);
     S.fin.gate += gate; S.fin.tv += tv; S.fin.bal += gate + tv;
     M.att = Math.round((club(M.h).cap || 30000) * (home ? fill : clamp(fill, .75, 1)));
   }
@@ -739,7 +769,7 @@ function trainWeek(wk){
     for (let i = 0; i < 3; i++){
       const k = focus && rr() < .7 ? focus[Math.floor(rr() * focus.length)] : keys[Math.floor(rr() * keys.length)];
       if (gk !== GK_KEYS.includes(k) && rr() < .7) continue;
-      let v = (grow + (mine && focus && focus.includes(k) ? .04 : 0)) * (mine ? inten : 1) * (0.5 + rr());
+      let v = (grow + (mine && focus && focus.includes(k) ? .04 : 0)) * (mine ? inten * (1 + ((S.fac || {}).train ? .15 : 0) + ((S.fac || {}).youth && age <= 21 ? .2 : 0)) : 1) * (0.5 + rr());
       if (grow < 0 && ['sp', 'ac', 'st'].includes(k)) v *= 1.8;
       if (!q.injD) q.d[k] = (q.d[k] || 0) + v * .6;
     }
@@ -795,7 +825,7 @@ function finishCup(myM, others){
   for (const t of cur.ties){ const done = myM && t.h === myM.h && t.a === myM.a ? myM : (others || []).find(x => x.h === t.h && x.a === t.a); const M = done ? playOut(done) : playOut(newMatch(t.h, t.a, { cup: CUP_NAMES[cur.stage], date: S.date })); apply(M, 'cup'); res.push(summary(M)); }
   S.cup.log.push({ stage: cur.stage, res, date: S.date }); S.cup.alive = [...cur.bye, ...res.map(r => r.w)]; S.cup.stage++; delete S.cup.cur;
   afterMatchday(res, 'cup', CUP_NAMES[cur.stage]);
-  if (S.cup.stage === 5){ const w = S.cup.alive[0]; news('club', 'The cup final', w === me() ? `You have won the cup! ${esc(club(w).name)} lift the trophy, and the board are thrilled.` : `${esc(club(w).name)} win the cup.`); if (w === me()) S.conf = Math.min(100, S.conf + 15); }
+  if (S.cup.stage === 5){ const w = S.cup.alive[0]; news('club', 'The cup final', w === me() ? `You have won the cup! ${esc(club(w).name)} lift the trophy, and the board are thrilled.` : `${esc(club(w).name)} win the cup.`); if (w === me()){ S.conf = Math.min(100, S.conf + 15); (S.hist = S.hist || []).push({ d: S.date, c: me(), t: 'Won the cup' }); } }
   if (S.round >= S.rounds.length && S.cup.stage >= 5) endSeason();
   save();
 }
@@ -807,6 +837,7 @@ function summary(M){
 }
 function afterMatchday(res, kind, stage){
   const mine = res.find(r => r.h === me() || r.a === me());
+  if (mine){ S.seen = S.seen || []; const opp = mine.h === me() ? mine.a : mine.h; if (!S.seen.includes(opp)) S.seen.push(opp); }
   if (mine){
     const us = mine.h === me(), opp = club(us ? mine.a : mine.h), won = mine.w === me(), drew = mine.w == null;
     const sc = mine.hs.filter(g => (g.side === 'h') === us).map(g => surname(P.get(g.id).n));
@@ -833,7 +864,7 @@ function boardComment(){
 function checkJob(){
   if (S.round < 10 || S.sacked) return;
   if (S.conf < 18 && !S.ultimatum){ S.ultimatum = { from: S.round }; news('board', 'An ultimatum from the board', 'The chairman has made it clear: results must improve over the next few matches, or you will be relieved of your duties.'); }
-  else if (S.ultimatum && S.round - S.ultimatum.from >= 5){ if (S.conf < 22){ S.sacked = true; S.done = true; news('board', 'Sacked', `The board have run out of patience and have terminated your contract. ${esc(club(me()).name)} thank you for your efforts.`); } else { S.ultimatum = null; news('board', 'The board', 'The board are pleased to see an improvement. The ultimatum has been lifted.'); } }
+  else if (S.ultimatum && S.round - S.ultimatum.from >= 5){ if (S.conf < 22){ S.sacked = true; S.done = true; (S.hist = S.hist || []).push({ d: S.date, c: me(), t: 'Sacked' }); news('board', 'Sacked', `The board have run out of patience and have terminated your contract. ${esc(club(me()).name)} thank you for your efforts.`); } else { S.ultimatum = null; news('board', 'The board', 'The board are pleased to see an improvement. The ultimatum has been lifted.'); } }
 }
 function standings(){ return Object.entries(S.table).map(([id, t]) => ({ id: +id, ...t, gd: t.gf - t.ga, pts: t.w * 3 + t.d })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || club(a.id).name.localeCompare(club(b.id).name)); }
 function endSeason(){
@@ -842,6 +873,7 @@ function endSeason(){
   const st = standings(), pos = st.findIndex(r => r.id === me()) + 1, champ = st[0].id, aim = AIMS[S.aim];
   const verdict = pos <= aim.pos ? (pos === 1 ? 'Champions! The board are overjoyed.' : 'The board are pleased: you met their expectations.') : pos <= aim.pos + 3 ? 'The board are disappointed, but you keep your job.' : 'The board have decided to make a change. You leave the club.';
   S.rep = pos <= aim.pos - 3 ? 'Very good' : pos <= aim.pos ? 'Good' : pos <= aim.pos + 3 ? 'Average' : 'Poor';
+  (S.hist = S.hist || []).push({ d: S.date, c: me(), t: pos === 1 ? 'Won the league' : `Finished ${ordinal(pos)} in the league` });
   news('board', 'The season is over', `${esc(club(champ).name)} are champions. You finished ${ordinal(pos)}, against a target of ${ordinal(aim.pos)}. ${verdict}`);
   try { const H = JSON.parse(localStorage.getItem('ttny.manager.hall') || '[]'); H.unshift({ m: S.manager, c: club(me()).name, s: S.season, pos, aim: aim.pos, pts: st[pos - 1].pts, cup: S.cup.alive[0] === me(), at: Date.now() }); localStorage.setItem('ttny.manager.hall', JSON.stringify(H.slice(0, 60))); } catch (e) {}
   save();
@@ -884,7 +916,7 @@ function view(){
   if (!D) return;
   if (!S || SETUP_OPEN){ viewSetup(); return; }
   if (LIVE){ viewMatch(); return; }
-  ({ news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions })[V.s]();
+  ({ news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, transfers: scrTransfers })[V.s]();
 }
 function frame(o){
   // o: { title, sub, k1, k2, top: [[key,label,disabled]], topOn, bottom, bottomOn, tools, body, next, act }
@@ -902,6 +934,7 @@ function frame(o){
       <button class="sb ${V.s === 'clubs' ? 'on' : ''}" data-side="clubs">Nations &amp; Clubs</button>
       <button class="sb ${V.s === 'find' ? 'on' : ''}" data-side="find">Find</button>
       <button class="sb ${V.s === 'options' ? 'on' : ''}" data-side="options">Game Options</button>
+      ${unread && V.s !== 'news' ? '<button class="sb newsflag" data-side="news">You Have News</button>' : ''}
     </aside>
     <div class="main">
       <div class="banner" style="--k1:${o.k1 || '#2A44D0'};--k2:${o.k2 || '#fff'}"><span></span><h1>${o.title}${o.sub ? `<span class="sub">${o.sub}</span>` : ''}</h1><span class="act">${o.act || ''}</span></div>
@@ -931,10 +964,7 @@ const slotList = () => { try { return JSON.parse(localStorage.getItem(SLOTS) || 
 function slotInfo(s){ const st = Object.entries(s.table || {}).map(([id, t]) => ({ id: +id, pts: t.w * 3 + t.d, gd: t.gf - t.ga, gf: t.gf })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf); return { club: s.club, manager: s.manager, date: s.date, season: s.season, pos: st.findIndex(r => r.id === s.club) + 1, round: s.round }; }
 function saveAs(name){
   name = String(name || '').trim().slice(0, 40); if (!name || !S) return false;
-  try { localStorage.setItem(slotKey(name), JSON.stringify(S)); } catch (e) { toast('There is no room left on this device for another save. Delete one first.'); return false; }
-  const L = slotList().filter(x => x.name !== name); L.unshift({ name, at: Date.now(), ...slotInfo(S) });
-  try { localStorage.setItem(SLOTS, JSON.stringify(L)); } catch (e) {}
-  return true;
+  S.slot = name; save(); return true;
 }
 // a save fits today's data when its clubs are all still in the league
 function adopt(s){
@@ -943,27 +973,28 @@ function adopt(s){
   for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x)); }
   for (const p of D.players) if (!S.con[p.id]) S.con[p.id] = contractFor(p);
   longInjured();
+  if (!S.slot){ S.slot = 'Game in play'; save(); try { localStorage.removeItem(STORE); } catch (e) {} }
   return true;
 }
 const hallScore = x => Math.max(0, Math.round(x.pts * 1000 + ((x.aim || 10) - x.pos) * 4000 + (x.pos === 1 ? 50000 : 0) + (x.cup ? 25000 : 0)));
-let SETUP = (() => { try { return localStorage.getItem(STORE) || slotList().length ? 'menu' : 'new'; } catch (e) { return 'new'; } })();
+let SETUP = (() => { try { return localStorage.getItem(STORE) || slotList().length ? 'menu' : 'league'; } catch (e) { return 'league'; } })();
 let SETUP_OPEN = false, FILE = '', QUICK = false;
-const setupHas = () => { try { return !!(localStorage.getItem(STORE) || slotList().length); } catch (e) { return false; } };
+const setupHas = () => { try { return slotList().length > 0; } catch (e) { return false; } };
 function viewSetup(){
   const clubs = D.clubs.slice().sort((a, b) => b.q - a.q), max = clubs[0].q, stars = q => '★'.repeat(clamp(Math.round(5 - (max - q) / 3), 1, 5)).padEnd(5, '☆');
-  const cur = (() => { try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } })();
-  const files = [...(cur && cur.v === 2 ? [{ name: 'Game in play', cur: true, at: null, ...slotInfo(cur) }] : []), ...slotList()];
+  const files = slotList();
+  if (['league', 'name', 'nat', 'team', 'quick', 'preview', 'status'].includes(SETUP)){ renderFlow(setupFlow(SETUP, files)); return; }
+  if (SETUP === 'confirm'){ const c = club(NEWG.club); dialog({ title: esc(`${NEWG.first} ${NEWG.last}`.trim()), sub: 'Please Confirm', text: `Take control of ${esc(c.name)} ?`, k1: (c.kit || [])[0], k2: (c.kit || [])[1], onNo: () => { SETUP = 'preview'; viewSetup(); }, onYes: () => { SETUP = 'status'; viewSetup(); } }); return; }
+  if (SETUP === 'exists'){ dialog({ title: 'Auto Save Game', sub: 'File Exists', text: `The file "${esc(NEWG.file)}" already exists. Replace this file ?`, onNo: () => { SETUP = 'file'; viewSetup(); }, onYes: () => startNewGame() }); return; }
   const seasonTxt = `${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`;
-  const T = { menu: 'Setup Game', new: 'Select Team', quick: 'Quick Start Game', restore: 'Restore Saved Game', del: 'Delete Saved Game', net: 'Network Play', set: 'Game Settings', hall: 'Hall of Fame', credits: 'Game Credits', web: 'Web Sites' };
-  const bigTitle = ['restore', 'del', 'quick', 'hall'].includes(SETUP) ? T[SETUP] : `Manager ${seasonTxt}`;
-  const sub = SETUP === 'restore' || SETUP === 'del' ? 'Select File' : SETUP === 'quick' ? 'Select Team' : SETUP === 'hall' ? 'All Seasons' : T[SETUP];
+  const T = { file: 'Auto Save Game', menu: 'Setup Game', new: 'Select Team', quick: 'Quick Start Game', restore: 'Restore Saved Game', del: 'Delete Saved Game', net: 'Network Play', set: 'Game Settings', hall: 'Hall of Fame', credits: 'Game Credits', web: 'Web Sites' };
+  const bigTitle = ['restore', 'del', 'quick', 'hall', 'file'].includes(SETUP) ? T[SETUP] : `Manager ${seasonTxt}`;
+  const sub = SETUP === 'file' ? 'Enter File Name' : SETUP === 'restore' || SETUP === 'del' ? 'Select File' : SETUP === 'quick' ? 'Select Team' : SETUP === 'hall' ? 'All Seasons' : T[SETUP];
   let body = '', foot = 'bn';
-  if (SETUP === 'menu') body = `<div class="menu"><button data-su="new">Start New Game</button><button data-su="quick">Quick Start Game</button><button data-su="restore" ${files.length ? '' : 'disabled'}>Restore Saved Game</button><button data-su="del" ${files.length ? '' : 'disabled'}>Delete Saved Game</button><button data-su="net">Network Play</button><button data-su="set">Game Settings</button><button data-su="hall">Hall of Fame</button><button data-su="credits">Game Credits</button><button data-su="web" style="grid-column:1/-1;max-width:50%;justify-self:center;width:100%">Web Sites</button></div>
+  if (SETUP === 'menu') body = `<div class="menu"><button data-su="league">Start New Game</button><button data-su="quick">Quick Start Game</button><button data-su="restore" ${files.length ? '' : 'disabled'}>Restore Saved Game</button><button data-su="del" ${files.length ? '' : 'disabled'}>Delete Saved Game</button><button data-su="net">Network Play</button><button data-su="set">Game Settings</button><button data-su="hall">Hall of Fame</button><button data-su="credits">Game Credits</button><button data-su="web" style="grid-column:1/-1;max-width:50%;justify-self:center;width:100%">Web Sites</button></div>
     <p class="c dim small">Take over a club for a season: your eleven and your tactics, training, the board, the money, and every match told minute by minute. Today's squads, each player rated on 25 attributes.</p>`;
-  if (SETUP === 'new' || SETUP === 'quick'){
-    body = `${SETUP === 'new' ? `<div class="tools" style="justify-content:center;margin-bottom:10px"><label class="dim" for="mgr">Manager's name</label><input type="text" id="mgr" maxlength="24" placeholder="Your name" value="${esc(localStorage.getItem('ttny.manager.name') || '')}"></div>` : `<p class="c dim small" style="margin-top:0">Pick a club and go straight to the first match day: the assistant has already picked the side.</p>`}
-      <div class="tw"><table><thead><tr><th>Club</th><th>Reputation</th><th>The board expect</th><th class="r">Stadium</th></tr></thead><tbody>${clubs.map((c, i) => `<tr class="click" data-club="${c.id}"><td><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${(c.kit || ['#888'])[0]};margin-right:8px;vertical-align:middle;border:1px solid rgba(255,255,255,.4)"></span><b>${esc(c.name)}</b></td><td class="yel">${stars(c.q)}</td><td>${AIMS[aimFor(i + 1)].name}</td><td class="r">${(c.cap || 0).toLocaleString('en-GB')}</td></tr>`).join('')}</tbody></table></div>`; }
-  if (SETUP === 'restore' || SETUP === 'del'){ foot = 'file';
+  if (SETUP === 'file' && !FILE) FILE = NEWG.file;
+  if (SETUP === 'restore' || SETUP === 'del' || SETUP === 'file'){ foot = 'file';
     body = `<div class="tools" style="margin-bottom:8px"><span class="dim small">Directory :</span><span class="yel small">this device\\manager\\</span></div>
       <div class="files"><label class="frow fin"><span>File :</span><input type="text" id="fname" value="${esc(FILE)}" autocomplete="off"></label>
       ${files.map(f => `<button class="frow ${FILE === f.name ? 'on' : ''}" data-file="${esc(f.name)}"><b>${esc(f.name)}</b><span class="small dim">${esc(club(f.club).name)} · ${f.date ? fmtDate(f.date) : ''}${f.round && f.pos ? ' · ' + ordinal(f.pos) : ''}</span></button>`).join('')}
@@ -982,7 +1013,7 @@ function viewSetup(){
       <div><a href="./">The Draft</a><em>Build a side, one pick at a time</em></div><div><a href="guess.html">Guess Who</a><em>The footballer from his clubs</em></div><div><a href="${TRACKER_URL}" target="_blank" rel="noopener">The tracker</a><em>Defects, ideas, questions</em></div>
       <h3>Elsewhere</h3><div><a href="https://www.api-football.com" target="_blank" rel="noopener">api-football.com</a><em>Where the data comes from</em></div><div><a href="https://champman0102.net" target="_blank" rel="noopener">champman0102.net</a><em>Where the classic lives on</em></div></div>`;
   const backDis = SETUP === 'menu' || (SETUP === 'new' && !setupHas() && !S);
-  const footer = foot === 'file' ? `<div class="bn3"><button id="fcancel">Cancel</button><button id="finfo-b">Info</button><button id="fok" class="ok">Ok</button></div>`
+  const footer = foot === 'file' ? (SETUP === 'file' ? `<div class="bn"><button id="fcancel">Cancel</button><button id="fok" class="ok">Ok</button></div>` : `<div class="bn3"><button id="fcancel">Cancel</button><button id="finfo-b">Info</button><button id="fok" class="ok">Ok</button></div>`)
     : foot === 'set' ? `<div class="bn3"><button id="scancel">Cancel</button><button id="sreset">Reset</button><button id="sok" class="ok">Ok</button></div>`
     : `<div class="bn"><button id="back" ${backDis ? 'disabled' : ''}>Back</button><button id="next" disabled>Next</button></div>`;
   $('#app').innerHTML = `${header()}<div class="cm"><aside class="side"><div class="date"><span>Version</span><span>${esc(String((document.querySelector('meta[name=build]') || {}).content || '2.0'))}</span></div><div class="arrows"><button disabled>←</button><button disabled>→</button></div>
@@ -993,23 +1024,18 @@ function viewSetup(){
   document.querySelectorAll('[data-su]').forEach(b => b.addEventListener('click', () => to(b.dataset.su)));
   on('#back', () => to('menu')); on('#restart', () => to('menu')); on('#exit', () => { location.href = './'; });
   on('#resume', () => { SETUP_OPEN = false; view(); });
-  document.querySelectorAll('[data-club]').forEach(r => r.addEventListener('click', () => {
-    const quick = SETUP === 'quick', n = quick ? (localStorage.getItem('ttny.manager.name') || 'The manager') : ($('#mgr').value || '').trim();
-    if (S && !window.confirm('Leave the game in play for a new one? Save it first if you want to come back to it.')) return;
-    if (!quick) try { localStorage.setItem('ttny.manager.name', n); } catch (e) {}
-    LIVE = null; newGame(+r.dataset.club, n || 'The manager'); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'news' };
-    if (quick){ const ev = events()[0]; if (ev && ev.date > S.date){ passDays(daysBetween(S.date, ev.date)); save(); } }
-    view(); }));
   // files
   const fi = $('#fname'); if (fi) fi.addEventListener('input', () => { FILE = fi.value; });
   document.querySelectorAll('[data-file]').forEach(b => b.addEventListener('click', () => { FILE = b.dataset.file; viewSetup(); }));
   const pickFile = () => files.find(f => f.name === FILE);
-  on('#fcancel', () => to('menu'));
+  on('#fcancel', () => to(SETUP === 'file' ? 'status' : 'menu'));
   on('#finfo-b', () => { const f = pickFile(), box = $('#finfo'); if (!box) return; box.innerHTML = f ? `<dl class="kv" style="max-width:460px;margin:12px auto 0"><dt>Manager</dt><dd>${esc(f.manager)}</dd><dt>Club</dt><dd>${esc(club(f.club).name)}</dd><dt>Date</dt><dd>${f.date ? fmtDate(f.date, true) : '-'}</dd><dt>League position</dt><dd>${f.round ? ordinal(f.pos) + ' after ' + f.round + ' rounds' : 'before the season'}</dd>${f.at ? `<dt>Saved</dt><dd>${new Date(f.at).toLocaleString('en-GB')}</dd>` : ''}</dl>` : '<p class="c dim">Pick a file first.</p>'; });
-  on('#fok', () => { const f = pickFile(); if (!f){ toast('Pick a file first.'); return; }
-    const raw = (() => { try { return JSON.parse(localStorage.getItem(f.cur ? STORE : slotKey(f.name)) || 'null'); } catch (e) { return null; } })();
+  on('#fok', () => { if (SETUP === 'file'){ const n = String(FILE || '').trim().slice(0, 40); if (!n){ toast('Enter a file name.'); return; } NEWG.file = n; if (files.some(f => f.name === n)){ SETUP = 'exists'; viewSetup(); return; } startNewGame(); return; }
+    const f = pickFile(); if (!f){ toast('Pick a file first.'); return; }
+    const raw = (() => { try { return JSON.parse(localStorage.getItem(slotKey(f.name)) || 'null'); } catch (e) { return null; } })();
     if (SETUP === 'del'){ if (!window.confirm(`Delete "${f.name}"?`)) return;
-      if (f.cur){ localStorage.removeItem(STORE); if (S) S = null; } else { localStorage.removeItem(slotKey(f.name)); try { localStorage.setItem(SLOTS, JSON.stringify(slotList().filter(x => x.name !== f.name))); } catch (e) {} }
+      localStorage.removeItem(slotKey(f.name)); try { localStorage.setItem(SLOTS, JSON.stringify(slotList().filter(x => x.name !== f.name))); } catch (e) {}
+      if (S && S.slot === f.name){ S = null; LIVE = null; try { localStorage.removeItem('ttny.manager.last'); } catch (e) {} }
       FILE = ''; if (!setupHas()) SETUP = 'menu'; viewSetup(); return; }
     LIVE = null;
     if (!adopt(raw)){ toast('That save no longer fits the league as it is today.'); return; }
@@ -1037,22 +1063,24 @@ function scrNews(){
   if (cur && cur.n){ cur.n = 0; save(); }
   const slot = n => n.c === 'match' || n.c === 'discipline' ? 'EVE' : n.c === 'injury' ? 'PM' : 'AM';
   frame({ title: `${esc(S.manager)} News`, top: [['all', 'All'], ['club', 'Club & Board'], ['comp', 'Competitions'], ['inj', 'Injuries and Bans']], topOn: F,
-    onTab: t => { if (['board', 'fin', 'last', 'hall'].includes(t)){ go(t === 'board' ? { s: 'club', cid: me(), tab: 'board' } : t === 'fin' ? { s: 'club', cid: me(), tab: 'info' } : t === 'last' ? { s: 'club', cid: me(), tab: 'last' } : { s: 'manager' }); return; } V = { s: 'news', f: t, i: 0 }; view(); },
-    bottom: [['board', 'Board Confidence'], ['fin', 'Finances'], ['last', 'Last Match'], ['hall', 'Records']],
+    onTab: t => { if (['media', 'trans', 'jobs', 'rec'].includes(t)){ go(t === 'media' ? { s: 'manager', tab: 'con' } : t === 'trans' ? { s: 'transfers' } : t === 'jobs' ? { s: 'managers', tab: 'jobs' } : { s: 'managers', tab: 'rep' }); return; } V = { s: 'news', f: t, i: 0 }; view(); },
+    bottom: [['media', 'Contracts and Media'], ['trans', 'Transfers'], ['jobs', 'Jobs'], ['rec', 'Records']],
+    tools: `<span style="flex:1"></span><button class="btn sm" id="nextun" ${S.news.some(n => n.n) ? '' : 'disabled'}>Next Unread</button>`,
     body: L.length ? `<div class="nl">${L.map((n, j) => `<div data-i="${j}" class="${j === i ? 'on' : ''} ${n.n ? 'new' : ''}"><span>${WD[new Date(n.d + 'T12:00:00Z').getUTCDay()].slice(0, 3)} ${shortDate(n.d)}</span><span>${slot(n)}</span><b>${esc(n.t)}</b></div>`).join('')}</div>
       <div class="nmsg"><h2>${esc(cur.t)}</h2>${String(cur.b).split(/(?<=\.)\s+(?=[A-Z])/).reduce((a, s, k) => { if (k % 2 === 0) a.push(s); else a[a.length - 1] += ' ' + s; return a; }, []).map(p => `<p>${p}</p>`).join('')}</div>` : '<p class="empty">No news.</p>',
     next: i < L.length - 1 ? () => { V = { ...V, i: i + 1 }; view(); } : null });
   document.querySelectorAll('.nl [data-i]').forEach(d => d.addEventListener('click', () => { V = { ...V, i: +d.dataset.i }; view(); }));
+  const nu = $('#nextun'); if (nu) nu.addEventListener('click', () => { const j = L.findIndex(n => n.n); if (j >= 0){ V = { ...V, i: j }; view(); } else { const k = S.news.findIndex(n => n.n); if (k >= 0){ V = { s: 'news', f: 'all', i: k }; view(); } } });
   const on = document.querySelector('.nl .on'); if (on) on.scrollIntoView({ block: 'nearest' });
 }
 
 /* ---- a club: squad, next match, fixtures, general info; yours also tactics, training, last match, the league, the board ---- */
 function scrClub(){
   const cid = V.cid || me(), mine = cid === me(), tab = V.tab || 'squad', c = club(cid);
-  const top = [['squad', 'Squad'], ['transfers', 'Transfers', true], ['next', 'Next Match'], ['fix', 'Fixtures'], ['info', 'General Info']];
+  const top = [['squad', 'Squad'], ['transfers', 'Transfers'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['info', mine ? 'Finances &amp; Info' : 'General Info']];
   const bottom = mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['league', esc(D.league)], ['last', 'Last Match']];
-  const o = ofClub(cid, { title: esc(c.name), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'table' }); return; } go({ s: 'club', cid, tab: t }); } });
-  ({ squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard })[tab](cid, o);
+  const o = ofClub(cid, { title: esc(c.name), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'table' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
+  (({ squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard })[tab] || clubSquad)(cid, o);
 }
 function playerFlags(p){
   const q = ps(p.id), out = [];
@@ -1071,14 +1099,16 @@ function clubSquad(cid, o){
   const ord = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
   const keyf = { pos: p => ord[GROUP[p.prim]] * 1000 + ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'SS', 'CF'].indexOf(p.prim) * 50 - ovrNow(p) / 2, name: p => surname(p.n), age: p => p.age, ovr: p => -ovrNow(p), cond: p => ps(p.id).cond, gls: p => -ps(p.id).g, rt: p => -(+avgRt(ps(p.id)) || 0), val: p => -p.val, wage: p => -S.con[p.id].w };
   const fl = { all: () => true, gk: p => p.prim === 'GK', def: p => GROUP[p.prim] === 'DEF', mid: p => GROUP[p.prim] === 'MID', fwd: p => GROUP[p.prim] === 'FWD', avail: p => avail(p.id), out: p => !avail(p.id), first: p => t.xi.includes(p.id) || t.bench.includes(p.id) }[filt];
-  const L = squadOf(cid).filter(fl).sort((a, b) => { const f = keyf[SORT.k] || keyf.pos, x = f(a), y = f(b); return (x > y ? 1 : x < y ? -1 : 0) * SORT.d; });
+  const team = V.team || 'first', ft = firstTeam(cid);
+  const L = squadOf(cid).filter(fl).filter(p => team === 'all' || (team === 'first') === ft.has(p.id)).sort((a, b) => { const f = keyf[SORT.k] || keyf.pos, x = f(a), y = f(b); return (x > y ? 1 : x < y ? -1 : 0) * SORT.d; });
+  if (team === 'res') o.title = `${esc(club(cid).name)} Reserves`;
   const nf = mine ? nextFree() : null;
   const box = p => { if (!mine) return `<span></span>`; const i = t.xi.indexOf(p.id), b = t.bench.indexOf(p.id);
     return i >= 0 ? `<button class="box on" data-sel="${p.id}" title="${slots[i][0]}">${i + 1}</button>` : b >= 0 ? `<button class="box sub" data-sel="${p.id}" title="Substitute">S${b + 1}</button>` : `<button class="box" data-sel="${p.id}" title="${nf ? 'Pick him: ' + nf : ''}"></button>`; };
   let body;
   if (view_ === 'pos'){
     const half = Math.ceil(L.length / 2), row = p => `<div class="sqr ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${box(p)}<span class="nm ${nameCls(p)}">${esc(cmName(p.n))}${playerFlags(p)}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
-    body = `<div class="ptitle">Position(s)</div><div class="sq"><div>${L.slice(0, half).map(row).join('')}</div><div>${L.slice(half).map(row).join('')}</div></div>`;
+    body = `${mine ? slotStrip() : ''}<div class="ptitle">Position(s)</div><div class="sq"><div>${L.slice(0, half).map(row).join('')}</div><div>${L.slice(half).map(row).join('')}</div></div>`;
   } else {
     const AT = ['oa', 'bc', 'dr', 'lp', 'fi', 'he', 'sp', 'st', 'da', 'bw', 'pc', 'gr'];
     const th = (k, n, cls = '') => `<th class="${cls}" ${k ? `data-sort="${k}"` : ''}>${n}${k && SORT.k === k ? (SORT.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
@@ -1087,8 +1117,8 @@ function clubSquad(cid, o){
       : view_ === 'stats' ? `${th('', '')}${th('name', 'Name')}<th class="r">Apps</th><th class="r">Sub</th>${th('gls', 'Gls', 'r')}<th class="r">Asts</th><th class="r">MoM</th><th class="r">Yel</th><th class="r">Red</th>${th('rt', 'Av R', 'r')}`
       : `${th('', '')}${th('name', 'Name')}${th('age', 'Age', 'r')}${th('val', 'Value', 'r')}${th('wage', 'Wage', 'r')}<th class="r">Expires</th>`;
     const row = p => { const q = ps(p.id), base = `<td>${box(p)}</td><td class="${nameCls(p)}"><b>${esc(cmName(p.n))}</b>${playerFlags(p)}</td>`;
-      if (view_ === 'gen') return `${base}<td class="yel"><b>${cmPos(p.pos)}</b></td><td class="r">${p.age}</td><td class="r ${vcls(ovrNow(p))}"><b>${ovrNow(p)}</b></td><td class="r">${Math.round(q.cond)}%</td><td>${morWord(q.mor)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${avgRt(q)}</td>`;
-      if (view_ === 'attr') return `${base}${AT.map(k => `<td class="r av ${vcls(A(p, k))}">${A(p, k)}</td>`).join('')}`;
+      if (view_ === 'gen') return `${base}<td class="yel"><b>${cmPos(p.pos)}</b></td><td class="r">${p.age}</td><td class="r ${vcls(ovrNow(p))}"><b>${showA(p, ovrNow(p))}</b></td><td class="r">${Math.round(q.cond)}%</td><td>${morWord(q.mor)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${avgRt(q)}</td>`;
+      if (view_ === 'attr') return `${base}${AT.map(k => `<td class="r av ${vcls(A(p, k))}">${showA(p, A(p, k))}</td>`).join('')}`;
       if (view_ === 'stats') return `${base}<td class="r">${q.apps}</td><td class="r">${q.sub}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${q.mom}</td><td class="r">${q.yc}</td><td class="r">${q.rc || 0}</td><td class="r">${avgRt(q)}</td>`;
       return `${base}<td class="r">${p.age}</td><td class="r">${valueOf(p)}</td><td class="r">${wage(S.con[p.id].w)}</td><td class="r">${S.con[p.id].y}</td>`; };
     body = `<div class="tw"><table><thead><tr>${head}</tr></thead><tbody>${L.map(p => `<tr class="click ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${row(p)}</tr>`).join('')}</tbody></table></div>`;
@@ -1097,11 +1127,15 @@ function clubSquad(cid, o){
     <div class="tools" style="margin-top:6px"><button class="btn sm" id="clearxi">Clear selection</button><button class="btn sm" id="autoxi">Assistant picks the side</button></div>`;
   o.tools = `<select class="dd" id="sqv" aria-label="View">${[['pos', 'View: Positions'], ['gen', 'View: General'], ['attr', 'View: Attributes'], ['stats', 'View: Stats'], ['con', 'View: Contract']].map(([k, n]) => `<option value="${k}" ${view_ === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <select class="dd" id="sqs" aria-label="Sort by">${[['pos', 'Sort By: Position'], ['name', 'Sort By: Name'], ['ovr', 'Sort By: Ability'], ['age', 'Sort By: Age'], ['cond', 'Sort By: Condition'], ['gls', 'Sort By: Goals'], ['rt', 'Sort By: Rating'], ['val', 'Sort By: Value']].map(([k, n]) => `<option value="${k}" ${SORT.k === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
-    <span style="flex:1"></span><select class="dd" id="sqf" aria-label="Filter">${[['all', 'Filter: All'], ['first', 'Filter: Picked'], ['gk', 'Filter: Goalkeepers'], ['def', 'Filter: Defenders'], ['mid', 'Filter: Midfielders'], ['fwd', 'Filter: Forwards'], ['avail', 'Filter: Available'], ['out', 'Filter: Injured & Banned']].map(([k, n]) => `<option value="${k}" ${filt === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
+    <select class="dd" id="sqt" aria-label="Squad">${[['first', 'First Team'], ['res', 'Reserves'], ['all', 'Whole Squad']].map(([k, n]) => `<option value="${k}" ${team === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    <span style="flex:1"></span>${mine ? '<button class="btn sm" id="clearsq">Clear Squad</button>' : ''}<select class="dd" id="sqf" aria-label="Filter">${[['all', 'Filter: All'], ['first', 'Filter: Picked'], ['gk', 'Filter: Goalkeepers'], ['def', 'Filter: Defenders'], ['mid', 'Filter: Midfielders'], ['fwd', 'Filter: Forwards'], ['avail', 'Filter: Available'], ['out', 'Filter: Injured & Banned']].map(([k, n]) => `<option value="${k}" ${filt === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
   o.body = body; frame(o);
   $('#sqv').addEventListener('change', e => { V = { ...V, view: e.target.value }; view(); });
   $('#sqs').addEventListener('change', e => { SORT = { k: e.target.value, d: 1 }; view(); });
   $('#sqf').addEventListener('change', e => { V = { ...V, filt: e.target.value }; view(); });
+  $('#sqt').addEventListener('change', e => { V = { ...V, team: e.target.value }; view(); });
+  document.querySelectorAll('[data-tg]').forEach(b => b.addEventListener('click', () => { const v = b.dataset.tg, k = v[0] === 'b' ? v : +v; TARGET = TARGET === k ? null : k; view(); }));
+  if ($('#clearsq')) $('#clearsq').addEventListener('click', () => { t.xi = Array(11).fill(null); t.bench = []; TARGET = null; save(); view(); });
   document.querySelectorAll('[data-sort]').forEach(h => h.addEventListener('click', () => { SORT = { k: h.dataset.sort, d: SORT.k === h.dataset.sort ? -SORT.d : 1 }; view(); }));
   document.querySelectorAll('[data-sel]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); toggleSel(+b.dataset.sel); view(); }));
   wirePlayers(L.map(p => p.id));
@@ -1114,6 +1148,10 @@ function toggleSel(id){
   if (t.xi.includes(id)){ t.xi[t.xi.indexOf(id)] = null; save(); return; }
   if (t.bench.includes(id)){ t.bench = t.bench.filter(x => x !== id); save(); return; }
   if (!avail(id)){ toast('He is not available.'); return; }
+  if (TARGET != null){
+    if (typeof TARGET === 'number'){ const old = t.xi[TARGET]; t.xi[TARGET] = id; if (old && t.bench.length < 7) t.bench.push(old); }
+    else { const j = +TARGET.slice(1); if (j < t.bench.length) t.bench[j] = id; else if (t.bench.length < 7) t.bench.push(id); }
+    TARGET = null; save(); return; }
   const i = t.xi.indexOf(null); if (i >= 0) t.xi[i] = id; else if (t.bench.length < 7) t.bench.push(id); else toast('Your side and substitutes are full.');
   save();
 }
@@ -1174,13 +1212,6 @@ function statBars(st, h, a){
   const [kh] = kitOf(h), [ka] = kitOf(a), L = [['Possession %', st.poss], ['Shots', st.sh], ['On target', st.sot], ['Corners', st.cor], ['Fouls', st.fou], ['Offsides', st.off || [0, 0]], ['Bookings', st.yc], ['Sendings off', st.rc]];
   if (st.pas) L.splice(1, 0, ['Passes completed %', st.pas]);
   return L.map(([n, [x, y]]) => { const t = Math.max(1, x + y); return `<div class="sbar"><span class="l">${n}</span><b class="num">${x}</b><span class="b"><i style="width:${100 * x / t}%;background:${kh}"></i><i style="width:${100 * y / t}%;background:${ka === kh ? '#ccc' : ka}"></i></span><b class="num r">${y}</b></div>`; }).join('');
-}
-function clubBoard(cid, o){
-  const aim = AIMS[S.aim], c = S.conf, pos = standings().findIndex(r => r.id === me()) + 1, col = c >= 62 ? 'var(--ok)' : c >= 40 ? 'var(--yel)' : 'var(--hot)';
-  o.body = `<div class="ptitle">Board Confidence</div><div class="meter" style="max-width:520px;margin:0 auto"><i style="width:${c}%;background:${col}"></i></div>
-    <p class="c" style="font-size:15px;margin:12px 0">${boardComment()}</p>${S.ultimatum ? '<p class="c" style="color:var(--hot);font-weight:700">The board have issued an ultimatum. Results must improve.</p>' : ''}
-    <dl class="kv" style="max-width:520px;margin:10px auto"><dt>Expectation</dt><dd><b>${aim.name}</b>: ${aim.text}</dd><dt>Position</dt><dd>${S.round ? ordinal(pos) : 'the season has not started'}</dd><dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
-  frame(o);
 }
 function clubTraining(cid, o){
   const f = S.train, sq = squadOf(me());
@@ -1258,12 +1289,12 @@ function scrPlayer(){
   const q = ps(p.id), con = S.con[p.id], tab = V.tab || 'profile', b = p.bd || null;
   const born = (() => { const y = new Date(S.date + 'T12:00:00Z').getUTCFullYear(); return b ? `Born ${shortDate(b)} (Age ${p.age})` : `Age ${p.age}`; })();
   const keys = Object.keys(ATTR_NAME).filter(k => p.prim === 'GK' || !GK_KEYS.includes(k)).sort((a, b) => ATTR_NAME[a].localeCompare(ATTR_NAME[b]));
-  const third = Math.ceil(keys.length / 3), col = L => L.map(k => { const v = A(p, k), d = q.d[k] || 0; return `<div class="arow"><span>${esc(ATTR_NAME[k])}</span><span>${d >= 1 ? '<span class="up">▲</span>' : d <= -1 ? '<span class="dn">▼</span>' : ''} <span class="av ${vcls(v)}">${v}</span></span></div>`; }).join('');
+  const third = Math.ceil(keys.length / 3), col = L => L.map(k => { const v = A(p, k), d = q.d[k] || 0; return `<div class="arow"><span>${esc(ATTR_NAME[k])}</span><span>${d >= 1 && known(p) ? '<span class="up">▲</span>' : d <= -1 && known(p) ? '<span class="dn">▼</span>' : ''} <span class="av ${vcls(v)}">${showA(p, v)}</span></span></div>`; }).join('');
   const posList = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'SS', 'CF'];
   let body;
   if (tab === 'profile') body = `<div class="born">${born}. ${esc(p.nat || '')}.</div>
     <div class="cols3"><div>${col(keys.slice(0, third))}</div><div>${col(keys.slice(third, 2 * third))}</div><div>${col(keys.slice(2 * third))}
-      <div class="arow"><span>Position</span><span class="yel"><b>${cmPos(p.pos)}</b></span></div><div class="arow"><span>Style</span><span class="sky">${esc(p.style || '-')}</span></div><div class="arow"><span>Condition</span><span>${Math.round(q.cond)}%</span></div><div class="arow"><span>Morale</span><span>${morWord(q.mor)}</span></div><div class="arow"><span>Ability</span><span class="av ${vcls(ovrNow(p))}">${ovrNow(p)}</span></div></div></div>`;
+      <div class="arow"><span>Position</span><span class="yel"><b>${cmPos(p.pos)}</b></span></div><div class="arow"><span>Style</span><span class="sky">${esc(p.style || '-')}</span></div><div class="arow"><span>Condition</span><span>${Math.round(q.cond)}%</span></div><div class="arow"><span>Morale</span><span>${morWord(q.mor)}</span></div><div class="arow"><span>Ability</span><span class="av ${vcls(ovrNow(p))}">${showA(p, ovrNow(p))}</span></div>${known(p) ? '' : '<p class="small dim">Attributes masked: play his club, or keep him on your short list for a week.</p>'}</div></div>`;
   if (tab === 'pos') body = `<div class="ptitle">Ability in every position</div><div class="tw"><table><thead><tr>${posList.map(x => `<th class="c">${cmPos([x])}</th>`).join('')}</tr></thead><tbody><tr>${posList.map(x => `<td class="c av ${vcls(fitIn(p, x))}" style="${p.pos.includes(x) ? 'outline:1px solid var(--yel)' : ''}">${fitIn(p, x)}</td>`).join('')}</tr></tbody></table></div>`;
   if (tab === 'inj') body = `<div class="ptitle">Injuries &amp; Bans</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Fitness</dt><dd>${q.injD ? `<span style="color:var(--hot)">Injured, out about ${Math.ceil(q.injD / 7)} week(s)</span>` : q.light ? 'Back from injury, not yet sharp' : 'Fit'}</dd><dt>Condition</dt><dd>${Math.round(q.cond)}%</dd><dt>Bookings</dt><dd>${q.yc} this season</dd><dt>Banned</dt><dd>${q.sus ? `${q.sus} match(es)` : 'No'}</dd><dt>Proneness</dt><dd>${['Rarely injured', 'Average', 'Injury prone'][(p.inj || 2) - 1] || 'Average'}</dd></dl>`;
   if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Club</dt><dd>${esc(club(p.club).name)}</dd><dt>Wage</dt><dd>${wage(con.w)}</dd><dt>Expires</dt><dd>30.6.${String(con.y).slice(2)}</dd><dt>Value</dt><dd>${valueOf(p)}</dd><dt>Squad number</dt><dd>${p.no || '-'}</dd></dl>`;
@@ -1274,11 +1305,12 @@ function scrPlayer(){
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
   frame(ofClub(p.club, { title: esc(p.n), sub: `${esc(club(p.club).name)}${p.no ? ' · ' + p.no : ''}`,
-    act: mine ? `<button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : '',
+    act: mine ? `<button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
     top: [['profile', 'Profile'], ['pos', 'Positions'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['hist', 'History']], topOn: tab,
     onTab: k => { V = { ...V, tab: k }; view(); }, body,
     next: at >= 0 && at < list.length - 1 ? () => { V = { ...V, id: list[at + 1] }; view(); } : null }));
   const pk = $('#pick'); if (pk) pk.addEventListener('click', () => { toggleSel(p.id); view(); });
+  const sl = $('#slb'); if (sl) sl.addEventListener('click', () => { S.short = S.short || []; if (S.short.some(x => x.id === p.id)) S.short = S.short.filter(x => x.id !== p.id); else S.short.push({ id: p.id, d: S.date }); save(); view(); });
 }
 
 /* ---- competitions ---- */
@@ -1313,25 +1345,6 @@ function scrClubs(){
   frame({ title: 'Nations &amp; Clubs', top: [['eng', 'England']], topOn: 'eng', body: `<div class="ptitle">${esc(D.league)}</div><div class="clubs">${D.clubs.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<button data-cv="${c.id}" style="--k1:${(c.kit || ['#888'])[0]}"><span class="sw"><img src="${crestURL(c.id)}" alt="" onerror="this.remove()"></span><span><b>${esc(c.name)}</b><small>${esc(c.city || '')}</small></span></button>`).join('')}</div>` });
   document.querySelectorAll('[data-cv]').forEach(b => b.addEventListener('click', () => go({ s: 'club', cid: +b.dataset.cv, tab: 'squad' })));
 }
-function scrFind(){
-  const qv = V.q || '', fold = s => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const hits = qv.length >= 2 ? D.players.filter(p => fold(p.n).includes(fold(qv))).slice(0, 60) : [];
-  frame({ title: 'Find', top: [['pl', 'Player Search']], topOn: 'pl',
-    tools: `<input type="text" id="fq" placeholder="A player's name" value="${esc(qv)}" style="flex:1;min-width:200px"><button class="btn" id="fgo">Search</button>`,
-    body: qv.length < 2 ? '<p class="empty">Type at least two letters of a name.</p>' : hits.length ? `<div class="tw"><table><thead><tr><th>Name</th><th>Club</th><th>Position</th><th class="r">Age</th><th class="r">Ability</th><th class="r">Value</th></tr></thead><tbody>${hits.map(p => `<tr class="click" data-pl="${p.id}"><td><b>${esc(p.n)}</b></td><td>${esc(club(p.club).name)}</td><td class="yel">${cmPos(p.pos)}</td><td class="r">${p.age}</td><td class="r ${vcls(ovrNow(p))}"><b>${ovrNow(p)}</b></td><td class="r">${valueOf(p)}</td></tr>`).join('')}</tbody></table></div><p class="small dim">${hits.length} player${hits.length > 1 ? 's' : ''} found.</p>` : '<p class="empty">No players found.</p>' });
-  const fq = $('#fq'), run = () => { V = { s: 'find', q: fq.value.trim() }; view(); const f = $('#fq'); if (f){ f.focus(); f.setSelectionRange(f.value.length, f.value.length); } };
-  $('#fgo').addEventListener('click', run); fq.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
-  wirePlayers(hits.map(p => p.id));
-}
-function scrManager(){
-  const all = allResults().filter(r => r.h === me() || r.a === me());
-  const w = all.filter(r => r.w === me()).length, d = all.filter(r => r.w == null).length, l = all.length - w - d;
-  const gf = all.reduce((t, r) => t + (r.h === me() ? r.s[0] : r.s[1]), 0), ga = all.reduce((t, r) => t + (r.h === me() ? r.s[1] : r.s[0]), 0);
-  let H = []; try { H = JSON.parse(localStorage.getItem('ttny.manager.hall') || '[]'); } catch (e) {}
-  frame({ title: esc(S.manager), sub: `Manager, ${esc(club(me()).name)}`, top: [['m', 'Profile']], topOn: 'm',
-    body: `<div class="cols2"><div><div class="ptitle">Profile</div><dl class="kv"><dt>Club</dt><dd>${esc(club(me()).name)}</dd><dt>Reputation</dt><dd>${esc(S.rep)}</dd><dt>Matches</dt><dd>${all.length}: won ${w}, drawn ${d}, lost ${l}</dd><dt>Goals</dt><dd>${gf} for, ${ga} against</dd><dt>Win rate</dt><dd>${all.length ? Math.round(100 * w / all.length) : 0}%</dd></dl></div>
-      <div><div class="ptitle">Hall of Fame</div>${H.length ? `<table><tbody>${H.map(x => `<tr><td><b>${esc(x.m)}</b></td><td>${esc(x.c)}</td><td>${x.s}/${String((x.s + 1) % 100).padStart(2, '0')}</td><td class="r yel">${ordinal(x.pos)}${x.cup ? ', cup' : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="dim">Finish a season to enter it.</p>'}</div></div>` });
-}
 function scrOptions(){
   const L = slotList(), def = `${club(me()).name} ${shortDate(S.date)}`;
   frame({ title: 'Game Options', top: [['o', 'Options']], topOn: 'o', body: `<div class="ptitle">Save Game</div>
@@ -1344,6 +1357,200 @@ function scrOptions(){
   const open = k => { SETUP_OPEN = true; SETUP = k; FILE = ''; view(); scrollTo(0, 0); };
   $('#o-restore').addEventListener('click', () => open('restore')); $('#o-del').addEventListener('click', () => open('del'));
   $('#o-new').addEventListener('click', () => open('new')); $('#o-setup').addEventListener('click', () => open('menu'));
+}
+
+/* ---- a question to answer or a message to read, the classic way: a title, a line, and No and Yes (or Okay) ---- */
+function dialog(o){
+  // o: { title, sub, text, k1, k2, yes, no, onYes, onNo }
+  const side = S ? `<div class="date"><span>${WD[new Date(S.date + 'T12:00:00Z').getUTCDay()]}</span><span>${shortDate(S.date)}</span><span>AM</span></div>` : `<div class="date"><span>Version</span><span>2.0</span></div>`;
+  $('#app').innerHTML = `${header()}<div class="cm"><aside class="side">${side}</aside><div class="main"><div class="banner" style="--k1:${o.k1 || '#1A2E4A'};--k2:${o.k2 || 'var(--text)'}"><span></span><h1>${o.title}</h1><span></span></div>${o.sub ? `<div class="subbar">${o.sub}</div>` : ''}
+    <section class="pane dlg"><p>${o.text}</p></section>${o.no === false ? `<div class="bn1"><button id="yes" class="ok">${o.yes || 'Okay'}</button></div>` : `<div class="bn"><button id="no">${o.no || 'No'}</button><button id="yes" class="ok">${o.yes || 'Yes'}</button></div>`}</div></div>`;
+  $('#yes').addEventListener('click', () => o.onYes && o.onYes());
+  const n = $('#no'); if (n) n.addEventListener('click', () => o.onNo && o.onNo());
+}
+
+/* ---- the new-game flow: leagues, your name, your nationality, the team (a look at it first), confirm, managers, the file ---- */
+const NEWG = { mask: true, first: '', last: '', nat: '', club: null, file: '' };
+const REGION = (() => { const R = {}, put = (r, L) => L.split('|').forEach(n => R[n] = r);
+  put('EUR', 'England|Scotland|Wales|Northern Ireland|Ireland|Republic of Ireland|France|Germany|Spain|Portugal|Italy|Netherlands|Belgium|Switzerland|Austria|Denmark|Sweden|Norway|Finland|Iceland|Poland|Czech Republic|Czechia|Slovakia|Hungary|Romania|Bulgaria|Serbia|Croatia|Slovenia|Bosnia and Herzegovina|Bosnia & Herzegovina|Montenegro|North Macedonia|Albania|Kosovo|Greece|Turkey|Türkiye|Ukraine|Russia|Belarus|Georgia|Armenia|Azerbaijan|Israel|Cyprus|Malta|Luxembourg|Lithuania|Latvia|Estonia|Moldova|Faroe Islands|Gibraltar|Andorra|San Marino|Liechtenstein');
+  put('AFR', 'Nigeria|Ghana|Senegal|Ivory Coast|Côte d\'Ivoire|Cote D\'Ivoire|Cameroon|Mali|Burkina Faso|Guinea|Guinea-Bissau|Morocco|Algeria|Tunisia|Egypt|South Africa|Zimbabwe|Zambia|DR Congo|Congo DR|Congo|Gabon|Gambia|Sierra Leone|Liberia|Togo|Benin|Angola|Mozambique|Kenya|Uganda|Tanzania|Ethiopia|Eritrea|Cape Verde|Cape Verde Islands|Mauritania|Equatorial Guinea|Central African Republic|Chad|Niger|Sudan|Libya|Madagascar|Comoros|Burundi|Rwanda');
+  put('SAM', 'Brazil|Argentina|Uruguay|Paraguay|Colombia|Ecuador|Chile|Peru|Venezuela|Bolivia');
+  put('NAM', 'USA|United States|Canada|Mexico|Jamaica|Costa Rica|Honduras|Panama|Guatemala|El Salvador|Trinidad and Tobago|Haiti|Curaçao|Curacao|Suriname|Grenada|Montserrat|Barbados|Guyana|St. Kitts and Nevis|Dominica|Martinique|Guadeloupe');
+  put('ASI', 'Japan|Korea Republic|South Korea|China|China PR|Iran|Iraq|Saudi Arabia|Qatar|United Arab Emirates|Uzbekistan|Australia|Thailand|Vietnam|Indonesia|Malaysia|Philippines|India|Jordan|Syria|Lebanon|Palestine|Kuwait|Bahrain|Oman');
+  put('OCE', 'New Zealand|Fiji|Papua New Guinea|Samoa|Tonga|Solomon Islands'); return R; })();
+function setupFlow(state, files){
+  const c = NEWG.club ? club(NEWG.club) : null;
+  if (state === 'league') return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select League(s)', next: () => to('name'), back: 'menu',
+    body: `<div class="tools" style="margin-bottom:10px"><span class="dim small">Use Real Players:</span><span class="opts"><button class="on">Yes</button><button disabled>No</button></span><span class="dim small" style="margin-left:14px">Attribute Masking:</span><span class="opts" id="mask"><button data-v="1" class="${NEWG.mask ? 'on' : ''}">Yes</button><button data-v="0" class="${NEWG.mask ? '' : 'on'}">No</button></span></div>
+      <div class="lg"><div class="on"><b>England</b><span class="sel">Selected</span><span class="dim">Background</span><span class="dim small">${esc(D.league)}</span></div>
+      ${['Spain', 'Italy', 'Germany', 'France', 'Portugal', 'Netherlands', 'Serbia'].map(n => `<div><b>${n}</b><span class="dim">Selected</span><span class="dim">Background</span><span class="dim small">later</span></div>`).join('')}</div>
+      <p class="small dim">Attribute masking: the attributes of players at other clubs show as a range until you know them (you have played against their club, or they have been on your short list for a week).</p>` };
+  if (state === 'name') return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Enter Name', back: 'league', next: () => { NEWG.first = ($('#fn').value || '').trim(); NEWG.last = ($('#ln').value || '').trim(); if (!NEWG.first){ toast('Enter your first name.'); return; } try { localStorage.setItem('ttny.manager.name', `${NEWG.first} ${NEWG.last}`.trim()); } catch (e) {} to('nat'); },
+    body: `<div class="files" style="margin-top:20px"><label class="frow fin"><span style="width:140px">First Name :</span><input type="text" id="fn" maxlength="20" value="${esc(NEWG.first || (localStorage.getItem('ttny.manager.name') || '').split(' ')[0] || '')}"></label><label class="frow fin"><span style="width:140px">Second Name :</span><input type="text" id="ln" maxlength="24" value="${esc(NEWG.last || (localStorage.getItem('ttny.manager.name') || '').split(' ').slice(1).join(' '))}"></label></div>` };
+  if (state === 'nat'){ const flt = NEWG.region || 'all', L = [...new Set(D.players.map(p => p.nat).filter(Boolean)), 'Serbia'].filter((n, i, a) => a.indexOf(n) === i).sort().filter(n => flt === 'all' || REGION[n] === flt);
+    return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select Nationality', back: 'name', next: NEWG.nat ? () => to('team') : null,
+      tools: `<span style="flex:1"></span><select class="dd" id="reg">${[['all', 'Filter: All'], ['EUR', 'Europe'], ['AFR', 'Africa'], ['SAM', 'South America'], ['NAM', 'North & Central America'], ['ASI', 'Asia'], ['OCE', 'Oceania']].map(([k, n]) => `<option value="${k}" ${flt === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`,
+      body: `<div class="two">${L.map(n => `<button class="nat ${NEWG.nat === n ? 'on' : ''}" data-nat="${esc(n)}"><b>${esc(n)}</b><span>${REGION[n] || ''}</span></button>`).join('')}</div>` }; }
+  if (state === 'team' || state === 'quick'){ const clubs = D.clubs.slice().sort((a, b) => a.name.localeCompare(b.name));
+    return { title: state === 'quick' ? 'Quick Start Game' : `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select Team', back: state === 'quick' ? 'menu' : 'nat',
+      body: `${state === 'quick' ? '<p class="c dim small" style="margin-top:0">Pick a club and go straight to the first match day: the assistant has picked the side.</p>' : ''}<div class="two">${clubs.map(c2 => `<button class="nat" data-club="${c2.id}"><b>${esc(c2.name)}</b><span>ENG <em>PRM</em></span></button>`).join('')}</div>` }; }
+  if (state === 'preview'){ const sq = squadOf(c.id).slice().sort((a, b) => ({ GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[a.prim]] - { GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[b.prim]]) || ovrNow(b) - ovrNow(a)), half = Math.ceil(sq.length / 2);
+    const row = p => `<div class="sqr" style="cursor:default"><span></span><span class="nm ${ovrNow(p) < 66 && p.age <= 21 ? 'c-res' : ''}">${esc(cmName(p.n))}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
+    const rank = D.clubs.slice().sort((a, b) => b.q - a.q).findIndex(x => x.id === c.id) + 1;
+    return { title: esc(c.name), k1: (c.kit || [])[0], k2: (c.kit || [])[1], sub: `${AIMS[aimFor(rank)].name} · ${(c.cap || 0).toLocaleString('en-GB')} seats`, back: 'team', act: '<button class="btn y" id="take">Take Control</button>',
+      body: `<div class="ptitle">Position(s)</div><div class="sq"><div>${sq.slice(0, half).map(row).join('')}</div><div>${sq.slice(half).map(row).join('')}</div></div>` }; }
+  if (state === 'status') return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Manager Status', back: 'preview', nextLabel: 'Finish', next: () => { NEWG.file = NEWG.file || `${NEWG.first} ${NEWG.last}`.trim() + ' ' + c.name; to('file'); },
+    body: `<div class="lg"><div class="on"><b>${esc(`${NEWG.first} ${NEWG.last}`.trim())}</b><span>${esc(c.name)}</span><span class="dim">Playing</span><span class="dim small">${esc(NEWG.nat || '')}</span></div></div><p class="small dim">More managers on one device, each with his own club, come with Network Play.</p>` };
+  return null;
+}
+function renderFlow(F){
+  const side = `<div class="date"><span>Version</span><span>2.0</span></div><div class="arrows"><button disabled>←</button><button disabled>→</button></div>${S ? '<button class="sb go" id="resume">Back to Game</button>' : ''}<button class="sb" id="restart">Restart Game</button><button class="sb" id="exit">Exit Game</button>`;
+  $('#app').innerHTML = `${header()}<div class="cm"><aside class="side">${side}</aside><div class="main"><div class="banner" style="--k1:${F.k1 || '#1A2E4A'};--k2:${F.k2 || 'var(--text)'}"><span></span><h1>${F.title}</h1><span class="act">${F.act || ''}</span></div><div class="subbar">${F.sub}</div>
+    ${F.tools ? `<div class="tools">${F.tools}</div>` : ''}<section class="pane">${F.body}</section><div class="bn"><button id="back">${F.back === 'menu' && SETUP === 'league' ? 'Back' : 'Back'}</button><button id="next" ${F.next ? '' : 'disabled'}>${F.nextLabel || 'Next'}</button></div></div></div>`;
+  const on = (sel, f) => { const el = $(sel); if (el) el.addEventListener('click', f); };
+  on('#back', () => to(F.back)); on('#restart', () => to('menu')); on('#exit', () => { location.href = './'; }); on('#resume', () => { SETUP_OPEN = false; view(); });
+  if (F.next) on('#next', F.next);
+  document.querySelectorAll('#mask [data-v]').forEach(b => b.addEventListener('click', () => { NEWG.mask = b.dataset.v === '1'; viewSetup(); }));
+  document.querySelectorAll('[data-nat]').forEach(b => b.addEventListener('click', () => { NEWG.nat = b.dataset.nat; viewSetup(); }));
+  const reg = $('#reg'); if (reg) reg.addEventListener('change', e => { NEWG.region = e.target.value; viewSetup(); });
+  document.querySelectorAll('[data-club]').forEach(b => b.addEventListener('click', () => { NEWG.club = +b.dataset.club;
+    if (SETUP === 'quick'){ const nm = (localStorage.getItem('ttny.manager.name') || 'The manager').split(' '); NEWG.first = nm[0]; NEWG.last = nm.slice(1).join(' '); NEWG.file = 'Quick Start ' + club(NEWG.club).name; startNewGame(); const ev = events()[0]; if (ev && ev.date > S.date){ passDays(daysBetween(S.date, ev.date)); save(); view(); } return; }
+    to('preview'); }));
+  on('#take', () => to('confirm'));
+}
+const to = k => { SETUP = k; FILE = ''; viewSetup(); scrollTo(0, 0); };
+function startNewGame(){
+  const name = `${NEWG.first} ${NEWG.last}`.trim() || 'The manager';
+  LIVE = null; newGame(NEWG.club, name);
+  Object.assign(S, { mask: NEWG.mask, nat: NEWG.nat, slot: NEWG.file || name, seen: [], short: [], fac: {}, hist: [{ d: S.date, c: S.club, t: `Hired as ${club(S.club).name} manager` }] });
+  news('comp', `${D.season}/${String((D.season + 1) % 100).padStart(2, '0')} ${D.league} fixture list decided`, `The fixtures for the new season are out. ${esc(club(S.club).name)} start ${matchLine(S.rounds[0].m.find(m => m.h === S.club || m.a === S.club))}.`);
+  save(); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'news' }; view();
+}
+
+/* ---- the squad's slots, as a strip of boxes above the list: the eleven places, then the substitutes ---- */
+const SLOT_CODE = { GK: 'GK', CB: 'DC', LB: 'DL', RB: 'DR', DMF: 'DM', CMF: 'MC', LMF: 'ML', RMF: 'MR', AMF: 'AMC', LWF: 'AML', RWF: 'AMR', SS: 'FC', CF: 'FC' };
+let TARGET = null;   // the place the next pick goes to, when one is chosen in the strip
+function slotStrip(){
+  const t = S.tac[me()], slots = FORMS[t.form];
+  return `<div class="strip2">${slots.map((s, i) => `<button class="${t.xi[i] ? 'on' : ''} ${TARGET === i ? 'tg' : ''}" data-tg="${i}" title="${t.xi[i] ? esc(P.get(t.xi[i]).n) : 'Empty'}">${SLOT_CODE[s[0]]}</button>`).join('')}${Array.from({ length: 7 }, (_, j) => `<button class="${t.bench[j] ? 'on' : ''} ${TARGET === 'b' + j ? 'tg' : ''}" data-tg="b${j}" title="${t.bench[j] ? esc(P.get(t.bench[j]).n) : 'Empty'}">SB${j + 1}</button>`).join('')}</div>`;
+}
+// the first team and the reserves: the 25 best senior players and whoever is picked; the rest are reserves
+function firstTeam(cid){ const t = S.tac[cid], L = squadOf(cid).slice().sort((a, b) => ovrNow(b) - ovrNow(a)), keep = new Set(L.slice(0, 25).map(p => p.id)); for (const id of [...t.xi, ...t.bench]) if (id) keep.add(id); return keep; }
+
+/* ---- attribute masking ---- */
+const known = p => !S.mask || p.club === me() || (S.seen || []).includes(p.club) || (S.short || []).some(x => x.id === p.id && daysBetween(x.d, S.date) >= 7);
+const showA = (p, v) => known(p) ? `${v}` : `${Math.floor(v / 10) * 10}-${Math.floor(v / 10) * 10 + 9}`;
+
+/* ---- the board: confidence, and requests ---- */
+const REQS = [
+  { k: 'train', n: 'Better training facilities', cost: 6e6, txt: 'Your players will improve a little faster in training.' },
+  { k: 'ground', n: 'More seats in the ground', cost: 9e6, txt: 'A bigger crowd, and more money on the gate.' },
+  { k: 'youth', n: 'More money for the youth set-up', cost: 3e6, txt: 'The young players in your squad will develop faster.' },
+];
+function clubBoard(cid, o){
+  const aim = AIMS[S.aim], c = S.conf, pos = standings().findIndex(r => r.id === me()) + 1, col = c >= 62 ? 'var(--ok)' : c >= 40 ? 'var(--warn)' : 'var(--hot)';
+  const sub = V.sub || 'conf', month = S.date.slice(0, 7), asked = (S.req || {}).m === month, fac = S.fac || {};
+  const words = c >= 80 ? `The ${esc(club(me()).name)} directors are delighted with the way things are going, and look forward to a long and successful era under your management.` : c >= 62 ? `The ${esc(club(me()).name)} directors are pleased with your work so far.` : c >= 45 ? 'The board are satisfied, for now.' : c >= 28 ? 'The board are concerned by recent results.' : 'The board are very unhappy. Things must improve quickly.';
+  let body;
+  if (sub === 'conf') body = `<div class="meter" style="max-width:520px;margin:6px auto 14px"><i style="width:${c}%;background:${col}"></i></div><p style="font-size:17px;line-height:1.5">${S.round ? words : `The ${esc(club(me()).name)} directors are looking forward to a long and successful era under your management.`}</p>${S.ultimatum ? '<p style="color:var(--hot);font-weight:700">The board have issued an ultimatum. Results must improve.</p>' : ''}
+    <dl class="kv" style="margin-top:12px"><dt>Expectation</dt><dd><b>${aim.name}</b>: ${aim.text}</dd><dt>Position</dt><dd>${S.round ? ordinal(pos) : 'the season has not started'}</dd><dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
+  else body = `<p>Ask the board for something. They decide on your standing with them and on the money: ${cash(S.fin.bal)} in the bank. One request a month.</p>
+    <div class="lg">${REQS.map(r => `<div><b>${r.n}</b><span>${cash(r.cost)}</span><span class="dim small">${r.txt}</span><span>${fac[r.k] ? '<span class="yel">Done</span>' : `<button class="btn sm" data-req="${r.k}" ${asked ? 'disabled' : ''}>Ask</button>`}</span></div>`).join('')}</div>
+    ${asked ? `<p class="small dim">You have asked the board this month: ${esc(S.req.r)}</p>` : ''}`;
+  o.title = esc(club(me()).name); o.tools = `<span class="seg"><button data-bs="conf" class="${sub === 'conf' ? 'on' : ''}">Board Confidence</button><button data-bs="req" class="${sub === 'req' ? 'on' : ''}">Board Request</button><button disabled>FA Request</button></span>`;
+  o.body = body; frame(o);
+  document.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { V = { ...V, sub: b.dataset.bs }; view(); }));
+  document.querySelectorAll('[data-req]').forEach(b => b.addEventListener('click', () => { const r = REQS.find(x => x.k === b.dataset.req);
+    const ok = S.conf >= 55 && S.fin.bal > r.cost * 1.5;
+    S.req = { m: month, r: ok ? `${r.n}: agreed.` : `${r.n}: turned down.` };
+    if (ok){ S.fac = S.fac || {}; S.fac[r.k] = 1; S.fin.bal -= r.cost; S.fin.wages += 0; news('board', 'The board agree', `The board have agreed to your request: ${r.n.toLowerCase()}. It costs the club ${cash(r.cost)}.`); (S.hist = S.hist || []).push({ d: S.date, c: me(), t: `Board agreed: ${r.n.toLowerCase()}` }); }
+    else news('board', 'The board say no', S.conf < 55 ? `The board have turned down your request (${r.n.toLowerCase()}). Win them over first.` : `The board have turned down your request (${r.n.toLowerCase()}): the club cannot afford it.`);
+    save(); view(); }));
+}
+
+/* ---- player search, the short list, comparing two players ---- */
+let PICK2 = [];
+function scrFind(){
+  const tab = V.tab || 'search', qv = V.q || '', fold = s => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const F = V.f || {}, pg = V.pg || 0, per = 15;
+  const sh = new Set((S.short || []).map(x => x.id));
+  let L = tab === 'short' ? D.players.filter(p => sh.has(p.id)) : D.players.filter(p => (!qv || fold(p.n).includes(fold(qv))) && (!F.g || GROUP[p.prim] === F.g) && (!F.age || p.age <= +F.age) && (!F.club || p.club === +F.club) && (!F.min || ovrNow(p) >= +F.min));
+  L = L.slice().sort((a, b) => V.sort === 'val' ? b.val - a.val : V.sort === 'ovr' ? ovrNow(b) - ovrNow(a) : surname(a.n).localeCompare(surname(b.n)));
+  const pages = Math.max(1, Math.ceil(L.length / per)), pgc = Math.min(pg, pages - 1), rows = L.slice(pgc * per, pgc * per + per);
+  const inf = p => { const q = ps(p.id); return q.injD ? '<span class="tag inj">Inj</span>' : q.sus ? '<span class="tag sus">Sus</span>' : S.con[p.id] && S.con[p.id].y <= S.season + 1 ? '<span class="tag">Ctr</span>' : sh.has(p.id) ? '<span class="tag">SL</span>' : ''; };
+  const tools = tab === 'short' ? `<span class="dim small">Players on your short list: their attributes are known after a week.</span>` : `<input type="text" id="fq" placeholder="Name" value="${esc(qv)}" style="flex:1;min-width:140px">
+    <select class="dd" id="fg"><option value="">All positions</option>${[['GK', 'Goalkeepers'], ['DEF', 'Defenders'], ['MID', 'Midfielders'], ['FWD', 'Forwards']].map(([k, n]) => `<option value="${k}" ${F.g === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    <select class="dd" id="fa"><option value="">Any age</option>${[19, 21, 23, 25, 28, 31].map(a => `<option value="${a}" ${+F.age === a ? 'selected' : ''}>${a} or under</option>`).join('')}</select>
+    <select class="dd" id="fm"><option value="">Any ability</option>${[60, 70, 75, 80, 85].map(a => `<option value="${a}" ${+F.min === a ? 'selected' : ''}>${a}+</option>`).join('')}</select>
+    <select class="dd" id="fc"><option value="">All clubs</option>${D.clubs.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<option value="${c.id}" ${+F.club === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
+    <select class="dd" id="fs">${[['name', 'Sort: Name'], ['ovr', 'Sort: Ability'], ['val', 'Sort: Value']].map(([k, n]) => `<option value="${k}" ${(V.sort || 'name') === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
+  frame({ title: 'Player &amp; Staff Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: [['short', 'Short List'], ['search', 'Player Search'], ['staff', 'Staff Search', true], ['sc1', 'Scout #1', true], ['sc2', 'Scout #2', true]], topOn: tab,
+    onTab: k => { PICK2 = []; V = { s: 'find', tab: k }; view(); }, tools,
+    body: `<div class="pgbar"><span class="dim small">${tab === 'short' ? 'Your short list' : qv || Object.values(F).some(Boolean) ? 'Search results' : 'Every player in the league'}</span><span class="pg"><button data-pg="0" ${pgc ? '' : 'disabled'}>«</button><button data-pg="${pgc - 1}" ${pgc ? '' : 'disabled'}>‹</button><span>Pg ${pgc + 1}/${pages}</span><button data-pg="${pgc + 1}" ${pgc < pages - 1 ? '' : 'disabled'}>›</button><button data-pg="${pages - 1}" ${pgc < pages - 1 ? '' : 'disabled'}>»</button></span></div>
+      <div class="tw"><table><thead><tr><th></th><th>Inf</th><th>Name</th><th>Club</th><th>Based</th><th>Position</th><th class="r">Age</th><th class="r">Value</th></tr></thead><tbody>${rows.map(p => `<tr class="click" data-pl="${p.id}"><td><button class="box ${PICK2.includes(p.id) ? 'on' : ''}" data-cmp="${p.id}">${PICK2.includes(p.id) ? PICK2.indexOf(p.id) + 1 : ''}</button></td><td>${inf(p)}</td><td><b>${esc(cmName(p.n))}</b></td><td class="sky">${esc(club(p.club).name)}</td><td class="yel">${esc(D.league)}</td><td class="yel">${cmPos(p.pos)}</td><td class="r">${p.age}</td><td class="r"><span class="pill">${valueOf(p)}</span></td></tr>`).join('') || `<tr><td colspan="8" class="empty">${tab === 'short' ? 'Your short list is empty: pick players in Player Search and add them.' : 'No players found.'}</td></tr>`}</tbody></table></div>
+      <p class="c sky" style="font-size:16px;margin:10px 0 0"><b>${L.length} player${L.length === 1 ? '' : 's'} found</b></p>
+      <div class="tools" style="justify-content:center;margin-top:8px"><button class="btn sm" id="cmp">Compare</button>${tab === 'short' ? '<button class="btn sm" id="unsl">Remove from Short List</button>' : '<button class="btn sm" id="addsl">Add to Short List</button>'}<span class="small dim">${PICK2.length} selected</span></div>` });
+  const upd = (k, v) => { V = { ...V, f: { ...F, [k]: v }, pg: 0 }; view(); };
+  const on = (id, ev, f) => { const el = $('#' + id); if (el) el.addEventListener(ev, f); };
+  on('fq', 'keydown', e => { if (e.key === 'Enter'){ V = { ...V, q: e.target.value.trim(), pg: 0 }; view(); } });
+  on('fq', 'change', e => { V = { ...V, q: e.target.value.trim(), pg: 0 }; view(); });
+  on('fg', 'change', e => upd('g', e.target.value)); on('fa', 'change', e => upd('age', e.target.value)); on('fm', 'change', e => upd('min', e.target.value)); on('fc', 'change', e => upd('club', e.target.value));
+  on('fs', 'change', e => { V = { ...V, sort: e.target.value }; view(); });
+  document.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => { V = { ...V, pg: +b.dataset.pg }; view(); }));
+  document.querySelectorAll('[data-cmp]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const id = +b.dataset.cmp; PICK2 = PICK2.includes(id) ? PICK2.filter(x => x !== id) : [...PICK2, id].slice(-2); view(); }));
+  on('cmp', 'click', () => { if (PICK2.length !== 2){ dialog({ title: 'Can not compare players', text: 'Two players must be selected to compare against each other.', no: false, onYes: () => view() }); return; } go({ s: 'compare', a: PICK2[0], b: PICK2[1] }); });
+  on('addsl', 'click', () => { S.short = S.short || []; let n = 0; for (const id of PICK2) if (!S.short.some(x => x.id === id)){ S.short.push({ id, d: S.date }); n++; } PICK2 = []; save(); toast(n ? `${n} added to your short list.` : 'Pick players with the boxes first.'); view(); });
+  on('unsl', 'click', () => { S.short = (S.short || []).filter(x => !PICK2.includes(x.id)); PICK2 = []; save(); view(); });
+  wirePlayers(rows.map(p => p.id));
+}
+function scrCompare(){
+  const a = P.get(V.a), b = P.get(V.b); if (!a || !b){ V = { s: 'find' }; view(); return; }
+  const keys = Object.keys(ATTR_NAME).filter(k => a.prim === 'GK' || b.prim === 'GK' || !GK_KEYS.includes(k)).sort((x, y) => ATTR_NAME[x].localeCompare(ATTR_NAME[y]));
+  const cell = (p, v, w) => `<td class="r av ${vcls(v)}" style="${known(p) && v > w ? 'text-decoration:underline' : ''}">${showA(p, v)}</td>`;
+  frame({ title: 'Compare Players', top: [['c', 'Attributes']], topOn: 'c',
+    body: `<div class="tw"><table><thead><tr><th class="r">${esc(a.n)}<br><span class="dim">${esc(club(a.club).name)}</span></th><th class="c"></th><th>${esc(b.n)}<br><span class="dim">${esc(club(b.club).name)}</span></th></tr></thead><tbody>
+      <tr><td class="r yel"><b>${cmPos(a.pos)}</b></td><td class="c dim">Position</td><td class="yel"><b>${cmPos(b.pos)}</b></td></tr>
+      <tr><td class="r">${a.age}</td><td class="c dim">Age</td><td>${b.age}</td></tr>
+      <tr><td class="r">${valueOf(a)}</td><td class="c dim">Value</td><td>${valueOf(b)}</td></tr>
+      <tr><td class="r av ${vcls(ovrNow(a))}">${showA(a, ovrNow(a))}</td><td class="c dim">Ability</td><td class="av ${vcls(ovrNow(b))}" style="text-align:left">${showA(b, ovrNow(b))}</td></tr>
+      ${keys.map(k => { const x = A(a, k), y = A(b, k); return `<tr>${cell(a, x, y)}<td class="c dim">${esc(ATTR_NAME[k])}</td><td class="av ${vcls(y)}" style="text-align:left;${known(b) && y > x ? 'text-decoration:underline' : ''}">${showA(b, y)}</td></tr>`; }).join('')}</tbody></table></div>` });
+}
+
+/* ---- managers: reputation, jobs; transfers; the manager's own profile ---- */
+const REP_WORDS = ['Poor', 'Average', 'Good', 'Very Good', 'Excellent', 'World Class'];
+function managers(){
+  const st = standings(), byQ = D.clubs.slice().sort((a, b) => b.q - a.q).map(c => c.id);
+  return D.clubs.map(c => { const mine = c.id === me(), rr = rng(`m-${c.id}`), score = mine ? ({ 'Unproven': 1, 'Poor': 0, 'Average': 1, 'Good': 2, 'Very good': 3 }[S.rep] ?? 1) * 20 + 10 : clamp(Math.round((c.q - 70) * 3.2 + rr() * 14), 0, 99);
+    const pos = st.findIndex(r => r.id === c.id) + 1, exp = byQ.indexOf(c.id) + 1, diff = S.round >= 5 ? pos - exp : 0;
+    const sec = mine ? (S.conf >= 62 ? 'Secure' : S.conf >= 40 ? 'Okay' : S.conf >= 22 ? 'Insecure' : 'Very Insecure') : diff <= 0 ? 'Secure' : diff <= 3 ? 'Okay' : diff <= 6 ? 'Insecure' : 'Very Insecure';
+    return { cid: c.id, name: mine ? S.manager : (c.coach || `${c.name} manager`), mine, score, rep: REP_WORDS[clamp(Math.floor(score / 17), 0, 5)], sec }; }).sort((a, b) => b.score - a.score);
+}
+function scrManagers(){
+  const tab = V.tab || 'rep', M = managers();
+  const body = tab === 'rep' ? `<div class="ptitle">Reputation in England</div><table><tbody>${M.map((m, i) => `<tr class="${m.mine ? 'me' : ''}"><td><span class="pill">${ordinal(i + 1)}</span></td><td><b style="font-size:15px">${esc(m.name)}</b></td><td class="yel">${esc(club(m.cid).name)}</td><td class="r"><span class="pill" style="background:#3A1E66">${m.rep}</span></td></tr>`).join('')}</tbody></table>${D.clubs.some(c => c.coach) ? '' : '<p class="small dim">The other managers\' names come in with the next data update.</p>'}`
+    : (() => { const L = M.filter(m => /Insecure/.test(m.sec)); return `<div class="ptitle">Job Information · England</div>${L.length ? `<table><tbody>${L.map(m => `<tr class="${m.mine ? 'me' : ''}"><td><b>${esc(cmName(m.name))}</b></td><td class="sky">${esc(club(m.cid).name)}</td><td class="yel">England</td><td style="color:var(--warn)">PRM</td><td class="r"><span class="pill" style="background:#3A1E66">${m.sec}</span></td></tr>`).join('')}</tbody></table>` : '<p class="empty">No manager is under pressure just now.</p>'}<p class="small dim">Managers whose clubs sit well below where their squads should finish. Their jobs may soon be open.</p>`; })();
+  frame({ title: 'Manager Stats', top: [['rep', 'Reputation'], ['jobs', 'Job Information']], topOn: tab, onTab: k => { V = { s: 'managers', tab: k }; view(); }, body });
+}
+function scrTransfers(){
+  const months = []; for (let d = S.rounds[0].date.slice(0, 7), i = 0; i < 12; i++){ months.push(d); const [y, m] = d.split('-').map(Number); d = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; }
+  const cur = V.m || S.date.slice(0, 7), i = Math.max(0, months.indexOf(cur));
+  const L = (S.transfers || []).filter(x => x.d.slice(0, 7) === months[i]);
+  frame({ title: 'Transfers', sub: new Date(months[i] + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }), top: [['t', 'This Season']], topOn: 't',
+    tools: `<span class="seg"><button data-mo="${i - 1}" ${i ? '' : 'disabled'}>‹ Earlier</button><button data-mo="${i + 1}" ${i < months.length - 1 ? '' : 'disabled'}>Later ›</button></span>`,
+    body: L.length ? `<table><tbody>${L.map(x => `<tr><td>${fmtDate(x.d)}</td><td><b>${esc(x.n)}</b></td><td>${esc(x.from)}</td><td>→</td><td>${esc(x.to)}</td><td class="r">${x.fee}</td></tr>`).join('')}</tbody></table>` : '<p class="empty" style="font-size:16px">No transfers have taken place.</p><p class="small dim c">The transfer market opens in the next round of the game.</p>' });
+  document.querySelectorAll('[data-mo]').forEach(b => b.addEventListener('click', () => { V = { ...V, m: months[+b.dataset.mo] }; view(); }));
+}
+function scrManager(){
+  const tab = V.tab || 'hist', all = allResults().filter(r => r.h === me() || r.a === me());
+  const w = all.filter(r => r.w === me()).length, d = all.filter(r => r.w == null).length, l = all.length - w - d;
+  const gf = all.reduce((t, r) => t + (r.h === me() ? r.s[0] : r.s[1]), 0), ga = all.reduce((t, r) => t + (r.h === me() ? r.s[1] : r.s[0]), 0);
+  const H = (S.hist || [{ d: S.rounds[0].date, c: me(), t: `Hired as ${club(me()).name} manager` }]).slice().reverse();
+  let body = '';
+  if (tab === 'hist') body = `<div class="ptitle">Achievements</div><table><tbody>${H.map(x => `<tr><td><span class="pill">${shortDate(x.d)}</span></td><td><b>${esc(club(x.c).name)}</b></td><td class="yel">${esc(x.t)}</td></tr>`).join('')}</tbody></table>
+    <div class="ptitle" style="margin-top:14px">This season</div><dl class="kv"><dt>Matches</dt><dd>${all.length}: won ${w}, drawn ${d}, lost ${l}</dd><dt>Goals</dt><dd>${gf} for, ${ga} against</dd><dt>Win rate</dt><dd>${all.length ? Math.round(100 * w / all.length) : 0}%</dd></dl>`;
+  if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv"><dt>Club</dt><dd>${esc(club(me()).name)}</dd><dt>Wage</dt><dd>${wage(Math.round(club(me()).q * 900 / 5) * 5)}</dd><dt>Expires</dt><dd>30.6.${String(S.season + 2).slice(2)}</dd><dt>Nationality</dt><dd>${esc(S.nat || '-')}</dd><dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
+  frame(ofClub(me(), { title: `${esc(S.manager)} (${esc(club(me()).name)})`, top: [['inj', 'Injuries &amp; Bans', true], ['con', 'Contract'], ['tr', 'Transfer', true], ['hist', 'History']], topOn: tab, onTab: k => { if (k === 'hall'){ SETUP_OPEN = true; SETUP = 'hall'; view(); return; } if (k === 'stats' || k === 'jobs'){ go({ s: 'managers', tab: k === 'jobs' ? 'jobs' : 'rep' }); return; } V = { s: 'manager', tab: k }; view(); }, body,
+    bottom: [['stats', 'Manager Stats'], ['jobs', 'Jobs'], ['hall', 'Hall of Fame']] }));
 }
 
 /* =====================================================================================================================

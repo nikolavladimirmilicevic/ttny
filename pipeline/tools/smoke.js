@@ -43,12 +43,17 @@ const fail = m => { console.error('SMOKE FAILED: ' + m); process.exit(1); };
     const m = await page(); await m.goto(base + 'manager.html', { timeout: 60000 });
     const hasCm = await m.evaluate(() => fetch('cm.json').then(r => r.ok).catch(() => false));
     if (hasCm){
-      await m.waitForSelector('[data-club]', { timeout: 60000 });
+      // new game: Select League(s) → Name → Nationality → Team → Take Control → Yes → Manager Status → file name
+      await m.waitForSelector('#next', { timeout: 60000 });
       const nc = await m.evaluate(() => D.clubs.length), np = await m.evaluate(() => D.players.length);
       console.log('manager: clubs', nc, 'players', np);
       if (nc < 10 || np < 200) fail(`manager: only ${nc} clubs and ${np} players`);
       // the calendar moves on day by day: Continue until the pre-match screen of the first match
-      await m.click('[data-club]');
+      for (let i = 0; i < 15 && !(await m.$('#cont')); i++){
+        if (await m.$('#fn')) await m.fill('#fn', 'Test'); if ((await m.$('[data-nat]')) && !(await m.$('.nat.on'))) await m.click('[data-nat]');
+        for (const sel of ['[data-club]', '#take', '#yes', '#fok', '#next']){ const el = await m.$(sel + ':not([disabled])'); if (el){ await el.click(); break; } }
+        await m.waitForTimeout(200);
+      }
       for (let i = 0; i < 40 && !(await m.$('#tomatch')); i++){ await m.click('#cont'); await m.waitForTimeout(150); }
       await m.click('#tomatch'); await m.waitForSelector('#skip', { timeout: 10000 }); await m.click('#skip'); await m.waitForSelector('#done', { timeout: 10000 }); await m.click('#done');
       await m.waitForSelector('#cont', { timeout: 10000 });
