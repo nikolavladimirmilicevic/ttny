@@ -266,6 +266,33 @@ button.frow:hover{border-color:var(--gold)}
 .bn1 button,.bn .ok{background:var(--gold)!important;color:var(--gold-ink)!important}
 .bn1 button{border:0;border-radius:10px;font:600 16px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:13px 0}
 .sb.newsflag{color:var(--hot);font-weight:700;text-align:center;margin-top:auto}
+
+.pmast{display:grid;grid-template-columns:280px 1fr;gap:18px}
+@media(max-width:760px){.pmast{grid-template-columns:1fr}}
+.pcard{position:relative;display:block;width:100%;aspect-ratio:3/4;max-width:260px;margin:0 auto;border-radius:14px;padding:12px;text-align:center;color:#fff;border:0;
+  background:linear-gradient(160deg,var(--k1) 0%,#0E1A2B 75%);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12)}
+.pcard .pp{position:absolute;left:12px;top:12px;background:#0B1422;color:var(--gold);font:700 13px/1 var(--display);padding:4px 7px;border-radius:5px}
+.pcard .po{position:absolute;left:12px;top:36px;font:800 46px/1 var(--display)}
+.pcard .p6{position:absolute;left:12px;right:12px;bottom:44px;display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;text-align:left;font-size:13px;opacity:.95}
+.pcard .p6 b{font-size:15px}
+.pcard .pnm{position:absolute;left:0;right:0;bottom:12px;font:700 17px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.pcard.sm{aspect-ratio:auto;min-height:118px;max-width:none;padding:10px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;gap:2px}
+.pcard.sm .po{font-size:30px;top:30px}.pcard.sm b{font-size:13px;text-transform:uppercase}
+.psim{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media(max-width:600px){.psim{grid-template-columns:1fr 1fr}}
+.ptag{display:flex;align-items:center;gap:8px;margin-top:10px}
+.pv{display:inline-block;min-width:30px;text-align:center;border-radius:5px;color:#0B1422;font-weight:800;font-size:13px;padding:2px 4px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 22px;margin-bottom:12px}
+@media(max-width:600px){.pgrid{grid-template-columns:1fr}}
+.pg2 .ph{display:flex;align-items:center;gap:8px;font-size:16px}
+.pbar{height:5px;background:var(--panel-2);border-radius:3px;margin:6px 0 7px;overflow:hidden}.pbar i{display:block;height:100%}
+.pa{display:flex;align-items:center;gap:9px;padding:2px 0}.pa .pn{font-size:14px}
+.radar{display:block;width:100%;max-width:260px;margin:8px auto 0}
+.ppitch{background:linear-gradient(#1E5E3A,#174A2E);border-radius:10px;padding:8px 6px;display:grid;gap:6px}
+.prow{display:flex;justify-content:center;gap:5px}
+.pc{flex:0 1 50px;background:rgba(0,0,0,.28);border-radius:6px;text-align:center;padding:3px 0}
+.pc span{display:block;font-size:10.5px;color:#cfe;font-weight:600}.pc b{font-size:15px}
+.pc.on{background:var(--gold)}.pc.on span,.pc.on b{color:var(--gold-ink)}
 </style>
 </head><body>
 <div id="app"><p class="loading">Loading…</p></div>
@@ -1284,6 +1311,47 @@ function clubTactics(cid, o){
 }
 
 /* ---- a player ---- */
+/* ---- the player's profile, laid out like a PES database page: card, attribute groups with bars, radar, positions ---- */
+const cardName = n => { const w = String(n || '').trim().split(/\s+/), sn = surname(n); return w.length < 2 || sn === n ? n : `${w[0][0]}. ${sn}`; };
+const TT = t => String(t).replace(/\b[a-z]/g, c => c.toUpperCase()).replace(/\bGk\b/, 'GK');
+const CARD6 = p => p.prim === 'GK'
+  ? [['AWR', ['ga']], ['CAT', ['gc']], ['CLR', ['gl']], ['REF', ['gr']], ['REA', ['gh']], ['KIC', ['kp', 'lf']]]
+  : [['SPD', ['sp', 'ac']], ['SHO', ['fi', 'kp', 'oa']], ['PAS', ['lp', 'lf', 'cu']], ['DRI', ['bc', 'dr', 'tp', 'ba']], ['STR', ['pc', 'ju', 'st']], ['DEF', ['da', 'bw', 'ag']]];
+const GROUPS = [['Attacking', ['oa', 'fi', 'kp']], ['Dribbling', ['bc', 'dr', 'tp', 'ba']], ['Defending', ['he', 'ju', 'da', 'bw', 'ag']], ['Passing', ['lp', 'lf', 'pk', 'cu']], ['Physicality', ['sp', 'ac', 'pc', 'st']], ['Goalkeeping', ['ga', 'gc', 'gl', 'gr', 'gh']]];
+const BARC = v => v >= 90 ? '#5CE39A' : v >= 80 ? '#A8E063' : v >= 70 ? '#F2D33D' : v >= 60 ? '#F2A65A' : '#E57A62';
+const avgK = (p, ks) => Math.round(ks.reduce((t, k) => t + A(p, k), 0) / ks.length);
+function radar(vals, labels, masked){
+  const R = 80, cx = 110, cy = 100, pt = (i, r) => [cx + r * Math.sin(i * Math.PI / 3), cy - r * Math.cos(i * Math.PI / 3)];
+  const ring = f => Array.from({ length: 6 }, (_, i) => pt(i, R * f).join(',')).join(' ');
+  return `<svg viewBox="0 0 220 200" class="radar">${[1, .75, .5, .25].map(f => `<polygon points="${ring(f)}" fill="none" stroke="var(--line)"/>`).join('')}
+    ${Array.from({ length: 6 }, (_, i) => `<line x1="${cx}" y1="${cy}" x2="${pt(i, R)[0]}" y2="${pt(i, R)[1]}" stroke="var(--line)"/>`).join('')}
+    ${masked ? '' : `<polygon points="${vals.map((v, i) => pt(i, R * Math.max(.05, (v - 30) / 69)).join(',')).join(' ')}" fill="rgba(76,214,140,.28)" stroke="#4CD68C" stroke-width="2"/>`}
+    ${labels.map((l, i) => { const [x, y] = pt(i, R + 13); return `<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--muted)">${l}</text>`; }).join('')}</svg>`;
+}
+function playerCard(p, q, con, born){
+  const kn = known(p), o = ovrNow(p), c6 = CARD6(p).map(([l, ks]) => [l, avgK(p, ks)]), k = kitOf(p.club);
+  const attr = key => { const v = A(p, key), d = q.d[key] || 0; return `<div class="pa"><span class="pv" style="background:${BARC(kn ? v : Math.floor(v / 10) * 10 + 5)}">${showA(p, v)}</span><span class="pn">${esc(TT(ATTR_NAME[key]))}${d >= 1 && kn ? ' <span class="up">▲</span>' : d <= -1 && kn ? ' <span class="dn">▼</span>' : ''}</span></div>`; };
+  const grp = ([n, ks]) => { const v = avgK(p, ks); return `<div class="pg2"><div class="ph"><span class="pv" style="background:${BARC(kn ? v : Math.floor(v / 10) * 10 + 5)}">${showA(p, v)}</span><b>${n}</b></div><div class="pbar"><i style="width:${kn ? v : 0}%;background:${BARC(v)}"></i></div>${ks.map(attr).join('')}${n === 'Physicality' ? `<div class="pa"><span class="pv" style="background:${BARC([90, 75, 62][(p.inj || 2) - 1])}">${4 - (p.inj || 2)}</span><span class="pn">Injury Resistance</span></div>` : ''}</div>`; };
+  const groups = GROUPS.filter(([n]) => p.prim === 'GK' || n !== 'Goalkeeping');
+  const rows = [['LWF', 'SS', 'CF', 'RWF'], ['LMF', 'DMF', 'CMF', 'AMF', 'RMF'], ['LB', 'CB', 'RB'], ['GK']];
+  const pos = rows.map(r => `<div class="prow">${r.map(x => { const v = fitIn(p, x), on = p.pos.includes(x); return `<div class="pc ${on ? 'on' : ''}"><span>${x}</span><b class="${on ? '' : vcls(v)}">${kn ? v : '?'}</b></div>`; }).join('')}</div>`).join('');
+  const sim = D.players.filter(x => x.id !== p.id && x.prim === p.prim).sort((a, b) => Math.abs(ovrNow(a) - o) - Math.abs(ovrNow(b) - o) || ovrNow(b) - ovrNow(a)).slice(0, 4);
+  const mini = x => { const kk = kitOf(x.club); return `<button class="pcard sm" data-pl="${x.id}" style="--k1:${kk[0]};--k2:${kk[1]}"><span class="pp">${cmPos([x.prim])}</span><span class="po">${known(x) ? ovrNow(x) : '?'}</span><b>${esc(cardName(x.n))}</b><span class="small">${esc(club(x.club).name)}</span></button>`; };
+  return `<div class="pmast">
+    <div class="pleft"><div class="pcard" style="--k1:${k[0]};--k2:${k[1]}"><span class="pp">${esc(p.prim)}</span><span class="po">${kn ? o : '?'}</span>
+      <div class="p6">${c6.map(([l, v]) => `<span><b>${showA(p, v)}</b> ${l}</span>`).join('')}</div><b class="pnm">${esc(cardName(p.n))}</b></div>
+      <div class="ptag"><span class="pv" style="background:${kn ? BARC(o) : 'var(--panel-2)'}">${kn ? o : '?'}</span><b>${esc(p.n)}</b></div>
+      <p class="small dim" style="margin:6px 0 0">${born}. ${esc(p.nat || '')}. ${esc(club(p.club).name)}, ${cmPos(p.pos)}.</p>
+      ${radar(c6.map(x => x[1]), c6.map(x => x[0]), !kn)}
+      <div class="ptitle">Positions</div><div class="ppitch">${pos}</div></div>
+    <div class="pright"><div class="pgrid">${groups.map(grp).join('')}</div>
+      <div class="ptitle">Playing Style</div><p style="margin:0 0 8px">${esc(p.style || 'None')}</p>
+      <div class="ptitle">Info</div><dl class="kv"><dt>Age</dt><dd>${p.age}</dd><dt>Nationality</dt><dd>${esc(p.nat || '-')}</dd><dt>Team</dt><dd>${esc(club(p.club).name)}${p.no ? ' · ' + p.no : ''}</dd><dt>Position</dt><dd class="yel">${cmPos(p.pos)}</dd>
+        <dt>Height</dt><dd>${p.ht ? p.ht + ' cm' : '-'}</dd><dt>Weight</dt><dd>${p.wt ? p.wt + ' kg' : '-'}</dd><dt>Market Value</dt><dd>${valueOf(p)}</dd><dt>Contract</dt><dd>${con ? `30.6.${String(con.y).slice(2)}, ${wage(con.w)}` : '-'}</dd>
+        <dt>Condition</dt><dd>${Math.round(q.cond)}%</dd><dt>Morale</dt><dd>${morWord(q.mor)}</dd></dl>
+      ${kn ? '' : '<p class="small dim">Attribute masking: you will know his exact numbers once you have played his club, or after a week on your short list.</p>'}
+      <div class="ptitle">Similar Players</div><div class="psim">${sim.map(mini).join('')}</div></div></div>`;
+}
 function scrPlayer(){
   const p = P.get(V.id); if (!p){ V = { s: 'news' }; view(); return; }
   const q = ps(p.id), con = S.con[p.id], tab = V.tab || 'profile', b = p.bd || null;
@@ -1292,9 +1360,7 @@ function scrPlayer(){
   const third = Math.ceil(keys.length / 3), col = L => L.map(k => { const v = A(p, k), d = q.d[k] || 0; return `<div class="arow"><span>${esc(ATTR_NAME[k])}</span><span>${d >= 1 && known(p) ? '<span class="up">▲</span>' : d <= -1 && known(p) ? '<span class="dn">▼</span>' : ''} <span class="av ${vcls(v)}">${showA(p, v)}</span></span></div>`; }).join('');
   const posList = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'SS', 'CF'];
   let body;
-  if (tab === 'profile') body = `<div class="born">${born}. ${esc(p.nat || '')}.</div>
-    <div class="cols3"><div>${col(keys.slice(0, third))}</div><div>${col(keys.slice(third, 2 * third))}</div><div>${col(keys.slice(2 * third))}
-      <div class="arow"><span>Position</span><span class="yel"><b>${cmPos(p.pos)}</b></span></div><div class="arow"><span>Style</span><span class="sky">${esc(p.style || '-')}</span></div><div class="arow"><span>Condition</span><span>${Math.round(q.cond)}%</span></div><div class="arow"><span>Morale</span><span>${morWord(q.mor)}</span></div><div class="arow"><span>Ability</span><span class="av ${vcls(ovrNow(p))}">${showA(p, ovrNow(p))}</span></div>${known(p) ? '' : '<p class="small dim">Attributes masked: play his club, or keep him on your short list for a week.</p>'}</div></div>`;
+  if (tab === 'profile') body = playerCard(p, q, con, born);
   if (tab === 'pos') body = `<div class="ptitle">Ability in every position</div><div class="tw"><table><thead><tr>${posList.map(x => `<th class="c">${cmPos([x])}</th>`).join('')}</tr></thead><tbody><tr>${posList.map(x => `<td class="c av ${vcls(fitIn(p, x))}" style="${p.pos.includes(x) ? 'outline:1px solid var(--yel)' : ''}">${fitIn(p, x)}</td>`).join('')}</tr></tbody></table></div>`;
   if (tab === 'inj') body = `<div class="ptitle">Injuries &amp; Bans</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Fitness</dt><dd>${q.injD ? `<span style="color:var(--hot)">Injured, out about ${Math.ceil(q.injD / 7)} week(s)</span>` : q.light ? 'Back from injury, not yet sharp' : 'Fit'}</dd><dt>Condition</dt><dd>${Math.round(q.cond)}%</dd><dt>Bookings</dt><dd>${q.yc} this season</dd><dt>Banned</dt><dd>${q.sus ? `${q.sus} match(es)` : 'No'}</dd><dt>Proneness</dt><dd>${['Rarely injured', 'Average', 'Injury prone'][(p.inj || 2) - 1] || 'Average'}</dd></dl>`;
   if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Club</dt><dd>${esc(club(p.club).name)}</dd><dt>Wage</dt><dd>${wage(con.w)}</dd><dt>Expires</dt><dd>30.6.${String(con.y).slice(2)}</dd><dt>Value</dt><dd>${valueOf(p)}</dd><dt>Squad number</dt><dd>${p.no || '-'}</dd></dl>`;
@@ -1310,6 +1376,7 @@ function scrPlayer(){
     onTab: k => { V = { ...V, tab: k }; view(); }, body,
     next: at >= 0 && at < list.length - 1 ? () => { V = { ...V, id: list[at + 1] }; view(); } : null }));
   const pk = $('#pick'); if (pk) pk.addEventListener('click', () => { toggleSel(p.id); view(); });
+  document.querySelectorAll('.psim [data-pl]').forEach(b => b.addEventListener('click', () => go({ s: 'player', id: +b.dataset.pl })));
   const sl = $('#slb'); if (sl) sl.addEventListener('click', () => { S.short = S.short || []; if (S.short.some(x => x.id === p.id)) S.short = S.short.filter(x => x.id !== p.id); else S.short.push({ id: p.id, d: S.date }); save(); view(); });
 }
 

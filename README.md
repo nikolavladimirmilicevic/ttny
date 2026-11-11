@@ -217,3 +217,7 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 - In the game: News has Next Unread and the Contracts and Media / Transfers / Jobs / Records tabs; the squad has the slot strip (GK … SB7), First Team / Reserves / Whole Squad and Clear Squad; the board takes requests (training, seats, youth); Player & Staff Search has a short list, pages and a side-by-side compare; Manager Stats (reputation in England, job security); Transfers by month; the manager's profile with history.
 - Attribute masking: other clubs' players show attributes as ranges until you have played their club or kept them on the short list for a week.
 - Fix: August games could be "Cold" at 27°C.
+
+### Manager: player profile like a PES database page
+- The Profile tab is laid out like a PES 2021 database page: a card in the club's colours with the overall and six card stats (SPD SHO PAS DRI STR DEF; for keepers AWR CAT CLR REF REA KIC), the attributes grouped as Attacking / Dribbling / Defending / Passing / Physicality / Goalkeeping with coloured value pills and a bar per group, a hexagon radar, the rating in every position on a pitch, Playing Style, Info, and four Similar Players (same position, nearest overall).
+- With attribute masking on, other clubs' players show ranges (80-89) and a "?" overall until you know them.
