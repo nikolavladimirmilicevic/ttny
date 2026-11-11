@@ -243,7 +243,13 @@ def age_of(e, today):
     if bd:
         b, t = datetime.date.fromisoformat(bd[:10]), datetime.date.fromisoformat(today)
         return t.year - b.year - ((t.month, t.day) < (b.month, b.day))
-    return e.get('age') or 25
+    a = e.get('age')
+    return a if a and 14 <= a <= 45 else 25   # the API now and then gives a year in place of an age
+
+
+def youth_ovr(age, base):
+    """A young player with little senior football yet: rated by his age, a little above or below with the club."""
+    return min(64, 50 + 2.5 * max(0, age - 16) + (base - 80) * .2)
 
 
 def grid_pos(xi, grid):
@@ -281,7 +287,7 @@ def _listed(squads):
 
 
 def absent_candidates(people, squads, lastseen, team_ids, season, today):
-    """Players worth asking the API about: 5 or more appearances last season or this one with a club of
+    """Players worth asking the API about: 5 or more appearances (or starts in our lineups) last season or this one with a club of
     this league, whose last start was for it within LOOK_BACK days, and who are in no club's squad list now."""
     listed, t0, out = _listed(squads), datetime.date.fromisoformat(today), []
     for pid, (d, tid, *_) in (lastseen or {}).items():
@@ -290,7 +296,9 @@ def absent_candidates(people, squads, lastseen, team_ids, season, today):
         if (t0 - datetime.date.fromisoformat(d)).days > LOOK_BACK:
             continue
         ss = (people.get(str(pid)) or {}).get('ss') or {}
-        if max(((ss.get(f'{y}:{tid}') or [0])[0] or 0) for y in (season - 1, season)) >= 5:
+        apps = max(((ss.get(f'{y}:{tid}') or [0])[0] or 0) for y in (season - 1, season))
+        starts = sum((lastseen[pid][2] or {}).values()) if len(lastseen[pid]) > 2 else 0
+        if apps >= 5 or starts >= 5:
             out.append(pid)
     return out
 
@@ -327,7 +335,7 @@ def long_term_out(people, squads, lastseen, team_ids, season, today):
             continue
         if any(int(k.split(':')[0]) >= season for k in ss):
             continue
-        if ((ss.get(f'{season - 1}:{tid}') or [0])[0] or 0) < 10:
+        if ((ss.get(f'{season - 1}:{tid}') or [0])[0] or 0) < 10:   # (our lineups' starts count other clubs too: not here)
             continue
         back = last + datetime.timedelta(days=LONG_OUT)
         if back > t0:
@@ -392,12 +400,23 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         if coef and p and p['rt'] and p['min'] >= 200:
             est = coef[0] + coef[1] * p['rt'] + coef[2] * p['share'] + coef[3] * math.log1p(p['min'])
             k = min(1, p['min'] / 1200)
-            r['ovr'] = k * est + (1 - k) * (base - 6)
-        elif not p and not (r['e'].get('ss')) and age_of(r['e'], today) <= 21:
-            # an academy player with no senior football yet: rated by his age, a little above or below with the club
-            r['ovr'] = min(64, 50 + 2.5 * max(0, age_of(r['e'], today) - 16) + (base - 80) * .2)
+            age = age_of(r['e'], today)
+            # what to expect of him before his minutes speak: a young player is rated by his age, not by his club
+            prior = youth_ovr(age, base) if age <= 21 else base - 6
+            r['ovr'] = k * est + (1 - k) * prior
+        elif age_of(r['e'], today) <= 21 and (not p or p['min'] < 200):
+            r['ovr'] = youth_ovr(age_of(r['e'], today), base)   # an academy player with (almost) no senior football
         else:
             r['ovr'] = base - 8 - (0 if p else 4)
+    # a teenager rated on a handful of starts: weighed toward what his age promises until he has ten
+    for r in rows:
+        age = age_of(r['e'], today)
+        if age <= 20:
+            ls = (lastseen or {}).get(r['pid'])
+            n = sum((ls[2] or {}).values()) if ls and len(ls) > 2 else 0
+            if n < 10:
+                k = n / 10
+                r['ovr'] = k * r['ovr'] + (1 - k) * min(r['ovr'], max(youth_ovr(age, club_ovr.get(r['tid']) or league_mid - 4), r['ovr'] - 10))
     # positions
     for r in rows:
         w, e = r['w'], r['e']

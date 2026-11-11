@@ -678,7 +678,7 @@ def fetch_squads(top_ids, squads, people):
             e['sq'] = p.get('name')
             e['n'] = e.get('n') or p.get('name')
             e['no'] = p.get('number')   # his shirt number at the club now (none when the API has none)
-            if p.get('age'):
+            if p.get('age') and 14 <= p['age'] <= 45:
                 e['age'] = p['age']
             sp = {'Goalkeeper': 'G', 'Defender': 'D', 'Midfielder': 'M', 'Attacker': 'F'}.get(p.get('position'))
             if sp:
@@ -860,7 +860,7 @@ def read_players(tid, season, people):
                 e['n'] = f'{first} {last}'.strip() if first and last and len(first + last) < 26 else (p.get('name') or e.get('n'))
                 e['nat'] = p.get('nationality')
                 e['fn'] = p.get('firstname') or ''
-                if p.get('age'):
+                if p.get('age') and 14 <= p['age'] <= 45:
                     e['age'] = p['age']
                 if (p.get('birth') or {}).get('date'):
                     e['bd'] = p['birth']['date']   # so the manager game counts his age today
