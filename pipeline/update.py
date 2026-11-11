@@ -1342,6 +1342,36 @@ def fetch_crests(ids):
     return have
 
 
+YOUTH_RE = re.compile(r'(\bU\d\d\b|\bII\b|\sB$|Reserves|Youth|^Jong\s)', re.I)
+CLUB_WORDS = {'fc', 'cf', 'sc', 'ac', 'fk', 'sk', 'nk', 'kf', 'af', 'bk', 'afc', 'cfc', 'cd', 'sd', 'ud', 'club', 'de', 'the',
+              'united', 'city', 'town', 'calcio'}
+
+
+def club_canon(world, careers):
+    """One name per club across the careers: the API writes some clubs two ways ('Hull' and 'Hull City', and a youth side
+    'West Ham United U21' that loses its U21 to become 'West Ham United' beside the first team's 'West Ham'). The real
+    names are the game's clubs and, for every other first-team id in the transfers, its most used name; any other name
+    goes to the one real name it matches once accents, case and words like FC, City, United or Town are set aside. When
+    two real clubs match (Dundee and Dundee United, Manchester City and United, SK Rapid and Rapid) it is left alone."""
+    by_id = defaultdict(Counter)
+    for mv in careers.values():
+        for t in mv or []:
+            for cid, nm in ((t[1], t[2]), (t[3], t[4])):
+                if cid and nm and not YOUTH_RE.search(nm):
+                    by_id[cid][short_club(nm)] += 1
+    real = {c['name'] for c in world['clubs']} | {c.most_common(1)[0][0] for c in by_id.values()}
+    key = lambda x: ' '.join(w for w in norm(x).replace('-', ' ').split() if w not in CLUB_WORDS)
+    base = defaultdict(set)
+    for nm in real:
+        base[key(nm)].add(nm)
+    def canon(nm):
+        if nm in real:
+            return nm
+        hit = base.get(key(nm)) or set()
+        return next(iter(hit)) if len(hit) == 1 else nm
+    return canon
+
+
 def write_careers(world, careers, teams, fx=None, evs=None, pst=None):
     """careers.json for the guess-who game: every player in the game whose transfer history gives at least 3 clubs,
     as stints [club, first year, last year, loan (1, or 2 for a loan and then signed)] oldest first (the first club from the club he first left; the current
@@ -1355,6 +1385,7 @@ def write_careers(world, careers, teams, fx=None, evs=None, pst=None):
     # the API now and then puts a person as a club ('Meunier Thomas', 'Carvajal Daniel') or an all-star side: left out
     people = {frozenset(norm(p['name']).replace('-', ' ').split()) for p in world['players'] if len(norm(p['name']).split()) >= 2}
     name_id = {}   # each club as the careers show it, and its team id (for its crest)
+    canon = club_canon(world, careers)
     for p in world['players']:
         mv = careers.get(str(p['id']))
         if not mv:
@@ -1362,7 +1393,7 @@ def write_careers(world, careers, teams, fx=None, evs=None, pst=None):
         st = []
         who = set(norm(p['name']).split())
         def add(cid, cname, y0, y1, loan):
-            nm = club_name.get(cid) or short_club(cname)
+            nm = club_name.get(cid) or canon(short_club(cname))
             if not nm or (who and set(norm(nm).split()) <= who):   # the API sometimes puts the player's own name as a club
                 return
             if frozenset(norm(nm).replace('-', ' ').split()) in people or 'all star' in norm(nm).replace('-', ' '):
@@ -1375,7 +1406,7 @@ def write_careers(world, careers, teams, fx=None, evs=None, pst=None):
                 if club_name.get(cid): st[-1][0] = nm
                 return
             st.append([nm, y0, y1, 1 if loan else 0])
-            if cid: name_id.setdefault(nm, cid)
+            if cid and not YOUTH_RE.search(cname or ''): name_id.setdefault(nm, cid)
         first = mv[0]
         add(first[1], first[2], None, int(first[0][:4]), False)
         for i, t in enumerate(mv):
