@@ -686,7 +686,7 @@ def fetch_squads(top_ids, squads, people):
 
 
 CM_LEAGUE = int(os.environ.get('CM_LEAGUE', '39'))   # the manager game's league: the Premier League
-CM_MAX = int(os.environ.get('CM_MAX', '15'))           # its calls per run at most, so the draft game's data keeps priority
+CM_MAX = int(os.environ.get('CM_MAX', '60'))           # its calls per run at most, so the draft game's data keeps priority
 CM_STATS_MAX_AGE = 14                                  # days between a club's season-stats refreshes
 
 

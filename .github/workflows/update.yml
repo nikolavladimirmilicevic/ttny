@@ -32,7 +32,7 @@ jobs:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           MAX_REQUESTS: ${{ vars.MAX_REQUESTS || '90' }}
           GRID_COL1_IS_RIGHT: ${{ vars.GRID_COL1_IS_RIGHT || '0' }}
-          CM_MAX: ${{ vars.CM_MAX || '15' }}   # the manager game's calls per run at most (a repository variable can raise it)
+          CM_MAX: ${{ vars.CM_MAX || '60' }}   # the manager game's calls per run at most (a repository variable can raise it)
       # before the new data goes live: both games in a real browser (a draft with the Scout's tip, a Guess Who answer)
       - uses: actions/setup-node@v4
         with:
