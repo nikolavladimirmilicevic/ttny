@@ -557,7 +557,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         st = r['st']
         style = (style_pick if style_pick and style_pick != '---' else None) or _style(a, pos)
         out_players.append({'id': r['pid'], 'n': display(e, r['pid']) if (e.get('sq') or e.get('n')) else (w.get('name') or str(r['pid'])), 'nat': e.get('nat') or w.get('nat'),
-                            'age': age, 'no': e.get('no'), 'club': r['tid'], 'prim': pos, 'pos': r['pos'], 'ht': ht, 'wt': wt,
+                            'age': age, **({'bd': e['bd'][:10]} if e.get('bd') else {}), 'no': e.get('no'), 'club': r['tid'], 'prim': pos, 'pos': r['pos'], 'ht': ht, 'wt': wt,
                             'ovr': rating, 'r': ratings, 'a': a, 'style': style, 'val': val,
                             'frm': w.get('frm'), 'inj': rnd.choice([1, 2, 2, 2, 3]),
                             's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None,
