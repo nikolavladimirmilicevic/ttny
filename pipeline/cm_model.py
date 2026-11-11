@@ -7,7 +7,7 @@ says (goals, passes, dribbles, tackles, duels, saves, each per 90 minutes and co
 shrunk toward the middle when he has played little), by his height and weight (heading, jumping, physical contact,
 balance) and by his age (pace fades after 28, stamina after 31), with a small fixed draw per player so no two are alike.
 """
-import math, random, re, statistics
+import json, math, os, random, re, statistics
 from statistics import NormalDist
 
 ATTRS = [
@@ -69,8 +69,72 @@ def clip(v, lo=40, hi=99):
 
 
 def pos_rating(a, pos):
+    if PROF:
+        f = PROF['rating'][pos]
+        return sum(a[k] * w for k, w in zip(PROF['keys'], f['w'])) + f['c']
     w = _W[_GROUP[pos]]
     return sum(a[k] * x for k, x in w.items()) / sum(w.values())
+
+
+# group-level patterns learned from a PES 2021 database (pipeline/cm_profiles.json: per position, the mean shape of each
+# playing style over 30 or more players, how shape moves with height, weight, age and overall, the spread around it, and
+# each position's rating formula). No individual player's values are in it or taken from it.
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cm_profiles.json'), encoding='utf-8') as _f:
+        PROF = json.load(_f)
+except Exception:
+    PROF = None
+
+# how a style shows in a season's numbers (z-scores per 90 against players in his position): a nudge to the weights
+STYLE_STATS = {
+    'Goal Poacher': {'g90': 1, 'drs90': -.5, 'kp90': -.5}, 'Fox in the Box': {'g90': .7, 'drs90': .5}, 'Target Man': {'duw': 1, 'drs90': -.5},
+    'Dummy Runner': {'a90': .5, 'g90': .3}, 'Creative Playmaker': {'kp90': 1, 'a90': .5, 'drs90': .3}, 'Prolific Winger': {'g90': .7, 'drs90': .7},
+    'Roaming Flank': {'drs90': .7, 'kp90': .5}, 'Cross Specialist': {'kp90': .7, 'a90': .5, 'drs90': -.3}, 'Classic No. 10': {'kp90': 1, 'acc': .5},
+    'Hole Player': {'g90': .8, 'kp90': .3}, 'Box-to-Box': {'def90': .6, 'g90': .3}, 'Orchestrator': {'acc': 1, 'kp90': .5, 'def90': -.3},
+    'Anchor Man': {'def90': .6, 'int90': .6, 'g90': -.5}, 'The Destroyer': {'def90': .8, 'fc90': .6, 'acc': -.3}, 'Build Up': {'acc': 1, 'def90': -.2},
+    'Extra Frontman': {'g90': .8, 'kp90': .3}, 'Offensive Full-back': {'kp90': .7, 'a90': .5, 'drs90': .4}, 'Defensive Full-back': {'def90': .8, 'kp90': -.5},
+    'Full-back Finisher': {'g90': 1}, 'Defensive Goalkeeper': {'sv90': .3},
+}
+
+
+def style_weights(prof, pos, f, z):
+    """The playing styles a player may have, weighted: how common each is in his position, how close his height,
+    weight, age and overall are to that style's average, and what his season's numbers say."""
+    P = prof['pos'][pos]
+    ws = {}
+    tot_n = sum(g['n'] for g in P['styles'].values())
+    for st, g in P['styles'].items():
+        ll = 0.0
+        for v, mu, sd in zip(f, g['f'], P['f_sd']):
+            if v is not None and sd:
+                ll -= ((v - mu) / sd) ** 2 / 2
+        aff = sum(w * z(m) for m, w in STYLE_STATS.get(st, {}).items())
+        ws[st] = (g['n'] / tot_n) * math.exp(.5 * ll + .8 * aff)
+    t = sum(ws.values()) or 1
+    return {k: v / t for k, v in ws.items()}
+
+
+def _shape(prof, pos, o, ht, wt, age, z, rnd):
+    """Attributes on his overall: the weighted mean shape of his likely styles, moved by the learned slopes for his
+    height, weight, age and overall, plus a fixed draw as wide as the real spread around those means."""
+    P = prof['pos'][pos]
+    f = [ht, wt, age, o]
+    ws = style_weights(prof, pos, f, z)
+    K = prof['keys']
+    shape = [0.0] * len(K)
+    fmix = [0.0] * 4
+    for st, w in ws.items():
+        g = P['styles'][st]
+        for i in range(len(K)): shape[i] += w * g['shape'][i]
+        for j in range(4): fmix[j] += w * g['f'][j]
+    for j in range(4):
+        v = f[j] if f[j] is not None else fmix[j]
+        d = v - fmix[j]
+        for i in range(len(K)):
+            shape[i] += P['slope'][j][i] * d
+    a = {k: clip(o + shape[i] + rnd.gauss(0, .6 * P['resid_sd'][i])) for i, k in enumerate(K)}
+    a['_style'] = max(ws, key=ws.get) if ws else None
+    return a
 
 
 def _stats(entry, season, tid):
@@ -123,6 +187,21 @@ def _rough_pos(sp, p90, ht, no):
             return 'LWF' if (no or 0) % 2 else 'RWF'
         return 'CF'
     return 'CMF'
+
+
+def _shape_old(pos, g, o, ht, wt, age, z, rnd, p):
+    """The first model (used only without cm_profiles.json): position profiles of my own."""
+    a = {}
+    if g == 'GK':
+        for k in OUT: a[k] = clip(42 + rnd.uniform(0, 8) + (o - 70) * .15)
+        for k, off in (('ga', 2), ('gc', 0), ('gl', -4), ('gr', 1), ('gh', 0)): a[k] = o + off + rnd.uniform(-3, 3)
+    else:
+        for i, k in enumerate(OUT): a[k] = o + _P[g][i] + rnd.uniform(-3, 3)
+        for k in GKA: a[k] = clip(40 + rnd.uniform(0, 6))
+    if ht:
+        d = max(-12, min(12, ht - 182)); a['he'] += d * .6; a['ju'] += d * .5; a['ba'] -= d * .35
+    fade = max(0, age - 28); a['sp'] -= fade * 1.6; a['ac'] -= fade * 1.8
+    return a
 
 
 def _style(a, pos):
@@ -233,55 +312,38 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today):
                 return 0.0
             mu, sd = norm[(g, m)]
             return max(-2.5, min(2.5, (p[m] - mu) / sd)) * min(1, p['min'] / 1500)
-        a = {}
-        if g == 'GK':
-            for k in OUT:
-                a[k] = clip(42 + rnd.uniform(0, 8) + (o - 70) * .15)
-            a['lp'] = clip(o - 22 + rnd.uniform(-4, 4)); a['lf'] = clip(o - 18 + rnd.uniform(-4, 4)); a['kp'] = clip(o - 8 + rnd.uniform(-4, 4))
-            a['ju'] = clip(o - 12 + rnd.uniform(-4, 4)); a['pc'] = clip(o - 20 + rnd.uniform(-4, 4)); a['st'] = clip(o - 30 + rnd.uniform(-4, 4))
-            for k, off in (('ga', 2), ('gc', 0), ('gl', -4), ('gr', 1), ('gh', 0)):
-                a[k] = o + off + rnd.uniform(-3, 3)
-            a['gr'] += 3 * z('sv90'); a['ga'] -= 2 * z('gc90'); a['gc'] += 1.5 * z('sv90')
-        else:
-            prof = _P[g]
-            for i, k in enumerate(OUT):
-                a[k] = o + prof[i] + rnd.uniform(-3, 3)
-            for k in GKA:
-                a[k] = clip(40 + rnd.uniform(0, 6))
-            a['fi'] += 3 * z('g90') + 1.5 * z('sot'); a['oa'] += 2.5 * z('g90') + 1.5 * z('a90')
-            a['lp'] += 3 * z('acc') + 1.5 * z('kp90'); a['lf'] += 2.5 * z('kp90'); a['tp'] += 1.5 * z('acc')
-            a['dr'] += 3 * z('drs90') + 1.5 * z('drpct'); a['ba'] += 1.5 * z('drpct')
-            a['bw'] += 3 * z('def90'); a['da'] += 2 * z('int90') - 2 * z('past90')
-            a['pc'] += 3 * z('duw'); a['ag'] += 2 * z('fc90') + 1.5 * z('cards90')
-            a['cu'] += 1.5 * z('a90'); a['pk'] += 1.0 * z('a90')
         ht, wt, age = e.get('ht'), e.get('wt'), e.get('age') or 25
-        if ht:
-            d = max(-12, min(12, ht - 182))
-            a['he'] += d * .6; a['ju'] += d * .5; a['ba'] -= d * .35; a['ac'] -= d * .15
-            if g == 'GK': a['gh'] += d * .4
-        if wt:
-            a['pc'] += max(-8, min(8, (wt - 76) * .35))
-        fade = max(0, age - 28)
-        a['sp'] -= fade * 1.6 + (fade > 3) * (fade - 3) * .8; a['ac'] -= fade * 1.8
-        a['st'] -= max(0, age - 31) * 2
-        if age <= 20:
-            a['sp'] += 1; a['ac'] += 1
-        if p and g != 'GK':
-            a['st'] += 2 * max(-1, min(1, (p['share'] - .6) * 2))
-        # the position's rating lands on his overall: the profile and his season move attributes against each other
+        a = _shape(PROF, pos, o, ht, wt, age, z, rnd) if PROF else _shape_old(pos, g, o, ht, wt, age, z, rnd, p)
+        style_pick = a.pop('_style', None)
+        # his season moves attributes against each other (the shift below keeps his position's rating on his overall)
+        if g == 'GK':
+            a['gr'] += 2 * z('sv90'); a['ga'] -= 1.5 * z('gc90'); a['gc'] += 1 * z('sv90')
+        else:
+            a['fi'] += 2 * z('g90') + 1 * z('sot'); a['oa'] += 1.5 * z('g90') + 1 * z('a90')
+            a['lp'] += 2 * z('acc') + 1 * z('kp90'); a['lf'] += 1.5 * z('kp90'); a['tp'] += 1 * z('acc')
+            a['dr'] += 2 * z('drs90') + 1 * z('drpct'); a['ba'] += 1 * z('drpct')
+            a['bw'] += 2 * z('def90'); a['da'] += 1.5 * z('int90') - 1.5 * z('past90')
+            a['pc'] += 2 * z('duw'); a['ag'] += 1.5 * z('fc90') + 1 * z('cards90')
+            a['cu'] += 1 * z('a90')
         own = GKA if g == 'GK' else OUT
-        shift = o - pos_rating(a, pos)
-        for k in own:
-            a[k] += shift
+        if not PROF:   # the old profiles: shift so his position's rating lands on his overall
+            shift = o - pos_rating(a, pos)
+            for k in own:
+                a[k] = clip(a[k] + shift)
+        # (with the learned shapes, attributes already sit around his overall as they do at that level; the rating
+        # formula, linear, runs a little low for the very best, so other positions are rated against his own)
+        base = pos_rating({k: clip(v) for k, v in a.items()}, pos)
         a = {k: int(round(clip(a[k]))) for k in KEYS}
-        ratings = {q: int(round(clip(pos_rating(a, q) + (0 if q in r['pos'] else -6 if _GROUP[q] == g else -14)))) for q in POSITIONS}
+        ratings = {q: int(round(clip(o + pos_rating(a, q) - base + (0 if q in r['pos'] else -3 if _GROUP[q] == g else -6)))) for q in POSITIONS}
+        ratings[pos] = int(round(o))
         rating = ratings[pos]
         val = round(max(.2, (math.exp((rating - 60) / 7.5) * .9) * (1.25 if age <= 23 else 1 if age <= 28 else max(.25, 1 - (age - 28) * .12))), 1)
         w = r['w'] or {}
         st = r['st']
+        style = (style_pick if style_pick and style_pick != '---' else None) or _style(a, pos)
         out_players.append({'id': r['pid'], 'n': e.get('n') or w.get('name') or e.get('sq'), 'nat': e.get('nat') or w.get('nat'),
                             'age': age, 'no': e.get('no'), 'club': r['tid'], 'prim': pos, 'pos': r['pos'], 'ht': ht, 'wt': wt,
-                            'ovr': rating, 'r': ratings, 'a': a, 'style': _style(a, pos), 'val': val,
+                            'ovr': rating, 'r': ratings, 'a': a, 'style': style, 'val': val,
                             'frm': w.get('frm'), 'inj': rnd.choice([1, 2, 2, 2, 3]),
                             's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None})
     clubs = []
