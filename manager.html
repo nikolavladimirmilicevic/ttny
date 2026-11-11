@@ -210,6 +210,35 @@ tr.me td{background:rgba(79,209,139,.10)}
   .sb.go{flex-basis:100%;order:-1;margin:0}
   .sb.on{box-shadow:inset 0 -2px 0 var(--gold)}
 }
+
+.subbar{background:var(--panel);border-radius:10px;text-align:center;padding:9px;font:600 20px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--gold)}
+.files{display:flex;flex-direction:column;gap:4px;max-width:560px;margin:0 auto}
+.frow{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:44px;padding:8px 14px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;text-align:left}
+button.frow:hover{border-color:var(--gold)}
+.frow.on{border-color:var(--gold);box-shadow:inset 3px 0 0 var(--gold)}
+.frow.empty{opacity:.45}
+.frow.fin{justify-content:flex-start;background:var(--panel-3)}
+.frow.fin span{color:var(--muted);font-weight:600}
+.frow.fin input{flex:1;background:none;border:0;padding:4px 0;font-size:15px}
+.bn3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}
+.bn3 button{background:var(--panel-2);border:0;border-radius:10px;color:var(--text);font:600 16px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:13px 0}
+.bn3 button:hover{background:var(--panel-3)}
+.bn3 .ok{background:var(--gold);color:var(--gold-ink)}
+.sbox{max-width:640px;margin:0 auto}
+.srow{display:grid;grid-template-columns:190px 1fr;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(41,64,96,.6)}
+.srow>span:first-child{font-weight:500}
+.opts{display:flex;flex-wrap:wrap;gap:4px}
+.opts button{background:none;border:1px solid transparent;border-radius:7px;color:var(--muted);padding:3px 9px;font-size:13px}
+.opts button.on{border-color:var(--gold);color:var(--gold);font-weight:600}
+@media(max-width:520px){.srow{grid-template-columns:1fr}}
+.cred{max-width:640px;margin:0 auto}
+.cred h3{font:600 15px/1.2 var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin:14px 0 6px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.cred h3:first-child{margin-top:0}
+.cred div{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0;font-size:15px}
+.cred em{font-style:normal;color:var(--sky)}
+.cred a{color:var(--text)}
+@keyframes flash{0%,100%{box-shadow:0 0 0 0 rgba(79,209,139,0)}50%{box-shadow:0 0 0 6px rgba(79,209,139,.45)}}
+.big.flash{animation:flash .5s ease-in-out 4}
 </style>
 </head><body>
 <div id="app"><p class="loading">Loading…</p></div>
@@ -814,7 +843,7 @@ function endSeason(){
   const verdict = pos <= aim.pos ? (pos === 1 ? 'Champions! The board are overjoyed.' : 'The board are pleased: you met their expectations.') : pos <= aim.pos + 3 ? 'The board are disappointed, but you keep your job.' : 'The board have decided to make a change. You leave the club.';
   S.rep = pos <= aim.pos - 3 ? 'Very good' : pos <= aim.pos ? 'Good' : pos <= aim.pos + 3 ? 'Average' : 'Poor';
   news('board', 'The season is over', `${esc(club(champ).name)} are champions. You finished ${ordinal(pos)}, against a target of ${ordinal(aim.pos)}. ${verdict}`);
-  try { const H = JSON.parse(localStorage.getItem('ttny.manager.hall') || '[]'); H.unshift({ m: S.manager, c: club(me()).name, s: S.season, pos, pts: st[pos - 1].pts, cup: S.cup.alive[0] === me(), at: Date.now() }); localStorage.setItem('ttny.manager.hall', JSON.stringify(H.slice(0, 30))); } catch (e) {}
+  try { const H = JSON.parse(localStorage.getItem('ttny.manager.hall') || '[]'); H.unshift({ m: S.manager, c: club(me()).name, s: S.season, pos, aim: aim.pos, pts: st[pos - 1].pts, cup: S.cup.alive[0] === me(), at: Date.now() }); localStorage.setItem('ttny.manager.hall', JSON.stringify(H.slice(0, 60))); } catch (e) {}
   save();
 }
 
@@ -840,7 +869,7 @@ function cmPos(list){
 const SPEEDS = [[1400, 'Very Slow'], [800, 'Slow'], [450, 'Medium'], [180, 'Fast'], [50, 'Very Fast']];
 const vcls = v => 'v' + Math.max(4, Math.min(9, Math.floor(v / 10)));
 // options: currency, how wages are shown, the match speed
-const OPT = Object.assign({ cur: 'GBP', wages: 'w', spd: 2 }, (() => { try { return JSON.parse(localStorage.getItem('ttny.manager.opts') || '{}'); } catch (e) { return {}; } })());
+const OPT = Object.assign({ lang: 'en', cur: 'GBP', wages: 'w', spd: 2, flash: 'on', bg: 'normal' }, (() => { try { return JSON.parse(localStorage.getItem('ttny.manager.opts') || '{}'); } catch (e) { return {}; } })());
 const saveOpt = () => { try { localStorage.setItem('ttny.manager.opts', JSON.stringify(OPT)); } catch (e) {} };
 const CUR = { GBP: ['£', 1], EUR: ['€', 1.17], USD: ['$', 1.27] };
 function cash(v){ const [s, k] = CUR[OPT.cur] || CUR.GBP, x = Math.abs(v) * k; return (v < 0 ? '−' : '') + s + (x >= 1e6 ? (x / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : x >= 1e3 ? Math.round(x / 1e3) + 'K' : Math.round(x)); }
@@ -853,7 +882,7 @@ function go(v, keep){ if (!keep && V && LIVE == null) { HIST.push(V); if (HIST.l
 const SCREEN_SET = s => go(s);   // (kept for the calendar code)
 function view(){
   if (!D) return;
-  if (!S){ viewSetup(); return; }
+  if (!S || SETUP_OPEN){ viewSetup(); return; }
   if (LIVE){ viewMatch(); return; }
   ({ news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions })[V.s]();
 }
@@ -894,35 +923,109 @@ function frame(o){
 const ofClub = (cid, more) => { const [k1, k2] = kitOf(cid); return Object.assign({ k1, k2 }, more); };
 function toastOK(t){ toast(t); }
 
-/* ---- setup: a new game, the saved game, the hall of fame, the settings ---- */
-let SETUP = (() => { try { return localStorage.getItem('ttny.manager.v2') ? 'menu' : 'new'; } catch (e) { return 'new'; } })();
+/* ---- setup: new game, quick start, restore and delete a saved game, settings, hall of fame, credits, web sites ---- */
+// saved games: the game in play lives in STORE and saves itself as you go; named saves are copies of it
+const SLOTS = 'ttny.manager.saves';
+const slotKey = n => 'ttny.manager.slot.' + n;
+const slotList = () => { try { return JSON.parse(localStorage.getItem(SLOTS) || '[]'); } catch (e) { return []; } };
+function slotInfo(s){ const st = Object.entries(s.table || {}).map(([id, t]) => ({ id: +id, pts: t.w * 3 + t.d, gd: t.gf - t.ga, gf: t.gf })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf); return { club: s.club, manager: s.manager, date: s.date, season: s.season, pos: st.findIndex(r => r.id === s.club) + 1, round: s.round }; }
+function saveAs(name){
+  name = String(name || '').trim().slice(0, 40); if (!name || !S) return false;
+  try { localStorage.setItem(slotKey(name), JSON.stringify(S)); } catch (e) { toast('There is no room left on this device for another save. Delete one first.'); return false; }
+  const L = slotList().filter(x => x.name !== name); L.unshift({ name, at: Date.now(), ...slotInfo(S) });
+  try { localStorage.setItem(SLOTS, JSON.stringify(L)); } catch (e) {}
+  return true;
+}
+// a save fits today's data when its clubs are all still in the league
+function adopt(s){
+  if (!(s && s.v === 2 && C.has(s.club) && Object.keys(s.table).length === D.clubs.length && Object.keys(s.table).every(id => C.has(+id)))) return false;
+  S = s;
+  for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x)); }
+  for (const p of D.players) if (!S.con[p.id]) S.con[p.id] = contractFor(p);
+  longInjured();
+  return true;
+}
+const hallScore = x => Math.max(0, Math.round(x.pts * 1000 + ((x.aim || 10) - x.pos) * 4000 + (x.pos === 1 ? 50000 : 0) + (x.cup ? 25000 : 0)));
+let SETUP = (() => { try { return localStorage.getItem(STORE) || slotList().length ? 'menu' : 'new'; } catch (e) { return 'new'; } })();
+let SETUP_OPEN = false, FILE = '', QUICK = false;
+const setupHas = () => { try { return !!(localStorage.getItem(STORE) || slotList().length); } catch (e) { return false; } };
 function viewSetup(){
-  const saved = loadSave(), clubs = D.clubs.slice().sort((a, b) => b.q - a.q), max = clubs[0].q;
-  const stars = q => '★'.repeat(clamp(Math.round(5 - (max - q) / 3), 1, 5)).padEnd(5, '☆');
-  const side = `<aside class="side"><div class="date"><span>${esc(D.league)}</span><span>${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}</span></div>
-    <button class="sb ${SETUP === 'menu' ? 'on' : ''}" data-su="menu">Setup Game</button><button class="sb ${SETUP === 'new' ? 'on' : ''}" data-su="new">Start New Game</button><button class="sb ${SETUP === 'hall' ? 'on' : ''}" data-su="hall">Hall of Fame</button><button class="sb ${SETUP === 'set' ? 'on' : ''}" data-su="set">Game Settings</button></aside>`;
-  let title = 'Setup Game', body = '';
-  if (SETUP === 'menu') body = `<div class="ptitle">Setup Game</div><div class="menu"><button data-su="new">Start New Game</button><button data-su="restore" ${saved && saved.v === 2 ? '' : 'disabled'}>Restore Saved Game</button><button data-su="del" ${saved ? '' : 'disabled'}>Delete Saved Game</button><button data-su="set">Game Settings</button><button data-su="hall">Hall of Fame</button><button onclick="location.href='./'">The other games</button></div>
+  const clubs = D.clubs.slice().sort((a, b) => b.q - a.q), max = clubs[0].q, stars = q => '★'.repeat(clamp(Math.round(5 - (max - q) / 3), 1, 5)).padEnd(5, '☆');
+  const cur = (() => { try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } })();
+  const files = [...(cur && cur.v === 2 ? [{ name: 'Game in play', cur: true, at: null, ...slotInfo(cur) }] : []), ...slotList()];
+  const seasonTxt = `${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`;
+  const T = { menu: 'Setup Game', new: 'Select Team', quick: 'Quick Start Game', restore: 'Restore Saved Game', del: 'Delete Saved Game', net: 'Network Play', set: 'Game Settings', hall: 'Hall of Fame', credits: 'Game Credits', web: 'Web Sites' };
+  const bigTitle = ['restore', 'del', 'quick', 'hall'].includes(SETUP) ? T[SETUP] : `Manager ${seasonTxt}`;
+  const sub = SETUP === 'restore' || SETUP === 'del' ? 'Select File' : SETUP === 'quick' ? 'Select Team' : SETUP === 'hall' ? 'All Seasons' : T[SETUP];
+  let body = '', foot = 'bn';
+  if (SETUP === 'menu') body = `<div class="menu"><button data-su="new">Start New Game</button><button data-su="quick">Quick Start Game</button><button data-su="restore" ${files.length ? '' : 'disabled'}>Restore Saved Game</button><button data-su="del" ${files.length ? '' : 'disabled'}>Delete Saved Game</button><button data-su="net">Network Play</button><button data-su="set">Game Settings</button><button data-su="hall">Hall of Fame</button><button data-su="credits">Game Credits</button><button data-su="web" style="grid-column:1/-1;max-width:50%;justify-self:center;width:100%">Web Sites</button></div>
     <p class="c dim small">Take over a club for a season: your eleven and your tactics, training, the board, the money, and every match told minute by minute. Today's squads, each player rated on 25 attributes.</p>`;
-  if (SETUP === 'new'){ title = 'Select Team';
-    body = `<div class="tools" style="justify-content:center;margin-bottom:8px"><label class="yel" for="mgr" style="font-weight:700">Manager's name</label><input type="text" id="mgr" maxlength="24" placeholder="Your name" value="${esc(localStorage.getItem('ttny.manager.name') || '')}"></div>
-      <div class="tw"><table><thead><tr><th>Club</th><th>Reputation</th><th>The board expect</th><th class="r">Stadium</th></tr></thead><tbody>${clubs.map((c, i) => `<tr class="click" data-club="${c.id}"><td><span class="cell" style="background:${(c.kit || ['#888'])[0]};border-color:#fff;min-width:14px;padding:0;height:12px;vertical-align:middle"></span> <b>${esc(c.name)}</b></td><td class="yel">${stars(c.q)}</td><td>${AIMS[aimFor(i + 1)].name}</td><td class="r">${(c.cap || 0).toLocaleString('en-GB')}</td></tr>`).join('')}</tbody></table></div>`; }
-  if (SETUP === 'hall'){ title = 'Hall of Fame'; let H = []; try { H = JSON.parse(localStorage.getItem('ttny.manager.hall') || '[]'); } catch (e) {}
-    body = H.length ? `<table><thead><tr><th>Manager</th><th>Club</th><th>Season</th><th class="r">Finished</th><th class="r">Pts</th><th>Cup</th></tr></thead><tbody>${H.map(x => `<tr><td><b>${esc(x.m)}</b></td><td>${esc(x.c)}</td><td>${x.s}/${String((x.s + 1) % 100).padStart(2, '0')}</td><td class="r">${ordinal(x.pos)}</td><td class="r">${x.pts}</td><td class="yel">${x.cup ? 'Winners' : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">Finish a season to enter the Hall of Fame.</p>'; }
-  if (SETUP === 'set'){ title = 'Game Settings'; body = settingsBody(); }
-  $('#app').innerHTML = `${header()}<div class="cm">${side}<div class="main"><div class="banner"><span></span><h1>${title}</h1><span></span></div><section class="pane">${body}</section>
-    <div class="bn"><button id="back" ${SETUP === 'menu' ? 'disabled' : ''}>Back</button><button id="next" disabled>Next</button></div></div></div>`;
-  document.querySelectorAll('[data-su]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.su;
-    if (k === 'restore'){ location.reload(); return; }
-    if (k === 'del'){ if (window.confirm('Delete the saved game?')){ localStorage.removeItem(STORE); } SETUP = 'menu'; viewSetup(); return; }
-    SETUP = k; viewSetup(); }));
-  $('#back').addEventListener('click', () => { SETUP = 'menu'; viewSetup(); });
-  document.querySelectorAll('[data-club]').forEach(r => r.addEventListener('click', () => { const n = ($('#mgr').value || '').trim(); try { localStorage.setItem('ttny.manager.name', n); } catch (e) {} newGame(+r.dataset.club, n || 'The manager'); HIST = []; FWD = []; V = { s: 'news' }; view(); }));
-  wireSettings(viewSetup);
+  if (SETUP === 'new' || SETUP === 'quick'){
+    body = `${SETUP === 'new' ? `<div class="tools" style="justify-content:center;margin-bottom:10px"><label class="dim" for="mgr">Manager's name</label><input type="text" id="mgr" maxlength="24" placeholder="Your name" value="${esc(localStorage.getItem('ttny.manager.name') || '')}"></div>` : `<p class="c dim small" style="margin-top:0">Pick a club and go straight to the first match day: the assistant has already picked the side.</p>`}
+      <div class="tw"><table><thead><tr><th>Club</th><th>Reputation</th><th>The board expect</th><th class="r">Stadium</th></tr></thead><tbody>${clubs.map((c, i) => `<tr class="click" data-club="${c.id}"><td><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${(c.kit || ['#888'])[0]};margin-right:8px;vertical-align:middle;border:1px solid rgba(255,255,255,.4)"></span><b>${esc(c.name)}</b></td><td class="yel">${stars(c.q)}</td><td>${AIMS[aimFor(i + 1)].name}</td><td class="r">${(c.cap || 0).toLocaleString('en-GB')}</td></tr>`).join('')}</tbody></table></div>`; }
+  if (SETUP === 'restore' || SETUP === 'del'){ foot = 'file';
+    body = `<div class="tools" style="margin-bottom:8px"><span class="dim small">Directory :</span><span class="yel small">this device\\manager\\</span></div>
+      <div class="files"><label class="frow fin"><span>File :</span><input type="text" id="fname" value="${esc(FILE)}" autocomplete="off"></label>
+      ${files.map(f => `<button class="frow ${FILE === f.name ? 'on' : ''}" data-file="${esc(f.name)}"><b>${esc(f.name)}</b><span class="small dim">${esc(club(f.club).name)} · ${f.date ? fmtDate(f.date) : ''}${f.round && f.pos ? ' · ' + ordinal(f.pos) : ''}</span></button>`).join('')}
+      ${Array.from({ length: Math.max(0, 5 - files.length) }, () => '<div class="frow empty"></div>').join('')}</div><div id="finfo"></div>`; }
+  if (SETUP === 'net') body = `<div class="menu"><button disabled>Start Network Game</button><button disabled>Quick Start Network Game</button><button disabled>Restore Network Game</button><button disabled>Join Network Game</button></div><p class="c dim">Playing a season with friends, each with his own club, comes later.</p>`;
+  if (SETUP === 'set'){ foot = 'set'; body = settingsBody(); }
+  if (SETUP === 'hall'){ let H = []; try { H = JSON.parse(localStorage.getItem('ttny.manager.hall') || '[]'); } catch (e) {}
+    H = H.map(x => ({ ...x, sc: hallScore(x) })).sort((a, b) => b.sc - a.sc);
+    body = H.length ? `<div class="tw"><table><tbody>${H.map((x, i) => `<tr><td><span class="pill">${ordinal(i + 1)}</span></td><td><b>${esc(x.m)}</b></td><td class="yel"><b>${esc(x.c)}</b></td><td class="small dim">${x.s}/${String((x.s + 1) % 100).padStart(2, '0')}: ${ordinal(x.pos)}${x.cup ? ', cup winners' : ''}</td><td class="small" style="color:var(--warn)">${x.at ? new Date(x.at).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : ''}</td><td class="r"><span class="pill" style="background:#3A1E66">${x.sc}</span></td></tr>`).join('')}</tbody></table></div>
+      <p class="small dim">The score: 1,000 for each league point, 4,000 for each place above the board's target (taken off for each below it), 50,000 for the title, 25,000 for the cup.</p>` : '<p class="empty">Finish a season to enter the Hall of Fame.</p>'; }
+  if (SETUP === 'credits') body = `<div class="cred"><h3>This Time Next Year</h3>
+      <div><span>Nikola Milićević</span><em>Idea, design and testing</em></div><div><span>Claude (Anthropic)</span><em>Programming</em></div>
+      <h3>Data</h3><div><span>API-Football</span><em>Clubs, squads, fixtures, season statistics</em></div><div><span>The player model</span><em>Learnt from PES 2021, patterns over groups of players</em></div>
+      <h3>With thanks to</h3><div><span>The classic management games</span><em>For showing how it is done</em></div><div><span>Everyone who plays</span><em>And tells us what is wrong on the tracker</em></div></div>`;
+  if (SETUP === 'web') body = `<div class="cred"><h3>This Time Next Year</h3>
+      <div><a href="./">The Draft</a><em>Build a side, one pick at a time</em></div><div><a href="guess.html">Guess Who</a><em>The footballer from his clubs</em></div><div><a href="${TRACKER_URL}" target="_blank" rel="noopener">The tracker</a><em>Defects, ideas, questions</em></div>
+      <h3>Elsewhere</h3><div><a href="https://www.api-football.com" target="_blank" rel="noopener">api-football.com</a><em>Where the data comes from</em></div><div><a href="https://champman0102.net" target="_blank" rel="noopener">champman0102.net</a><em>Where the classic lives on</em></div></div>`;
+  const backDis = SETUP === 'menu' || (SETUP === 'new' && !setupHas() && !S);
+  const footer = foot === 'file' ? `<div class="bn3"><button id="fcancel">Cancel</button><button id="finfo-b">Info</button><button id="fok" class="ok">Ok</button></div>`
+    : foot === 'set' ? `<div class="bn3"><button id="scancel">Cancel</button><button id="sreset">Reset</button><button id="sok" class="ok">Ok</button></div>`
+    : `<div class="bn"><button id="back" ${backDis ? 'disabled' : ''}>Back</button><button id="next" disabled>Next</button></div>`;
+  $('#app').innerHTML = `${header()}<div class="cm"><aside class="side"><div class="date"><span>Version</span><span>${esc(String((document.querySelector('meta[name=build]') || {}).content || '2.0'))}</span></div><div class="arrows"><button disabled>←</button><button disabled>→</button></div>
+      ${S ? '<button class="sb go" id="resume">Back to Game</button>' : ''}<button class="sb" id="restart">Restart Game</button><button class="sb" id="exit">Exit Game</button></aside>
+    <div class="main"><div class="banner"><span></span><h1>${bigTitle}</h1><span></span></div><div class="subbar">${sub}</div><section class="pane">${body}</section>${footer}</div></div>`;
+  const on = (sel, f) => { const el = $(sel); if (el) el.addEventListener('click', f); };
+  const to = k => { SETUP = k; FILE = ''; viewSetup(); scrollTo(0, 0); };
+  document.querySelectorAll('[data-su]').forEach(b => b.addEventListener('click', () => to(b.dataset.su)));
+  on('#back', () => to('menu')); on('#restart', () => to('menu')); on('#exit', () => { location.href = './'; });
+  on('#resume', () => { SETUP_OPEN = false; view(); });
+  document.querySelectorAll('[data-club]').forEach(r => r.addEventListener('click', () => {
+    const quick = SETUP === 'quick', n = quick ? (localStorage.getItem('ttny.manager.name') || 'The manager') : ($('#mgr').value || '').trim();
+    if (S && !window.confirm('Leave the game in play for a new one? Save it first if you want to come back to it.')) return;
+    if (!quick) try { localStorage.setItem('ttny.manager.name', n); } catch (e) {}
+    LIVE = null; newGame(+r.dataset.club, n || 'The manager'); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'news' };
+    if (quick){ const ev = events()[0]; if (ev && ev.date > S.date){ passDays(daysBetween(S.date, ev.date)); save(); } }
+    view(); }));
+  // files
+  const fi = $('#fname'); if (fi) fi.addEventListener('input', () => { FILE = fi.value; });
+  document.querySelectorAll('[data-file]').forEach(b => b.addEventListener('click', () => { FILE = b.dataset.file; viewSetup(); }));
+  const pickFile = () => files.find(f => f.name === FILE);
+  on('#fcancel', () => to('menu'));
+  on('#finfo-b', () => { const f = pickFile(), box = $('#finfo'); if (!box) return; box.innerHTML = f ? `<dl class="kv" style="max-width:460px;margin:12px auto 0"><dt>Manager</dt><dd>${esc(f.manager)}</dd><dt>Club</dt><dd>${esc(club(f.club).name)}</dd><dt>Date</dt><dd>${f.date ? fmtDate(f.date, true) : '-'}</dd><dt>League position</dt><dd>${f.round ? ordinal(f.pos) + ' after ' + f.round + ' rounds' : 'before the season'}</dd>${f.at ? `<dt>Saved</dt><dd>${new Date(f.at).toLocaleString('en-GB')}</dd>` : ''}</dl>` : '<p class="c dim">Pick a file first.</p>'; });
+  on('#fok', () => { const f = pickFile(); if (!f){ toast('Pick a file first.'); return; }
+    const raw = (() => { try { return JSON.parse(localStorage.getItem(f.cur ? STORE : slotKey(f.name)) || 'null'); } catch (e) { return null; } })();
+    if (SETUP === 'del'){ if (!window.confirm(`Delete "${f.name}"?`)) return;
+      if (f.cur){ localStorage.removeItem(STORE); if (S) S = null; } else { localStorage.removeItem(slotKey(f.name)); try { localStorage.setItem(SLOTS, JSON.stringify(slotList().filter(x => x.name !== f.name))); } catch (e) {} }
+      FILE = ''; if (!setupHas()) SETUP = 'menu'; viewSetup(); return; }
+    LIVE = null;
+    if (!adopt(raw)){ toast('That save no longer fits the league as it is today.'); return; }
+    save(); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'news' }; view(); });
+  // settings
+  if (SETUP === 'set'){ const before = JSON.stringify(OPT);
+    wireSettings(viewSetup);
+    on('#scancel', () => { Object.assign(OPT, JSON.parse(before)); saveOpt(); to('menu'); });
+    on('#sreset', () => { Object.assign(OPT, { cur: 'GBP', wages: 'w', spd: 2, flash: 'on', bg: 'normal' }); SPEED = 2; saveOpt(); viewSetup(); });
+    on('#sok', () => { saveOpt(); to('menu'); }); }
 }
 function settingsBody(){
-  const row = (k, n, L) => `<dt>${n}</dt><dd><span class="seg" data-o="${k}">${L.map(([v, t]) => `<button data-v="${v}" class="${String(OPT[k]) === String(v) ? 'on' : ''}">${t}</button>`).join('')}</span></dd>`;
-  return `<div class="ptitle">Game Settings</div><dl class="kv" style="max-width:520px;margin:0 auto">${row('cur', 'Currency', [['GBP', 'Pounds £'], ['EUR', 'Euros €'], ['USD', 'Dollars $']])}${row('wages', 'Wages', [['w', 'Weekly'], ['m', 'Monthly'], ['y', 'Yearly']])}${row('spd', 'Commentary speed', SPEEDS.map(([, n], i) => [i, n]))}</dl>`;
+  const row = (k, n, L) => `<div class="srow"><span>${n}</span><span class="opts" data-o="${k}">${L.map(([v, t]) => `<button data-v="${v}" class="${String(OPT[k]) === String(v) ? 'on' : ''}">${t}</button>`).join('')}</span></div>`;
+  return `<div class="sbox"><div class="small dim" style="margin-bottom:8px">Version ${esc(String((document.querySelector('meta[name=build]') || {}).content || '2.0'))}</div>
+    ${row('lang', 'Language', [['en', 'English']])}${row('cur', 'Currency', [['GBP', 'Pound £'], ['EUR', 'Euro €'], ['USD', 'Dollar $']])}${row('wages', 'Wages', [['w', 'Weekly'], ['m', 'Monthly'], ['y', 'Yearly']])}
+    ${row('spd', 'Commentary Speed', SPEEDS.map(([, n], i) => [i, n]))}${row('flash', 'Flashing Goals', [['on', 'On'], ['off', 'Off']])}${row('bg', 'Other Matches', [['normal', 'Live'], ['off', 'Results only']])}</div>`;
 }
 function wireSettings(again){ document.querySelectorAll('[data-o] button').forEach(b => b.addEventListener('click', () => { const k = b.parentElement.dataset.o; OPT[k] = k === 'spd' ? +b.dataset.v : b.dataset.v; if (k === 'spd') SPEED = OPT.spd; saveOpt(); again(); })); }
 
@@ -1230,10 +1333,17 @@ function scrManager(){
       <div><div class="ptitle">Hall of Fame</div>${H.length ? `<table><tbody>${H.map(x => `<tr><td><b>${esc(x.m)}</b></td><td>${esc(x.c)}</td><td>${x.s}/${String((x.s + 1) % 100).padStart(2, '0')}</td><td class="r yel">${ordinal(x.pos)}${x.cup ? ', cup' : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="dim">Finish a season to enter it.</p>'}</div></div>` });
 }
 function scrOptions(){
-  frame({ title: 'Game Options', top: [['o', 'Options']], topOn: 'o', body: `${settingsBody()}<div class="menu" style="max-width:420px"><button id="newg">Start a New Game</button><button id="delg">Delete Saved Game</button></div><p class="c small dim">The game saves itself on this device as you go.</p>` });
+  const L = slotList(), def = `${club(me()).name} ${shortDate(S.date)}`;
+  frame({ title: 'Game Options', top: [['o', 'Options']], topOn: 'o', body: `<div class="ptitle">Save Game</div>
+    <div class="tools"><input type="text" id="sname" maxlength="40" value="${esc(def)}" style="flex:1;min-width:200px"><button class="btn y" id="sgo">Save</button></div>
+    <p class="small dim">The game in play saves itself as you go. A named save is a copy you can come back to: ${L.length ? L.length + ' on this device.' : 'none yet.'}</p>
+    <div class="menu" style="max-width:560px"><button id="o-restore">Restore Saved Game</button><button id="o-del">Delete Saved Game</button><button id="o-new">Start New Game</button><button id="o-setup">Setup Game</button></div>
+    <div class="ptitle" style="margin-top:14px">Game Settings</div>${settingsBody()}` });
   wireSettings(view);
-  $('#newg').addEventListener('click', () => { if (!S.done && !window.confirm('Leave this game and start a new one? This season will be lost.')) return; S = null; LIVE = null; SETUP = 'new'; view(); });
-  $('#delg').addEventListener('click', () => { if (!window.confirm('Delete the saved game?')) return; localStorage.removeItem(STORE); S = null; LIVE = null; SETUP = 'menu'; view(); });
+  $('#sgo').addEventListener('click', () => { if (saveAs($('#sname').value)) toast('Game saved.'); view(); });
+  const open = k => { SETUP_OPEN = true; SETUP = k; FILE = ''; view(); scrollTo(0, 0); };
+  $('#o-restore').addEventListener('click', () => open('restore')); $('#o-del').addEventListener('click', () => open('del'));
+  $('#o-new').addEventListener('click', () => open('new')); $('#o-setup').addEventListener('click', () => open('menu'));
 }
 
 /* =====================================================================================================================
@@ -1283,7 +1393,7 @@ function viewMatch(){
   const tabs2 = [['ratings', 'Player Ratings'], ['scores', 'Latest Scores'], ['table', 'Live Table'], ['tactics', `${esc(club(me()).name)} Tactics`]];
   let panelBody = '';
   if (MTAB === 'overview') panelBody = `<div class="msc"><div class="h">${scorers('h')}</div><div class="mid">${half}</div><div>${scorers('a')}</div></div>
-    <div class="big ${bigCls}" id="now">${last.m ? `${last.m}' &nbsp;` : ''}${last.t}</div>
+    <div class="big ${bigCls} ${OPT.flash === 'on' && last.c === 'goal' ? 'flash' : ''}" id="now">${last.m ? `${last.m}' &nbsp;` : ''}${last.t}</div>
     <div class="l5"><span>Last 5 Mins</span><span class="bar"><i style="width:${p5}%;background:${kh};color:${kh2};text-shadow:none">${p5}%</i><i style="width:${100 - p5}%;background:${ka === kh ? '#888' : ka};color:${ka === kh ? '#fff' : ka2};text-shadow:none">${100 - p5}%</i></span></div>
     <div class="minfo"><span>Referee - ${esc(M.ref.n)}</span><span>Attendance - ${(M.att || 0).toLocaleString('en-GB')}</span><span>Weather - ${esc(M.weather)}, ${M.temp}°C</span></div>`;
   else panelBody = mPanel();
@@ -1318,6 +1428,7 @@ function mPanel(){
     const tab = JSON.parse(JSON.stringify(S.table)); for (const m of [M, ...L.others]){ if (!m.min && !m.over) continue; for (const [s, gf, ga] of [[m.H, m.H.goals, m.A.goals], [m.A, m.A.goals, m.H.goals]]){ const t = tab[s.cid]; t.p++; t.gf += gf; t.ga += ga; if (gf > ga) t.w++; else if (gf === ga) t.d++; else t.l++; } }
     const st = Object.entries(tab).map(([id, t]) => ({ id: +id, ...t, gd: t.gf - t.ga, pts: t.w * 3 + t.d })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
     return `<table><thead><tr><th></th><th>Club</th><th class="c">Pld</th><th class="c">GD</th><th class="c">Pts</th></tr></thead><tbody>${st.map((r, i) => `<tr class="${r.id === me() ? 'me' : ''}"><td>${i + 1}</td><td><b>${esc(club(r.id).name)}</b></td><td class="c">${r.p}</td><td class="c">${r.gd > 0 ? '+' : ''}${r.gd}</td><td class="c yel"><b>${r.pts}</b></td></tr>`).join('')}</tbody></table>`; }
+  if (MTAB === 'scores' && OPT.bg === 'off' && !M.over) return '<p class="empty">The other results come in at full time (Game Settings: Other Matches).</p>';
   if (MTAB === 'scores') return L.others.length ? `<table><tbody>${L.others.map(o => `<tr><td class="r" style="width:40%"><b>${esc(club(o.h).name)}</b></td><td class="c"><span class="pill">${o.H.goals} - ${o.A.goals}</span>${o.pens ? ` <span class="small dim">(${o.pens[0]}-${o.pens[1]} p)</span>` : ''}</td><td style="width:40%"><b>${esc(club(o.a).name)}</b></td><td class="small yel">${o.over ? 'FT' : o.min ? label(o) + "'" : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">No other matches today.</p>';
   if (MTAB === 'tactics'){ const t = us.t, seg = (key, Lb) => `<span class="seg" data-mk="${key}">${Lb.map((n, i) => `<button data-v="${i}" class="${t[key] === i ? 'on' : ''}">${n}</button>`).join('')}</span>`, tog = (k, n) => `<button class="tog ${t[k] ? 'on' : ''}" data-mt2="${k}">${t[k] ? '✓' : '·'} ${n}</button>`;
     return `<div class="cols2"><div><div class="ptitle">Team Instructions</div><div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('counter', 'Counter')}${tog('mbb', 'Men Behind Ball')}</span></div></div>
@@ -1352,14 +1463,7 @@ function run(){
   if (!D || !D.clubs || D.clubs.length < 4){ $('#app').innerHTML = `${header()}<p class="loading">The league is being put together. Come back tomorrow.</p>`; return; }
   for (const [k, n] of D.attrs || []) ATTR_NAME[k] = n;
   D.players.forEach(p => P.set(p.id, p)); D.clubs.forEach(c => C.set(c.id, c));
-  const s = loadSave();
-  if (s && s.v === 2 && C.has(s.club) && Object.keys(s.table).length === D.clubs.length && Object.keys(s.table).every(id => C.has(+id))){
-    S = s;
-    // players who have left the data since: out of every selection; new players: a contract
-    for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x)); }
-    for (const p of D.players) if (!S.con[p.id]) S.con[p.id] = contractFor(p);
-    longInjured();
-  }
+  adopt(loadSave());
   view();
 })();
 </script>
