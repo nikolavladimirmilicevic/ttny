@@ -1768,7 +1768,8 @@ def main():
         import cm_model
         kits, alias = game_kits()
         seen = last_starts(fx, lu)
-        cmd = cm_model.build(world, people, squads, meta.get('cm') or {}, load('cm_fixtures', {}), kits, alias, current_season(), TODAY.isoformat(), lastseen=seen)
+        cmd = cm_model.build(world, people, squads, meta.get('cm') or {}, load('cm_fixtures', {}), kits, alias, current_season(), TODAY.isoformat(), lastseen=seen,
+                              fixes=cm_model.load_fixes())
         if cmd and cmd['clubs']:
             with open(os.path.join(ROOT, 'cm.json'), 'w', encoding='utf-8') as f:
                 json.dump(cmd, f, ensure_ascii=False, separators=(',', ':'))

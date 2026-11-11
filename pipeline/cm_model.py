@@ -343,7 +343,82 @@ def long_term_out(people, squads, lastseen, team_ids, season, today):
     return out
 
 
-def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen=None):
+def _fold(s):
+    import unicodedata
+    return re.sub(r'[^a-z ]', '', unicodedata.normalize('NFKD', str(s or '')).encode('ascii', 'ignore').decode().lower().replace('-', ' ')).strip()
+
+
+TM_POS = {'goalkeeper': 'GK', 'centre-back': 'CB', 'left-back': 'LB', 'right-back': 'RB', 'defensive midfield': 'DMF',
+          'central midfield': 'CMF', 'attacking midfield': 'AMF', 'left midfield': 'LMF', 'right midfield': 'RMF',
+          'left winger': 'LWF', 'right winger': 'RWF', 'second striker': 'SS', 'centre-forward': 'CF'}
+
+
+def load_fixes():
+    try:
+        return json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cm_fixes.json'), encoding='utf-8')).get('fixes') or []
+    except (OSError, ValueError) as ex:
+        print(f'  cm_fixes.json: {ex}')
+        return []
+
+
+def apply_fixes(rows, fixes, teams, wc, people, wp, season):
+    """cm_fixes.json: put a player in a club (moving him from wherever the API has him), make him injured until a date,
+    or take him out. A player the API does not know is made from what the entry gives (name, position, birth date)."""
+    if not fixes:
+        return
+    def club_id(name):
+        n = _fold(name)
+        for t in teams:
+            for cand in (t.get('name'), (wc.get(t['id']) or {}).get('name')):
+                c = _fold(cand)
+                if c and (c == n or n in c or c in n):
+                    return t['id']
+        return None
+    def person(fx):
+        if fx.get('id') and str(fx['id']) in people:
+            return int(fx['id'])
+        n = _fold(fx.get('player'))
+        for pid, e in people.items():
+            if n and n in (_fold(e.get('n')), _fold(e.get('sq')), _fold((e.get('fn') or '').split(' ')[0] + ' ' + (e.get('n') or '').split(' ')[-1])):
+                return int(pid)
+        return None
+    for fx in fixes:
+        pid = person(fx)
+        if fx.get('remove'):
+            rows[:] = [r for r in rows if r['pid'] != pid]
+            continue
+        tid = club_id(fx.get('club'))
+        if not tid:
+            print(f"  cm_fixes: no club {fx.get('club')!r} for {fx.get('player')!r}")
+            continue
+        pos = fx.get('pos'); pos = TM_POS.get(str(pos).lower(), pos) if pos else None
+        hit = next((r for r in rows if pid is not None and r['pid'] == pid), None)
+        if hit:
+            hit['tid'] = tid
+        else:
+            if pid is None:   # not in the API at all: a made-up id that stays the same from run to run
+                pid = -(int.from_bytes(_fold(fx.get('player')).encode()[:6].ljust(6, b'.'), 'big') % 10 ** 9)
+                e = {'n': fx.get('player'), 'sq': fx.get('player'), 'nat': fx.get('nat'), 'bd': fx.get('dob'), 'no': fx.get('no')}
+            else:
+                e = dict(people.get(str(pid)) or {})
+            s = _stats(e, season, tid)
+            hit = {'pid': pid, 'tid': tid, 'e': e, 'w': wp.get(pid), 'p90': _per90(s), 'st': s}
+            rows.append(hit)
+        if pos:
+            hit['gp'] = pos
+            if hit['w'] and hit['w'].get('prim') != pos:
+                hit['w'] = dict(hit['w'], prim=pos, pos=[pos] + [q for q in (hit['w'].get('pos') or []) if q != pos])
+        if fx.get('no') is not None:
+            hit['e'] = dict(hit['e'], no=fx['no'])
+        if fx.get('name'):   # the name he goes by, where the API's differs
+            hit['e'] = dict(hit['e'], sq=fx['name'], n=fx['name'], fn='')
+        if fx.get('ovr'):
+            hit['fix_ovr'] = float(fx['ovr'])
+        if fx.get('out'):
+            hit['back'] = fx['out']; hit['why'] = fx.get('why')
+
+
+def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen=None, fixes=None):
     """cm.json as a dict, or None while the league's clubs are not all in."""
     teams = cm.get('teams') or []
     if not teams:
@@ -365,6 +440,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         e = people.get(str(pid)) or {}
         s = _stats(e, season, tid)
         rows.append({'pid': pid, 'tid': tid, 'e': e, 'w': wp.get(pid), 'p90': _per90(s), 'st': s, 'back': back, 'why': why, 'gp': max((lastseen[pid][2] or {'CMF': 0}).items(), key=lambda kv: kv[1])[0]})
+    apply_fixes(rows, fixes, teams, wc, people, wp, season)
     if not rows:
         return None
     # an overall for those the draft game does not rate: from the season's rating, starts and club, fitted on those it does
@@ -408,6 +484,9 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             r['ovr'] = youth_ovr(age_of(r['e'], today), base)   # an academy player with (almost) no senior football
         else:
             r['ovr'] = base - 8 - (0 if p else 4)
+    for r in rows:   # an overall set by hand in cm_fixes.json wins
+        if r.get('fix_ovr'):
+            r['ovr'] = r['fix_ovr']
     # a teenager rated on a handful of starts: weighed toward what his age promises until he has ten
     for r in rows:
         age = age_of(r['e'], today)
