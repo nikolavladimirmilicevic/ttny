@@ -226,6 +226,26 @@ def _style(a, pos):
     return ''
 
 
+def display(e, pid):
+    """The name he goes by, as in the draft game: 'L. Díaz' + first names 'Luis Fernando' -> 'Luis Díaz'; 'Evanilson'
+    and 'Rayan' stay as they are; the full name from the API only when there is nothing else."""
+    sq, firsts = e.get('sq') or '', (e.get('fn') or '').split()
+    m = re.match(r'^([^\W\d_][a-z]?)\. ', sq)
+    if m and firsts:
+        first = next((f for f in firsts if f.startswith(m.group(1))), firsts[0])
+        return first + ' ' + sq.split('. ', 1)[1]
+    return sq or e.get('n') or str(pid)
+
+
+def age_of(e, today):
+    """Age today from his date of birth; the API's age (counted at the season's start) when we do not have it."""
+    bd = e.get('bd')
+    if bd:
+        b, t = datetime.date.fromisoformat(bd[:10]), datetime.date.fromisoformat(today)
+        return t.year - b.year - ((t.month, t.day) < (b.month, b.day))
+    return e.get('age') or 25
+
+
 def grid_pos(xi, grid):
     """A position from a lineup's grid ("row:column", row 1 the keeper, the last row the forwards, column 1 on the left)."""
     try:
@@ -261,7 +281,7 @@ def _listed(squads):
 
 
 def absent_candidates(people, squads, lastseen, team_ids, season, today):
-    """Players worth asking the API about: a regular last season or this one (10 or more appearances) with a club of
+    """Players worth asking the API about: 5 or more appearances last season or this one with a club of
     this league, whose last start was for it within LOOK_BACK days, and who are in no club's squad list now."""
     listed, t0, out = _listed(squads), datetime.date.fromisoformat(today), []
     for pid, (d, tid, *_) in (lastseen or {}).items():
@@ -270,7 +290,7 @@ def absent_candidates(people, squads, lastseen, team_ids, season, today):
         if (t0 - datetime.date.fromisoformat(d)).days > LOOK_BACK:
             continue
         ss = (people.get(str(pid)) or {}).get('ss') or {}
-        if max(((ss.get(f'{y}:{tid}') or [0])[0] or 0) for y in (season - 1, season)) >= 10:
+        if max(((ss.get(f'{y}:{tid}') or [0])[0] or 0) for y in (season - 1, season)) >= 5:
             out.append(pid)
     return out
 
@@ -373,6 +393,9 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             est = coef[0] + coef[1] * p['rt'] + coef[2] * p['share'] + coef[3] * math.log1p(p['min'])
             k = min(1, p['min'] / 1200)
             r['ovr'] = k * est + (1 - k) * (base - 6)
+        elif not p and not (r['e'].get('ss')) and age_of(r['e'], today) <= 21:
+            # an academy player with no senior football yet: rated by his age, a little above or below with the club
+            r['ovr'] = min(64, 50 + 2.5 * max(0, age_of(r['e'], today) - 16) + (base - 80) * .2)
         else:
             r['ovr'] = base - 8 - (0 if p else 4)
     # positions
@@ -406,7 +429,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
                 return 0.0
             mu, sd = norm[(g, m)]
             return max(-2.5, min(2.5, (p[m] - mu) / sd)) * min(1, p['min'] / 1500)
-        ht, wt, age = e.get('ht'), e.get('wt'), e.get('age') or 25
+        ht, wt, age = e.get('ht'), e.get('wt'), age_of(e, today)
         a = _shape(PROF, pos, o, ht, wt, age, z, rnd) if PROF else _shape_old(pos, g, o, ht, wt, age, z, rnd, p)
         style_pick = a.pop('_style', None)
         # his season moves attributes against each other (the shift below keeps his position's rating on his overall)
@@ -435,12 +458,24 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         w = r['w'] or {}
         st = r['st']
         style = (style_pick if style_pick and style_pick != '---' else None) or _style(a, pos)
-        out_players.append({'id': r['pid'], 'n': e.get('n') or w.get('name') or e.get('sq'), 'nat': e.get('nat') or w.get('nat'),
+        out_players.append({'id': r['pid'], 'n': display(e, r['pid']) if (e.get('sq') or e.get('n')) else (w.get('name') or str(r['pid'])), 'nat': e.get('nat') or w.get('nat'),
                             'age': age, 'no': e.get('no'), 'club': r['tid'], 'prim': pos, 'pos': r['pos'], 'ht': ht, 'wt': wt,
                             'ovr': rating, 'r': ratings, 'a': a, 'style': style, 'val': val,
                             'frm': w.get('frm'), 'inj': rnd.choice([1, 2, 2, 2, 3]),
                             's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None,
                             **({'out': r['back']} if r.get('back') else {}), **({'outw': r['why']} if r.get('why') else {})})
+    # shirt numbers: the API's lists can be out of date, two players with one number; it stays with the one who has
+    # played more for the club these two seasons, the other goes without
+    by = {}
+    for x in out_players:
+        if x['no'] is not None:
+            by.setdefault((x['club'], x['no']), []).append(x)
+    for L in by.values():
+        if len(L) > 1:
+            apps = lambda x: sum(((people.get(str(x['id'])) or {}).get('ss') or {}).get(f'{y}:{x["club"]}', [0])[0] or 0 for y in (season - 1, season))
+            L.sort(key=apps, reverse=True)
+            for x in L[1:]:
+                x['no'] = None
     clubs = []
     for t in teams:
         mine = sorted((p['ovr'] for p in out_players if p['club'] == t['id']), reverse=True)[:16]

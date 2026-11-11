@@ -759,9 +759,12 @@ def update_cm(squads, people, meta, seen=None):
             sq = squads.get(str(tid))
             if not sq or days_old(sq['f']) >= 7 or sq.get('v') != 3:
                 fetch_squads([tid], squads, people)
-            if days_old(done.get(str(tid))) >= CM_STATS_MAX_AGE:
+            bd_done = cm.setdefault('bd', [])   # clubs read since dates of birth are kept: the others again, once
+            if days_old(done.get(str(tid))) >= CM_STATS_MAX_AGE or tid not in bd_done:
                 read_players(tid, cs, people)
                 done[str(tid)] = TODAY.isoformat()
+                if tid not in bd_done:
+                    bd_done.append(tid)
         # players the squad lists leave out (a long injury, or gone): ask the API where they are and whether they are hurt
         import cm_model
         for pid in cm_model.absent_candidates(people, squads, seen or {}, {t['id'] for t in cm['teams']}, cs, TODAY.isoformat()):
@@ -859,6 +862,8 @@ def read_players(tid, season, people):
                 e['fn'] = p.get('firstname') or ''
                 if p.get('age'):
                     e['age'] = p['age']
+                if (p.get('birth') or {}).get('date'):
+                    e['bd'] = p['birth']['date']   # so the manager game counts his age today
                 for k, src in (('ht', 'height'), ('wt', 'weight')):   # '183 cm', '76 kg'
                     m = re.match(r'(\d+)', str(p.get(src) or ''))
                     if m: e[k] = int(m.group(1))
@@ -991,7 +996,7 @@ def fix_text(t):
 def display_name(e, pid):
     """'L. Díaz' + first name 'Luis Fernando' -> 'Luis Díaz'; 'Brahim Díaz' and 'Endrick' stay as they are."""
     sq, firsts = e.get('sq') or '', (e.get('fn') or '').split()
-    m = re.match(r'^([A-ZÀ-Ý][a-z]?)\. ', sq)
+    m = re.match(r'^([^\W\d_][a-z]?)\. ', sq)
     if m and firsts:
         # 'E. Martínez' + 'Damián Emiliano' -> 'Emiliano Martínez': use the first name the initial points to
         first = next((f for f in firsts if f.startswith(m.group(1))), firsts[0])
