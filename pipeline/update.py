@@ -690,7 +690,47 @@ CM_MAX = int(os.environ.get('CM_MAX', '60'))           # its calls per run at mo
 CM_STATS_MAX_AGE = 14                                  # days between a club's season-stats refreshes
 
 
-def update_cm(squads, people, meta):
+def last_starts(fx, lu):
+    """Each player's last start, for which club, and how often he starts in each position (from the lineups' grid)."""
+    import cm_model
+    seen = {}
+    for fid, v in (lu or {}).items():
+        d = (fx.get(fid) or {}).get('d')
+        if not d or not isinstance(v, dict):
+            continue
+        for tid, side in v.items():
+            for x in (side or {}).get('xi') or []:
+                if not x:
+                    continue
+                q = seen.setdefault(x[0], ['', 0, {}])
+                if q[0] < d:
+                    q[0], q[1] = d, int(tid)
+                g = cm_model.grid_pos(side['xi'], x[1])
+                if g:
+                    q[2][g] = q[2].get(g, 0) + 1
+    return seen
+
+
+def check_absent(pid, people):
+    """For a player missing from every squad list: his transfers and his injuries (two calls), kept in people for
+    CM_STATS_MAX_AGE days. tr: [date, club in, club out, type], newest first; sl: [type, start, end or None]."""
+    e = people.setdefault(str(pid), {})
+    if days_old(e.get('chk')) < CM_STATS_MAX_AGE:
+        return
+    tr, sl = [], []
+    for x in api('transfers', player=pid).get('response', []):
+        for t in x.get('transfers') or []:
+            tr.append([t.get('date'), ((t.get('teams') or {}).get('in') or {}).get('id'), ((t.get('teams') or {}).get('out') or {}).get('id'), t.get('type')])
+    for x in api('sidelined', player=pid).get('response', []):
+        L = x.get('sidelined') if isinstance(x.get('sidelined'), list) else [x]   # one player's list, or the newer per-player form
+        for y in L:
+            sl.append([y.get('type'), y.get('start'), y.get('end')])
+    e['tr'] = sorted((t for t in tr if t[0]), key=lambda t: t[0], reverse=True)
+    e['sl'] = sorted((y for y in sl if y[1]), key=lambda y: y[1], reverse=True)[:12]
+    e['chk'] = TODAY.isoformat()
+
+
+def update_cm(squads, people, meta, seen=None):
     """The manager game's league: its clubs (once a season), its fixture list (weekly), and for every club the squad
     and the players' season stats (every 14 days), a few clubs per run (CM_MAX calls at most)."""
     global BUDGET
@@ -722,6 +762,10 @@ def update_cm(squads, people, meta):
             if days_old(done.get(str(tid))) >= CM_STATS_MAX_AGE:
                 read_players(tid, cs, people)
                 done[str(tid)] = TODAY.isoformat()
+        # players the squad lists leave out (a long injury, or gone): ask the API where they are and whether they are hurt
+        import cm_model
+        for pid in cm_model.absent_candidates(people, squads, seen or {}, {t['id'] for t in cm['teams']}, cs, TODAY.isoformat()):
+            check_absent(pid, people)
     except OutOfBudget:
         if BUDGET == saved:
             raise
@@ -1675,7 +1719,7 @@ def main():
         fetch_profiles(top_ids, squads, people, meta)
         fetch_missing_nat(squads, people, lu, fx)
         log('6b Manager game league')
-        update_cm(squads, people, meta)
+        update_cm(squads, people, meta, last_starts(fx, lu))
         log('7/7 National teams and the clubs players came from')
         fetch_nations(people, squads, extra, meta)
         fetch_arrivals(top_ids, extra, meta, squads, careers)
@@ -1718,22 +1762,7 @@ def main():
     try:
         import cm_model
         kits, alias = game_kits()
-        # each player's last start, for which club, and where he starts (to keep the long-term injured the squad lists leave out)
-        seen = {}
-        for fid, v in (lu or {}).items():
-            d = (fx.get(fid) or {}).get('d')
-            if not d or not isinstance(v, dict):
-                continue
-            for tid, side in v.items():
-                for x in (side or {}).get('xi') or []:
-                    if not x:
-                        continue
-                    q = seen.setdefault(x[0], ['', 0, {}])
-                    if q[0] < d:
-                        q[0], q[1] = d, int(tid)
-                    g = cm_model.grid_pos(side['xi'], x[1])
-                    if g:
-                        q[2][g] = q[2].get(g, 0) + 1
+        seen = last_starts(fx, lu)
         cmd = cm_model.build(world, people, squads, meta.get('cm') or {}, load('cm_fixtures', {}), kits, alias, current_season(), TODAY.isoformat(), lastseen=seen)
         if cmd and cmd['clubs']:
             with open(os.path.join(ROOT, 'cm.json'), 'w', encoding='utf-8') as f:

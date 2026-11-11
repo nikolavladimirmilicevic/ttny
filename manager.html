@@ -285,7 +285,7 @@ function newGame(cid, manager){
 function longInjured(){
   for (const p of D.players){ if (!p.out || (S.pl[p.id] && S.pl[p.id].longSet)) continue;
     const q = ps(p.id), d = daysBetween(S.date, p.out); q.longSet = 1;
-    if (d > 0){ q.injD = d; q.told = 1; if (p.club === S.club) news('injury', `${p.n} is out long-term`, `${esc(p.n)} is still recovering from a serious injury and is not expected back before ${fmtDate(p.out, true)}.`); } }
+    if (d > 0){ q.injD = d; q.told = 1; if (p.club === S.club) news('injury', `${p.n} is out long-term`, `${esc(p.n)} is still recovering from ${p.outw ? 'an injury (' + esc(p.outw.toLowerCase()) + ')' : 'a serious injury'} and is not expected back before ${fmtDate(p.out, true)}.`); } }
 }
 // contracts: years left and weekly wage, from the player's value (a fixed draw per player)
 function contractFor(p){ const rr = rng(`c-${p.id}`); return { y: D.season + 1 + Math.floor(rr() * 4), w: Math.round(Math.max(8, p.val * (1.3 + rr() * .6)) * 1000 / 5) * 5 }; }

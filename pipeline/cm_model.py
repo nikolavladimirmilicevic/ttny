@@ -249,38 +249,69 @@ def grid_pos(xi, grid):
 
 
 LONG_OUT = 270   # days: a long-term injury's usual lay-off (a ruptured Achilles or cruciate), counted from his last start
+LOOK_BACK = 400  # days: how far back a last start may be for a missing player to be looked into
+
+
+def _listed(squads):
+    out = set()
+    for v in squads.values():
+        if isinstance(v, dict):
+            out.update(v.get('p') or [])
+    return out
+
+
+def absent_candidates(people, squads, lastseen, team_ids, season, today):
+    """Players worth asking the API about: a regular last season or this one (10 or more appearances) with a club of
+    this league, whose last start was for it within LOOK_BACK days, and who are in no club's squad list now."""
+    listed, t0, out = _listed(squads), datetime.date.fromisoformat(today), []
+    for pid, (d, tid, *_) in (lastseen or {}).items():
+        if tid not in team_ids or pid in listed or not d:
+            continue
+        if (t0 - datetime.date.fromisoformat(d)).days > LOOK_BACK:
+            continue
+        ss = (people.get(str(pid)) or {}).get('ss') or {}
+        if max(((ss.get(f'{y}:{tid}') or [0])[0] or 0) for y in (season - 1, season)) >= 10:
+            out.append(pid)
+    return out
 
 
 def long_term_out(people, squads, lastseen, team_ids, season, today):
-    """Players the squad lists leave out while they are long-term injured: a regular last season with a club of this
-    league, a last start for it within the last LONG_OUT days and before the season's final weeks, in no club's squad
-    now, and no match at all this season.
-    Returns {player id: (club id, expected return date)}."""
-    out, listed = {}, set()
-    for v in squads.values():
-        if isinstance(v, dict):
-            listed.update(v.get('p') or [])
-    t0 = datetime.date.fromisoformat(today)
-    for pid, (d, tid, *_) in (lastseen or {}).items():
-        if tid not in team_ids or pid in listed:
-            continue
+    """Players the squad lists leave out while they are long-term injured. Returns {player id: (club id, return date)}.
+    With the API's word on them (transfers and injuries, see absent_candidates): still the club's (no move away since
+    his last start for it) and an injury not yet over; back on its end date, or LONG_OUT days after it began.
+    Without it: a regular last season, a start within LONG_OUT days but not in the season's final weeks, no match
+    this season, and back LONG_OUT days after his last start."""
+    listed, t0, out = _listed(squads), datetime.date.fromisoformat(today), {}
+    cands = set(absent_candidates(people, squads, lastseen, team_ids, season, today))
+    for pid in cands:
+        d, tid = lastseen[pid][0], lastseen[pid][1]
         last = datetime.date.fromisoformat(d)
-        if (t0 - last).days > LONG_OUT or (t0 - last).days < 21:
-            continue
         e = people.get(str(pid)) or {}
         ss = e.get('ss') or {}
-        if not any(k.endswith(f':{tid}') for k in ss):
+        if 'chk' in e:
+            moved = [t for t in e.get('tr') or [] if t[0] >= d[:7] and t[1] != tid]
+            if moved:   # transferred, loaned out or released since his last start
+                continue
+            hurt = [y for y in e.get('sl') or [] if y[1] and y[1] >= d and 'suspen' not in (y[0] or '').lower()
+                    and (not y[2] or y[2] >= today)]
+            if not hurt:
+                continue
+            y = hurt[-1]   # the injury that began after his last start
+            start = datetime.date.fromisoformat(y[1][:10])
+            back = datetime.date.fromisoformat(y[2][:10]) if y[2] else start + datetime.timedelta(days=LONG_OUT)
+            if back <= t0:
+                back = t0 + datetime.timedelta(days=21)   # past the usual lay-off, still not back: a few more weeks
+            out[pid] = (tid, back.isoformat(), y[0])
             continue
-        if any(int(k.split(':')[0]) >= season for k in ss):   # he has played this season: not a long lay-off
+        if (t0 - last).days > LONG_OUT or (t0 - last).days < 21 or d > f'{season}-05-10':
             continue
-        prev = ss.get(f'{season - 1}:{tid}')
-        if not prev or (prev[0] or 0) < 10:   # a regular last season, not a youngster or a fringe player
+        if any(int(k.split(':')[0]) >= season for k in ss):
             continue
-        if d > f'{season}-05-10':   # a last start in the season's final weeks: more likely gone than hurt
+        if ((ss.get(f'{season - 1}:{tid}') or [0])[0] or 0) < 10:
             continue
         back = last + datetime.timedelta(days=LONG_OUT)
         if back > t0:
-            out[pid] = (tid, back.isoformat())
+            out[pid] = (tid, back.isoformat(), None)
     return out
 
 
@@ -302,10 +333,10 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             s = _stats(e, season, t['id'])
             rows.append({'pid': pid, 'tid': t['id'], 'e': e, 'w': w, 'p90': _per90(s), 'st': s})
     longs = long_term_out(people, squads, lastseen, {t['id'] for t in teams if squads.get(str(t['id']))}, season, today)
-    for pid, (tid, back) in longs.items():
+    for pid, (tid, back, why) in longs.items():
         e = people.get(str(pid)) or {}
         s = _stats(e, season, tid)
-        rows.append({'pid': pid, 'tid': tid, 'e': e, 'w': wp.get(pid), 'p90': _per90(s), 'st': s, 'back': back, 'gp': max((lastseen[pid][2] or {'CMF': 0}).items(), key=lambda kv: kv[1])[0]})
+        rows.append({'pid': pid, 'tid': tid, 'e': e, 'w': wp.get(pid), 'p90': _per90(s), 'st': s, 'back': back, 'why': why, 'gp': max((lastseen[pid][2] or {'CMF': 0}).items(), key=lambda kv: kv[1])[0]})
     if not rows:
         return None
     # an overall for those the draft game does not rate: from the season's rating, starts and club, fitted on those it does
@@ -409,7 +440,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
                             'ovr': rating, 'r': ratings, 'a': a, 'style': style, 'val': val,
                             'frm': w.get('frm'), 'inj': rnd.choice([1, 2, 2, 2, 3]),
                             's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None,
-                            **({'out': r['back']} if r.get('back') else {})})
+                            **({'out': r['back']} if r.get('back') else {}), **({'outw': r['why']} if r.get('why') else {})})
     clubs = []
     for t in teams:
         mine = sorted((p['ovr'] for p in out_players if p['club'] == t['id']), reverse=True)[:16]
