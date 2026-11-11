@@ -47,10 +47,10 @@ const fail = m => { console.error('SMOKE FAILED: ' + m); process.exit(1); };
       const nc = await m.evaluate(() => D.clubs.length), np = await m.evaluate(() => D.players.length);
       console.log('manager: clubs', nc, 'players', np);
       if (nc < 10 || np < 200) fail(`manager: only ${nc} clubs and ${np} players`);
-      // the real fixture list can leave a club without a match in a round: go on until its first one
+      // the calendar moves on day by day: Continue until the pre-match screen of the first match
       await m.click('[data-club]');
-      for (let i = 0; i < 6 && !(await m.$('#skip')); i++){ await m.click('#cont'); await m.waitForTimeout(300); }
-      await m.waitForSelector('#skip', { timeout: 10000 }); await m.click('#skip'); await m.waitForSelector('#done', { timeout: 10000 }); await m.click('#done');
+      for (let i = 0; i < 40 && !(await m.$('#tomatch')); i++){ await m.click('#cont'); await m.waitForTimeout(150); }
+      await m.click('#tomatch'); await m.waitForSelector('#skip', { timeout: 10000 }); await m.click('#skip'); await m.waitForSelector('#done', { timeout: 10000 }); await m.click('#done');
       await m.waitForSelector('#cont', { timeout: 10000 });
     }
   } catch (e) { errs.push(e.message); }
