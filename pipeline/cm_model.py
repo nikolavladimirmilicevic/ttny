@@ -7,7 +7,7 @@ says (goals, passes, dribbles, tackles, duels, saves, each per 90 minutes and co
 shrunk toward the middle when he has played little), by his height and weight (heading, jumping, physical contact,
 balance) and by his age (pace fades after 28, stamina after 31), with a small fixed draw per player so no two are alike.
 """
-import json, math, os, random, re, statistics
+import datetime, json, math, os, random, re, statistics
 from statistics import NormalDist
 
 ATTRS = [
@@ -226,7 +226,65 @@ def _style(a, pos):
     return ''
 
 
-def build(world, people, squads, cm, cm_fx, kits, alias, season, today):
+def grid_pos(xi, grid):
+    """A position from a lineup's grid ("row:column", row 1 the keeper, the last row the forwards, column 1 on the left)."""
+    try:
+        r, c = (int(x) for x in str(grid).split(':'))
+        rows = [int(str(x[1]).split(':')[0]) for x in xi if x and x[1]]
+        n = sum(1 for x in xi if x and str(x[1]).startswith(f'{r}:'))
+    except (ValueError, IndexError):
+        return None
+    last = max(rows)
+    if r == 1:
+        return 'GK'
+    wide = n >= 3 and c in (1, n)
+    side = 'L' if c == 1 else 'R'
+    if r == 2:
+        return side + 'B' if n >= 4 and wide else 'CB'
+    if r == last:
+        return side + 'WF' if wide else 'CF'
+    if r == last - 1 and last >= 5:
+        return side + 'MF' if wide else 'AMF'
+    return side + 'MF' if n >= 4 and wide else 'DMF' if r == 3 and last >= 5 else 'CMF'
+
+
+LONG_OUT = 270   # days: a long-term injury's usual lay-off (a ruptured Achilles or cruciate), counted from his last start
+
+
+def long_term_out(people, squads, lastseen, team_ids, season, today):
+    """Players the squad lists leave out while they are long-term injured: a regular last season with a club of this
+    league, a last start for it within the last LONG_OUT days and before the season's final weeks, in no club's squad
+    now, and no match at all this season.
+    Returns {player id: (club id, expected return date)}."""
+    out, listed = {}, set()
+    for v in squads.values():
+        if isinstance(v, dict):
+            listed.update(v.get('p') or [])
+    t0 = datetime.date.fromisoformat(today)
+    for pid, (d, tid, *_) in (lastseen or {}).items():
+        if tid not in team_ids or pid in listed:
+            continue
+        last = datetime.date.fromisoformat(d)
+        if (t0 - last).days > LONG_OUT or (t0 - last).days < 21:
+            continue
+        e = people.get(str(pid)) or {}
+        ss = e.get('ss') or {}
+        if not any(k.endswith(f':{tid}') for k in ss):
+            continue
+        if any(int(k.split(':')[0]) >= season for k in ss):   # he has played this season: not a long lay-off
+            continue
+        prev = ss.get(f'{season - 1}:{tid}')
+        if not prev or (prev[0] or 0) < 10:   # a regular last season, not a youngster or a fringe player
+            continue
+        if d > f'{season}-05-10':   # a last start in the season's final weeks: more likely gone than hurt
+            continue
+        back = last + datetime.timedelta(days=LONG_OUT)
+        if back > t0:
+            out[pid] = (tid, back.isoformat())
+    return out
+
+
+def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen=None):
     """cm.json as a dict, or None while the league's clubs are not all in."""
     teams = cm.get('teams') or []
     if not teams:
@@ -243,6 +301,11 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today):
             w = wp.get(pid)
             s = _stats(e, season, t['id'])
             rows.append({'pid': pid, 'tid': t['id'], 'e': e, 'w': w, 'p90': _per90(s), 'st': s})
+    longs = long_term_out(people, squads, lastseen, {t['id'] for t in teams if squads.get(str(t['id']))}, season, today)
+    for pid, (tid, back) in longs.items():
+        e = people.get(str(pid)) or {}
+        s = _stats(e, season, tid)
+        rows.append({'pid': pid, 'tid': tid, 'e': e, 'w': wp.get(pid), 'p90': _per90(s), 'st': s, 'back': back, 'gp': max((lastseen[pid][2] or {'CMF': 0}).items(), key=lambda kv: kv[1])[0]})
     if not rows:
         return None
     # an overall for those the draft game does not rate: from the season's rating, starts and club, fitted on those it does
@@ -287,7 +350,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today):
         if w and w.get('prim'):
             r['pos'] = list(w.get('pos') or [w['prim']]); r['prim'] = w['prim']
         else:
-            r['prim'] = _rough_pos(e.get('sp'), r['p90'], e.get('ht'), e.get('no')); r['pos'] = [r['prim']]
+            r['prim'] = r.get('gp') or _rough_pos(e.get('sp'), r['p90'], e.get('ht'), e.get('no')); r['pos'] = [r['prim']]
     # z-scores of season numbers within each position group, shrunk toward 0 by minutes
     metrics = ['g90', 'a90', 'sot', 'kp90', 'acc', 'def90', 'int90', 'past90', 'drs90', 'drpct', 'duw', 'fc90', 'cards90', 'sv90', 'gc90']
     groups = {}
@@ -345,7 +408,8 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today):
                             'age': age, 'no': e.get('no'), 'club': r['tid'], 'prim': pos, 'pos': r['pos'], 'ht': ht, 'wt': wt,
                             'ovr': rating, 'r': ratings, 'a': a, 'style': style, 'val': val,
                             'frm': w.get('frm'), 'inj': rnd.choice([1, 2, 2, 2, 3]),
-                            's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None})
+                            's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None,
+                            **({'out': r['back']} if r.get('back') else {})})
     clubs = []
     for t in teams:
         mine = sorted((p['ovr'] for p in out_players if p['club'] == t['id']), reverse=True)[:16]

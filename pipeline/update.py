@@ -1718,7 +1718,23 @@ def main():
     try:
         import cm_model
         kits, alias = game_kits()
-        cmd = cm_model.build(world, people, squads, meta.get('cm') or {}, load('cm_fixtures', {}), kits, alias, current_season(), TODAY.isoformat())
+        # each player's last start, for which club, and where he starts (to keep the long-term injured the squad lists leave out)
+        seen = {}
+        for fid, v in (lu or {}).items():
+            d = (fx.get(fid) or {}).get('d')
+            if not d or not isinstance(v, dict):
+                continue
+            for tid, side in v.items():
+                for x in (side or {}).get('xi') or []:
+                    if not x:
+                        continue
+                    q = seen.setdefault(x[0], ['', 0, {}])
+                    if q[0] < d:
+                        q[0], q[1] = d, int(tid)
+                    g = cm_model.grid_pos(side['xi'], x[1])
+                    if g:
+                        q[2][g] = q[2].get(g, 0) + 1
+        cmd = cm_model.build(world, people, squads, meta.get('cm') or {}, load('cm_fixtures', {}), kits, alias, current_season(), TODAY.isoformat(), lastseen=seen)
         if cmd and cmd['clubs']:
             with open(os.path.join(ROOT, 'cm.json'), 'w', encoding='utf-8') as f:
                 json.dump(cmd, f, ensure_ascii=False, separators=(',', ':'))

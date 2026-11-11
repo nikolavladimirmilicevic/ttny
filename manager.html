@@ -273,12 +273,19 @@ function newGame(cid, manager){
     fin: { bal: Math.round((40 + (q - 70) * 6) * 1e6), wk: [], gate: 0, tv: 0, wages: 0, budget: Math.round(Math.max(5, (q - 70) * 4) * 1e6) },
     con: {}, started: Date.now() };
   for (const p of D.players) S.con[p.id] = contractFor(p);
+  longInjured();
   for (const id of ids) S.tac[id] = autoTactic(id);
   const a = AIMS[aim];
   news('board', `Welcome to ${club(cid).name}`, `The chairman has appointed ${esc(S.manager)} as manager. The board's expectation for the season: <b>${a.name}</b>. ${a.text}`);
   news('club', 'Your first match', `The league starts on ${fmtDate(rounds[0].date, true)} with ${matchLine(rounds[0].m.find(m => m.h === cid || m.a === cid))}. The cup's first round is on ${fmtDate(cupDates[0])}.`);
   news('club', 'The backroom staff', 'Your assistant has picked a side and a formation to suit the squad. Look them over under Tactics, and set the training schedule under Training. Press Continue to move the calendar on.');
   save();
+}
+// players out long-term in real life (the data gives the expected return): injured from the start, back about then
+function longInjured(){
+  for (const p of D.players){ if (!p.out || (S.pl[p.id] && S.pl[p.id].longSet)) continue;
+    const q = ps(p.id), d = daysBetween(S.date, p.out); q.longSet = 1;
+    if (d > 0){ q.injD = d; q.told = 1; if (p.club === S.club) news('injury', `${p.n} is out long-term`, `${esc(p.n)} is still recovering from a serious injury and is not expected back before ${fmtDate(p.out, true)}.`); } }
 }
 // contracts: years left and weekly wage, from the player's value (a fixed draw per player)
 function contractFor(p){ const rr = rng(`c-${p.id}`); return { y: D.season + 1 + Math.floor(rr() * 4), w: Math.round(Math.max(8, p.val * (1.3 + rr() * .6)) * 1000 / 5) * 5 }; }
@@ -1129,6 +1136,7 @@ function run(){
     // players who have left the data since: out of every selection; new players: a contract
     for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x)); }
     for (const p of D.players) if (!S.con[p.id]) S.con[p.id] = contractFor(p);
+    longInjured();
   }
   view();
 })();
