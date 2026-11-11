@@ -40,6 +40,7 @@ h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.1;tex
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:6px 14px}
 .games{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}.games a{padding:5px 12px;border-radius:999px;color:var(--muted);text-decoration:none;font:600 13px/1 var(--body);white-space:nowrap}.games a.on{background:var(--gold);color:var(--gold-ink)}.games a:not(.on):hover{color:var(--text)}
 @media(max-width:440px){.topbar:has(.games) .mark .mtxt{display:none}.games a{padding:5px 10px;font-size:12px}}
+@media(max-width:400px){.games a{padding:5px 7px;font-size:11.5px}.mark .trk{display:none}}   /* three games in the switch: room on a small phone */
 .mark{font:700 16px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
 .mark .mtxt > span{color:var(--gold)}
 .mark{display:flex;align-items:center;gap:8px}
@@ -642,7 +643,7 @@ const LOGO_AR = 0.7819;   // height / width of the logo
 // the team's tracker (defects, enhancements, feedback), one tap from every screen
 const TRACKER_URL = 'https://github.com/nikolavladimirmilicevic/ttny/issues';   // GitHub Issues: public, anyone with a GitHub account can post
 // the two games of the site, the same bar on both pages
-const GAMES_NAV = on => `<nav class="games" aria-label="Games"><a class="${on === 'draft' ? 'on' : ''}" href="./"${on === 'draft' ? ' aria-current="page"' : ''}>Draft</a><a class="${on === 'guess' ? 'on' : ''}" href="guess.html">Guess Who</a></nav>`;
+const GAMES_NAV = on => `<nav class="games" aria-label="Games"><a class="${on === 'draft' ? 'on' : ''}" href="./"${on === 'draft' ? ' aria-current="page"' : ''}>Draft</a><a class="${on === 'guess' ? 'on' : ''}" href="guess.html">Guess Who</a><a href="manager.html">Manager</a></nav>`;
 // a club's crest (crests/<team id>.png, kept by the pipeline); nothing when there is none
 const clubCrest = (c, cls) => c && /^t\d+$/.test(c.id) ? `<img class="${cls || 'crs'}" src="crests/${c.id.slice(1)}.png" alt="" loading="lazy" onerror="this.remove()">` : '';
 /* players' photos, only for the player of the run and the competition's top scorer and top assister, shown straight from
@@ -3680,7 +3681,7 @@ function catchUp(){
   return true;
 }
 // a newer version of the game published while this one is open: reload (the run is saved), but never in the middle of a live match
-const BUILD = '20261110164849';
+const BUILD = '20261111095159';
 async function checkBuild(){
   try {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

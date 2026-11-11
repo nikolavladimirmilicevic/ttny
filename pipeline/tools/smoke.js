@@ -39,6 +39,18 @@ const fail = m => { console.error('SMOKE FAILED: ' + m); process.exit(1); };
     if (await g.$('#nm')) await g.fill('#nm', 'Smoke test');
     await g.click('#go'); await g.waitForSelector('.opt', { timeout: 20000 });
     await g.click('.opt'); await g.waitForSelector('#nx', { timeout: 5000 });
+    // Manager: a club, then the first match played to the end (only once cm.json exists)
+    const m = await page(); await m.goto(base + 'manager.html', { timeout: 60000 });
+    const hasCm = await m.evaluate(() => fetch('cm.json').then(r => r.ok).catch(() => false));
+    if (hasCm){
+      await m.waitForSelector('[data-club]', { timeout: 60000 });
+      const nc = await m.evaluate(() => D.clubs.length), np = await m.evaluate(() => D.players.length);
+      console.log('manager: clubs', nc, 'players', np);
+      if (nc < 10 || np < 200) fail(`manager: only ${nc} clubs and ${np} players`);
+      await m.click('[data-club]'); await m.click('#cont');
+      await m.waitForSelector('#skip', { timeout: 10000 }); await m.click('#skip'); await m.waitForSelector('#done', { timeout: 10000 }); await m.click('#done');
+      await m.waitForSelector('#cont', { timeout: 10000 });
+    }
   } catch (e) { errs.push(e.message); }
   await b.close();
   if (errs.length) fail(errs.join(' | '));

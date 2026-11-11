@@ -40,6 +40,7 @@ h1,h2{font-family:var(--display);font-weight:600;margin:0;line-height:1.1;text-t
 @media(max-width:440px){.mark .trk span{display:none}.mark .trk{padding:5px 6px;margin-left:2px}}
 .games{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}.games a{padding:5px 12px;border-radius:999px;color:var(--muted);text-decoration:none;font:600 13px/1 var(--body);white-space:nowrap}.games a.on{background:var(--gold);color:var(--gold-ink)}.games a:not(.on):hover{color:var(--text)}
 @media(max-width:440px){.mark .mtxt{display:none}.mark img{height:32px}.games a{padding:5px 10px;font-size:12px}}
+@media(max-width:400px){.games a{padding:5px 7px;font-size:11.5px}.mark .trk{display:none}}   /* three games in the switch: room on a small phone */
 .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 .top a{color:var(--muted);font-size:13px;text-decoration:none;border:1px solid var(--line);padding:4px 12px;border-radius:999px}
 .card{background:var(--panel);border-radius:14px;padding:18px;margin-top:12px}.stack>.card,.stack>section{margin-top:0}
@@ -360,7 +361,7 @@ let DATA = null, G = null;   // G: the game { mode, theme, pool, qs, i, picks: [
 
 /* ---------- screens ---------- */
 const TRACKER_URL = 'https://github.com/nikolavladimirmilicevic/ttny/issues';   // GitHub Issues, as in the draft game
-const header = () => `<header class="topbar"><div class="mark"><a class="home" href="./"><img src="logo80.png" alt="This Time Next Year"><span class="mtxt">This Time <span>Next Year</span></span></a><a class="trk" href="${TRACKER_URL}" target="_blank" rel="noopener" title="Tracker on GitHub: defects, enhancements, feedback, questions" aria-label="Open the tracker on GitHub"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M4 5h2v2H4zm4 0h12v2H8zm-4 6h2v2H4zm4 0h12v2H8zm-4 6h2v2H4zm4 0h12v2H8z"/></svg><span>Tracker</span></a></div><nav class="games" aria-label="Games"><a href="./">Draft</a><a class="on" href="guess.html" aria-current="page">Guess Who</a></nav></header>`;
+const header = () => `<header class="topbar"><div class="mark"><a class="home" href="./"><img src="logo80.png" alt="This Time Next Year"><span class="mtxt">This Time <span>Next Year</span></span></a><a class="trk" href="${TRACKER_URL}" target="_blank" rel="noopener" title="Tracker on GitHub: defects, enhancements, feedback, questions" aria-label="Open the tracker on GitHub"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M4 5h2v2H4zm4 0h12v2H8zm-4 6h2v2H4zm4 0h12v2H8zm-4 6h2v2H4zm4 0h12v2H8z"/></svg><span>Tracker</span></a></div><nav class="games" aria-label="Games"><a href="./">Draft</a><a class="on" href="guess.html" aria-current="page">Guess Who</a><a href="manager.html">Manager</a></nav></header>`;
 function viewStart(){
   const name = playerName(), pr = prefs();
   $('#app').innerHTML = `${header()}

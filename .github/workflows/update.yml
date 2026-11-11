@@ -48,6 +48,7 @@ jobs:
         if: failure() && steps.smoke.outcome == 'failure'
         run: |
           git checkout HEAD -- world.json careers.json
+          git checkout HEAD -- cm.json 2>/dev/null || true
           git checkout HEAD -- world-extra.json 2>/dev/null || rm -f world-extra.json
           echo "::error::The games did not pass the check with the new data: the files the game reads stay as they were (the fetched data is still saved)."
       - name: Commit data
