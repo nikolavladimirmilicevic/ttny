@@ -151,6 +151,19 @@ tr.me td{background:rgba(79,209,139,.10)}
 .pl.subs{color:var(--muted)}
 .pl.pick{background:rgba(79,209,139,.14)}
 .pl .no{color:var(--muted);font-weight:700;text-align:right}
+.mpv{display:grid;gap:12px}
+.mpv-h{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch}
+.mpv-t{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,var(--k1) 0 6px,rgba(255,255,255,.04) 6px)}
+.mpv-t>div{display:grid;gap:3px}.mpv-t b{font:600 20px/1.1 var(--display);text-transform:uppercase}.mpv-t .mcr{width:40px;height:40px}
+.mpv-v{align-self:center;font:600 18px/1 var(--display);color:var(--dim)}
+.mpv-f{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:13px;color:var(--text)}.mpv-f .sep{color:var(--dim)}
+.mpv-g>*,.mpv-h>*{min-width:0}.mpv-s table{width:100%;table-layout:fixed}.mpv-s td{overflow-wrap:anywhere;vertical-align:top;white-space:normal}.mpv-s td.dim{width:92px}
+.mpv-g{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(260px,1.15fr);gap:16px;align-items:start}
+@media(max-width:980px){.mpv-g{grid-template-columns:1fr 1fr}.mpv-s{grid-column:1/-1}}
+@media(max-width:560px){.mpv-g{grid-template-columns:1fr}.mpv-h{grid-template-columns:1fr}.mpv-v{display:none}}
+.pitch.mini{max-width:300px}.pitch.mini .tok{width:64px}.pitch.mini .tok .dot{width:26px;height:26px;font-size:11px}.pitch.mini .tok .nm{font-size:10px;max-width:64px}.pitch.mini .tok .cb{width:24px}
+.mpv-w{list-style:none;margin:0;padding:0;display:grid;gap:5px;font-size:13px}.mpv-w li{padding:6px 9px;border-radius:7px;background:rgba(255,255,255,.04);border-left:3px solid var(--gold)}.mpv-w li.bad{border-left-color:var(--loss)}
+.instr.tbq{grid-template-columns:minmax(0,1fr);gap:4px}.instr.tbq>span.yel{margin-top:6px;font-size:12.5px}.instr.tbq .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%}.instr.tbq .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px}
 .tboard{display:grid;gap:10px}
 .tbforms{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .tbf{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 7px 5px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:inherit;font:600 11px/1 var(--body);cursor:pointer}
@@ -1868,18 +1881,57 @@ function nextFixture(cid){
   if (S.lc && S.lc.stage < 6 && S.lc.alive.concat(S.lc.stage === 1 ? S.lc.wait : []).includes(cid)) L.push({ date: S.lc.dates[S.lc.stage], comp: LC + ' · ' + LC_NAMES[S.lc.stage], m: null });
   return L.sort((a, b) => a.date < b.date ? -1 : 1)[0];
 }
+/* the match preview: both sides as they will line up (yours as picked, theirs as their manager is likely to pick
+   it), the warnings a manager wants before kick-off, your quick instructions and a dossier on the opponents */
+function previewSide(cid, M){
+  if (M){ const side = M.h === cid ? M.H : M.A; return { form: side.t.form, places: livePlaces(M, side).map(x => ({ ...x, rt: null })) }; }
+  if (cid === me()){ const B = boardWeek(); return { form: B.t.form, places: B.places }; }
+  const f = (S.tac[cid] && FORMS[S.tac[cid].form] ? S.tac[cid].form : bestForm(cid, true)), sl = FORMS[f], { xi } = bestXI(cid, f, true);
+  return { form: f, places: sl.map(([code, x, y], i) => { const id = xi[i]; return { i, code, x, y, id, p: id ? P.get(id) : null, e: id ? ps(id).cond : 0 }; }) };
+}
+function previewHTML(h, a, o){
+  const st = standings(), mineH = h === me(), mine = mineH || a === me(), opp = mineH ? a : h;
+  const pos = id => !LG.has(id) ? 'Championship' : S.round ? `${ordinal(st.findIndex(r => r.id === id) + 1)} in the league` : 'Season not started';
+  const form = id => { const L = ((S.table[id] || {}).form || []).slice(-5); return L.length ? `<span class="form">${L.map(x => `<span class="${x}">${x}</span>`).join('')}</span>` : '<span class="dim small">no games yet</span>'; };
+  const sides = { [h]: previewSide(h, o.M), [a]: previewSide(a, o.M) };
+  const head = id => { const [k1, k2] = kitOf(id); return `<div class="mpv-t" style="--k1:${k1};--k2:${k2}">${crest(id, 'mcr')}<div><b>${esc(club(id).name)}</b><span class="small">${pos(id)}</span>${form(id)}</div></div>`; };
+  const mini = (id, flip) => { const S2 = sides[id], [k1, k2] = kitOf(id);
+    return `<div class="mpv-p"><div class="ptitle">${esc(club(id).name)} <span class="small dim">${esc(S2.form)}${id === me() || o.M ? '' : ', likely side'}</span></div><div class="pitch mini" style="--k1:${k1};--k2:${k2}"><div class="bx t"></div><div class="bx"></div>${S2.places.map(pl => `<div class="tok ro ${pl.p ? (fitTier(pl.p, pl.code) < 0 ? 'bad' : fitTier(pl.p, pl.code) >= 2 ? 'ok' : '') : 'empty'}" style="left:${flip ? 100 - pl.x : pl.x}%;top:${pl.y}%"><span class="dot">${pl.p ? (pl.p.no || '•') : '+'}</span><span class="nm">${pl.p ? esc(surname(pl.p.n)) : pl.code}</span>${pl.p ? `<i class="cb" style="--w:${Math.round(pl.e)}%;--c:${pl.e >= 80 ? 'var(--win)' : pl.e >= 62 ? 'var(--gold)' : 'var(--loss)'}"></i>` : ''}</div>`).join('')}</div></div>`; };
+  // what to look at before kick-off
+  const warn = [];
+  if (mine){ for (const pl of sides[me()].places){ if (!pl.p){ warn.push(['bad', `Nobody at ${pl.code}.`]); continue; }
+    const n = esc(cmName(pl.p.n));
+    if (!o.M && !avail(pl.id)) warn.push(['bad', `${n} is ${ps(pl.id).sus ? 'suspended' : onLoan(pl.p) ? 'away on loan' : 'injured'}.`]);
+    else if (pl.e < 75) warn.push(['warn', `${n} is tired (${Math.round(pl.e)}%).`]);
+    if (fitTier(pl.p, pl.code) < 0) warn.push(['warn', `${n} is out of position at ${pl.code}.`]); } }
+  const t = S.tac[me()], seg = (k, Lb) => `<span class="seg" data-qt="${k}">${Lb.map((n, i) => `<button data-v="${i}" class="${t[k] === i ? 'on' : ''}">${n}</button>`).join('')}</span>`;
+  const quick = mine ? `<div class="ptitle">Your instructions</div><div class="instr tbq"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}</div>
+    <div class="tools" style="margin-top:8px"><button class="btn sm" id="qtac">Full tactics</button></div>
+    <div class="ptitle">Before kick-off</div>${warn.length ? `<ul class="mpv-w">${warn.slice(0, 6).map(([c, x]) => `<li class="${c}">${x}</li>`).join('')}</ul>` : '<p class="small" style="color:var(--win)">The side is ready: everyone fit and in his place.</p>'}` : '';
+  const ot = o.M ? (o.M.h === opp ? o.M.H.t : o.M.A.t) : (S.tac[opp] || autoTactic(opp)), tb = S.table[opp];
+  const dw = x => ovrNow(x.p) + ({ FWD: 4, MID: 2, DEF: 0 })[GROUP[x.p.prim]], danger = sides[opp].places.filter(x => x.p && x.code !== 'GK').sort((x, y) => dw(y) - dw(x)).slice(0, 3);
+  const dossier = `<div class="ptitle">${esc(club(opp).name)}</div><table><tbody>
+    <tr><td class="dim">Style</td><td>${MENT[ot.men]}, ${PASS[ot.pass].toLowerCase()} passing${ot.press ? ', pressing' : ''}${ot.counter ? ', on the counter' : ''}${ot.mbb ? ', men behind the ball' : ''}</td></tr>
+    ${tb ? `<tr><td class="dim">Record</td><td>W${tb.w} D${tb.d} L${tb.l}, goals ${tb.gf}-${tb.ga}</td></tr>` : ''}
+    <tr><td class="dim">Dangermen</td><td>${danger.map(x => `<a class="sky" data-pl="${x.id}" style="cursor:pointer">${esc(cmName(x.p.n))}</a> <span class="small yel">${x.code}</span>`).join(', ')}</td></tr></tbody></table>`;
+  const facts = `<div class="mpv-f">${[o.comp && `<b>${o.comp}</b>`, fmtDate(o.date, true) + (o.ko ? `, ${o.ko}` : ''), o.tv && `<span class="pill">${esc(o.tv)}</span>`, esc(o.venue || ''), `Referee ${esc(o.ref.n)} <span class="dim">(${o.ref.s >= 13 ? 'strict' : o.ref.s <= 7 ? 'lenient' : 'fair'})</span>`, `${esc(o.weather)}, ${o.temp}°C${o.wxNote ? ` <span class="dim">${o.wxNote}</span>` : ''}`].filter(Boolean).join('<span class="sep">·</span>')}</div>`;
+  return `<div class="mpv"><div class="mpv-h">${head(h)}<span class="mpv-v">v</span>${head(a)}</div>${facts}
+    <div class="mpv-g">${mini(h)}${mini(a)}<div class="mpv-s">${quick}${dossier}</div></div></div>`;
+}
+function previewWire(again){
+  document.querySelectorAll('.seg[data-qt] button').forEach(b => b.addEventListener('click', () => { S.tac[me()][b.parentElement.dataset.qt] = +b.dataset.v; save(); again(); }));
+  document.querySelectorAll('.mpv [data-pl]').forEach(x => x.addEventListener('click', () => { if (LIVE) return; go({ s: 'player', id: +x.dataset.pl }); }));
+}
 function clubNext(cid, o){
   const f = nextFixture(cid);
   if (!f){ o.body = '<p class="empty">No more matches this season.</p>'; frame(o); return; }
   if (!f.m){ o.body = `<div class="ptitle">${f.comp}</div><p class="c">${fmtDate(f.date, true)}. The draw is made on the day.</p>`; frame(o); return; }
-  const opp = f.m.h === cid ? f.m.a : f.m.h, cond = matchConditions(f.m.h, f.m.a, f.date), st = standings(), row = id => st.find(r => r.id === id), pos = id => st.findIndex(r => r.id === id) + 1;
-  const strict = cond.ref.s >= 13 ? 'strict' : cond.ref.s <= 7 ? 'lenient' : 'fair';
-  const top = id => squadOf(id).slice().sort((a, b) => ovrNow(b) - ovrNow(a)).slice(0, 5);
-  o.body = `<div class="ptitle">${f.comp}: ${esc(club(f.m.h).name)} v ${esc(club(f.m.a).name)}</div>
-    <div class="cols2"><dl class="kv"><dt>Date</dt><dd>${fmtDate(f.date, true)}</dd><dt>Venue</dt><dd>${f.comp === SHIELD ? 'Wembley Stadium' : esc(club(f.m.h).venue || '')}</dd><dt>Referee</dt><dd>${esc(cond.ref.n)} (${strict})</dd><dt>Forecast</dt><dd>${esc(cond.weather)}, ${cond.temp}°C</dd></dl>
-    <dl class="kv"><dt>${esc(club(opp).name)}</dt><dd>${S.round ? ordinal(pos(opp)) + ', ' + row(opp).pts + ' pts' : 'the season has not started'}</dd><dt>Form</dt><dd class="form">${(row(opp).form || []).map(x => `<span class="${x}">${x}</span>`).join('') || '-'}</dd><dt>Usual shape</dt><dd>${esc(S.tac[opp].form)}, ${MENT[S.tac[opp].men].toLowerCase()}</dd><dt>Players to watch</dt><dd>${top(opp).map(p => `<a class="sky" style="cursor:pointer" data-pl="${p.id}">${esc(cmName(p.n))}</a>`).join(', ')}</dd></dl></div>`;
-  frame(o); wirePlayers(top(opp).map(p => p.id));
+  const cond = matchConditions(f.m.h, f.m.a, f.date), fm = f.comp === 'League' && ((S.rounds.find(r => r.date === f.date) || {}).m || []).find(x => x.h === f.m.h && x.a === f.m.a);
+  o.body = previewHTML(f.m.h, f.m.a, { comp: f.comp, date: f.date, ko: fm && fm.ko, tv: fm && fm.tv, venue: f.comp === SHIELD ? 'Wembley Stadium' : club(f.m.h).venue, ref: cond.ref, weather: cond.weather, temp: cond.temp });
+  frame(o); previewWire(() => view());
+  const q = $('#qtac'); if (q) q.addEventListener('click', () => go({ s: 'club', cid: me(), tab: 'tactics' }));
 }
+
 const allResults = () => [...S.results.flatMap(x => x.res.map(r => ({ ...r, comp: 'League', date: x.date }))), ...S.cup.log.flatMap(l => l.res.filter(r => !r.bg).map(r => ({ ...r, comp: 'Cup', date: l.date })))];
 function clubFixtures(cid, o){
   const rows = [];
@@ -2845,13 +2897,13 @@ function viewPre(){
   mframe(`<div class="date"><span>${WD[new Date(S.date + 'T12:00:00Z').getUTCDay()]}</span><span>${shortDate(S.date)}</span><span>PM</span></div><button class="sb go" id="tomatch">Go to Match</button><button class="sb" id="totac">${esc(club(me()).name)} Tactics</button>`,
     `<div class="banner"><span></span><h1>Next Match<span class="sub">${L.shield ? SHIELD + ' · Wembley' : L.lc ? `${LC} · ${esc(L.cup)}${L.cup === 'Final' ? ' · Wembley' : ''}` : L.cup ? esc(CUP) + ' · ' + esc(L.cup) : esc(D.league)}</span></h1><span></span></div>
     <div class="mteams"><div class="t" style="background:${kh};color:${kh2}">${crest(M.h, 'mcr')}<span>${esc(club(M.h).name)}</span></div><div class="t" style="background:${ka};color:${ka2}">${crest(M.a, 'mcr')}<span>${esc(club(M.a).name)}</span></div></div>
-    <section class="pane"><dl class="kv"><dt>Date</dt><dd>${fmtDate(S.date, true)}</dd>${(() => { const fm = !L.cup && ((S.rounds[S.round] || {}).m || []).find(x => x.h === M.h && x.a === M.a); const wd = new Date(S.date + 'T12:00:00Z').getUTCDay(), dflt = wd === 0 || wd === 6 ? '15:00' : '19:45';   // the league's default kick-offs
-      return fm ? `<dt>Kick-off</dt><dd>${fm.ko || dflt}${fm.tv ? ` <span class="pill">${esc(fm.tv)}</span>` : ''}</dd>` : ''; })()}<dt>Venue</dt><dd>${L.shield || (L.lc && L.cup === 'Final') ? 'Wembley Stadium' : esc(club(M.h).venue || '')}</dd><dt>Referee</dt><dd>${esc(M.ref.n)}: ${strict}</dd><dt>Weather</dt><dd>${esc(M.weather)}, ${M.temp}°C${wxNote}</dd><dt>Opponents</dt><dd>${esc(club(opp).name)}${S.round ? ', ' + ordinal(st.findIndex(r => r.id === opp) + 1) : ''}, ${esc(M.h === me() ? M.A.t.form : M.H.t.form)}</dd></dl>
-      <div class="cols2" style="margin-top:10px"><div><div class="ptitle">${esc(club(M.h).name)}</div>${line(M.H)}</div><div><div class="ptitle">${esc(club(M.a).name)}</div>${line(M.A)}</div></div></section>
+    <section class="pane">${(() => { const fm = !L.cup && ((S.rounds[S.round] || {}).m || []).find(x => x.h === M.h && x.a === M.a), wd = new Date(S.date + 'T12:00:00Z').getUTCDay();
+      return previewHTML(M.h, M.a, { M, date: S.date, ko: fm ? fm.ko || (wd === 0 || wd === 6 ? '15:00' : '19:45') : null, tv: fm && fm.tv, venue: L.shield || (L.lc && L.cup === 'Final') ? 'Wembley Stadium' : club(M.h).venue, ref: M.ref, weather: M.weather, temp: M.temp, wxNote: wxNote.replace(/^ \(|\)$/g, '') }); })()}</section>
     <div class="bn"><button id="totac2">Back</button><button id="tomatch2">Next</button></div>`);
   const goMatch = () => { L.pre = false; viewMatch(); }, toTac = () => { LIVE = null; go({ s: 'club', cid: me(), tab: 'tactics' }); toast('Press Continue Game when you are ready for the match.'); };
   $('#tomatch').addEventListener('click', goMatch); $('#tomatch2').addEventListener('click', goMatch);
   $('#totac').addEventListener('click', toTac); $('#totac2').addEventListener('click', toTac);
+  previewWire(() => viewPre()); const q = $('#qtac'); if (q) q.addEventListener('click', toTac);
 }
 function viewMatch(){
   const L = LIVE, M = L.M, [kh, kh2] = kitOf(M.h), [ka, ka2] = kitOf(M.a);
