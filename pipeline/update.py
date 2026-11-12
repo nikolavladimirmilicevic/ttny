@@ -787,6 +787,20 @@ def update_cm(squads, people, meta, seen=None):
                                     (x.get('player') or {}).get('type') or '', (x.get('player') or {}).get('reason') or ''] for x in data.get('response', [])]}
                 save('cm_injuries', inj)
         cm['injn'] = injury_counts(inj)
+        # each club's manager (head coach), once a month: the API's coach whose career has him at the club with no end
+        coach = cm.setdefault('coach', {})
+        for t in cm['teams']:
+            c = coach.get(str(t['id']))
+            if c and days_old(c[1]) < 30:
+                continue
+            name = None
+            for x in api('coachs', team=t['id']).get('response', []):
+                for job in x.get('career') or []:
+                    if (job.get('team') or {}).get('id') == t['id'] and not job.get('end'):
+                        name = x.get('name') or ' '.join(filter(None, [x.get('firstname'), x.get('lastname')]))
+                if name:
+                    break
+            coach[str(t['id'])] = [fix_text(name) if name else None, TODAY.isoformat()]
         done = cm.setdefault('stats', {})
         for t in sorted(cm['teams'], key=lambda t: done.get(str(t['id']), '')):
             tid = t['id']

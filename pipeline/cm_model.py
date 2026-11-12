@@ -636,7 +636,8 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         nm = c.get('name') or t['name']
         kit = kits.get(nm) or kits.get(alias.get(nm, '')) or kits.get(t['name']) or kits.get(alias.get(t['name'], ''))
         clubs.append({'id': t['id'], 'name': nm, 'code': t.get('code'), 'city': t.get('city'), 'venue': t.get('venue'), 'cap': t.get('cap'),
-                      'kit': kit, 'elo': c.get('elo'), 'q': round(statistics.mean(mine), 1)})
+                      'kit': kit, 'elo': c.get('elo'), 'q': round(statistics.mean(mine), 1),
+                      **({'coach': ((cm or {}).get('coach') or {})[str(t['id'])][0]} if (((cm or {}).get('coach') or {}).get(str(t['id'])) or [None])[0] else {})})
     clubs.sort(key=lambda c: -c['q'])
     have = {c['id'] for c in clubs}
     fixtures = [[m[1], m[2], m[3], m[4]] for m in (cm_fx or {}).get('m', []) if m[3] in have and m[4] in have]
