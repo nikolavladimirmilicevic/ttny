@@ -317,6 +317,7 @@ button.frow:hover{border-color:var(--gold)}
 .banner.wc{grid-template-columns:auto 1fr auto}
 .banner .bcr{display:flex;align-items:center;padding-left:14px}
 .bigcr{width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+.banner .bclub{font-weight:500;opacity:.92}
 .banner .binfo{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 18px;font:500 14px/1.4 var(--body);text-transform:none;letter-spacing:0;margin-top:6px;white-space:normal}
 .banner .binfo .flag{font-size:16px}
 .cr{width:20px;height:20px;object-fit:contain;vertical-align:-5px;margin-right:7px}
@@ -324,6 +325,8 @@ td.nm{white-space:nowrap}
 .mcr{width:30px;height:30px;object-fit:contain;margin-right:10px;flex:none}
 .mteams .t{display:flex;align-items:center}
 @media(max-width:600px){.banner.wc{grid-template-columns:1fr}.banner.wc>.bcr{display:flex}.banner .bcr{justify-content:center;padding:10px 0 0}.bigcr{width:44px;height:44px}.banner .binfo{gap:2px 12px;font-size:13px}}
+.cmborn{text-align:center;text-transform:none;font-size:18px;letter-spacing:.01em}
+.cmborn .flag{font-size:17px}
 </style>
 </head><body>
 <div id="app"><p class="loading">Loading…</p></div>
@@ -352,6 +355,18 @@ const NIR_FLAG = '<svg viewBox="0 0 30 20" width="1.35em" height=".9em" style="v
 const flagOf = name => { if (name === 'Northern Ireland') return NIR_FLAG; const c = ISO[name]; if (!c) return '';
   if (c.startsWith('gb-')) return '\u{1F3F4}' + [...c.replace('-', '')].map(ch => String.fromCodePoint(0xE0000 + ch.charCodeAt(0))).join('') + '\u{E007F}';
   return [...c].map(ch => String.fromCodePoint(0x1F1E6 + ch.charCodeAt(0) - 65)).join(''); };
+const DEMONYM = { Albania: 'Albanian', Algeria: 'Algerian', Argentina: 'Argentine', Australia: 'Australian', Austria: 'Austrian', Belgium: 'Belgian', 'Bosnia and Herzegovina': 'Bosnian',
+  Brazil: 'Brazilian', Bulgaria: 'Bulgarian', 'Burkina Faso': 'Burkinabé', Cameroon: 'Cameroonian', Canada: 'Canadian', Chile: 'Chilean', Colombia: 'Colombian', 'Congo DR': 'Congolese',
+  Croatia: 'Croatian', Czechia: 'Czech', "Côte d'Ivoire": 'Ivorian', 'Ivory Coast': 'Ivorian', Denmark: 'Danish', Ecuador: 'Ecuadorian', Egypt: 'Egyptian', England: 'English', France: 'French',
+  Gambia: 'Gambian', Georgia: 'Georgian', Germany: 'German', Ghana: 'Ghanaian', Greece: 'Greek', 'Guinea-Bissau': 'Bissau-Guinean', Hungary: 'Hungarian', Iceland: 'Icelandic',
+  Israel: 'Israeli', Italy: 'Italian', Jamaica: 'Jamaican', Japan: 'Japanese', 'Korea Republic': 'South Korean', 'South Korea': 'South Korean', Mali: 'Malian', Mauritania: 'Mauritanian',
+  Mexico: 'Mexican', Morocco: 'Moroccan', Mozambique: 'Mozambican', Netherlands: 'Dutch', 'New Zealand': 'New Zealander', Nigeria: 'Nigerian', 'Northern Ireland': 'Northern Irish',
+  Norway: 'Norwegian', Paraguay: 'Paraguayan', Poland: 'Polish', Portugal: 'Portuguese', 'Republic of Ireland': 'Irish', Ireland: 'Irish', Scotland: 'Scottish', Senegal: 'Senegalese',
+  Serbia: 'Serbian', Slovakia: 'Slovak', Slovenia: 'Slovenian', Spain: 'Spanish', Sweden: 'Swedish', Switzerland: 'Swiss', 'Türkiye': 'Turkish', Turkey: 'Turkish', USA: 'American',
+  'United States': 'American', Ukraine: 'Ukrainian', Uruguay: 'Uruguayan', Uzbekistan: 'Uzbek', Wales: 'Welsh', Montenegro: 'Montenegrin', 'North Macedonia': 'Macedonian', Kosovo: 'Kosovan',
+  Finland: 'Finnish', Romania: 'Romanian', Russia: 'Russian', Peru: 'Peruvian', Venezuela: 'Venezuelan', Tunisia: 'Tunisian', Guinea: 'Guinean', 'Cape Verde': 'Cape Verdean', Angola: 'Angolan',
+  Zambia: 'Zambian', Zimbabwe: 'Zimbabwean', 'South Africa': 'South African', Kenya: 'Kenyan', China: 'Chinese', Iran: 'Iranian', Armenia: 'Armenian', Lithuania: 'Lithuanian', Luxembourg: 'Luxembourgish',
+  Estonia: 'Estonian', Latvia: 'Latvian', Belarus: 'Belarusian', Cyprus: 'Cypriot', Gabon: 'Gabonese', Togo: 'Togolese', Benin: 'Beninese', 'Sierra Leone': 'Sierra Leonean', Suriname: 'Surinamese', 'Curaçao': 'Curaçaoan' };
 const flag = nat => { const f = flagOf(nat); return f ? `<span class="flag" title="${esc(nat)}">${f}</span>` : ''; };
 const surname = n => { const p = String(n || '').trim().split(/\s+/); if (p.length < 2) return n; const small = ['van', 'de', 'der', 'da', 'dos', 'di', 'el', 'ben', 'mac', 'le', 'ter', 'den']; let i = p.length - 1; while (i > 1 && small.includes(p[i - 1].toLowerCase())) i--; return p.slice(i).join(' '); };
 const attrClass = v => 'a' + Math.max(4, Math.min(9, Math.floor(v / 10)));
@@ -1495,7 +1510,10 @@ function playerCard(p, q, con, born){
   const ks = Object.keys(ATTR_NAME), dist = x => ks.reduce((t, key) => t + Math.abs(A(x, key) - A(p, key)), 0);
   const sim = D.players.filter(x => x.id !== p.id && x.prim === p.prim).map(x => [x, dist(x)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
   const real = p.s ? `<tr><td>${D.season - 1}/${String(D.season % 100).padStart(2, '0')} (real)</td><td class="c">${p.s[0]}</td><td class="c">${p.s[1]}</td><td class="c">${p.s[2]}</td><td class="c">-</td><td class="c">-</td><td class="c"><span class="avr">${p.s[3] ? (+p.s[3]).toFixed(2) : '----'}</span></td></tr>` : '';
-  return `<div class="cmattr">${col(0)}${col(1)}${col(2)}</div>
+  // under the tabs, as in CM 01/02: born, age, nationality (and games for his country in the past year)
+  const nat = p.nat ? `${flag(p.nat)}${esc(DEMONYM[p.nat] || p.nat)}${p.nt ? ` (${p.nt} international${p.nt === 1 ? '' : 's'} in the past year)` : ''}.` : '';
+  return `<div class="born cmborn">${born}. ${nat}</div>
+    <div class="cmattr">${col(0)}${col(1)}${col(2)}</div>
     <div class="cmlow"><div class="tw"><table class="cmst"><thead><tr><th></th><th class="c">Apps</th><th class="c">Gls</th><th class="c">Asts</th><th class="c">MoM</th><th class="c">Yel</th><th class="c">Av R</th></tr></thead><tbody>
       <tr><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td class="c">${q.apps || '-'}</td><td class="c">${q.apps ? q.g : '-'}</td><td class="c">${q.apps ? q.a : '-'}</td><td class="c">${q.apps ? q.mom : '-'}</td><td class="c">${q.apps ? q.yc : '-'}</td><td class="c"><span class="avr">${q.apps ? avgRt(q) : '----'}</span></td></tr>${real}</tbody></table>
       <div class="small dim" style="margin-top:8px">Similar: ${sim.map(x => `<a class="sky" data-pl="${x.id}">${flag(x.nat)}${esc(x.n)}</a> <span class="dim">(${esc(fullName(x.club))})</span>`).join(', ')}</div></div>
@@ -1519,9 +1537,7 @@ function scrPlayer(){
   if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
-  const vb = known(p) || p.club === me() ? cash(p.val * 1e6) : `about ${cash(Math.round(p.val / 5) * 5e6 || p.val * 1e6)}`;
-  const info = [p.nat ? `${flag(p.nat)}${esc(p.nat)}` : '', `<b>${esc(fullName(p.club))}</b>${p.no ? `, number ${p.no}` : ''}`, born, POS_LONG[p.prim] || p.prim, `Value ${vb}`].filter(Boolean).map(x => `<span>${x}</span>`).join('');
-  frame(ofClub(p.club, { title: esc(p.n), info,
+  frame(ofClub(p.club, { title: `${esc(p.n)} <span class="bclub">(${esc(fullName(p.club))})</span>`,
     act: mine ? `<button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
     top: [['profile', 'Profile'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['hist', 'History']], topOn: tab,
     onTab: k => { V = { ...V, tab: k }; view(); }, body,
