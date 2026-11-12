@@ -462,8 +462,13 @@ const xiScore = (slots, xi, q = (p, code) => fitIn(p, code)) => xi.reduce((t, id
 let S = null;
 // the game in play saves itself into its file as you go (see the saved games further down)
 const save = () => { if (!S) return; S.slot = S.slot || (typeof NEWG !== 'undefined' && NEWG.file) || 'Game in play';
-  try { localStorage.setItem(slotKey(S.slot), JSON.stringify(S)); localStorage.setItem('ttny.manager.last', S.slot); } catch (e) { toast('This device could not save the game: there is no room left. Delete an old save.'); return; }
+  try { localStorage.setItem(slotKey(S.slot), packS(S)); localStorage.setItem('ttny.manager.last', S.slot); } catch (e) { toast('This device could not save the game: there is no room left. Delete an old save.'); return; }
   try { const L = slotList().filter(x => x.name !== S.slot); L.unshift({ name: S.slot, at: Date.now(), ...slotInfo(S) }); localStorage.setItem(SLOTS, JSON.stringify(L)); } catch (e) {} };
+// a player's attribute changes (d) and start-of-game shake (r) go into the save as plain lists in a fixed order, which
+// keeps a season-old save at about a third of the size; adopt() turns them back
+const PACK_KEYS = () => Object.keys(ATTR_NAME);
+const packS = s => JSON.stringify(s, function (k, v){ return (k === 'd' || k === 'r') && v && typeof v === 'object' && !Array.isArray(v) && this && this.cond !== undefined ? { _: PACK_KEYS().map(x => v[x] || 0) } : v; });
+const unpackPl = s => { const K = PACK_KEYS(); for (const q of Object.values(s.pl || {})) for (const f of ['d', 'r']) if (q[f] && Array.isArray(q[f]._)){ const o = {}; q[f]._.forEach((v, i) => { if (v) o[K[i]] = v; }); q[f] = o; } };
 const loadSave = () => { try { const last = localStorage.getItem('ttny.manager.last'); if (last){ const s = JSON.parse(localStorage.getItem(slotKey(last)) || 'null'); if (s) return s; } return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } };
 const club = id => C.get(id) || { id, name: '?', kit: ['#888', '#fff'], q: 70 };
 const kitOf = id => (club(id).kit || ['#8899AA', '#FFFFFF']);
@@ -970,7 +975,7 @@ function trainWeek(wk){
       if (gk !== GK_KEYS.includes(k) && rr() < .7) continue;
       let v = (grow + (mine && focus && focus.includes(k) ? .04 : 0)) * (mine ? inten * (1 + ((S.fac || {}).train ? .15 : 0) + ((S.fac || {}).youth && age <= 21 ? .2 : 0)) : 1) * (0.5 + rr());
       if (grow < 0 && ['sp', 'ac', 'st'].includes(k)) v *= 1.8;
-      if (!q.injD) q.d[k] = (q.d[k] || 0) + v * .6;
+      if (!q.injD) q.d[k] = Math.round(((q.d[k] || 0) + v * .6) * 100) / 100;   // two decimals: the save stays small
     }
     if (mine && S.train.int === 2 && rr() < .006 && !q.injD){ q.injD = 7 + Math.floor(rr() * 14); news('injury', `${p.n} hurt in training`, `${esc(p.n)} picked up a knock in a hard session and is out for about ${Math.ceil(q.injD / 7)} week${q.injD > 7 ? 's' : ''}.`); }
   }
@@ -1110,6 +1115,12 @@ function retireAndIntake(){
       if (c.id === me()) mineNew.push(p);
     }
   }
+  // the other clubs keep their squads at 32 at most: the weakest over-21s are released (they leave the league)
+  for (const c of D.clubs){ if (c.id === me()) continue;
+    const sq = D.players.filter(p => p.club === c.id), extra = sq.length - 32; if (extra <= 0) continue;
+    for (const p of sq.filter(p => p.age > 21).sort((a, b) => ovrNow(a) - ovrNow(b)).slice(0, extra)){
+      if (S.gen.some(x => x.id === p.id)) S.gen = S.gen.filter(x => x.id !== p.id); else S.ret.push(p.id);
+      for (const t of Object.values(S.tac)){ t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); } } }
   rebuildPlayers();
   if (mineNew.length) news('club', 'Youth intake', `Your academy has brought through ${mineNew.length} youngsters: ${mineNew.map(p => `<b>${esc(p.n)}</b> (${cmPos(p.pos)}, ${p.age})`).join(', ')}. They are in the reserves; give them time.`);
 }
@@ -1279,7 +1290,8 @@ function applyMoves(){ const yrs = S ? (S.season || D.season) - D.season : 0;
   for (const [id, n] of Object.entries((S && S.nos) || {})){ const p = P.get(+id); if (p) p.no = n; } }
 function adopt(s){
   if (!(s && s.v === 2 && C.has(s.club) && Object.keys(s.table).length === D.clubs.length && Object.keys(s.table).every(id => C.has(+id)))) return false;
-  S = s; rebuildPlayers();
+  S = s; unpackPl(S); rebuildPlayers();
+  for (const q of Object.values(S.pl || {})) if (q.d) for (const k in q.d) q.d[k] = Math.round(q.d[k] * 100) / 100;
   for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x));
     // a shape from before the PES presets: the club's best preset, the same players placed by the rules
     if (!FORMS[t.form]){ const ids = t.xi.filter(Boolean); t.form = bestForm(+id); const sl = FORMS[t.form]; t.xi = placeXI(sl, ids.map(x => P.get(x)));
