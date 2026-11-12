@@ -1936,7 +1936,7 @@ function scrPlayer(){
     body = `<div class="ptitle">Contract</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Club</dt><dd>${crest(p.club)}${esc(fullName(p.club))}</dd><dt>Wage</dt><dd>${wage(con.w)}</dd><dt>Expires</dt><dd>30.6.${String(con.y).slice(2)}${left <= 1 ? ' <span class="tag">Ends this season</span>' : ''}</dd><dt>Value</dt><dd>${known(p) || mineP ? valueOf(p) : 'about ' + cash(roundFee(p.val * 1e6))}</dd><dt>Squad number</dt><dd>${p.no || '-'}</dd></dl>
       ${mineP && left <= 2 && !(S.loans || {})[p.id] ? (ren === S.season ? '<p class="c dim">He has signed a new contract this season.</p>' : `<div class="ptitle">New Contract</div><p class="c">He would sign on for <b class="yel">${wage(dem)}</b>.</p><div class="tools" style="justify-content:center">${[2, 3, 4].map(y => `<button class="btn sm y" data-renew="${y}" data-w="${dem}">Until 30.6.${String(con.y + y - left).slice(2)}</button>`).join('')}</div>`) : ''}`; }
   const hon = (S.awards || []).filter(a => a.id === p.id);
-  if (tab === 'hist') body = `${hon.length ? `<div class="ptitle">Honours</div><ul class="hon">${hon.map(a => `<li>${esc(a.k)}, ${a.s}/${String((a.s + 1) % 100).padStart(2, '0')}${a.why ? ` <span class="dim">(${a.why})</span>` : ''}</li>`).join('')}</ul>` : ''}<div class="ptitle">History</div><div class="tw"><table><thead><tr><th>Season</th><th>Club</th><th class="r">Apps</th><th class="r">Gls</th><th class="r">Asts</th><th class="r">Av R</th></tr></thead><tbody>${(q.hs || []).map(h => `<tr><td>${h.s}/${String((h.s + 1) % 100).padStart(2, '0')}</td><td>${h.c && C.has(h.c) ? esc(club(h.c).name) : '-'}</td><td class="r">${h.apps}</td><td class="r">${h.g}</td><td class="r">${h.a}</td><td class="r">${h.rt ?? '-'}</td></tr>`).join('')}
+  if (tab === 'hist') body = `${careerMoves(p)}${hon.length ? `<div class="ptitle">Honours</div><ul class="hon">${hon.map(a => `<li>${esc(a.k)}, ${a.s}/${String((a.s + 1) % 100).padStart(2, '0')}${a.why ? ` <span class="dim">(${a.why})</span>` : ''}</li>`).join('')}</ul>` : ''}<div class="ptitle">History</div><div class="tw"><table><thead><tr><th>Season</th><th>Club</th><th class="r">Apps</th><th class="r">Gls</th><th class="r">Asts</th><th class="r">Av R</th></tr></thead><tbody>${(q.hs || []).map(h => `<tr><td>${h.s}/${String((h.s + 1) % 100).padStart(2, '0')}</td><td>${h.c && C.has(h.c) ? esc(club(h.c).name) : '-'}</td><td class="r">${h.apps}</td><td class="r">${h.g}</td><td class="r">${h.a}</td><td class="r">${h.rt ?? '-'}</td></tr>`).join('')}
     <tr class="me"><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td>${esc(club(p.club).name)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${avgRt(q)}</td></tr></tbody></table></div>`;
   if (tab === 'tr') body = transferTab(p);
   if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
@@ -2487,6 +2487,15 @@ function scrManagers(){
 }
 // records: the league's past winners (last season from the handbook, then the seasons of this game) and this game's
 // records: biggest wins, most goals in a game, the best seasons by a player
+/* how a player got where he is: the move to his club (Transfermarkt's Joined and Signed from, with the 2026/27 fee, a
+   loan or a free) and every move he has made in this game since */
+function careerMoves(p){
+  const L = [];
+  if (p.jn) L.push({ d: p.jn, from: p.fr ? tmName(p.fr) : null, to: club(p._c0 ?? p.club).name, fee: typeof p.tf === 'number' ? cash(p.tf * 1e6 / EUR) : p.tf === 'loan' ? 'Loan' : p.tf === 'free' ? 'Free' : /U\d\d|Academy|Reserves|B$/.test(p.fr || '') ? 'Youth' : '' });
+  for (const t of S.transfers || []) if (t.id === p.id) L.push({ d: t.d, from: t.from, to: t.to, fee: t.fee, game: 1 });
+  if (!L.length) return '';
+  return `<div class="ptitle">Transfers</div><table><tbody>${L.map(x => `<tr${x.game ? ' class="me"' : ''}><td><span class="pill">${shortDate(x.d)}</span></td><td>${x.from ? `${esc(x.from)} → ` : ''}<b>${esc(x.to)}</b></td><td class="r yel">${esc(x.fee || '')}</td></tr>`).join('')}</tbody></table>`;
+}
 function lfClub(nm){ if (!nm) return null; const b = nm.replace(/^AFC | FC$| AFC$/g, ''); const c = (D.allClubs || D.clubs).find(c => c.name === nm || c.full === nm || (c.full || '').startsWith(nm) || c.name === b || c.full === b); return c ? c.id : null; }
 const tmName = nm => { const id = lfClub(nm); return id ? club(id).name : nm.replace(/^AFC | FC$/g, ''); };
 /* transfer records: the game's own biggest fees, the league's 2026/27 signings and the all-time list (Transfermarkt,

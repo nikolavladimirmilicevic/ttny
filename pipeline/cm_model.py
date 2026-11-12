@@ -678,6 +678,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             x['ht'] = t['ht']
         if t.get('ft'):
             x['ft'] = t['ft']
+        _join(x, t)
     # shirt numbers: the API's lists can be out of date, two players with one number; it stays with the one who has
     # played more for the club these two seasons, the other goes without
     by = {}
@@ -797,6 +798,22 @@ def _solve(A, b):
     return [M[i][n] / M[i][i] if M[i][i] else 0 for i in range(n)]
 
 
+def _join(x, t):
+    """When and where from a player came to his club (Transfermarkt's Joined and Signed from), with the 2026/27 fee:
+    a number in euros (millions), or 'loan' / 'free'."""
+    if t.get('jn'):
+        x['jn'] = t['jn']
+    if t.get('fr') and t.get('fr') != '-':
+        x['fr'] = t['fr']
+    fee = t.get('fee') or ''
+    if fee.startswith('€'):
+        x['tf'] = round(float(fee[1:-1]) * (0.001 if fee.endswith('K') else 1), 2)
+    elif 'loan' in fee:
+        x['tf'] = 'loan'
+    elif 'free' in fee:
+        x['tf'] = 'free'
+
+
 def build_second(out_players, today, season, people):
     """The Championship: clubs and players from pipeline/tm_championship.json. A player's overall comes from a fit of
     the league's own players (overall on log value, age, keeper); his attributes follow a league player of his position
@@ -821,6 +838,7 @@ def build_second(out_players, today, season, people):
         if x.get('a') and x.get('r'):
             by_pos.setdefault(x['prim'], []).append(x)
     have = {x['id'] for x in out_players}; have_nm = {(_fold(x['n']), x.get('bd')) for x in out_players}
+    loaned = {_fold(x['n']) for x in out_players if x.get('lo')}   # the league's own players out on loan: already there
     pidx = {}
     for kk, e in people.items():
         pidx.setdefault(_fold(e.get('n') or ''), []).append((int(kk), e))
@@ -829,7 +847,7 @@ def build_second(out_players, today, season, people):
         cid = CH_IDS.get(cname) or 990001 + sum(ord(ch) for ch in cname) % 9000
         ovrs = []
         for p in c.get('players', []):
-            if (_fold(p['n']), p['dob']) in have_nm:
+            if (_fold(p['n']), p['dob']) in have_nm or _fold(p['n']) in loaned:
                 continue   # a league club's player out on loan here: he is his club's already
             age = age_of({'bd': p['dob']}, today); prim = CH_POS.get(p['pos'], 'CMF'); gk = prim == 'GK'
             pid = None
@@ -850,8 +868,9 @@ def build_second(out_players, today, season, people):
             r = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; r[prim] = ovr
             val = round(eur / 1.17, 1) if eur >= 1.17 else round(max(.05, eur / 1.17), 2)
             players.append({'id': pid, 'n': p['n'], 'nat': p['nat'], 'age': age, 'bd': p['dob'], 'no': p.get('no'), 'club': cid, 'prim': prim,
-                            'pos': [prim], 'ht': tpl.get('ht'), 'wt': tpl.get('wt'), 'ovr': ovr, 'r': r, 'a': a, 'style': tpl.get('style'),
-                            'val': val, 'ch': 1})
+                            'pos': [prim], 'ht': p.get('ht') or tpl.get('ht'), 'wt': tpl.get('wt'), 'ovr': ovr, 'r': r, 'a': a, 'style': tpl.get('style'),
+                            'val': val, 'ch': 1, **({'ft': p['ft']} if p.get('ft') else {}), **({'cy': p['con']} if p.get('con') else {})})
+            _join(players[-1], p)
             ovrs.append(ovr)
         q = round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1) if ovrs else 65
         clubs.append({'id': cid, 'name': CH_SHORT.get(cname, re.sub(r' (FC|AFC|City)$', '', cname) if cname not in ('Stoke City', 'Bristol City', 'Cardiff City', 'Swansea City', 'Norwich City', 'Lincoln City', 'Birmingham City') else cname),
