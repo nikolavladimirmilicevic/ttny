@@ -1955,7 +1955,7 @@ function scrOptions(){
       <select class="dd" id="hpick"><option value="mine">Use my tactics and side</option><option value="ass">Let my assistant pick the side</option></select>
       <label class="small"><input type="checkbox" id="hbuy"> Buy short-listed players</label><button class="btn y" id="hgo">Go on Holiday</button></div>
     <p class="small dim">The games are played while you are away; you come back to the news. With "buy", your assistant signs players from your short list at their asking price while a window is open and the money is there.</p>
-    <div class="ptitle" style="margin-top:14px">Game Settings</div>${settingsBody()}` });
+    <div class="ptitle" style="margin-top:14px">Game Settings</div>${settingsBody()}<div class="ptitle" style="margin-top:14px">Keys</div><p class="small dim" style="margin:4px 2px"><b>Enter</b> or <b>Space</b>: the green button on the left (Continue Game, Go to Match, Kick Off). <b>Esc</b>: Back. <b>Alt + ← / →</b>: the screens you came through.</p>` });
   $('#hgo').addEventListener('click', () => { const d = $('#hdur').value; goHoliday(d === 'end' ? '9999-12-31' : day(S.date, +d), $('#hpick').value, $('#hbuy').checked); });
   wireSettings(view);
   $('#sgo').addEventListener('click', () => { if (saveAs($('#sname').value)) toast('Game saved.'); view(); });
@@ -2551,5 +2551,16 @@ function run(){
   adopt(loadSave());
   view();
 })();
+
+// keys, as in CM: Enter or Space presses the green button on the left (Continue Game, Go to Match, Kick Off...),
+// Esc goes back, Alt+arrows walk the history
+document.addEventListener('keydown', e => {
+  const t = e.target, typing = t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName));
+  if (typing || e.ctrlKey || e.metaKey) return;
+  if ((e.key === 'Enter' || e.key === ' ') && !(t && t.tagName === 'BUTTON') && !e.altKey){
+    const g = document.querySelector('.side .sb.go:not([disabled])'); if (g){ e.preventDefault(); g.click(); } return; }
+  if (e.key === 'Escape'){ const b = document.querySelector('#back:not([disabled])'); if (b){ e.preventDefault(); b.click(); } return; }
+  if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')){ const b = document.querySelector(e.key === 'ArrowLeft' ? '#navb:not([disabled])' : '#navf:not([disabled])'); if (b){ e.preventDefault(); b.click(); } }
+});
 </script>
 </body></html>
