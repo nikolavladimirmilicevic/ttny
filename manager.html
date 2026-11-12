@@ -1265,7 +1265,7 @@ const YOUTH_NAMES = {
 };
 function retireAndIntake(){
   S.ret = S.ret || []; S.gen = S.gen || [];
-  for (const p of D.players.slice()){
+  for (const p of (D.pool || D.players).slice()){
     const chance = p.age >= 38 ? 1 : p.age >= 35 ? (p.age - 34) * .3 : 0;
     if (!chance || rng(`ret-${p.id}-${S.season}`)() >= chance) continue;
     if (p.club === me()) news('club', `${p.n} retires`, `<b>${esc(p.n)}</b> has decided to hang up his boots at ${p.age}.`);
@@ -1275,8 +1275,8 @@ function retireAndIntake(){
   const POSS = ['GK', 'CB', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'CMF', 'AMF', 'LMF', 'RMF', 'LWF', 'RWF', 'CF', 'CF'];
   let nid = Math.min(-1000000, ...S.gen.map(x => x.id)) - 1;
   const mineNew = [];
-  for (const c of D.clubs){
-    const rr = rng(`yi-${c.id}-${S.season}-${S.seed}`), n = 2 + (rr() < .4 ? 1 : 0);
+  for (const c of D.allClubs || D.clubs){
+    const rr = rng(`yi-${c.id}-${S.season}-${S.seed}`), n = LG.has(c.id) ? 2 + (rr() < .4 ? 1 : 0) : 1 + (rr() < .5 ? 1 : 0);
     for (let k = 0; k < n; k++){
       const prim = POSS[Math.floor(rr() * POSS.length)], tmpls = D.all.filter(p => p.prim === prim && p.a), t = tmpls[Math.floor(rr() * tmpls.length)];
       if (!t) continue;
@@ -1289,13 +1289,13 @@ function retireAndIntake(){
       const p = { id: nid--, n: nm, nat: natPool === 'Ireland' ? 'Republic of Ireland' : natPool, age, club: c.id, prim, pos: [prim], ht: (t.ht || 180) - 4 + Math.round(rr() * 6), wt: (t.wt || 75) - 8 + Math.round(rr() * 5),
         a, r: { ...r, [prim]: ovr }, ovr, val: +(Math.max(.2, Math.exp((ovr - 60) / 7.5) * .9 * 1.25 * 2.3)).toFixed(1), no, style: t.style, inj: 1 + Math.floor(rr() * 3), yth: S.season };
       p._c0 = c.id; p._n0 = no; p._a0 = age - (S.season - D.season);
-      S.gen.push(p); D.players.push(p); P.set(p.id, p); S.con[p.id] = { y: S.season + 3, w: 1000 + Math.round(rr() * 4) * 500 }; ps(p.id);
+      S.gen.push(p); if (LG.has(c.id)) D.players.push(p); if (D.pool) D.pool.push(p); P.set(p.id, p); S.con[p.id] = { y: S.season + 3, w: 1000 + Math.round(rr() * 4) * 500 }; ps(p.id);
       if (c.id === me()) mineNew.push(p);
     }
   }
   // the other clubs keep their squads at 32 at most: the weakest over-21s are released (they leave the league)
-  for (const c of D.clubs){ if (c.id === me()) continue;
-    const sq = D.players.filter(p => p.club === c.id), extra = sq.length - 32; if (extra <= 0) continue;
+  for (const c of D.allClubs || D.clubs){ if (c.id === me()) continue;
+    const sq = squadOf(c.id), extra = sq.length - 32; if (extra <= 0) continue;
     for (const p of sq.filter(p => p.age > 21).sort((a, b) => ovrNow(a) - ovrNow(b)).slice(0, extra)){
       if (S.gen.some(x => x.id === p.id)) S.gen = S.gen.filter(x => x.id !== p.id); else S.ret.push(p.id);
       for (const t of Object.values(S.tac)){ t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); } } }
@@ -1530,7 +1530,8 @@ function rebuildPlayers(){
 function applyMoves(){ const yrs = S ? (S.season || D.season) - D.season : 0;
   for (const p of D.pool || D.players){ p.club = p._c0 ?? p.club; p.no = p._n0 ?? p.no; if (p._a0 == null) p._a0 = p.age; p.age = p._a0 + yrs; }
   for (const [id, cid] of Object.entries((S && S.moves) || {})){ const p = P.get(+id); if (p && C.has(cid)) p.club = cid; }
-  for (const [id, n] of Object.entries((S && S.nos) || {})){ const p = P.get(+id); if (p) p.no = n; } }
+  for (const [id, n] of Object.entries((S && S.nos) || {})){ const p = P.get(+id); if (p) p.no = n; }
+  if (D.pool && D.pl0) setLeagues(S && S.lg); }
 function adopt(s){
   if (s && s.v === 2) setLeagues(s.lg);
   if (!(s && s.v === 2 && C.has(s.club) && Object.keys(s.table).length === D.clubs.length && Object.keys(s.table).every(id => LG.has(+id)))){ setLeagues(S && S.lg); return false; }
@@ -2198,11 +2199,13 @@ const wageDemand = p => { const now = (S.con[p.id] || contractFor(p)).w; return 
 function moveP(p, to, fee, note){
   const from = p.club, fc = club(from), tc = club(to);
   p.club = to; S.moves = S.moves || {}; S.moves[p.id] = to;
+  // across the divisions: a player going to the Championship leaves the league's list, one coming up joins it
+  const ix = D.players.indexOf(p); if (LG.has(to) && ix < 0) D.players.push(p); else if (!LG.has(to) && ix >= 0) D.players.splice(ix, 1);
   const used = new Set(squadOf(to).filter(x => x !== p).map(x => x.no));
   if (!p.no || used.has(p.no)){ let n = 2; while (used.has(n) || n === 1 && p.prim !== 'GK') n++; p.no = n; (S.nos = S.nos || {})[p.id] = n; }
   for (const cid of [from, to]){ const t = S.tac[cid]; if (!t) continue; t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); }
-  if (from !== me()) S.tac[from] = Object.assign(S.tac[from], bestXI(from, S.tac[from].form));
-  if (to !== me()) S.tac[to] = Object.assign(S.tac[to], bestXI(to, S.tac[to].form));
+  if (from !== me() && S.tac[from]) S.tac[from] = Object.assign(S.tac[from], bestXI(from, S.tac[from].form));
+  if (to !== me() && S.tac[to]) S.tac[to] = Object.assign(S.tac[to], bestXI(to, S.tac[to].form));
   (S.transfers = S.transfers || []).push({ d: S.date, n: p.n, from: fc.name, to: tc.name, fee: note || (fee ? cash(fee) : 'Free'), id: p.id });
   if (from === me()){ S.fin.bal += fee; S.fin.budget += fee; }
   if (to === me()){ S.fin.bal -= fee; S.fin.budget = Math.max(0, S.fin.budget - fee); }
@@ -2231,7 +2234,7 @@ function transferTick(){
       const mine = squadOf(me()).filter(p => !(S.loans || {})[p.id] && !S.offers.some(o => o.id === p.id && o.st === 'open')).sort((a, b) => b.val - a.val).slice(0, 18);
       const wants = squadOf(me()).filter(x => !(S.loans || {})[x.id] && ps(x.id).req === S.season && !S.offers.some(o => o.id === x.id && o.st === 'open'));
       const p = wants.length && Math.random() < .6 ? wants[Math.floor(Math.random() * wants.length)] : mine[Math.floor(Math.pow(Math.random(), 1.6) * mine.length)];
-      const buyers = D.clubs.filter(c => c.id !== me() && c.q >= ovrNow(p) - 6);
+      const buyers = D.allClubs.filter(c => c.id !== me() && LG.has(c.id) ? c.q >= ovrNow(p) - 6 : c.id !== me() && c.q >= ovrNow(p) - 3 && c.q <= ovrNow(p) + 4);
       if (p && buyers.length){ const c = buyers[Math.floor(Math.random() * buyers.length)], fee = roundFee(p.val * 1e6 * (.85 + Math.random() * .45));
         S.offers.push({ id: p.id, from: c.id, fee, d: S.date, st: 'open' });
         news('club', `${c.name} bid for ${p.n}`, `${esc(c.name)} have offered ${cash(fee)} for <b>${esc(p.n)}</b>. Accept or turn it down on his Transfer screen within a week.`); }
@@ -2240,9 +2243,15 @@ function transferTick(){
     if (Math.random() < .22){
       const others = D.clubs.filter(c => c.id !== me()), to = others[Math.floor(Math.random() * others.length)];
       const need = squadOf(to.id).sort((a, b) => ovrNow(b) - ovrNow(a))[13], bar = need ? ovrNow(need) : 70;
-      const pool = D.players.filter(p => p.club !== to.id && p.club !== me() && !onLoan(p) && squadOf(p.club).length > 20 && squadRank(p) >= 7 && ovrNow(p) >= bar - 1 && ovrNow(p) <= bar + 6 && !(S.moves || {})[p.id]);
+      const pool = D.pool.filter(p => p.club !== to.id && p.club !== me() && !onLoan(p) && squadOf(p.club).length > 20 && (squadRank(p) >= 7 || !LG.has(p.club) && p.age <= 27) && ovrNow(p) >= bar - 1 && ovrNow(p) <= bar + 6 && !(S.moves || {})[p.id]);
       const p = pool[Math.floor(Math.random() * pool.length)];
       if (p){ const fee = roundFee(p.val * 1e6 * (.9 + Math.random() * .4)); S.con[p.id] = { y: S.season + 2 + Math.floor(Math.random() * 3), w: wageDemand(p) }; moveP(p, to.id, fee); }
+    }
+    if (hasCh() && Math.random() < .12){
+      const to = D.second.clubs[Math.floor(Math.random() * D.second.clubs.length)], str = chStr(to.id);
+      const pool = D.players.filter(p => p.club !== me() && !onLoan(p) && squadOf(p.club).length > 24 && squadRank(p) >= 16 && p.age >= 20 && ovrNow(p) <= str + 4 && ovrNow(p) >= str - 4 && !(S.moves || {})[p.id] && !(S.loans || {})[p.id]);
+      const p = pool[Math.floor(Math.random() * pool.length)];
+      if (p && squadOf(to.id).length < 32){ const fee = roundFee(p.val * 1e6 * (.7 + Math.random() * .4)); S.con[p.id] = { y: S.season + 2 + Math.floor(Math.random() * 2), w: wageDemand(p) }; moveP(p, to.id, fee); }
     }
   }
 }
@@ -2286,7 +2295,7 @@ function wireTransfer(p){
   on('[data-oacc]', el => { const o = S.offers[+el.dataset.oacc]; if (!o || o.st !== 'open') return; o.st = 'acc'; S.con[p.id] = { y: S.season + 3, w: wageDemand(p) }; moveP(p, o.from, o.fee);
     news('club', `${p.n} sold`, `<b>${esc(p.n)}</b> leaves for ${esc(club(o.from).name)} for ${cash(o.fee)}.`); V = { s: 'club', cid: me(), tab: 'squad' }; });
   on('[data-orej]', el => { const o = S.offers[+el.dataset.orej]; if (o) o.st = 'rej'; });
-  on('#loanout', () => { const to = D.clubs.filter(c => c.id !== me() && c.q < club(me()).q && squadOf(c.id).length < 32).sort(() => Math.random() - .5)[0];
+  on('#loanout', () => { const to = D.allClubs.filter(c => c.id !== me() && c.q < club(me()).q && squadOf(c.id).length < 32).sort(() => Math.random() - .5)[0];
     if (!to){ toast('No club wants him just now.'); return; }
     (S.loans = S.loans || {})[p.id] = { from: me(), to: to.id }; moveP(p, to.id, 0, 'Loan');
     news('club', `${p.n} goes on loan`, `<b>${esc(p.n)}</b> joins ${esc(to.name)} on loan until the end of the season.`); V = { s: 'club', cid: me(), tab: 'squad' }; });
@@ -2368,7 +2377,7 @@ function scrFind(){
   const tab = V.tab || 'search', qv = V.q || '', fold = s => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const F = V.f || {}, pg = V.pg || 0, per = 15;
   const sh = new Set((S.short || []).map(x => x.id));
-  let L = tab === 'short' ? D.players.filter(p => sh.has(p.id)) : D.players.filter(p => (!qv || fold(p.n).includes(fold(qv))) && (!F.g || GROUP[p.prim] === F.g) && (!F.age || p.age <= +F.age) && (!F.amin || p.age >= +F.amin) && (!F.club || p.club === +F.club) && (!F.pos || p.pos.includes(F.pos)));
+  let L = tab === 'short' ? D.pool.filter(p => sh.has(p.id)) : D.pool.filter(p => (F.lg !== 'pl' || LG.has(p.club)) && (F.lg !== 'ch' || !LG.has(p.club)) && (!qv || fold(p.n).includes(fold(qv))) && (!F.g || GROUP[p.prim] === F.g) && (!F.age || p.age <= +F.age) && (!F.amin || p.age >= +F.amin) && (!F.club || p.club === +F.club) && (!F.pos || p.pos.includes(F.pos)));
   // sort by any attribute, as in CM's search (a masked player counts by the bottom of his range)
   const sk = V.sort && V.sort.startsWith('a:') ? V.sort.slice(2) : null, av = p => { const v = A(p, sk); return known(p) ? v : Math.floor(v / 10) * 10; };
   L = L.slice().sort((a, b) => sk ? av(b) - av(a) || b.val - a.val : V.sort === 'val' ? b.val - a.val : V.sort === 'age' ? a.age - b.age : surname(a.n).localeCompare(surname(b.n)));
@@ -2377,14 +2386,15 @@ function scrFind(){
   const tools = tab === 'short' ? `<span class="dim small">Players on your short list: their attributes are known after a week.</span>` : `<input type="text" id="fq" placeholder="Name" value="${esc(qv)}" style="flex:1;min-width:140px">
     <select class="dd" id="fg"><option value="">All positions</option>${[['GK', 'Goalkeepers'], ['DEF', 'Defenders'], ['MID', 'Midfielders'], ['FWD', 'Forwards']].map(([k, n]) => `<option value="${k}" ${F.g === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <select class="dd" id="fa"><option value="">Any age</option>${[19, 21, 23, 25, 28, 31].map(a => `<option value="${a}" ${+F.age === a ? 'selected' : ''}>${a} or under</option>`).join('')}</select>
-    <select class="dd" id="fc"><option value="">All clubs</option>${D.clubs.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<option value="${c.id}" ${+F.club === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
+    <select class="dd" id="fl"><option value="">Both divisions</option><option value="pl" ${F.lg === 'pl' ? 'selected' : ''}>${esc(D.league)}</option>${hasCh() ? `<option value="ch" ${F.lg === 'ch' ? 'selected' : ''}>Championship</option>` : ''}</select>
+    <select class="dd" id="fc"><option value="">All clubs</option>${[[esc(D.league), D.clubs], ['Championship', hasCh() ? D.second.clubs : []]].filter(x => x[1].length).map(([g, L]) => `<optgroup label="${g}">${L.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<option value="${c.id}" ${+F.club === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>`).join('')}</select>
     <select class="dd" id="fam"><option value="">From any age</option>${[17, 19, 20, 23, 26, 30].map(a => `<option value="${a}" ${+F.amin === a ? 'selected' : ''}>${a} or over</option>`).join('')}</select>
     <select class="dd" id="fp"><option value="">Any position</option>${['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'CF'].map(x => `<option value="${x}" ${F.pos === x ? 'selected' : ''}>Plays ${x}</option>`).join('')}</select>
     <select class="dd" id="fs">${[['name', 'Sort: Name'], ['val', 'Sort: Value'], ['age', 'Sort: Age'], ...Object.keys(ATTR_NAME).sort((a, b) => ATTR_NAME[a].localeCompare(ATTR_NAME[b])).map(k => ['a:' + k, 'Sort: ' + TT(ATTR_NAME[k])])].map(([k, n]) => `<option value="${k}" ${(V.sort || 'name') === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
   frame({ title: 'Player &amp; Staff Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: [['short', 'Short List'], ['search', 'Player Search'], ['staff', 'Staff Search'], ['sc1', 'Scout #1'], ['sc2', 'Scout #2']], topOn: tab,
     onTab: k => { PICK2 = []; V = { s: 'find', tab: k }; view(); }, tools,
     body: `<div class="pgbar"><span class="dim small">${tab === 'short' ? 'Your short list' : qv || Object.values(F).some(Boolean) ? 'Search results' : 'Every player in the league'}</span><span class="pg"><button data-pg="0" ${pgc ? '' : 'disabled'}>«</button><button data-pg="${pgc - 1}" ${pgc ? '' : 'disabled'}>‹</button><span>Pg ${pgc + 1}/${pages}</span><button data-pg="${pgc + 1}" ${pgc < pages - 1 ? '' : 'disabled'}>›</button><button data-pg="${pages - 1}" ${pgc < pages - 1 ? '' : 'disabled'}>»</button></span></div>
-      <div class="tw"><table><thead><tr><th></th><th>Inf</th><th>Name</th><th>Club</th><th>Based</th><th>Position</th><th class="r">Age</th>${sk ? `<th class="r">${esc(TT(ATTR_NAME[sk]))}</th>` : ''}<th class="r">Value</th></tr></thead><tbody>${rows.map(p => `<tr class="click" data-pl="${p.id}"><td><button class="box ${PICK2.includes(p.id) ? 'on' : ''}" data-cmp="${p.id}">${PICK2.includes(p.id) ? PICK2.indexOf(p.id) + 1 : ''}</button></td><td>${inf(p)}</td><td>${flag(p.nat)}<b>${esc(cmName(p.n))}</b></td><td class="sky">${esc(club(p.club).name)}</td><td class="yel">${esc(D.league)}</td><td class="yel">${cmPos(p.pos)}</td><td class="r">${p.age}</td>${sk ? `<td class="r ${vcls(A(p, sk))}"><b>${showA(p, A(p, sk))}</b></td>` : ''}<td class="r"><span class="pill">${valueOf(p)}</span></td></tr>`).join('') || `<tr><td colspan="9" class="empty">${tab === 'short' ? 'Your short list is empty: pick players in Player Search and add them.' : 'No players found.'}</td></tr>`}</tbody></table></div>
+      <div class="tw"><table><thead><tr><th></th><th>Inf</th><th>Name</th><th>Club</th><th>Based</th><th>Position</th><th class="r">Age</th>${sk ? `<th class="r">${esc(TT(ATTR_NAME[sk]))}</th>` : ''}<th class="r">Value</th></tr></thead><tbody>${rows.map(p => `<tr class="click" data-pl="${p.id}"><td><button class="box ${PICK2.includes(p.id) ? 'on' : ''}" data-cmp="${p.id}">${PICK2.includes(p.id) ? PICK2.indexOf(p.id) + 1 : ''}</button></td><td>${inf(p)}</td><td>${flag(p.nat)}<b>${esc(cmName(p.n))}</b></td><td class="sky">${esc(club(p.club).name)}</td><td class="yel">${LG.has(p.club) ? esc(D.league) : 'Championship'}</td><td class="yel">${cmPos(p.pos)}</td><td class="r">${p.age}</td>${sk ? `<td class="r ${vcls(A(p, sk))}"><b>${showA(p, A(p, sk))}</b></td>` : ''}<td class="r"><span class="pill">${valueOf(p)}</span></td></tr>`).join('') || `<tr><td colspan="9" class="empty">${tab === 'short' ? 'Your short list is empty: pick players in Player Search and add them.' : 'No players found.'}</td></tr>`}</tbody></table></div>
       <p class="c sky" style="font-size:16px;margin:10px 0 0"><b>${L.length} player${L.length === 1 ? '' : 's'} found</b></p>
       <div class="tools" style="justify-content:center;margin-top:8px"><button class="btn sm" id="cmp">Compare</button>${tab === 'short' ? '<button class="btn sm" id="unsl">Remove from Short List</button>' : '<button class="btn sm" id="addsl">Add to Short List</button>'}<span class="small dim">${PICK2.length} selected</span></div>` });
   const upd = (k, v) => { V = { ...V, f: { ...F, [k]: v }, pg: 0 }; view(); };
@@ -2392,7 +2402,7 @@ function scrFind(){
   on('fq', 'keydown', e => { if (e.key === 'Enter'){ V = { ...V, q: e.target.value.trim(), pg: 0 }; view(); } });
   on('fq', 'change', e => { V = { ...V, q: e.target.value.trim(), pg: 0 }; view(); });
   on('fg', 'change', e => upd('g', e.target.value)); on('fa', 'change', e => upd('age', e.target.value)); on('fc', 'change', e => upd('club', e.target.value));
-  on('fam', 'change', e => upd('amin', e.target.value)); on('fp', 'change', e => upd('pos', e.target.value));
+  on('fam', 'change', e => upd('amin', e.target.value)); on('fl', 'change', e => upd('lg', e.target.value)); on('fp', 'change', e => upd('pos', e.target.value));
   on('fs', 'change', e => { V = { ...V, sort: e.target.value }; view(); });
   document.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => { V = { ...V, pg: +b.dataset.pg }; view(); }));
   document.querySelectorAll('[data-cmp]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const id = +b.dataset.cmp; PICK2 = PICK2.includes(id) ? PICK2.filter(x => x !== id) : [...PICK2, id].slice(-2); view(); }));
