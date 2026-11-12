@@ -180,6 +180,8 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tboard .instr{grid-template-columns:104px minmax(0,1fr)}.tboard .instr .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%;min-width:0}.tboard .instr .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px;text-align:center}
 @media(max-width:520px){.tboard .instr{grid-template-columns:1fr}}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
+.tok .rt{font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
+.tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
 .tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 @media(max-width:520px){.tok{width:68px}.tok .nm{font-size:10.5px;max-width:68px}.tok .dot{width:30px;height:30px}.tbrow{grid-template-columns:34px minmax(0,1fr) auto 24px}.tbrow>.small{display:none}}
 .instr{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;align-items:center}
@@ -1978,13 +1980,18 @@ function boardWeek(){
       t.form = f; t.xi = xi; return true; },
     done(){ save(); view(); } };
 }
-function boardLive(){
-  const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A, t = us.t, slots = FORMS[t.form] || [];
-  const used = new Set(), places = us.on.map((x, i) => { let k = slots.findIndex((s, j) => !used.has(j) && s[0] === x.pos); if (k >= 0) used.add(k);
-    const [px, py] = k >= 0 ? [slots[k][1], slots[k][2]] : (POSXY[x.pos] || [50, 50]); return { i, code: x.pos, x: px, y: py, id: x.id, p: x.p, e: x.e }; });
+function livePlaces(M, side){
+  const slots = FORMS[side.t.form] || [], used = new Set(), rt = id => M.over ? (side.rate[id] || 0) : clamp(6.3 + (side.rate[id] || 0), 1, 10);
+  const places = side.on.map((x, i) => { let k = slots.findIndex((s, j) => !used.has(j) && s[0] === x.pos); if (k >= 0) used.add(k);
+    const [px, py] = k >= 0 ? [slots[k][1], slots[k][2]] : (POSXY[x.pos] || [50, 50]); return { i, code: x.pos, x: px, y: py, id: x.id, p: x.p, e: x.e, rt: rt(x.id), g: (side.ev[x.id] || {}).g || 0, yc: (side.ev[x.id] || {}).yc || 0 }; });
   // two in the same spot (a shape gone out of shape after a red card): nudge one aside
   places.forEach((a, i) => places.slice(0, i).forEach(b => { if (Math.abs(a.x - b.x) < 6 && Math.abs(a.y - b.y) < 5) a.x = Math.min(92, a.x + 14); }));
-  return { live: true, t, slots, us, places, bench: us.bench.filter(id => P.get(id)), rest: [],
+  return places;
+}
+function boardLive(){
+  const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, t = us.t, slots = FORMS[t.form] || [];
+  const places = livePlaces(M, us);
+  return { live: true, M, them, t, slots, us, places, bench: us.bench.filter(id => P.get(id)), rest: [],
     put(id, i){ if (M.over) return toast('The match is over.'); if (us.subs >= 5) return toast('No more substitutions allowed.');
       const out = us.on[i]; if (!out) return; if (!avail(id)) return toast(`${cmName(P.get(id).n)} is not available.`);
       return substitute(M, us, out, false, id) || false; },
@@ -1998,12 +2005,19 @@ function boardLive(){
       t.form = f; say(M, us, 'minor', `${esc(club(us.cid).name)} change shape: ${f}.`); return true; },
     done(){ viewMatch(); } };
 }
+const viewSw = () => `<span class="seg" id="tbview">${[['us', 'Our side'], ['them', 'Opponents']].map(([k, n]) => `<button data-v="${k}" class="${(TB.view || 'us') === k ? 'on' : ''}">${n}</button>`).join('')}</span>`;
 function boardHTML(B){
   const t = B.t, sel = TB.sel, tab = TB.tab, cap = t.set && t.set.cap;
   const fitCls = (p, code) => { if (!p) return 'empty'; const k = fitTier(p, code); return k < 0 ? 'bad' : k >= 2 ? 'ok' : ''; };
   const bar = e => `<i class="cb" style="--w:${Math.round(e)}%;--c:${e >= 80 ? 'var(--win)' : e >= 62 ? 'var(--gold)' : 'var(--loss)'}"></i>`;
   const token = pl => `<button class="tok ${fitCls(pl.p, pl.code)} ${sel === 's:' + pl.i ? 'sel' : ''}" data-drag="s:${pl.i}" data-drop="s:${pl.i}" style="left:${pl.x}%;top:${pl.y}%" title="${pl.p ? esc(pl.p.n) + ' · ' + pl.code : pl.code}">
-    <span class="dot">${pl.p ? (pl.p.no || '•') : '+'}${pl.p && pl.id === cap ? '<em>C</em>' : ''}${pl.p && t.pi && t.pi[pl.id] && Object.keys(t.pi[pl.id]).length ? '<i class="pim" title="Own instructions">i</i>' : ''}</span><span class="nm">${pl.p ? esc(surname(pl.p.n)) : pl.code}</span>${pl.p ? bar(pl.e) : ''}</button>`;
+    <span class="dot">${pl.p ? (pl.p.no || '•') : '+'}${pl.p && pl.id === cap ? '<em>C</em>' : ''}${pl.p && t.pi && t.pi[pl.id] && Object.keys(t.pi[pl.id]).length ? '<i class="pim" title="Own instructions">i</i>' : ''}</span><span class="nm">${pl.p ? esc(surname(pl.p.n)) : pl.code}</span>${pl.p ? bar(pl.e) : ''}${pl.rt != null ? `<span class="rt" style="--c:${pl.rt >= 7.5 ? 'var(--win)' : pl.rt >= 6.5 ? 'var(--gold)' : pl.rt >= 5.8 ? 'var(--text)' : 'var(--loss)'}">${pl.rt.toFixed(1)}${pl.g ? ' ' + '⚽'.repeat(Math.min(3, pl.g)) : ''}${pl.yc ? ' 🟨' : ''}</span>` : ''}</button>`;
+  if (B.live && TB.view === 'them'){ const th = B.them, tt = th.t, op = livePlaces(B.M, th);
+    const tok = pl => `<div class="tok ro" style="left:${100 - pl.x}%;top:${100 - pl.y}%"><span class="dot">${pl.p.no || '•'}</span><span class="nm">${esc(surname(pl.p.n))}</span>${bar(pl.e)}<span class="rt" style="--c:${pl.rt >= 7.5 ? 'var(--win)' : pl.rt >= 6.5 ? 'var(--gold)' : pl.rt >= 5.8 ? 'var(--text)' : 'var(--loss)'}">${pl.rt.toFixed(1)}${pl.g ? ' ⚽' : ''}${pl.yc ? ' 🟨' : ''}</span></div>`;
+    return `<div class="tboard"><div class="tbview">${viewSw()}</div><div class="tbgrid"><div class="tbpitch" style="--k1:${kitOf(th.cid)[0]};--k2:${kitOf(th.cid)[1]}"><div class="pitch"><div class="bx t"></div><div class="bx"></div>${op.map(tok).join('')}</div><div class="tbleg small dim"><span>${esc(club(th.cid).name)}, attacking downwards</span><span>bar: energy</span></div></div>
+      <div class="tbside"><div class="ptitle">${esc(club(th.cid).name)} · ${esc(tt.form)}</div><table><tbody><tr><td class="dim">Mentality</td><td><b>${MENT[tt.men]}</b></td></tr><tr><td class="dim">Passing</td><td>${PASS[tt.pass]}</td></tr><tr><td class="dim">Tackling</td><td>${TACK[tt.tack]}</td></tr><tr><td class="dim">Tactics</td><td>${[tt.press && 'Pressing', tt.offside && 'Offside trap', tt.counter && 'Counter attack', tt.mbb && 'Men behind ball'].filter(Boolean).join(', ') || '-'}</td></tr><tr><td class="dim">Substitutions</td><td>${th.subs}/5</td></tr></tbody></table>
+      <div class="ptitle">Dangermen</div><table><tbody>${op.filter(x => x.code !== 'GK').sort((a, b) => b.rt - a.rt).slice(0, 3).map(x => `<tr><td>${flag(x.p.nat)}<b>${esc(x.p.n)}</b> <span class="small yel">${x.code}</span></td><td class="r yel"><b>${x.rt.toFixed(1)}</b></td></tr>`).join('')}</tbody></table>
+      <p class="small dim">Tired legs are where to attack: their bars run down as the game goes on.</p></div></div></div>`; }
   const xi = B.places.filter(x => x.p), str = xi.length ? Math.round(xi.reduce((s, x) => s + fitIn(x.p, x.code), 0) / Math.max(11, xi.length)) : 0;
   const pitch = `<div class="tbpitch" style="--k1:${kitOf(me())[0]};--k2:${kitOf(me())[1]}"><div class="pitch"><div class="bx t"></div><div class="bx"></div>${B.places.map(token).join('')}</div>
     <div class="tbleg small dim"><span><i class="lg ok"></i>rarely plays there</span><span><i class="lg bad"></i>not his position</span><span>${B.live ? 'bar: energy' : 'bar: condition'}</span>${B.live ? '' : `<span>strength <b class="yel">${str}</b></span>`}</div></div>`;
@@ -2027,11 +2041,12 @@ function boardHTML(B){
   const setp = `<div class="instr">${spSel('cap', 'Captain')}${spSel('pen', 'Penalties')}${spSel('fk', 'Free Kicks')}${spSel('cor', 'Corners')}</div>`;
   const tabs = [['squad', B.live ? 'Substitutes' : 'Squad'], ['team', 'Team'], ['player', 'Player'], ['set', 'Set Pieces']];
   const forms = `<div class="tbforms" role="radiogroup" aria-label="Formation">${FORM_ORDER.map(f => `<button class="tbf ${f === t.form ? 'on' : ''}" data-form="${f}" role="radio" aria-checked="${f === t.form}">${formIcon(f)}<span>${f}</span></button>`).join('')}</div>`;
-  return `<div class="tboard">${forms}<div class="tbgrid">${pitch}<div class="tbside"><nav class="tbtabs">${tabs.map(([k, n]) => `<button data-tbt="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</nav>
+  return `<div class="tboard">${B.live ? `<div class="tbview">${viewSw()}</div>` : ''}${forms}<div class="tbgrid">${pitch}<div class="tbside"><nav class="tbtabs">${tabs.map(([k, n]) => `<button data-tbt="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</nav>
     <div class="tbbody">${({ squad, team, player, set: setp })[tab] || squad}</div></div></div></div>`;
 }
 function boardWire(B){
   const t = B.t, done = () => B.done();
+  document.querySelectorAll('#tbview button').forEach(b => b.addEventListener('click', () => { TB.view = b.dataset.v; TB.sel = null; done(); }));
   document.querySelectorAll('[data-form]').forEach(b => b.addEventListener('click', () => { if (b.dataset.form !== t.form && B.form(b.dataset.form)) { TB.sel = null; done(); } }));
   document.querySelectorAll('[data-tbt]').forEach(b => b.addEventListener('click', () => { TB.tab = b.dataset.tbt; done(); }));
   document.querySelectorAll('.seg[data-tk] button').forEach(b => b.addEventListener('click', () => { const k = b.parentElement.dataset.tk; t[k] = +b.dataset.v;
@@ -2871,7 +2886,7 @@ function viewMatch(){
   on('skip', () => { clearTimeout(TIMER); L.started = true; L.paused = true; L.atHT = false; while (step(M)) L.others.forEach(o => step(o)); L.others.forEach(o => playOut(o)); viewMatch(); });
   on('done', () => { LIVE = null; if (L.shield) finishShield(M); else if (L.lc) finishLC(M, L.others); else if (L.cup) finishCup(M, L.others); else finishLeague(M, L.others); passDays(1); save(); HIST.push(V); V = { s: 'news', i: 0 }; view(); scrollTo(0, 0); });
   document.querySelectorAll('[data-spd]').forEach(b => b.addEventListener('click', () => { SPEED = +b.dataset.spd; OPT.spd = SPEED; saveOpt(); viewMatch(); }));
-  document.querySelectorAll('[data-mt]').forEach(b => b.addEventListener('click', () => { MTAB = b.dataset.mt; if (MTAB === 'tactics' && L.started && !L.paused){ L.paused = true; clearTimeout(TIMER); } TB.sel = null; if (MTAB === 'tactics') TB.tab = 'squad'; viewMatch(); }));
+  document.querySelectorAll('[data-mt]').forEach(b => b.addEventListener('click', () => { MTAB = b.dataset.mt; if (MTAB === 'tactics' && L.started && !L.paused){ L.paused = true; clearTimeout(TIMER); } TB.sel = null; if (MTAB === 'tactics'){ TB.tab = 'squad'; TB.view = 'us'; } viewMatch(); }));
   wireMatchPanel();
 }
 function mPanel(){
