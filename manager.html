@@ -1509,9 +1509,9 @@ function playerCard(p, q, con, born){
     return `<div class="pc f${lv}" title="${x}${i >= 0 ? ': ' + FIT_WORD[lv] + (sh != null ? ` (${Math.round(sh * 100)}% of his starts)` : '') : ''}"><span>${x}</span></div>`; }).join('')}</div>`).join('');
   const ks = Object.keys(ATTR_NAME), dist = x => ks.reduce((t, key) => t + Math.abs(A(x, key) - A(p, key)), 0);
   const sim = D.players.filter(x => x.id !== p.id && x.prim === p.prim).map(x => [x, dist(x)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
-  const real = p.s ? `<tr><td>${D.season - 1}/${String(D.season % 100).padStart(2, '0')} (real)</td><td class="c">${p.s[0]}</td><td class="c">${p.s[1]}</td><td class="c">${p.s[2]}</td><td class="c">-</td><td class="c">-</td><td class="c"><span class="avr">${p.s[3] ? (+p.s[3]).toFixed(2) : '----'}</span></td></tr>` : '';
-  // under the tabs, as in CM 01/02: born, age, nationality (and games for his country in the past year)
-  const nat = p.nat ? `${flag(p.nat)}${esc(DEMONYM[p.nat] || p.nat)}${p.nt ? ` (${p.nt} international${p.nt === 1 ? '' : 's'} in the past year)` : ''}.` : '';
+  const real = '';   // the game starts with the current season: last season's real numbers are not shown
+  // under the tabs, as in CM 01/02: born, age, nationality (career caps are not in the data, so none are shown)
+  const nat = p.nat ? `${flag(p.nat)}${esc(DEMONYM[p.nat] || p.nat)}.` : '';
   return `<div class="born cmborn">${born}. ${nat}</div>
     <div class="cmattr">${col(0)}${col(1)}${col(2)}</div>
     <div class="cmlow"><div class="tw"><table class="cmst"><thead><tr><th></th><th class="c">Apps</th><th class="c">Gls</th><th class="c">Asts</th><th class="c">MoM</th><th class="c">Yel</th><th class="c">Av R</th></tr></thead><tbody>
@@ -1532,7 +1532,6 @@ function scrPlayer(){
   if (tab === 'inj') body = `<div class="ptitle">Injuries &amp; Bans</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Fitness</dt><dd>${q.injD ? `<span style="color:var(--hot)">Injured, out about ${Math.ceil(q.injD / 7)} week(s)</span>` : q.light ? 'Back from injury, not yet sharp' : 'Fit'}</dd><dt>Condition</dt><dd>${Math.round(q.cond)}%</dd><dt>Bookings</dt><dd>${q.yc} this season</dd><dt>Banned</dt><dd>${q.sus ? `${q.sus} match(es)` : 'No'}</dd><dt>Proneness</dt><dd>${p.inj ? ['Rarely injured', 'Average', 'Injury prone'][p.inj - 1] : 'Not known yet'}</dd></dl>`;
   if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Club</dt><dd>${esc(club(p.club).name)}</dd><dt>Wage</dt><dd>${wage(con.w)}</dd><dt>Expires</dt><dd>30.6.${String(con.y).slice(2)}</dd><dt>Value</dt><dd>${valueOf(p)}</dd><dt>Squad number</dt><dd>${p.no || '-'}</dd></dl>`;
   if (tab === 'hist') body = `<div class="ptitle">History</div><div class="tw"><table><thead><tr><th>Season</th><th>Club</th><th class="r">Apps</th><th class="r">Gls</th><th class="r">Asts</th><th class="r">Av R</th></tr></thead><tbody>
-    ${p.s ? `<tr><td>${D.season - 1}/${String(D.season % 100).padStart(2, '0')} (real)</td><td>${esc(club(p.club).name)}</td><td class="r">${p.s[0]}</td><td class="r">${p.s[1]}</td><td class="r">${p.s[2]}</td><td class="r">${p.s[3] ? (+p.s[3]).toFixed(2) : '-'}</td></tr>` : ''}
     <tr class="me"><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td>${esc(club(p.club).name)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${avgRt(q)}</td></tr></tbody></table></div>`;
   if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
