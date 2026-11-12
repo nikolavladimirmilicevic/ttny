@@ -164,6 +164,19 @@ tr.me td{background:rgba(79,209,139,.10)}
 .pitch.mini{max-width:300px}.pitch.mini .tok{width:64px}.pitch.mini .tok .dot{width:26px;height:26px;font-size:11px}.pitch.mini .tok .nm{font-size:10px;max-width:64px}.pitch.mini .tok .cb{width:24px}
 .mpv-w{list-style:none;margin:0;padding:0;display:grid;gap:5px;font-size:13px}.mpv-w li{padding:6px 9px;border-radius:7px;background:rgba(255,255,255,.04);border-left:3px solid var(--gold)}.mpv-w li.bad{border-left-color:var(--loss)}
 .instr.tbq{grid-template-columns:minmax(0,1fr);gap:4px}.instr.tbq>span.yel{margin-top:6px;font-size:12.5px}.instr.tbq .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%}.instr.tbq .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px}
+.ft{display:grid;gap:14px}
+.ft-hero{text-align:center;padding:16px 14px 14px;border-radius:14px;background:rgba(255,255,255,.035);border-top:4px solid var(--draw,#888)}
+.ft-hero.win{border-top-color:var(--win)}.ft-hero.loss{border-top-color:var(--loss)}
+.ft-r{font:600 13px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}.ft-hero.win .ft-r{color:var(--win)}.ft-hero.loss .ft-r{color:var(--loss)}
+.ft-s{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;margin:8px 0 4px;font:600 22px/1.1 var(--display);text-transform:uppercase}.ft-s span:first-child{text-align:right}.ft-s span:last-child{text-align:left}.ft-s b{font-size:44px;font-variant-numeric:tabular-nums}
+.ft-g{display:grid;grid-template-columns:1fr 40px 1fr;gap:16px;font-size:13px;color:var(--dim)}.ft-g span:first-child{text-align:right}
+.ft-mom{margin-top:10px;font-size:14px}.ft-mom b{color:var(--gold)}
+.ft-b{display:inline-block;margin-top:10px;padding:6px 12px;border-radius:999px;font-size:13px;background:rgba(255,255,255,.06)}.ft-b.win{color:var(--win)}.ft-b.loss{color:var(--loss)}
+.ft-g3{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,.8fr);gap:16px;align-items:start}.ft-g3>*{min-width:0}
+@media(max-width:980px){.ft-g3{grid-template-columns:1fr 1fr}}@media(max-width:600px){.ft-g3{grid-template-columns:1fr}.ft-s{font-size:16px}.ft-s b{font-size:34px}}
+.ft-g3 table{width:100%;table-layout:fixed}.ft-g3 table td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.ft-g3 table td.c{width:64px}.ftp td:nth-child(3){width:44px}.ftp td:nth-child(4){width:40px}.ftp td:nth-child(2){white-space:normal}
+.ftp td{padding:5px 4px;vertical-align:middle}.ftp td:first-child{width:38px}
+.ftms{display:grid;gap:3px;margin-bottom:8px}.ftm{display:grid;grid-template-columns:44px 1fr;gap:6px;font-size:13px;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.03)}.ftm .m{color:var(--gold);font-variant-numeric:tabular-nums}.ftm.a{border-right:3px solid rgba(255,255,255,.18)}.ftm.h{border-left:3px solid rgba(255,255,255,.18)}
 .tboard{display:grid;gap:10px}
 .tbforms{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .tbf{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 7px 5px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:inherit;font:600 11px/1 var(--body);cursor:pointer}
@@ -2919,7 +2932,8 @@ function viewMatch(){
   const tabs = [['overview', 'Match Overview'], ['stats', 'Match Stats'], ['zones', 'Action Zones'], ['report', 'Match Report']];
   const tabs2 = [['ratings', 'Player Ratings'], ['scores', 'Latest Scores'], ['table', 'Live Table'], ['tactics', `${esc(club(me()).name)} Tactics`]];
   let panelBody = '';
-  if (MTAB === 'overview') panelBody = `<div class="msc"><div class="h">${scorers('h')}</div><div class="mid">${half}</div><div>${scorers('a')}</div></div>
+  if (MTAB === 'overview' && M.over) panelBody = ftPanel();
+  else if (MTAB === 'overview') panelBody = `<div class="msc"><div class="h">${scorers('h')}</div><div class="mid">${half}</div><div>${scorers('a')}</div></div>
     <div class="big ${bigCls} ${OPT.flash === 'on' && last.c === 'goal' ? 'flash' : ''}" id="now">${last.m ? `${last.m}' &nbsp;` : ''}${last.t}</div>
     <div class="l5"><span>Last 5 Mins</span><span class="bar"><i style="width:${p5}%;background:${kh};color:${kh2};text-shadow:none">${p5}%</i><i style="width:${100 - p5}%;background:${ka === kh ? '#888' : ka};color:${ka === kh ? '#fff' : ka2};text-shadow:none">${100 - p5}%</i></span></div>
     <div class="minfo"><span>Referee - ${esc(M.ref.n)}</span><span>Attendance - ${(M.att || 0).toLocaleString('en-GB')}</span><span>Weather - ${esc(M.weather)}, ${M.temp}°C</span></div>`;
@@ -2940,6 +2954,28 @@ function viewMatch(){
   document.querySelectorAll('[data-spd]').forEach(b => b.addEventListener('click', () => { SPEED = +b.dataset.spd; OPT.spd = SPEED; saveOpt(); viewMatch(); }));
   document.querySelectorAll('[data-mt]').forEach(b => b.addEventListener('click', () => { MTAB = b.dataset.mt; if (MTAB === 'tactics' && L.started && !L.paused){ L.paused = true; clearTimeout(TIMER); } TB.sel = null; if (MTAB === 'tactics'){ TB.tab = 'squad'; TB.view = 'us'; } viewMatch(); }));
   wireMatchPanel();
+}
+/* full time: the result as a page, the scorers, what the board will make of it, the moments that mattered, the main
+   numbers, how each of your players did, and the other results */
+function ftPanel(){
+  const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, home = us === M.H;
+  const gf = us.goals, ga = them.goals, won = gf > ga || (M.pens && (home ? M.pens[0] > M.pens[1] : M.pens[1] > M.pens[0])), drew = gf === ga && !M.pens;
+  const sc = side => M.hs.filter(g => g.side === side).map(g => `${esc(surname(P.get(g.id).n))} ${g.l}'${g.how === 'pen' ? ' (pen)' : ''}`).join(', ');
+  const exp = clamp(.5 + (club(me()).q - club(them.cid).q) / 14 + (home ? .08 : -.08), .1, .9), got = won ? 1 : drew ? .45 : 0, d = got - exp;
+  const board = d > .25 ? ['win', 'The board are delighted: few expected that.'] : d > 0 ? ['win', 'The board are pleased with the result.'] : d > -.25 ? ['draw', exp > .6 && !won ? 'The board expected more, but they understand.' : 'About what the board expected.'] : ['loss', 'The board are disappointed: they expected a win here.'];
+  const mom = M.mom && P.get(M.mom), rt = id => M.over ? (us.rate[id] || 0) : 0;
+  const mine = [...new Set([...us.on.map(x => x.id), ...us.subbed.flatMap(x => [x[0], x[1]])])].map(id => ({ id, p: P.get(id), r: us.rate[id] || 0, ev: us.ev[id] || {}, x: us.on.find(y => y.id === id), out: us.subbed.find(z => z[0] === id), inj: us.inj.find(j => j.id === id) })).filter(o => o.p).sort((a, b) => b.r - a.r);
+  const rc = v => v >= 7.5 ? 'var(--win)' : v >= 6.5 ? 'var(--gold)' : v >= 5.8 ? 'var(--text)' : 'var(--loss)';
+  const pct = Math.round(100 * M.H.poss / Math.max(1, M.H.poss + M.A.poss));
+  const moments = M.inc.filter(x => x.k !== 'sub' || true).map(x => `<div class="ftm ${x.side === 'h' ? 'h' : 'a'}"><span class="m">${x.l}'</span><span>${icon(x.k)}${esc(x.t)}</span></div>`).join('');
+  return `<div class="ft">
+    <div class="ft-hero ${won ? 'win' : drew ? 'draw' : 'loss'}"><div class="ft-r">${won ? 'Victory' : drew ? 'Draw' : 'Defeat'}</div><div class="ft-s"><span>${esc(club(M.h).name)}</span><b>${M.H.goals} - ${M.A.goals}</b><span>${esc(club(M.a).name)}</span></div>
+      ${M.pens ? `<div class="small">${M.pens[0]}-${M.pens[1]} on penalties</div>` : ''}<div class="ft-g"><span>${sc('h')}</span><span></span><span>${sc('a')}</span></div>
+      ${mom ? `<div class="ft-mom">★ Man of the match: <b>${esc(mom.n)}</b> <span class="dim">${esc(club(mom.club).name)}</span></div>` : ''}<div class="ft-b ${board[0]}">${board[1]}</div></div>
+    <div class="ft-g3"><div><div class="ptitle">Your players</div><table class="ftp"><tbody>${mine.map(o => `<tr><td><span class="yel small">${o.x ? o.x.pos : o.out ? 'off' : ''}</span></td><td><b>${esc(cmName(o.p.n))}</b>${o.ev.g ? ' ' + '⚽'.repeat(Math.min(4, o.ev.g)) : ''}${o.ev.a ? ` <span class="small dim">${o.ev.a} ast</span>` : ''}${o.ev.yc ? ' 🟨' : ''}${o.ev.rc ? ' 🟥' : ''}${o.inj ? ` <span class="tag inj">out ${Math.max(1, Math.round(o.inj.d / 7))}w</span>` : ''}${o.out ? ` <span class="small dim">off ${o.out[2]}'</span>` : ''}</td><td class="r small dim">${o.x ? Math.round(o.x.e) + '%' : ''}</td><td class="r"><b style="color:${rc(o.r)}">${o.r.toFixed(1)}</b></td></tr>`).join('')}</tbody></table></div>
+      <div><div class="ptitle">Key moments</div><div class="ftms">${moments || '<p class="dim small">A quiet one.</p>'}</div>
+        <div class="ptitle">The numbers</div>${statBars({ poss: [pct, 100 - pct], sh: [M.H.sh, M.A.sh], sot: [M.H.sot, M.A.sot], cor: [M.H.corners, M.A.corners], fou: [M.H.fouls, M.A.fouls], yc: [M.H.yc, M.A.yc], rc: [M.H.rc, M.A.rc] }, M.h, M.a)}</div>
+      ${L.others.length ? `<div><div class="ptitle">Elsewhere</div><table><tbody>${L.others.map(o => `<tr><td class="r">${esc(club(o.h).name)}</td><td class="c"><span class="pill">${o.H.goals} - ${o.A.goals}</span></td><td>${esc(club(o.a).name)}</td></tr>`).join('')}</tbody></table></div>` : ''}</div></div>`;
 }
 function mPanel(){
   const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A;
