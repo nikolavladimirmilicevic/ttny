@@ -177,6 +177,15 @@ tr.me td{background:rgba(79,209,139,.10)}
 .ft-g3 table{width:100%;table-layout:fixed}.ft-g3 table td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.ft-g3 table td.c{width:64px}.ftp td:nth-child(3){width:44px}.ftp td:nth-child(4){width:40px}.ftp td:nth-child(2){white-space:normal}
 .ftp td{padding:5px 4px;vertical-align:middle}.ftp td:first-child{width:38px}
 .ftms{display:grid;gap:3px;margin-bottom:8px}.ftm{display:grid;grid-template-columns:44px 1fr;gap:6px;font-size:13px;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.03)}.ftm .m{color:var(--gold);font-variant-numeric:tabular-nums}.ftm.a{border-right:3px solid rgba(255,255,255,.18)}.ftm.h{border-left:3px solid rgba(255,255,255,.18)}
+.sqbar{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;width:100%}
+.sqseg button .dim{font-size:10.5px;margin-left:2px}.sqseg button.on .dim{color:inherit;opacity:.65}
+.sqsum{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--dim);margin:0 2px 10px}.sqsum b{color:var(--text)}.sqsum .bad b{color:var(--loss)}.sqsum .warn b{color:var(--gold)}
+.sqt table{min-width:760px}.sqt th.srt{cursor:pointer;user-select:none;white-space:nowrap}.sqt th.srt:hover{color:var(--text)}.sqt th.on{color:var(--gold)}.sqt th i{font-style:normal;font-size:9px;margin-left:3px}
+.sqt td{white-space:nowrap}.sqt td.warn{color:var(--loss);font-weight:700}
+.sqn{position:sticky;left:0;background:var(--panel);z-index:1}.sqn .no{display:inline-block;width:22px;color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums}
+.sqc{display:inline-block;width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.1);margin-right:6px;vertical-align:middle;position:relative;overflow:hidden}.sqc i{position:absolute;inset:0;width:var(--w);background:var(--c)}
+.sqm{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:6px}
+.sqf{display:inline-flex;gap:2px;margin-right:6px;vertical-align:middle}.sqf i{width:6px;height:12px;border-radius:2px}
 .tboard{display:grid;gap:10px}
 .tbforms{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .tbf{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 7px 5px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:inherit;font:600 11px/1 var(--body);cursor:pointer}
@@ -1823,52 +1832,58 @@ const nameCls = p => { const q = ps(p.id); return q.injD ? 'c-inj' : q.sus ? 'c-
 const avgRt = q => q.rt.length ? (q.rt.reduce((a, b) => a + b, 0) / q.rt.length).toFixed(2) : '-';
 const morWord = m => m >= 85 ? 'Superb' : m >= 70 ? 'Very Good' : m >= 55 ? 'Good' : m >= 40 ? 'Okay' : m >= 25 ? 'Poor' : 'Very Poor';
 function clubSquad(cid, o){
-  const mine = cid === me(), t = S.tac[cid], slots = FORMS[t.form], view_ = V.view || 'pos', filt = V.filt || 'all';
-  const ord = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
-  const keyf = { pos: p => ord[GROUP[p.prim]] * 1000 + ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'SS', 'CF'].indexOf(p.prim) * 50 - ovrNow(p) / 2, name: p => surname(p.n), age: p => p.age, ovr: p => -ovrNow(p), cond: p => ps(p.id).cond, gls: p => -ps(p.id).g, rt: p => -(+avgRt(ps(p.id)) || 0), val: p => -p.val, wage: p => -S.con[p.id].w };
-  const fl = { all: () => true, gk: p => p.prim === 'GK', def: p => GROUP[p.prim] === 'DEF', mid: p => GROUP[p.prim] === 'MID', fwd: p => GROUP[p.prim] === 'FWD', avail: p => avail(p.id), out: p => !avail(p.id), first: p => t.xi.includes(p.id) || t.bench.includes(p.id) }[filt];
+  const mine = cid === me(), t = S.tac[cid] || (S.tac[cid] = autoTactic(cid)), slots = FORMS[t.form], view_ = V.view && V.view !== 'gen0' ? V.view : 'gen', filt = V.filt || 'all';
+  const ord = { GK: 0, DEF: 1, MID: 2, FWD: 3 }, POSO = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'SS', 'CF'];
+  const last5 = q => q.rt.slice(-5), form = q => { const L = last5(q); return L.length ? L.reduce((a, b) => a + b, 0) / L.length : 0; };
+  const keyf = { pos: p => ord[GROUP[p.prim]] * 1000 + POSO.indexOf(p.prim) * 50 - ovrNow(p) / 2, num: p => p.no || 999, name: p => surname(p.n), age: p => p.age, ovr: p => -ovrNow(p),
+    cond: p => -ps(p.id).cond, mor: p => -ps(p.id).mor, form: p => -form(ps(p.id)), apps: p => -ps(p.id).apps, sub: p => -ps(p.id).sub, gls: p => -ps(p.id).g, ast: p => -ps(p.id).a, mom: p => -ps(p.id).mom,
+    yc: p => -ps(p.id).yc, rt: p => -(+avgRt(ps(p.id)) || 0), val: p => -p.val, wage: p => -S.con[p.id].w, con: p => S.con[p.id].y };
+  const fl = { all: () => true, gk: p => p.prim === 'GK', def: p => GROUP[p.prim] === 'DEF', mid: p => GROUP[p.prim] === 'MID', fwd: p => GROUP[p.prim] === 'FWD', avail: p => avail(p.id), out: p => !avail(p.id), first: p => t.xi.includes(p.id) || t.bench.includes(p.id), exp: p => S.con[p.id] && S.con[p.id].y <= S.season + 1 }[filt] || (() => true);
   const team = V.team || 'first', ft = firstTeam(cid);
-  const L = squadOf(cid).filter(fl).filter(p => team === 'all' || (team === 'first') === ft.has(p.id)).sort((a, b) => { const f = keyf[SORT.k] || keyf.pos, x = f(a), y = f(b); return (x > y ? 1 : x < y ? -1 : 0) * SORT.d; });
+  const all = squadOf(cid).filter(p => team === 'all' || (team === 'first') === ft.has(p.id)), L = all.filter(fl).sort((a, b) => { const k = SORT.k || 'pos', f = k.startsWith('a:') ? (p => -A(p, k.slice(2))) : (keyf[k] || keyf.pos), x = f(a), y = f(b); return (x > y ? 1 : x < y ? -1 : 0) * SORT.d; });
   if (team === 'res') o.title = `${esc(club(cid).name)} Reserves`;
   const nf = mine ? nextFree() : null;
-  const box = p => { if (!mine) return `<span></span>`; const i = t.xi.indexOf(p.id), b = t.bench.indexOf(p.id);
+  const box = p => { if (!mine) return ''; const i = t.xi.indexOf(p.id), b = t.bench.indexOf(p.id);
     return i >= 0 ? `<button class="box on" data-sel="${p.id}" title="${slots[i][0]}">${i + 1}</button>` : b >= 0 ? `<button class="box sub" data-sel="${p.id}" title="Substitute">S${b + 1}</button>` : `<button class="box" data-sel="${p.id}" title="${nf ? 'Pick him: ' + nf : ''}"></button>`; };
+  const th = (k, n, cls = '', tip = '') => `<th class="${cls} ${k ? 'srt' : ''} ${SORT.k === k ? 'on' : ''}" ${k ? `data-sort="${k}"` : ''} ${tip ? `title="${esc(tip)}"` : ''}>${n}${k && SORT.k === k ? `<i>${SORT.d > 0 ? '▲' : '▼'}</i>` : ''}</th>`;
+  const rc = v => v >= 7.2 ? 'var(--win)' : v >= 6.5 ? 'var(--gold)' : v >= 5.9 ? 'var(--text)' : 'var(--loss)';
+  const condC = c => `<span class="sqc" style="--w:${Math.round(c)}%;--c:${c >= 85 ? 'var(--win)' : c >= 68 ? 'var(--gold)' : 'var(--loss)'}"><i></i></span><span class="small">${Math.round(c)}%</span>`;
+  const morC = m => `<span class="sqm" style="--c:${m >= 70 ? 'var(--win)' : m >= 45 ? 'var(--gold)' : 'var(--loss)'}"></span>${morWord(m)}`;
+  const formC = q => { const L5 = last5(q); return L5.length ? `<span class="sqf">${L5.map(v => `<i style="background:${rc(v)}" title="${v.toFixed(1)}"></i>`).join('')}</span><b style="color:${rc(form(q))}">${form(q).toFixed(1)}</b>` : '<span class="dim">-</span>'; };
+  const nameTd = p => `<td class="sqn ${nameCls(p)}">${p.no ? `<span class="no">${p.no}</span>` : '<span class="no"></span>'}${flag(p.nat)}<b>${esc(cmName(p.n))}</b>${playerFlags(p)}</td>`;
+  const AT = ['oa', 'fi', 'bc', 'dr', 'lp', 'tp', 'he', 'sp', 'ac', 'st', 'da', 'bw', 'pc', 'gr'];
+  let head, row;
+  if (view_ === 'gen'){ head = `${mine ? '<th></th>' : ''}${th('name', 'Name')}${th('pos', 'Pos')}${th('age', 'Age', 'r')}${th('cond', 'Condition')}${th('mor', 'Morale')}${th('form', 'Form', '', 'Ratings in the last five games')}${th('apps', 'Apps', 'r')}${th('gls', 'Gls', 'r')}${th('ast', 'Ast', 'r')}${th('val', 'Value', 'r')}${th('con', 'Contract', 'r')}`;
+    row = p => { const q = ps(p.id), c = S.con[p.id]; return `${mine ? `<td>${box(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${cmPos(p.pos)}</b></td><td class="r">${p.age}</td><td>${condC(q.cond)}</td><td class="small">${morC(q.mor)}</td><td>${formC(q)}</td><td class="r">${q.apps}${q.sub ? `<span class="dim small"> (${q.sub})</span>` : ''}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${valueOf(p)}</td><td class="r ${c && c.y <= S.season + 1 ? 'warn' : ''}">${c ? c.y : '-'}</td>`; }; }
+  else if (view_ === 'attr'){ head = `${mine ? '<th></th>' : ''}${th('name', 'Name')}${th('pos', 'Pos')}${AT.map(k => th('a:' + k, esc((ATTR_NAME[k] || k).split(' ').map(w => w[0]).join('').slice(0, 3)), 'r', ATTR_NAME[k])).join('')}`;
+    row = p => `${mine ? `<td>${box(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${p.prim}</b></td>${AT.map(k => `<td class="r av ${vcls(A(p, k))}">${showA(p, A(p, k))}</td>`).join('')}`; }
+  else if (view_ === 'stats'){ head = `${mine ? '<th></th>' : ''}${th('name', 'Name')}${th('pos', 'Pos')}${th('apps', 'Apps', 'r')}${th('sub', 'Sub', 'r')}${th('gls', 'Gls', 'r')}${th('ast', 'Ast', 'r')}${th('mom', 'MoM', 'r')}${th('yc', 'Yel', 'r')}<th class="r">Red</th>${th('rt', 'Av R', 'r')}`;
+    row = p => { const q = ps(p.id); return `${mine ? `<td>${box(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${p.prim}</b></td><td class="r">${q.apps}</td><td class="r">${q.sub}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${q.mom}</td><td class="r">${q.yc}</td><td class="r">${q.rc || 0}</td><td class="r"><b style="color:${rc(+avgRt(q) || 0)}">${avgRt(q)}</b></td>`; }; }
+  else if (view_ === 'con'){ head = `${mine ? '<th></th>' : ''}${th('name', 'Name')}${th('pos', 'Pos')}${th('age', 'Age', 'r')}${th('val', 'Value', 'r')}${th('wage', 'Wage', 'r')}${th('con', 'Expires', 'r')}<th>Status</th>`;
+    row = p => { const c = S.con[p.id], yrs = c ? c.y - S.season : 9; return `${mine ? `<td>${box(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${p.prim}</b></td><td class="r">${p.age}</td><td class="r">${valueOf(p)}</td><td class="r">${wage(c.w)}</td><td class="r ${yrs <= 1 ? 'warn' : ''}">30.6.${String(c.y).slice(2)}</td><td class="small">${onLoan(p) ? 'On loan' : yrs <= 1 ? '<span style="color:var(--loss)">Expiring</span>' : yrs <= 2 ? '<span style="color:var(--gold)">Talks soon</span>' : '<span class="dim">Settled</span>'}</td>`; }; }
   let body;
   if (view_ === 'pos'){
-    const half = Math.ceil(L.length / 2), row = p => `<div class="sqr ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${box(p)}<span class="nm ${nameCls(p)}">${flag(p.nat)}${esc(cmName(p.n))}${playerFlags(p)}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
-    body = `${mine ? slotStrip() : ''}<div class="ptitle">Position(s)</div><div class="sq"><div>${L.slice(0, half).map(row).join('')}</div><div>${L.slice(half).map(row).join('')}</div></div>`;
-  } else {
-    const AT = ['oa', 'bc', 'dr', 'lp', 'fi', 'he', 'sp', 'st', 'da', 'bw', 'pc', 'gr'];
-    const th = (k, n, cls = '') => `<th class="${cls}" ${k ? `data-sort="${k}"` : ''}>${n}${k && SORT.k === k ? (SORT.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
-    const head = view_ === 'gen' ? `${th('', '')}${th('name', 'Name')}${th('pos', 'Position')}${th('age', 'Age', 'r')}${th('cond', 'Cond', 'r')}<th>Morale</th>${th('', 'Apps', 'r')}${th('gls', 'Gls', 'r')}${th('rt', 'Av R', 'r')}`
-      : view_ === 'attr' ? `${th('', '')}${th('name', 'Name')}${AT.map(k => `<th class="r" title="${esc(ATTR_NAME[k])}">${esc((ATTR_NAME[k] || k).split(' ').map(w => w[0]).join('').slice(0, 3))}</th>`).join('')}`
-      : view_ === 'stats' ? `${th('', '')}${th('name', 'Name')}<th class="r">Apps</th><th class="r">Sub</th>${th('gls', 'Gls', 'r')}<th class="r">Asts</th><th class="r">MoM</th><th class="r">Yel</th><th class="r">Red</th>${th('rt', 'Av R', 'r')}`
-      : `${th('', '')}${th('name', 'Name')}${th('age', 'Age', 'r')}${th('val', 'Value', 'r')}${th('wage', 'Wage', 'r')}<th class="r">Expires</th>`;
-    const row = p => { const q = ps(p.id), base = `<td>${box(p)}</td><td class="${nameCls(p)}">${flag(p.nat)}<b>${esc(cmName(p.n))}</b>${playerFlags(p)}</td>`;
-      if (view_ === 'gen') return `${base}<td class="yel"><b>${cmPos(p.pos)}</b></td><td class="r">${p.age}</td><td class="r">${Math.round(q.cond)}%</td><td>${morWord(q.mor)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${avgRt(q)}</td>`;
-      if (view_ === 'attr') return `${base}${AT.map(k => `<td class="r av ${vcls(A(p, k))}">${showA(p, A(p, k))}</td>`).join('')}`;
-      if (view_ === 'stats') return `${base}<td class="r">${q.apps}</td><td class="r">${q.sub}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${q.mom}</td><td class="r">${q.yc}</td><td class="r">${q.rc || 0}</td><td class="r">${avgRt(q)}</td>`;
-      return `${base}<td class="r">${p.age}</td><td class="r">${valueOf(p)}</td><td class="r">${wage(S.con[p.id].w)}</td><td class="r">${S.con[p.id].y}</td>`; };
-    body = `<div class="tw"><table><thead><tr>${head}</tr></thead><tbody>${L.map(p => `<tr class="click ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${row(p)}</tr>`).join('')}</tbody></table></div>`;
-  }
-  if (mine) body += `<p class="small dim" style="margin:8px 2px 0">Click a box to give that player the next free place in your ${esc(t.form)}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; click it again to take it back. ${t.xi.filter(Boolean).length}/11 picked, ${t.bench.length}/${BENCH} substitutes. Names in red: injured; pink: banned.</p>
-    <div class="tools" style="margin-top:6px"><button class="btn sm" id="clearxi">Clear selection</button><button class="btn sm" id="autoxi">Assistant picks the side</button></div>`;
-  o.tools = `<select class="dd" id="sqv" aria-label="View">${[['pos', 'View: Positions'], ['gen', 'View: General'], ['attr', 'View: Attributes'], ['stats', 'View: Stats'], ['con', 'View: Contract']].map(([k, n]) => `<option value="${k}" ${view_ === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
-    <select class="dd" id="sqs" aria-label="Sort by">${[['pos', 'Sort By: Position'], ['name', 'Sort By: Name'], ['age', 'Sort By: Age'], ['cond', 'Sort By: Condition'], ['gls', 'Sort By: Goals'], ['rt', 'Sort By: Rating'], ['val', 'Sort By: Value']].map(([k, n]) => `<option value="${k}" ${SORT.k === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
-    <select class="dd" id="sqt" aria-label="Squad">${[['first', 'First Team'], ['res', 'Reserves'], ['all', 'Whole Squad']].map(([k, n]) => `<option value="${k}" ${team === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
-    <span style="flex:1"></span>${mine ? '<button class="btn sm" id="clearsq">Clear Squad</button>' : ''}<select class="dd" id="sqf" aria-label="Filter">${[['all', 'Filter: All'], ['first', 'Filter: Picked'], ['gk', 'Filter: Goalkeepers'], ['def', 'Filter: Defenders'], ['mid', 'Filter: Midfielders'], ['fwd', 'Filter: Forwards'], ['avail', 'Filter: Available'], ['out', 'Filter: Injured & Banned']].map(([k, n]) => `<option value="${k}" ${filt === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
-  o.body = body; frame(o);
-  $('#sqv').addEventListener('change', e => { V = { ...V, view: e.target.value }; view(); });
-  $('#sqs').addEventListener('change', e => { SORT = { k: e.target.value, d: 1 }; view(); });
-  $('#sqf').addEventListener('change', e => { V = { ...V, filt: e.target.value }; view(); });
-  $('#sqt').addEventListener('change', e => { V = { ...V, team: e.target.value }; view(); });
+    const half = Math.ceil(L.length / 2), rw = p => `<div class="sqr ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${box(p) || '<span></span>'}<span class="nm ${nameCls(p)}">${flag(p.nat)}${esc(cmName(p.n))}${playerFlags(p)}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
+    body = `${mine ? slotStrip() : ''}<div class="sq"><div>${L.slice(0, half).map(rw).join('')}</div><div>${L.slice(half).map(rw).join('')}</div></div>`;
+  } else body = `<div class="tw sqt"><table><thead><tr>${head}</tr></thead><tbody>${L.map(p => `<tr class="click ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${row(p)}</tr>`).join('')}</tbody></table></div>`;
+  // the squad at a glance
+  const inj = all.filter(p => !avail(p.id) && !onLoan(p)).length, avgAge = all.length ? (all.reduce((x, p) => x + p.age, 0) / all.length).toFixed(1) : '-', exp = all.filter(p => S.con[p.id] && S.con[p.id].y <= S.season + 1).length;
+  const sum = `<div class="sqsum"><span><b>${all.length}</b> players</span><span>average age <b>${avgAge}</b></span><span class="${inj ? 'bad' : ''}"><b>${inj}</b> injured or banned</span><span class="${exp ? 'warn' : ''}"><b>${exp}</b> contracts ending</span>${mine ? `<span>picked <b>${t.xi.filter(Boolean).length}/11</b> + <b>${t.bench.length}/${BENCH}</b></span>` : ''}</div>`;
+  const chips = (id, L2, cur) => `<span class="seg sqseg" id="${id}">${L2.map(([k, n]) => `<button data-v="${k}" class="${cur === k ? 'on' : ''}">${n}</button>`).join('')}</span>`;
+  const n = k => all.filter({ all: () => true, gk: p => p.prim === 'GK', def: p => GROUP[p.prim] === 'DEF', mid: p => GROUP[p.prim] === 'MID', fwd: p => GROUP[p.prim] === 'FWD', avail: p => avail(p.id), out: p => !avail(p.id), first: p => t.xi.includes(p.id) || t.bench.includes(p.id), exp: p => S.con[p.id] && S.con[p.id].y <= S.season + 1 }[k]).length;
+  o.tools = `<div class="sqbar">${chips('sqv', [['gen', 'General'], ['attr', 'Attributes'], ['stats', 'Stats'], ['con', 'Contracts'], ...(mine ? [['pos', 'Pick the side']] : [])], view_)}${chips('sqt', [['first', 'First Team'], ['res', 'Reserves'], ['all', 'Whole Squad']], team)}</div>
+    <div class="sqbar">${chips('sqf', [['all', 'All'], ['gk', 'GK'], ['def', 'DEF'], ['mid', 'MID'], ['fwd', 'FWD'], ['avail', 'Available'], ['out', 'Out'], ...(mine ? [['first', 'Picked']] : []), ['exp', 'Expiring']].map(([k, x]) => [k, `${x} <span class="dim">${n(k)}</span>`]), filt)}<span style="flex:1"></span>${mine ? '<button class="btn sm" id="autoxi">Assistant picks the side</button><button class="btn sm" id="clearsq">Clear</button>' : ''}</div>`;
+  o.body = sum + body + (mine && view_ === 'pos' ? `<p class="small dim" style="margin:8px 2px 0">Tap a box to give that player the next free place in your ${esc(t.form)}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; tap it again to take it back.</p>` : '');
+  frame(o);
+  document.querySelectorAll('#sqv button').forEach(b => b.addEventListener('click', () => { V = { ...V, view: b.dataset.v }; view(); }));
+  document.querySelectorAll('#sqt button').forEach(b => b.addEventListener('click', () => { V = { ...V, team: b.dataset.v }; view(); }));
+  document.querySelectorAll('#sqf button').forEach(b => b.addEventListener('click', () => { V = { ...V, filt: b.dataset.v }; view(); }));
   document.querySelectorAll('[data-tg]').forEach(b => b.addEventListener('click', () => { const v = b.dataset.tg, k = v[0] === 'b' ? v : +v; TARGET = TARGET === k ? null : k; view(); }));
   if ($('#clearsq')) $('#clearsq').addEventListener('click', () => { t.xi = Array(11).fill(null); t.bench = []; TARGET = null; save(); view(); });
+  if ($('#autoxi')) $('#autoxi').addEventListener('click', () => { const f = bestXI(me(), t.form, true); t.xi = f.xi; t.bench = f.bench; t.set = setPieces(me(), t.xi); save(); view(); });
   document.querySelectorAll('[data-sort]').forEach(h => h.addEventListener('click', () => { SORT = { k: h.dataset.sort, d: SORT.k === h.dataset.sort ? -SORT.d : 1 }; view(); }));
   document.querySelectorAll('[data-sel]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); toggleSel(+b.dataset.sel); view(); }));
   wirePlayers(L.map(p => p.id));
-  if (mine){ $('#clearxi').addEventListener('click', () => { t.xi = Array(11).fill(null); t.bench = []; save(); view(); });
-    $('#autoxi').addEventListener('click', () => { const f = bestXI(me(), t.form, true); t.xi = f.xi; t.bench = f.bench; t.set = setPieces(me(), t.xi); save(); view(); }); }
 }
 function nextFree(){ const t = S.tac[me()], i = t.xi.indexOf(null); if (i >= 0) return FORMS[t.form][i][0]; return t.bench.length < BENCH ? 'S' + (t.bench.length + 1) : null; }
 function toggleSel(id){
