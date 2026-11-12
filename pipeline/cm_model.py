@@ -466,6 +466,8 @@ def apply_fixes(rows, fixes, teams, wc, people, wp, season):
             hit['fix_ovr'] = float(fx['ovr'])
         if fx.get('out'):
             hit['back'] = fx['out']; hit['why'] = fx.get('why')
+        if fx.get('dob'):   # Transfermarkt's date of birth over the API's
+            hit['e'] = {k: v for k, v in dict(hit['e'], bd=fx['dob']).items() if k != 'age'}
 
 
 def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen=None, fixes=None):
