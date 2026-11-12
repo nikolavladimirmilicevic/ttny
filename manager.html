@@ -292,7 +292,11 @@ button.frow:hover{border-color:var(--gold)}
 .prow{display:flex;justify-content:center;gap:5px}
 .pc{flex:0 1 50px;background:rgba(0,0,0,.28);border-radius:6px;text-align:center;padding:7px 0}
 .pc span{display:block;font-size:10.5px;color:#cfe;font-weight:600}.pc b{font-size:15px}
-.pc.on{background:var(--gold)}.pc.on span,.pc.on b{color:var(--gold-ink)}
+.pc.f1{background:#5CE39A}.pc.f2{background:#A8E063}.pc.f3{background:#F2D33D}.pc.f4{background:#F2A65A}.pc.f5{background:rgba(0,0,0,.28)}
+.pc.f1 span,.pc.f2 span,.pc.f3 span,.pc.f4 span{color:#0B1422}
+.pkey{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:12px;color:var(--muted)}
+.pkey span{display:flex;align-items:center;gap:5px}.pkey i{display:inline-block;width:14px;height:10px;padding:0;flex:none}
+.pkey i.f5{background:#0E2A1B;outline:1px solid var(--line)}
 </style>
 </head><body>
 <div id="app"><p class="loading">Loading…</p></div>
@@ -1313,6 +1317,7 @@ function clubTactics(cid, o){
 /* ---- a player ---- */
 /* ---- the player's profile, laid out like a PES database page: card, attribute groups with bars, radar, positions ---- */
 const cardName = n => { const w = String(n || '').trim().split(/\s+/), sn = surname(n); return w.length < 2 || sn === n ? n : `${w[0][0]}. ${sn}`; };
+const FIT_WORD = { 1: 'Natural', 2: 'Accomplished', 3: 'Competent', 4: 'Awkward', 5: 'Unconvincing' };
 const TT = t => String(t).replace(/\b[a-z]/g, c => c.toUpperCase()).replace(/\bGk\b/, 'GK');
 const GROUPS = [['Attacking', ['oa', 'fi', 'kp']], ['Dribbling', ['bc', 'dr', 'tp', 'ba']], ['Defending', ['he', 'ju', 'da', 'bw', 'ag']], ['Passing', ['lp', 'lf', 'pk', 'cu']], ['Physicality', ['sp', 'ac', 'pc', 'st']], ['Goalkeeping', ['ga', 'gc', 'gl', 'gr', 'gh']]];
 const BARC = v => v >= 90 ? '#5CE39A' : v >= 80 ? '#A8E063' : v >= 70 ? '#F2D33D' : v >= 60 ? '#F2A65A' : '#E57A62';
@@ -1321,16 +1326,15 @@ function playerCard(p, q, con, born){
   const attr = key => { const v = A(p, key), d = q.d[key] || 0; return `<div class="pa"><span class="pv" style="background:${BARC(kn ? v : Math.floor(v / 10) * 10 + 5)}">${showA(p, v)}</span><span class="pn">${esc(TT(ATTR_NAME[key]))}${d >= 1 && kn ? ' <span class="up">▲</span>' : d <= -1 && kn ? ' <span class="dn">▼</span>' : ''}</span></div>`; };
   const grp = ([n, ks]) => `<div class="pg2"><div class="ph"><b>${n}</b></div><div class="pbar"></div>${ks.map(attr).join('')}${n === 'Physicality' ? `<div class="pa"><span class="pv" style="background:${BARC([90, 75, 62][(p.inj || 2) - 1])}">${4 - (p.inj || 2)}</span><span class="pn">Injury Resistance</span></div>` : ''}</div>`;
   const groups = GROUPS.filter(([n]) => p.prim === 'GK' || n !== 'Goalkeeping');
+  const best = Math.max(...Object.keys(GROUP).map(x => fitIn(p, x)));
   const rows = [['LWF', 'SS', 'CF', 'RWF'], ['LMF', 'DMF', 'CMF', 'AMF', 'RMF'], ['LB', 'CB', 'RB'], ['GK']];
-  const pos = rows.map(r => `<div class="prow">${r.map(x => { const on = p.pos.includes(x); return `<div class="pc ${on ? 'on' : ''}"><span>${x}</span></div>`; }).join('')}</div>`).join('');
+  const pos = rows.map(r => `<div class="prow">${r.map(x => { const d = best - fitIn(p, x), lv = !kn ? (p.pos.includes(x) ? 1 : 5) : d <= 2 ? 1 : d <= 6 ? 2 : d <= 12 ? 3 : d <= 20 ? 4 : 5; return `<div class="pc f${lv}" title="${x}: ${FIT_WORD[lv]}"><span>${x}</span></div>`; }).join('')}</div>`).join('');
   const ks = Object.keys(ATTR_NAME), dist = x => ks.reduce((t, key) => t + Math.abs(A(x, key) - A(p, key)), 0);
   const sim = D.players.filter(x => x.id !== p.id && x.prim === p.prim).map(x => [x, dist(x)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
   const mini = x => { const kk = kitOf(x.club); return `<button class="pcard sm" data-pl="${x.id}" style="--k1:${kk[0]};--k2:${kk[1]}"><span class="pp">${cmPos([x.prim])}</span><b>${esc(cardName(x.n))}</b><span class="small">${esc(club(x.club).name)}</span></button>`; };
   return `<div class="pmast">
-    <div class="pleft"><div class="pcard" style="--k1:${k[0]};--k2:${k[1]}"><span class="pp">${esc(p.prim)}</span>${p.no ? `<span class="po">${p.no}</span>` : ''}<b class="pnm">${esc(cardName(p.n))}</b></div>
-      <div class="ptag"><b>${esc(p.n)}</b></div>
-      <p class="small dim" style="margin:6px 0 0">${born}. ${esc(p.nat || '')}. ${esc(club(p.club).name)}, ${cmPos(p.pos)}.</p>
-      <div class="ptitle">Positions</div><div class="ppitch">${pos}</div></div>
+    <div class="pleft">      <div class="ptitle" style="margin-top:0">Positions</div><div class="ppitch">${pos}</div>
+      <div class="pkey">${[1, 2, 3, 4, 5].map(l => `<span><i class="pc f${l}"></i>${FIT_WORD[l]}</span>`).join('')}</div>${kn ? '' : '<p class="small dim">Masked: only his usual positions are known.</p>'}</div>
     <div class="pright"><div class="pgrid">${groups.map(grp).join('')}</div>
       <div class="ptitle">Playing Style</div><p style="margin:0 0 8px">${esc(p.style || 'None')}</p>
       <div class="ptitle">Info</div><dl class="kv"><dt>Age</dt><dd>${p.age}</dd><dt>Nationality</dt><dd>${esc(p.nat || '-')}</dd><dt>Team</dt><dd>${esc(club(p.club).name)}${p.no ? ' · ' + p.no : ''}</dd><dt>Position</dt><dd class="yel">${cmPos(p.pos)}</dd>
