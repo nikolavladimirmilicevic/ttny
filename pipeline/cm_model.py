@@ -759,5 +759,102 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         sq = TM_SQUADS.get(_cn.get(x['club']))
         if sq and x['id'] not in sq:
             x['ac'] = 1
+    _sec = build_second(out_players, today, season, people)
+    if _sec:
+        extra['second'] = _sec
     return {'season': season, 'updated': today, 'league': 'Premier League', 'complete': len(clubs) == len(teams) and len(teams) >= 18,
             'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures, **extra}
+
+
+# ---- the Championship, played in the background (Transfermarkt squad pages; ratings from value, age and position) ----
+CH_IDS = {'Watford FC': 38, 'Wolverhampton Wanderers': 39, 'Southampton FC': 41, 'Cardiff City': 43, 'Burnley FC': 44,
+          'West Ham United': 48, 'Birmingham City': 54, 'Bristol City': 56, 'Millwall FC': 58, 'Preston North End': 59,
+          'West Bromwich Albion': 60, 'Sheffield United': 62, 'Blackburn Rovers': 67, 'Derby County': 69,
+          'Middlesbrough FC': 70, 'Norwich City': 71, 'Queens Park Rangers': 72, 'Stoke City': 75, 'Swansea City': 76}
+CH_SHORT = {'Wolverhampton Wanderers': 'Wolves', 'West Bromwich Albion': 'West Brom', 'Queens Park Rangers': 'QPR',
+            'Sheffield United': 'Sheffield Utd', 'Preston North End': 'Preston', 'Wrexham AFC': 'Wrexham'}
+CH_KIT = {'West Ham United': ['#7A263A', '#1BB1E7'], 'Wolverhampton Wanderers': ['#FDB913', '#231F20'], 'Middlesbrough FC': ['#E11B22', '#FFFFFF'],
+          'Southampton FC': ['#D71920', '#FFFFFF'], 'Burnley FC': ['#6C1D45', '#99D6EA'], 'Swansea City': ['#FFFFFF', '#121212'],
+          'Sheffield United': ['#EE2737', '#FFFFFF'], 'Norwich City': ['#FFF200', '#00A650'], 'Stoke City': ['#E03A3E', '#FFFFFF'],
+          'Wrexham AFC': ['#D71920', '#FFFFFF'], 'Birmingham City': ['#0000FF', '#FFFFFF'], 'Watford FC': ['#FBEE23', '#ED2127'],
+          'Millwall FC': ['#001D5E', '#FFFFFF'], 'West Bromwich Albion': ['#122F67', '#FFFFFF'], 'Bristol City': ['#E21A23', '#FFFFFF'],
+          'Derby County': ['#FFFFFF', '#000000'], 'Queens Park Rangers': ['#1D5BA4', '#FFFFFF'], 'Preston North End': ['#FFFFFF', '#131F53'],
+          'Charlton Athletic': ['#D4021D', '#FFFFFF'], 'Portsmouth FC': ['#001489', '#FFFFFF'], 'Blackburn Rovers': ['#009EE0', '#FFFFFF'],
+          'Bolton Wanderers': ['#FFFFFF', '#263C7E'], 'Cardiff City': ['#0070B5', '#FFFFFF'], 'Lincoln City': ['#E21C23', '#FFFFFF']}
+CH_POS = {'Goalkeeper': 'GK', 'Centre-Back': 'CB', 'Left-Back': 'LB', 'Right-Back': 'RB', 'Defensive Midfield': 'DMF',
+          'Central Midfield': 'CMF', 'Attacking Midfield': 'AMF', 'Left Winger': 'LWF', 'Right Winger': 'RWF',
+          'Centre-Forward': 'CF', 'Left Midfield': 'LMF', 'Right Midfield': 'RMF', 'Second Striker': 'SS'}
+GK_KEYS = ('ga', 'gc', 'gl', 'gr', 'gh')
+
+
+def _solve(A, b):
+    n = len(b); M = [row[:] + [b[i]] for i, row in enumerate(A)]
+    for c in range(n):
+        piv = max(range(c, n), key=lambda r: abs(M[r][c])); M[c], M[piv] = M[piv], M[c]
+        for r in range(n):
+            if r != c and M[c][c]:
+                f = M[r][c] / M[c][c]; M[r] = [x - f * y for x, y in zip(M[r], M[c])]
+    return [M[i][n] / M[i][i] if M[i][i] else 0 for i in range(n)]
+
+
+def build_second(out_players, today, season, people):
+    """The Championship: clubs and players from pipeline/tm_championship.json. A player's overall comes from a fit of
+    the league's own players (overall on log value, age, keeper); his attributes follow a league player of his position
+    and level, moved by the difference. Ids: the API's where the name and age match, else a stable one of our own."""
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_championship.json'), encoding='utf-8') as f:
+            src = json.load(f)
+    except (OSError, ValueError):
+        return None
+    feats = lambda eur, age, gk: [1, math.log(max(eur, .05)), age - 26, (age - 26) ** 2, 1 if gk else 0]
+    X, Y = [], []
+    for x in out_players:
+        t = TM_FACTS.get(str(x['id'])) or {}
+        if t.get('eur') and not x.get('ac') and x.get('age'):
+            X.append(feats(t['eur'], x['age'], x['prim'] == 'GK')); Y.append(x['ovr'])
+    if len(X) < 50:
+        return None
+    k = len(X[0]); A = [[sum(r[i] * r[j] for r in X) for j in range(k)] for i in range(k)]; b = [sum(r[i] * y for r, y in zip(X, Y)) for i in range(k)]
+    coef = _solve(A, b)
+    by_pos = {}
+    for x in out_players:
+        if x.get('a') and x.get('r'):
+            by_pos.setdefault(x['prim'], []).append(x)
+    have = {x['id'] for x in out_players}; have_nm = {(_fold(x['n']), x.get('bd')) for x in out_players}
+    pidx = {}
+    for kk, e in people.items():
+        pidx.setdefault(_fold(e.get('n') or ''), []).append((int(kk), e))
+    clubs, players, used = [], [], set()
+    for k_i, (cname, c) in enumerate(sorted(src.get('clubs', {}).items())):
+        cid = CH_IDS.get(cname) or 990001 + sum(ord(ch) for ch in cname) % 9000
+        ovrs = []
+        for p in c.get('players', []):
+            if (_fold(p['n']), p['dob']) in have_nm:
+                continue   # a league club's player out on loan here: he is his club's already
+            age = age_of({'bd': p['dob']}, today); prim = CH_POS.get(p['pos'], 'CMF'); gk = prim == 'GK'
+            pid = None
+            for cand, e in pidx.get(_fold(p['n']), []):
+                if cand not in have and cand not in used and (not e.get('age') or abs((e.get('age') or age) - age) <= 2):
+                    pid = cand; break
+            if pid is None:
+                pid = -(3000000 + int.from_bytes(f"{p['n']}|{p['dob']}".encode(), 'little') % 900000)
+            if pid in have or pid in used:
+                continue
+            used.add(pid)
+            eur = p.get('eur') or .1
+            ovr = int(round(min(84, max(50, sum(cf * v for cf, v in zip(coef, feats(eur, age, gk)))))))
+            pool = by_pos.get(prim) or by_pos.get('CMF')
+            tpl = min(pool, key=lambda x: (abs(x['ovr'] - ovr), x['id']))
+            rr = random.Random(pid); drop = tpl['ovr'] - ovr
+            a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
+            r = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; r[prim] = ovr
+            val = round(eur / 1.17, 1) if eur >= 1.17 else round(max(.05, eur / 1.17), 2)
+            players.append({'id': pid, 'n': p['n'], 'nat': p['nat'], 'age': age, 'bd': p['dob'], 'no': p.get('no'), 'club': cid, 'prim': prim,
+                            'pos': [prim], 'ht': tpl.get('ht'), 'wt': tpl.get('wt'), 'ovr': ovr, 'r': r, 'a': a, 'style': tpl.get('style'),
+                            'val': val, 'ch': 1})
+            ovrs.append(ovr)
+        q = round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1) if ovrs else 65
+        clubs.append({'id': cid, 'name': CH_SHORT.get(cname, re.sub(r' (FC|AFC|City)$', '', cname) if cname not in ('Stoke City', 'Bristol City', 'Cardiff City', 'Swansea City', 'Norwich City', 'Lincoln City', 'Birmingham City') else cname),
+                      'full': cname, 'venue': c.get('stadium'), 'cap': c.get('cap'), 'kit': CH_KIT.get(cname, ['#444444', '#FFFFFF']),
+                      'q': q, 'coach': c.get('coach'), 'second': 1})
+    return {'name': 'Championship', 'clubs': clubs, 'players': players}
