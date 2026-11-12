@@ -742,11 +742,11 @@ NOT_INJURY = re.compile(r'suspen|card|red|yellow|duty|coach|rest|personal|loan|i
 
 def injury_counts(inj):
     """Fixtures each player missed injured, over the seasons kept (suspensions, illness, international duty and the
-    like left out; each fixture once)."""
+    like left out, and 'Questionable': a doubt who may still play; each fixture once)."""
     seen, n = set(), {}
     for c in inj.values():
         for pid, fid, typ, why in c.get('r') or []:
-            if not pid or (pid, fid) in seen or NOT_INJURY.search(why or ''):
+            if not pid or (pid, fid) in seen or typ == 'Questionable' or NOT_INJURY.search(why or ''):   # a doubt who may play is not a miss
                 continue
             seen.add((pid, fid))
             n[str(pid)] = n.get(str(pid), 0) + 1
