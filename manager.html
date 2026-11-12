@@ -471,8 +471,9 @@ const me = () => S && S.club;
 // a player's running state this season: condition, morale, injury days, ban, bookings, the season's numbers, training deltas
 const ps = id => S.pl[id] || (S.pl[id] = { cond: 100, mor: 65, injD: 0, light: 0, sus: 0, yc: 0, apps: 0, sub: 0, g: 0, a: 0, rt: [], mom: 0, d: {} });
 const avail = id => { const x = ps(id); return !x.injD && !x.sus; };
-const A = (p, k) => clamp(Math.round(((p.a && p.a[k]) || 50) + ((S && S.pl[p.id] && S.pl[p.id].d[k]) || 0)), 1, 99);
-const ovrNow = p => { const q = S && S.pl[p.id]; if (!q || !q.d) return p.ovr; const ks = KEYS_OF[ROLE[p.prim]] || []; return clamp(Math.round(p.ovr + ks.reduce((t, k) => t + (q.d[k] || 0), 0) / Math.max(1, ks.length)), 30, 99); };
+// a player's attribute: the data's value, this game's small shake at the start (r), and how he has grown since (d)
+const A = (p, k) => { const q = S && S.pl[p.id]; return clamp(Math.round(((p.a && p.a[k]) || 50) + ((q && q.r && q.r[k]) || 0) + ((q && q.d[k]) || 0)), 1, 99); };
+const ovrNow = p => { const q = S && S.pl[p.id]; if (!q || !q.d) return p.ovr; const ks = KEYS_OF[ROLE[p.prim]] || []; return clamp(Math.round(p.ovr + ks.reduce((t, k) => t + (q.d[k] || 0) + ((q.r && q.r[k]) || 0), 0) / Math.max(1, ks.length)), 30, 99); };
 const fitIn = (p, pos) => ((p.r && p.r[pos]) || p.ovr - 15) + (ovrNow(p) - p.ovr);
 const squadOf = cid => D.players.filter(p => p.club === cid);
 
@@ -536,6 +537,12 @@ function newGame(cid, manager){
     fin: { bal: Math.round((40 + (q - 70) * 6) * 1e6), wk: [], gate: 0, tv: 0, wages: 0, budget: Math.round(Math.max(5, (q - 70) * 4) * 1e6) },
     con: {}, started: Date.now() };
   for (const p of D.players) S.con[p.id] = contractFor(p);
+  // every game a little different: each attribute of each player moves -2, -1, 0, +1 or +2, one chance in five each,
+  // never out of 40-99 (a move that would leave it is not made)
+  const rz = rng(seed + '-rz');
+  for (const p of D.players){ const r = {};
+    for (const k of Object.keys(p.a || {})){ const off = Math.floor(rz() * 5) - 2, b = p.a[k]; if (off && b + off >= 40 && b + off <= 99) r[k] = off; }
+    ps(p.id).r = r; }
   longInjured();
   for (const id of ids) S.tac[id] = autoTactic(id);
   const a = AIMS[aim];
