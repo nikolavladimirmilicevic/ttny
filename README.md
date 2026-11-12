@@ -245,3 +245,7 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 - Every club's shape is its best preset for the squad; before each match an AI club that would have someone out of position (injuries, bans) switches to the preset that fits who is left. A position nobody registered can fill is used only as a last resort (red ring). Substitutes come on in a position they play; if they do not play the leaving player's position, a team-mate who does moves over, otherwise your substitution is refused.
 - Saves from before keep working: an old shape (4-4-2, 4-3-3 ...) becomes the club's best preset, with the same players.
 - Positions on the profile (pitch and the line at the bottom) are coloured as in the Draft: green main position, yellow a position he also plays (half or more of his main position's starts), red one he rarely plays; same colours and the same rule (isWeak) as index.html.
+
+### Manager: saves to and from a file
+- Game Options has Export This Game to a File; Restore Saved Game has Import from a file… and Export the selected file. A save becomes `<name>.ttny.json` in the downloads, to keep it safe or carry it to another browser or device (saves otherwise live only in this browser's storage). An imported save that clashes with a name gets " (2)".
+- Fix: Game Options' Start New Game went to a screen that no longer exists; it opens Select League(s) now.

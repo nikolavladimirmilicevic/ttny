@@ -1072,6 +1072,28 @@ const SLOTS = 'ttny.manager.saves';
 const slotKey = n => 'ttny.manager.slot.' + n;
 const slotList = () => { try { return JSON.parse(localStorage.getItem(SLOTS) || '[]'); } catch (e) { return []; } };
 function slotInfo(s){ const st = Object.entries(s.table || {}).map(([id, t]) => ({ id: +id, pts: t.w * 3 + t.d, gd: t.gf - t.ga, gf: t.gf })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf); return { club: s.club, manager: s.manager, date: s.date, season: s.season, pos: st.findIndex(r => r.id === s.club) + 1, round: s.round }; }
+// saves to and from a file: { ttny: 'manager', name, at, data: the game }
+function exportSlot(name){
+  let data; try { data = JSON.parse(localStorage.getItem(slotKey(name)) || 'null'); } catch (e) {}
+  if (!data){ toast('That file could not be read.'); return; }
+  const blob = new Blob([JSON.stringify({ ttny: 'manager', name, at: new Date().toISOString(), data })], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name.replace(/[\\/:*?"<>|]+/g, '_') + '.ttny.json';
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast('Saved to your downloads.');
+}
+function importFile(file, done){
+  const rd = new FileReader();
+  rd.onload = () => { let j; try { j = JSON.parse(rd.result); } catch (e) { toast('That is not a saved game.'); return; }
+    const data = j && j.ttny === 'manager' ? j.data : j;
+    if (!(data && data.v === 2 && C.has(data.club) && data.table)){ toast('That is not a saved game of this version.'); return; }
+    let name = String((j && j.name) || data.slot || file.name.replace(/\.ttny\.json$|\.json$/i, '') || 'Imported game').slice(0, 40);
+    const L = slotList(); if (L.some(f => f.name === name)){ let k = 2; while (L.some(f => f.name === `${name} (${k})`)) k++; name = `${name} (${k})`; }
+    data.slot = name;
+    try { localStorage.setItem(slotKey(name), JSON.stringify(data)); localStorage.setItem(SLOTS, JSON.stringify([{ name, at: Date.now(), ...slotInfo(data) }, ...L])); }
+    catch (e) { toast('There is no room left on this device. Delete an old save first.'); return; }
+    toast(`Imported as "${name}".`); done && done(name); };
+  rd.readAsText(file);
+}
 function saveAs(name){
   name = String(name || '').trim().slice(0, 40); if (!name || !S) return false;
   S.slot = name; save(); return true;
@@ -1111,7 +1133,9 @@ function viewSetup(){
     body = `<div class="tools" style="margin-bottom:8px"><span class="dim small">Directory :</span><span class="yel small">this device\\manager\\</span></div>
       <div class="files"><label class="frow fin"><span>File :</span><input type="text" id="fname" value="${esc(FILE)}" autocomplete="off"></label>
       ${files.map(f => `<button class="frow ${FILE === f.name ? 'on' : ''}" data-file="${esc(f.name)}"><b>${esc(f.name)}</b><span class="small dim">${esc(club(f.club).name)} · ${f.date ? fmtDate(f.date) : ''}${f.round && f.pos ? ' · ' + ordinal(f.pos) : ''}</span></button>`).join('')}
-      ${Array.from({ length: Math.max(0, 5 - files.length) }, () => '<div class="frow empty"></div>').join('')}</div><div id="finfo"></div>`; }
+      ${Array.from({ length: Math.max(0, 5 - files.length) }, () => '<div class="frow empty"></div>').join('')}</div><div id="finfo"></div>
+      ${SETUP === 'restore' ? `<div class="tools" style="margin-top:10px"><button class="btn sm" id="fimp">Import from a file…</button><button class="btn sm" id="fexp">Export the selected file</button><input type="file" id="fimpin" accept=".json,application/json" hidden></div>
+      <p class="small dim">Saves live in this browser. Export one to a file to keep it safe or carry it to another device or browser, and import it there.</p>` : ''}`; }
   if (SETUP === 'net') body = `<div class="menu"><button disabled>Start Network Game</button><button disabled>Quick Start Network Game</button><button disabled>Restore Network Game</button><button disabled>Join Network Game</button></div><p class="c dim">Playing a season with friends, each with his own club, comes later.</p>`;
   if (SETUP === 'set'){ foot = 'set'; body = settingsBody(); }
   if (SETUP === 'hall'){ let H = []; try { H = JSON.parse(localStorage.getItem('ttny.manager.hall') || '[]'); } catch (e) {}
@@ -1125,7 +1149,7 @@ function viewSetup(){
   if (SETUP === 'web') body = `<div class="cred"><h3>This Time Next Year</h3>
       <div><a href="./">The Draft</a><em>Build a side, one pick at a time</em></div><div><a href="guess.html">Guess Who</a><em>The footballer from his clubs</em></div><div><a href="${TRACKER_URL}" target="_blank" rel="noopener">The tracker</a><em>Defects, ideas, questions</em></div>
       <h3>Elsewhere</h3><div><a href="https://www.api-football.com" target="_blank" rel="noopener">api-football.com</a><em>Where the data comes from</em></div><div><a href="https://champman0102.net" target="_blank" rel="noopener">champman0102.net</a><em>Where the classic lives on</em></div></div>`;
-  const backDis = SETUP === 'menu' || (SETUP === 'new' && !setupHas() && !S);
+  const backDis = SETUP === 'menu' || (SETUP === 'league' && !setupHas() && !S);
   const footer = foot === 'file' ? (SETUP === 'file' ? `<div class="bn"><button id="fcancel">Cancel</button><button id="fok" class="ok">Ok</button></div>` : `<div class="bn3"><button id="fcancel">Cancel</button><button id="finfo-b">Info</button><button id="fok" class="ok">Ok</button></div>`)
     : foot === 'set' ? `<div class="bn3"><button id="scancel">Cancel</button><button id="sreset">Reset</button><button id="sok" class="ok">Ok</button></div>`
     : `<div class="bn"><button id="back" ${backDis ? 'disabled' : ''}>Back</button><button id="next" disabled>Next</button></div>`;
@@ -1142,6 +1166,9 @@ function viewSetup(){
   document.querySelectorAll('[data-file]').forEach(b => b.addEventListener('click', () => { FILE = b.dataset.file; viewSetup(); }));
   const pickFile = () => files.find(f => f.name === FILE);
   on('#fcancel', () => to(SETUP === 'file' ? 'status' : 'menu'));
+  on('#fexp', () => { const n = String(FILE || '').trim(); if (!n || !files.some(f => f.name === n)){ toast('Pick a file first.'); return; } exportSlot(n); });
+  on('#fimp', () => $('#fimpin').click());
+  const fin = $('#fimpin'); if (fin) fin.addEventListener('change', e => { const f = e.target.files[0]; if (f) importFile(f, n => { FILE = n; viewSetup(); }); });
   on('#finfo-b', () => { const f = pickFile(), box = $('#finfo'); if (!box) return; box.innerHTML = f ? `<dl class="kv" style="max-width:460px;margin:12px auto 0"><dt>Manager</dt><dd>${esc(f.manager)}</dd><dt>Club</dt><dd>${esc(club(f.club).name)}</dd><dt>Date</dt><dd>${f.date ? fmtDate(f.date, true) : '-'}</dd><dt>League position</dt><dd>${f.round ? ordinal(f.pos) + ' after ' + f.round + ' rounds' : 'before the season'}</dd>${f.at ? `<dt>Saved</dt><dd>${new Date(f.at).toLocaleString('en-GB')}</dd>` : ''}</dl>` : '<p class="c dim">Pick a file first.</p>'; });
   on('#fok', () => { if (SETUP === 'file'){ const n = String(FILE || '').trim().slice(0, 40); if (!n){ toast('Enter a file name.'); return; } NEWG.file = n; if (files.some(f => f.name === n)){ SETUP = 'exists'; viewSetup(); return; } startNewGame(); return; }
     const f = pickFile(); if (!f){ toast('Pick a file first.'); return; }
@@ -1504,13 +1531,13 @@ function scrOptions(){
   frame({ title: 'Game Options', top: [['o', 'Options']], topOn: 'o', body: `<div class="ptitle">Save Game</div>
     <div class="tools"><input type="text" id="sname" maxlength="40" value="${esc(def)}" style="flex:1;min-width:200px"><button class="btn y" id="sgo">Save</button></div>
     <p class="small dim">The game in play saves itself as you go. A named save is a copy you can come back to: ${L.length ? L.length + ' on this device.' : 'none yet.'}</p>
-    <div class="menu" style="max-width:560px"><button id="o-restore">Restore Saved Game</button><button id="o-del">Delete Saved Game</button><button id="o-new">Start New Game</button><button id="o-setup">Setup Game</button></div>
+    <div class="menu" style="max-width:560px"><button id="o-restore">Restore Saved Game</button><button id="o-del">Delete Saved Game</button><button id="o-new">Start New Game</button><button id="o-setup">Setup Game</button><button id="o-exp">Export This Game to a File</button></div>
     <div class="ptitle" style="margin-top:14px">Game Settings</div>${settingsBody()}` });
   wireSettings(view);
   $('#sgo').addEventListener('click', () => { if (saveAs($('#sname').value)) toast('Game saved.'); view(); });
   const open = k => { SETUP_OPEN = true; SETUP = k; FILE = ''; view(); scrollTo(0, 0); };
   $('#o-restore').addEventListener('click', () => open('restore')); $('#o-del').addEventListener('click', () => open('del'));
-  $('#o-new').addEventListener('click', () => open('new')); $('#o-setup').addEventListener('click', () => open('menu'));
+  $('#o-new').addEventListener('click', () => open('league')); $('#o-exp').addEventListener('click', () => { save(); exportSlot(S.slot); }); $('#o-setup').addEventListener('click', () => open('menu'));
 }
 
 /* ---- a question to answer or a message to read, the classic way: a title, a line, and No and Yes (or Okay) ---- */
