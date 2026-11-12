@@ -308,6 +308,7 @@ button.frow:hover{border-color:var(--gold)}
 .cmlow{display:grid;grid-template-columns:1fr 290px;gap:16px;align-items:start}
 @media(max-width:760px){.cmlow{grid-template-columns:1fr}}
 .cmst td:first-child{color:var(--muted)}
+@media(max-width:480px){.cmst th,.cmst td{padding:5px 3px;font-size:12.5px}.cmst td:first-child{white-space:normal}.avr{min-width:34px;padding:1px 3px}}
 .avr{display:inline-block;min-width:44px;background:#5B2A86;color:#fff;border-radius:4px;padding:1px 6px;font-weight:700}
 .cmpos{text-align:center;color:#6FD3F2;font:700 20px/1.2 var(--display);letter-spacing:.03em;margin:14px 0 4px}
 .cmlow a{cursor:pointer}
@@ -1453,7 +1454,7 @@ function playerCard(p, q, con, born){
   const all = [...rows, ...tail], per = Math.ceil(all.length / 3);
   const col = i => `<div>${all.slice(i * per, (i + 1) * per).map(([n, v]) => `<div class="crow"><span>${n}</span><b>${v}</b></div>`).join('')}</div>`;
   // positions: coloured by how his real starts split over the positions he is registered in
-  const prow = [['LWF', 'SS', 'CF', 'RWF'], ['LMF', 'DMF', 'CMF', 'AMF', 'RMF'], ['LB', 'CB', 'RB'], ['GK']];
+  const prow = [['LWF', 'CF', 'RWF'], ['LMF', 'DMF', 'CMF', 'AMF', 'RMF'], ['LB', 'CB', 'RB'], ['GK']];
   const pitch = prow.map(r => `<div class="prow">${r.map(x => { const i = p.pos.indexOf(x), sh = i < 0 ? null : p.pc ? p.pc[i] : i === 0 ? 1 : null, lv = i < 0 ? 4 : 1 + Math.min(2, fitTier(p, x));
     return `<div class="pc f${lv}" title="${x}${i >= 0 ? ': ' + FIT_WORD[lv] + (sh != null ? ` (${Math.round(sh * 100)}% of his starts)` : '') : ''}"><span>${x}</span></div>`; }).join('')}</div>`).join('');
   const ks = Object.keys(ATTR_NAME), dist = x => ks.reduce((t, key) => t + Math.abs(A(x, key) - A(p, key)), 0);
