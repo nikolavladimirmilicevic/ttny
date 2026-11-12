@@ -1040,7 +1040,7 @@ function summary(M){
     st: { poss: [pct, 100 - pct], sh: [M.H.sh, M.A.sh], sot: [M.H.sot, M.A.sot], cor: [M.H.corners, M.A.corners], fou: [M.H.fouls, M.A.fouls], off: [M.H.off, M.A.off], yc: [M.H.yc, M.A.yc], rc: [M.H.rc, M.A.rc] } };
 }
 function afterMatchday(res, kind, stage){
-  if (kind === 'league') aiSackings();
+  if (kind === 'league'){ aiSackings(); unrest(); }
   const mine = res.find(r => r.h === me() || r.a === me());
   if (mine){ S.seen = S.seen || []; const opp = mine.h === me() ? mine.a : mine.h; if (!S.seen.includes(opp)) S.seen.push(opp); }
   if (mine){
@@ -1418,6 +1418,7 @@ function playerFlags(p){
   if (q.sus) out.push(`<span class="tag sus" title="Banned for ${q.sus}">Sus</span>`); else if (q.yc === 4 || q.yc === 9) out.push('<span class="tag" title="One booking from a ban">Yel</span>');
   if (q.cond < 65) out.push('<span class="tag tir" title="Very tired">Tir</span>');
   if (q.mor < 35) out.push('<span class="tag" title="Unhappy">Unh</span>');
+  if (q.req === S.season) out.push('<span class="tag" title="Transfer request">Req</span>');
   if (S.con[p.id] && S.con[p.id].y <= S.season + 1) out.push('<span class="tag" title="Contract expires at the end of the season">Ctr</span>');
   return out.join('');
 }
@@ -1924,7 +1925,8 @@ function transferTick(){
   for (let k = 0; k < days; k++){
     if (Math.random() < .07){
       const mine = squadOf(me()).filter(p => !S.offers.some(o => o.id === p.id && o.st === 'open')).sort((a, b) => b.val - a.val).slice(0, 18);
-      const p = mine[Math.floor(Math.pow(Math.random(), 1.6) * mine.length)];
+      const wants = squadOf(me()).filter(x => ps(x.id).req === S.season && !S.offers.some(o => o.id === x.id && o.st === 'open'));
+      const p = wants.length && Math.random() < .6 ? wants[Math.floor(Math.random() * wants.length)] : mine[Math.floor(Math.pow(Math.random(), 1.6) * mine.length)];
       const buyers = D.clubs.filter(c => c.id !== me() && c.q >= ovrNow(p) - 6);
       if (p && buyers.length){ const c = buyers[Math.floor(Math.random() * buyers.length)], fee = roundFee(p.val * 1e6 * (.85 + Math.random() * .45));
         S.offers.push({ id: p.id, from: c.id, fee, d: S.date, st: 'open' });
@@ -2050,6 +2052,14 @@ function managers(){
 const COACH_FIRST = ['Mark', 'Steve', 'Paul', 'Rui', 'Marco', 'Thomas', 'Graham', 'Sean', 'Luca', 'Ange', 'Niko', 'Ralf', 'Kevin', 'Danny'];
 const COACH_LAST = ['Hartley', 'Dunmore', 'Ferreira', 'Rossetti', 'Wingate', 'Mallory', 'Kessler', 'Brannan', 'Okoro', 'Lindqvist', 'Vidal', 'Thornbury', 'Castell', 'Rourke'];
 const coachOf = cid => (S.vac || {})[cid] ? null : ((S.coachOv || {})[cid] || club(cid).coach || `${club(cid).name} manager`);
+// a good player of yours who hardly plays and is unhappy asks to leave; once he is playing and happy again he drops it
+function unrest(){
+  if (S.round < 8) return;
+  for (const p of squadOf(me())){ const q = ps(p.id);
+    if (q.req === S.season && q.mor >= 60){ q.req = null; news('club', `${p.n} is settled`, `<b>${esc(p.n)}</b> has withdrawn his transfer request.`); continue; }
+    if (q.req === S.season || squadRank(p) >= 14 || q.apps >= S.round * .3 || q.mor >= 40 || q.injD) continue;
+    q.req = S.season; news('club', `${p.n} wants to leave`, `<b>${esc(p.n)}</b> has handed in a transfer request: he wants first-team football. Other clubs will hear of it.`); }
+}
 function aiSackings(){
   S.vac = S.vac || {}; S.coachOv = S.coachOv || {};
   for (const [cid, v] of Object.entries(S.vac)) if (+cid !== me() && daysBetween(v.d, S.date) >= 10){
