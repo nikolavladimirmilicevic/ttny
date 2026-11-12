@@ -518,6 +518,7 @@ function expRank(cid){
   return D.clubs.slice().sort((a, b) => (q.indexOf(a.id) + 1) * .6 + last(a) * .4 - ((q.indexOf(b.id) + 1) * .6 + last(b) * .4) || b.q - a.q).findIndex(c => c.id === cid) + 1;
 }
 function newGame(cid, manager){
+  S = null; applyMoves();
   const ids = D.clubs.map(c => c.id), seed = `${D.season}-${cid}-${Date.now()}`, r0 = rng(seed);
   const rounds = buildRounds(ids, seed);
   const cupR = [1, 2, 3, 4, 5].map(k => Math.round(rounds.length * k / 6));
@@ -534,7 +535,7 @@ function newGame(cid, manager){
     date: day(rounds[0].date, -6), pl: {}, tac: {}, table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])),
     results: [], news: [], refs, aim, conf: 62, rep: 'Unproven', done: false, sacked: false,
     train: { sched: 'General', int: 1, last: day(rounds[0].date, -6) },
-    fin: { bal: Math.round((40 + (q - 70) * 6) * 1e6), wk: [], gate: 0, tv: 0, wages: 0, budget: Math.round(Math.max(5, (q - 70) * 4) * 1e6) },
+    fin: { bal: Math.round((40 + (q - 70) * 6) * 1e6), wk: [], gate: 0, tv: 0, wages: 0, budget: Math.round(Math.max(12, (q - 70) * 9) * 1e6) },
     con: {}, started: Date.now() };
   for (const p of D.players) S.con[p.id] = contractFor(p);
   // every game a little different: each attribute of each player moves -2, -1, 0, +1 or +2, one chance in five each,
@@ -931,6 +932,7 @@ function passDays(n){
   while (daysBetween(f.last, to) >= 7){ f.last = day(f.last, 7); trainWeek(f.last); }
   S.date = to;
   scoutTick();
+  transferTick();
 }
 const FOCUS = { General: null, Fitness: ['st', 'sp', 'ac', 'pc', 'ju', 'ba'], Tactics: ['da', 'oa', 'bw', 'lp'], Skills: ['bc', 'dr', 'tp', 'lp', 'lf', 'cu'], Shooting: ['fi', 'kp', 'cu', 'pk', 'oa'], Goalkeeping: GK_KEYS };
 // a week of training for every player: growth by age (the young improve, after 30 the legs go first), your schedule and intensity
@@ -1162,9 +1164,13 @@ function saveAs(name){
   S.slot = name; save(); return true;
 }
 // a save fits today's data when its clubs are all still in the league
+// the players' clubs and numbers as the data has them, then this game's transfers on top
+function applyMoves(){ for (const p of D.players){ p.club = p._c0 ?? p.club; p.no = p._n0 ?? p.no; }
+  for (const [id, cid] of Object.entries((S && S.moves) || {})){ const p = P.get(+id); if (p && C.has(cid)) p.club = cid; }
+  for (const [id, n] of Object.entries((S && S.nos) || {})){ const p = P.get(+id); if (p) p.no = n; } }
 function adopt(s){
   if (!(s && s.v === 2 && C.has(s.club) && Object.keys(s.table).length === D.clubs.length && Object.keys(s.table).every(id => C.has(+id)))) return false;
-  S = s;
+  S = s; applyMoves();
   for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x));
     // a shape from before the PES presets: the club's best preset, the same players placed by the rules
     if (!FORMS[t.form]){ const ids = t.xi.filter(Boolean); t.form = bestForm(+id); const sl = FORMS[t.form]; t.xi = placeXI(sl, ids.map(x => P.get(x)));
@@ -1556,15 +1562,17 @@ function scrPlayer(){
   if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Club</dt><dd>${esc(club(p.club).name)}</dd><dt>Wage</dt><dd>${wage(con.w)}</dd><dt>Expires</dt><dd>30.6.${String(con.y).slice(2)}</dd><dt>Value</dt><dd>${valueOf(p)}</dd><dt>Squad number</dt><dd>${p.no || '-'}</dd></dl>`;
   if (tab === 'hist') body = `<div class="ptitle">History</div><div class="tw"><table><thead><tr><th>Season</th><th>Club</th><th class="r">Apps</th><th class="r">Gls</th><th class="r">Asts</th><th class="r">Av R</th></tr></thead><tbody>
     <tr class="me"><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td>${esc(club(p.club).name)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${avgRt(q)}</td></tr></tbody></table></div>`;
+  if (tab === 'tr') body = transferTab(p);
   if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
   frame(ofClub(p.club, { title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(${esc(fullName(p.club))})</span>`,
     act: mine ? `<button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
-    top: [['profile', 'Profile'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['hist', 'History']], topOn: tab,
+    top: [['profile', 'Profile'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['hist', 'History']], topOn: tab,
     onTab: k => { V = { ...V, tab: k }; view(); }, body,
     next: at >= 0 && at < list.length - 1 ? () => { V = { ...V, id: list[at + 1] }; view(); } : null }));
   const pk = $('#pick'); if (pk) pk.addEventListener('click', () => { toggleSel(p.id); view(); });
+  if (tab === 'tr') wireTransfer(p);
   document.querySelectorAll('.cmlow [data-pl]').forEach(b => b.addEventListener('click', () => go({ s: 'player', id: +b.dataset.pl })));
   const sl = $('#slb'); if (sl) sl.addEventListener('click', () => { S.short = S.short || []; if (S.short.some(x => x.id === p.id)) S.short = S.short.filter(x => x.id !== p.id); else S.short.push({ id: p.id, d: S.date }); save(); view(); });
 }
@@ -1740,6 +1748,106 @@ function scoutTick(){
     S.scouts[k] = { c: null, last: sc.c };
   }
 }
+/* ---- transfers: the windows (summer to 1 September, January), your bids and the selling club's answer, the player's
+   terms, other clubs' bids for your players, and the other clubs' own business ---- */
+const WINDOWS = () => [[`${S.season}-06-15`, `${S.season}-09-01`], ...(((D.rules || {}).windows) || [[`${S.season + 1}-01-01`, `${S.season + 1}-01-31`]])];
+const windowOpen = (d = S.date) => WINDOWS().some(([a, b]) => d >= a && d <= b);
+const windowNext = () => WINDOWS().find(([a]) => S.date < a);
+const roundFee = v => v >= 1e7 ? Math.round(v / 5e5) * 5e5 : Math.round(v / 1e5) * 1e5;
+const squadRank = p => squadOf(p.club).sort((a, b) => ovrNow(b) - ovrNow(a)).indexOf(p);
+// what the selling club wants: his value, more for a first-choice player, less with little left on his contract
+function askingPrice(p){
+  const r = squadRank(p), key = r < 5 ? 1.6 : r < 11 ? 1.35 : r < 16 ? 1.15 : 1, con = S.con[p.id], yrs = con ? con.y - S.season : 2;
+  return roundFee(p.val * 1e6 * key * (yrs <= 1 ? .7 : yrs >= 4 ? 1.15 : 1));
+}
+// his wage demand from a club: a rise on what he earns now, more the bigger his part
+const wageDemand = p => { const now = (S.con[p.id] || contractFor(p)).w; return Math.round(Math.max(now * 1.2, p.val * 1700) / 500) * 500; };
+function moveP(p, to, fee){
+  const from = p.club, fc = club(from), tc = club(to);
+  p.club = to; S.moves = S.moves || {}; S.moves[p.id] = to;
+  const used = new Set(squadOf(to).filter(x => x !== p).map(x => x.no));
+  if (!p.no || used.has(p.no)){ let n = 2; while (used.has(n) || n === 1 && p.prim !== 'GK') n++; p.no = n; (S.nos = S.nos || {})[p.id] = n; }
+  for (const cid of [from, to]){ const t = S.tac[cid]; if (!t) continue; t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); }
+  if (from !== me()) S.tac[from] = Object.assign(S.tac[from], bestXI(from, S.tac[from].form));
+  if (to !== me()) S.tac[to] = Object.assign(S.tac[to], bestXI(to, S.tac[to].form));
+  (S.transfers = S.transfers || []).push({ d: S.date, n: p.n, from: fc.name, to: tc.name, fee: fee ? cash(fee) : 'Free', id: p.id });
+  if (from === me()){ S.fin.bal += fee; S.fin.budget += fee; }
+  if (to === me()){ S.fin.bal -= fee; S.fin.budget = Math.max(0, S.fin.budget - fee); }
+}
+function transferTick(){
+  if (!S.fin) return;
+  S.bids = S.bids || []; S.offers = S.offers || [];
+  const open = windowOpen();
+  // your bids: the selling club answers a day later
+  for (const b of S.bids){
+    const p = P.get(b.id); if (!p) { b.st = 'off'; continue; }
+    if (['wait', 'counter', 'yes'].includes(b.st) && !open){ b.st = 'off'; news('club', `Bid for ${p.n} lapses`, `The transfer window has closed before the deal for <b>${esc(p.n)}</b> could be done.`); continue; }
+    if (b.st !== 'wait' || daysBetween(b.d, S.date) < 1) continue;
+    const ask = askingPrice(p), c = club(p.club);
+    if (squadOf(p.club).length <= 18){ b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} will not sell <b>${esc(p.n)}</b>: their squad is too thin as it is.`); }
+    else if (b.fee >= ask){ b.st = 'yes'; b.w = wageDemand(p); news('club', `${c.name} accept your bid`, `${esc(c.name)} have accepted your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b>. Agree personal terms with him on his Transfer screen.`); }
+    else if (b.fee >= ask * .8){ b.st = 'counter'; b.ask = ask; news('club', `${c.name} want more for ${p.n}`, `${esc(c.name)} turn down ${cash(b.fee)} for <b>${esc(p.n)}</b> but would sell for ${cash(ask)}.`); }
+    else { b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} have rejected your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b> out of hand.`); }
+  }
+  // other clubs' bids for your players, open a week
+  for (const o of S.offers) if (o.st === 'open' && (daysBetween(o.d, S.date) > 7 || !open)){ o.st = 'gone'; }
+  if (!open) return;
+  const days = Math.max(1, Math.min(14, daysBetween(S.lastTr || S.date, S.date))); S.lastTr = S.date;
+  for (let k = 0; k < days; k++){
+    if (Math.random() < .07){
+      const mine = squadOf(me()).filter(p => !S.offers.some(o => o.id === p.id && o.st === 'open')).sort((a, b) => b.val - a.val).slice(0, 18);
+      const p = mine[Math.floor(Math.pow(Math.random(), 1.6) * mine.length)];
+      const buyers = D.clubs.filter(c => c.id !== me() && c.q >= ovrNow(p) - 6);
+      if (p && buyers.length){ const c = buyers[Math.floor(Math.random() * buyers.length)], fee = roundFee(p.val * 1e6 * (.85 + Math.random() * .45));
+        S.offers.push({ id: p.id, from: c.id, fee, d: S.date, st: 'open' });
+        news('club', `${c.name} bid for ${p.n}`, `${esc(c.name)} have offered ${cash(fee)} for <b>${esc(p.n)}</b>. Accept or turn it down on his Transfer screen within a week.`); }
+    }
+    // the other clubs' business: a player who would be a regular for the buyer and is not one for the seller
+    if (Math.random() < .22){
+      const others = D.clubs.filter(c => c.id !== me()), to = others[Math.floor(Math.random() * others.length)];
+      const need = squadOf(to.id).sort((a, b) => ovrNow(b) - ovrNow(a))[13], bar = need ? ovrNow(need) : 70;
+      const pool = D.players.filter(p => p.club !== to.id && p.club !== me() && squadOf(p.club).length > 20 && squadRank(p) >= 7 && ovrNow(p) >= bar - 1 && ovrNow(p) <= bar + 6 && !(S.moves || {})[p.id]);
+      const p = pool[Math.floor(Math.random() * pool.length)];
+      if (p){ const fee = roundFee(p.val * 1e6 * (.9 + Math.random() * .4)); S.con[p.id] = { y: S.season + 2 + Math.floor(Math.random() * 3), w: wageDemand(p) }; moveP(p, to.id, fee); }
+    }
+  }
+}
+function transferTab(p){
+  const mine = p.club === me(), open = windowOpen(), nx = windowNext();
+  const when = open ? `<b class="yel">The transfer window is open</b> until ${fmtDate(WINDOWS().find(([a, b]) => S.date >= a && S.date <= b)[1])}.` : nx ? `The transfer window is closed. It opens on ${fmtDate(nx[0])}.` : 'The transfer window is closed for this season.';
+  if (mine){
+    const L = (S.offers || []).filter(o => o.id === p.id && o.st === 'open');
+    return `<div class="ptitle">Transfer</div><p>${when}</p><dl class="kv" style="max-width:520px"><dt>Value</dt><dd>${valueOf(p)}</dd><dt>Wage</dt><dd>${wage((S.con[p.id] || contractFor(p)).w)}</dd></dl>
+      <div class="ptitle">Offers</div>${L.length ? `<table><tbody>${L.map((o, i) => `<tr><td>${crest(o.from)}<b>${esc(club(o.from).name)}</b></td><td class="r yel">${cash(o.fee)}</td><td class="r">${fmtDate(o.d)}</td><td class="r"><button class="btn sm y" data-oacc="${S.offers.indexOf(o)}">Accept</button> <button class="btn sm" data-orej="${S.offers.indexOf(o)}">Reject</button></td></tr>`).join('')}</tbody></table>` : '<p class="dim">No club has bid for him.</p>'}`;
+  }
+  const b = (S.bids || []).slice().reverse().find(x => x.id === p.id && !['off'].includes(x.st));
+  const opts = [.75, .9, 1, 1.15, 1.3, 1.5, 1.75, 2].map(f => roundFee(p.val * 1e6 * f));
+  let act = '';
+  if (!open) act = '';
+  else if (!b || b.st === 'no' || b.st === 'done' && false) act = `<div class="ptitle">Make an Offer</div><p class="small dim">Funds: ${cash(S.fin.budget)}. ${esc(club(p.club).name)} answer the next day.</p><div class="tools">${opts.map(f => `<button class="btn sm" data-bid="${f}" ${f > S.fin.budget ? 'disabled' : ''}>${cash(f)}</button>`).join('')}</div>${b && b.st === 'no' ? '<p class="small dim">They turned down your last bid.</p>' : ''}`;
+  else if (b.st === 'wait') act = `<p>Your bid of <b class="yel">${cash(b.fee)}</b> is with ${esc(club(p.club).name)}. They answer tomorrow.</p><div class="tools"><button class="btn sm" id="bidoff">Withdraw</button></div>`;
+  else if (b.st === 'counter') act = `<p>${esc(club(p.club).name)} want <b class="yel">${cash(b.ask)}</b>.</p><div class="tools"><button class="btn sm y" id="bidask" ${b.ask > S.fin.budget ? 'disabled' : ''}>Pay ${cash(b.ask)}</button><button class="btn sm" id="bidoff">Walk away</button></div>`;
+  else if (b.st === 'yes') act = `<p>${esc(club(p.club).name)} have accepted ${cash(b.fee)}. ${esc(cmName(p.n))} asks for <b class="yel">${wage(b.w)}</b>.</p><div class="tools">${[3, 4, 5].map(y => `<button class="btn sm y" data-sign="${y}">Sign until 30.6.${String(S.season + y).slice(2)}</button>`).join('')}<button class="btn sm" id="bidoff">Walk away</button></div>`;
+  return `<div class="ptitle">Transfer</div><p>${when}</p><dl class="kv" style="max-width:520px"><dt>Club</dt><dd>${crest(p.club)}${esc(fullName(p.club))}</dd><dt>Value</dt><dd>${known(p) ? valueOf(p) : 'about ' + cash(roundFee(p.val * 1e6))}</dd><dt>Contract</dt><dd>${S.con[p.id] ? 'until 30.6.' + String(S.con[p.id].y).slice(2) : '-'}</dd></dl>${act}`;
+}
+function wireTransfer(p){
+  const on = (sel, f) => document.querySelectorAll(sel).forEach(el => el.addEventListener('click', () => { f(el); save(); view(); }));
+  S.bids = S.bids || [];
+  const cur = () => S.bids.slice().reverse().find(x => x.id === p.id && x.st !== 'off');
+  on('[data-bid]', el => { S.bids.push({ id: p.id, fee: +el.dataset.bid, d: S.date, st: 'wait' }); toast(`Bid sent to ${club(p.club).name}.`); });
+  on('#bidoff', () => { const b = cur(); if (b) b.st = 'off'; });
+  on('#bidask', () => { const b = cur(); if (b){ b.fee = b.ask; b.st = 'yes'; b.w = wageDemand(p); } });
+  on('[data-sign]', el => { const b = cur(); if (!b) return; const y = +el.dataset.sign;
+    // a player at a much bigger club may not want to come
+    const step = club(p.club).q - club(me()).q, star = squadRank(p) < 4;
+    if ((step > 5 && rng(`w-${p.id}-${S.season}`)() < .7) || (star && step > 2 && rng(`s-${p.id}`)() < .5)){ b.st = 'off'; news('club', `${p.n} turns you down`, `<b>${esc(p.n)}</b> does not want to leave ${esc(club(p.club).name)} for ${esc(club(me()).name)}.`); toast(`${cmName(p.n)} does not want to join.`); return; }
+    if (b.fee > S.fin.budget){ toast('There is not enough in the transfer budget.'); return; }
+    S.con[p.id] = { y: S.season + y, w: b.w }; b.st = 'done'; moveP(p, me(), b.fee);
+    news('club', `${p.n} signs`, `<b>${esc(p.n)}</b> joins ${esc(club(me()).name)} for ${cash(b.fee)} on ${wage(b.w)}, until 30.6.${String(S.season + y).slice(2)}.`); toast(`${cmName(p.n)} signs!`); });
+  on('[data-oacc]', el => { const o = S.offers[+el.dataset.oacc]; if (!o || o.st !== 'open') return; o.st = 'acc'; S.con[p.id] = { y: S.season + 3, w: wageDemand(p) }; moveP(p, o.from, o.fee);
+    news('club', `${p.n} sold`, `<b>${esc(p.n)}</b> leaves for ${esc(club(o.from).name)} for ${cash(o.fee)}.`); V = { s: 'club', cid: me(), tab: 'squad' }; });
+  on('[data-orej]', el => { const o = S.offers[+el.dataset.orej]; if (o) o.st = 'rej'; });
+}
 function scrScout(tab){
   const k = tab === 'sc2' ? 1 : 0; S.scouts = S.scouts || [null, null]; const sc = S.scouts[k] || {};
   const busy = sc.c ? `<p>${SCOUT_NAMES[k]} is watching <b class="yel">${esc(club(sc.c).name)}</b> since ${fmtDate(sc.from)}. His report comes in ${fmtDate(day(sc.from, SCOUT_DAYS))}.</p><div class="tools"><button class="btn sm" id="screcall">Call him back</button></div>`
@@ -1820,7 +1928,7 @@ function scrTransfers(){
   const L = (S.transfers || []).filter(x => x.d.slice(0, 7) === months[i]);
   frame({ title: 'Transfers', sub: new Date(months[i] + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }), top: [['t', 'This Season']], topOn: 't',
     tools: `<span class="seg"><button data-mo="${i - 1}" ${i ? '' : 'disabled'}>‹ Earlier</button><button data-mo="${i + 1}" ${i < months.length - 1 ? '' : 'disabled'}>Later ›</button></span>`,
-    body: L.length ? `<table><tbody>${L.map(x => `<tr><td>${fmtDate(x.d)}</td><td><b>${esc(x.n)}</b></td><td>${esc(x.from)}</td><td>→</td><td>${esc(x.to)}</td><td class="r">${x.fee}</td></tr>`).join('')}</tbody></table>` : '<p class="empty" style="font-size:16px">No transfers have taken place.</p><p class="small dim c">The transfer market opens in the next round of the game.</p>' });
+    body: L.length ? `<table><tbody>${L.map(x => `<tr><td>${fmtDate(x.d)}</td><td><b>${esc(x.n)}</b></td><td>${esc(x.from)}</td><td>→</td><td>${esc(x.to)}</td><td class="r">${x.fee}</td></tr>`).join('')}</tbody></table>` : `<p class="empty" style="font-size:16px">No transfers have taken place.</p><p class="small dim c">${windowOpen() ? 'The transfer window is open.' : windowNext() ? 'The transfer window opens on ' + fmtDate(windowNext()[0]) + '.' : ''}</p>` });
   document.querySelectorAll('[data-mo]').forEach(b => b.addEventListener('click', () => { V = { ...V, m: months[+b.dataset.mo] }; view(); }));
 }
 function scrManager(){
@@ -1953,7 +2061,7 @@ function run(){
   try { const r = (await window.__cm) || await fetch('cm.json', { cache: 'no-cache' }); if (r.ok) D = await r.json(); } catch (e) {}
   if (!D || !D.clubs || D.clubs.length < 4){ $('#app').innerHTML = `${header()}<p class="loading">The league is being put together. Come back tomorrow.</p>`; return; }
   for (const [k, n] of D.attrs || []) ATTR_NAME[k] = n;
-  D.players.forEach(p => P.set(p.id, p)); D.clubs.forEach(c => C.set(c.id, c));
+  D.players.forEach(p => { P.set(p.id, p); p._c0 = p.club; p._n0 = p.no; }); D.clubs.forEach(c => C.set(c.id, c));
   if (D.cup && (D.cup.rounds || []).length >= 5){ CUP_NAMES = D.cup.rounds.slice(-5).map(r => r[0]); CUP = D.cup.name || 'Cup'; }
   if (D.rules && D.rules.bench) BENCH = D.rules.bench;
   adopt(loadSave());
