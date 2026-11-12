@@ -59,6 +59,8 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .mi span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mi .mcr{width:14px;height:14px;object-fit:contain;vertical-align:-2px;margin-right:5px}
 .msub{display:flex;flex-direction:column;gap:1px}
+.mtog{display:none;flex-basis:100%;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-weight:600;text-align:left}
+.mtog .crumb{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-weight:500}
 .mi .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--warn);color:#2A1700;font-size:11px;line-height:18px;text-align:center}
 .sb .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--warn);color:#2A1700;font-size:11px;line-height:18px;text-align:center}
 .main{display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -223,6 +225,8 @@ tr.me td{background:rgba(79,209,139,.10)}
   .sb.go{flex-basis:100%;order:-1;margin:0}
   .sb.on{box-shadow:inset 0 -2px 0 var(--gold)}
   .mtree{flex-basis:100%}
+  .mtog{display:flex}
+  .side:not(.mopen) .mtree{display:none}
 }
 
 .subbar{background:var(--panel);border-radius:10px;text-align:center;padding:9px;font:600 20px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--gold)}
@@ -1321,14 +1325,14 @@ function view(){
   ({ news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, transfers: scrTransfers })[V.s]();
 }
 // the left menu: every screen and every tab, opening in a cascade (CM's menus without hunting for tabs on the page)
-let MOPEN = new Set(), MSHUT = new Set(), MITEMS = {};
-const MDEF = { news: { f: 'all' }, club: { tab: 'squad' }, comp: { tab: 'table' }, find: { tab: 'search' }, managers: { tab: 'rep' }, manager: { tab: 'hist' } };
+let MOPEN = new Set(), MSHUT = new Set(), MITEMS = {}, MOB_OPEN = false;
+const MDEF = { news: { f: 'all' }, club: { tab: 'squad', team: 'first' }, comp: { tab: 'table' }, find: { tab: 'search' }, managers: { tab: 'rep' }, manager: { tab: 'hist' } };
 const vEq = v => v && Object.keys(v).every(k => (V[k] != null ? V[k] : k === 'cid' && V.s === 'club' ? me() : (MDEF[V.s] || {})[k]) === v[k]);
 function menuTree(o, unread){
   const mine = me(), cv = (cid, tab) => ({ s: 'club', cid, tab });
   const clubKids = cid => (cid === mine
     ? [['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['info', 'Finances &amp; Info'], ['tactics', 'Tactics'], ['training', 'Training'], ['last', 'Last Match'], ['board', 'Board']]
-    : [['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['info', 'General Info'], ['last', 'Last Match']]).map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: cv(cid, t) }));
+    : [['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['info', 'General Info'], ['last', 'Last Match']]).map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'squad' ? { ...cv(cid, t), team: 'first' } : cv(cid, t) })).flatMap(x => x.id.endsWith('.squad') ? [x, { id: `c${cid}.res`, label: 'Reserves', v: { ...cv(cid, 'squad'), team: 'res' } }] : [x]);
   const T = [
     { id: 'mgr', cls: 'mgr', label: `${esc(S.manager)}${unread ? `<span class="badge">${unread}</span>` : ''}`, v: { s: 'news' }, kids: [
       { id: 'news', label: 'News', v: { s: 'news', f: 'all' }, kids: [['all', 'All'], ['club', 'Club &amp; Board'], ['comp', 'Competitions'], ['inj', 'Injuries and Bans']].map(([f, n]) => ({ id: 'n.' + f, label: n, v: { s: 'news', f } })) },
@@ -1358,14 +1362,18 @@ function menuHTML(o, unread){
   const isOpen = it => it.kids && it.kids.length && ((MOPEN.has(it.id) || path.has(it.id)) && !MSHUT.has(it.id) || it.id === 'ctx');
   const row = (it, d) => { MITEMS[it.id] = it; const op = isOpen(it);
     return `<button class="mi d${d} ${it.cls || ''} ${it === hit ? 'on' : path.has(it.id) ? 'path' : ''}" data-mi="${it.id}" style="--d:${d}">${it.kids && it.kids.length && it.id !== 'ctx' ? `<i class="car">${op ? '▾' : '▸'}</i>` : ''}<span>${it.label}</span></button>${op ? `<div class="msub">${it.kids.map(k => row(k, d + 1)).join('')}</div>` : ''}`; };
-  return `<nav class="mtree" aria-label="Menu">${T.map(it => row(it, 0)).join('')}</nav>`;
+  const tree = T.map(it => row(it, 0)).join('');
+  const crumb = [...path].filter(id => id && MITEMS[id]).map(id => MITEMS[id].label.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&')).slice(-2).map(esc).join(' › ');
+  return `<button class="mtog" id="mtog" aria-expanded="${MOB_OPEN}">☰ Menu<span class="crumb">${crumb}</span>${MOB_OPEN ? '▴' : '▾'}</button><nav class="mtree" aria-label="Menu">${tree}</nav>`;
 }
 function wireMenu(){
+  const side = document.querySelector('.mtree') && document.querySelector('.mtree').closest('.side'); if (side) side.classList.toggle('mopen', MOB_OPEN);
+  const tg = $('#mtog'); if (tg) tg.addEventListener('click', () => { MOB_OPEN = !MOB_OPEN; view(); });
   document.querySelectorAll('[data-mi]').forEach(b => b.addEventListener('click', () => {
     const it = MITEMS[b.dataset.mi]; if (!it) return;
     const onPath = b.classList.contains('on') || b.classList.contains('path'), open = !!b.nextElementSibling && b.nextElementSibling.classList.contains('msub');
     if (it.kids && it.kids.length && open && onPath && it.id !== 'ctx'){ MSHUT.add(it.id); MOPEN.delete(it.id); view(); return; }
-    MSHUT.delete(it.id); MOPEN = new Set([...(it.up || []), it.id]);
+    MSHUT.delete(it.id); MOPEN = new Set([...(it.up || []), it.id]); if (!(it.kids && it.kids.length)) MOB_OPEN = false;
     if (it.act) it.act(); else if (it.v && !onPath) go(it.v); else if (it.v && !vEq(it.v)) go(it.v); else view();
   }));
   const on = document.querySelector('.mtree .on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
@@ -1856,11 +1864,14 @@ function scrPlayer(){
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
   frame(ofClub(p.club, { title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(${esc(fullName(p.club))})</span>`,
-    act: mine ? `<button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
+    act: mine ? `<button class="btn sm" id="promo">${firstTeam(me()).has(p.id) ? 'Move to Reserves' : 'Promote to First Team'}</button><button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
     top: [['profile', 'Profile'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['hist', 'History']], topOn: tab,
     onTab: k => { V = { ...V, tab: k }; view(); }, body,
     next: at >= 0 && at < list.length - 1 ? () => { V = { ...V, id: list[at + 1] }; view(); } : null }));
   const pk = $('#pick'); if (pk) pk.addEventListener('click', () => { toggleSel(p.id); view(); });
+  const pm = $('#promo'); if (pm) pm.addEventListener('click', () => { S.promo = S.promo || {}; const up = !firstTeam(me()).has(p.id), t = S.tac[me()];
+    if (!up){ t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); }
+    S.promo[p.id] = up ? 1 : 0; save(); toast(`${cmName(p.n)} ${up ? 'joins the first team' : 'goes to the reserves'}.`); view(); });
   if (tab === 'tr') wireTransfer(p);
   document.querySelectorAll('[data-renew]').forEach(b => b.addEventListener('click', () => { const y = +b.dataset.renew, w = +b.dataset.w, c = S.con[p.id];
     // happy where he is, or wanting out: an unhappy player, or a regular for a club below his level, may say no
@@ -2029,7 +2040,10 @@ function slotStrip(){
   return `<div class="strip2">${slots.map((s, i) => `<button class="${t.xi[i] ? 'on' : ''} ${TARGET === i ? 'tg' : ''}" data-tg="${i}" title="${t.xi[i] ? esc(P.get(t.xi[i]).n) : 'Empty'}">${SLOT_CODE[s[0]]}</button>`).join('')}${Array.from({ length: BENCH }, (_, j) => `<button class="${t.bench[j] ? 'on' : ''} ${TARGET === 'b' + j ? 'tg' : ''}" data-tg="b${j}" title="${t.bench[j] ? esc(P.get(t.bench[j]).n) : 'Empty'}">SB${j + 1}</button>`).join('')}</div>`;
 }
 // the first team and the reserves: the 25 best senior players and whoever is picked; the rest are reserves
-function firstTeam(cid){ const t = S.tac[cid], L = squadOf(cid).slice().sort((a, b) => ovrNow(b) - ovrNow(a)), keep = new Set(L.slice(0, 25).map(p => p.id)); for (const id of [...t.xi, ...t.bench]) if (id) keep.add(id); return keep; }
+// reserves: the academy (players Transfermarkt's first-team list leaves out, and each year's youth intake) until he is 22
+// or the manager promotes him; anyone picked for the side or the bench counts as first team
+const inRes = p => { const pr = (S.promo || {})[p.id]; return pr === 0 || (pr !== 1 && !!(p.ac || p.yth) && p.age < 22); };
+function firstTeam(cid){ const t = S.tac[cid], L = squadOf(cid), keep = new Set(L.some(p => p.ac) ? L.filter(p => !inRes(p)).map(p => p.id) : L.slice().sort((a, b) => ovrNow(b) - ovrNow(a)).slice(0, 25).map(p => p.id)); for (const id of [...t.xi, ...t.bench]) if (id) keep.add(id); return keep; }
 
 /* ---- attribute masking ---- */
 const known = p => !S.mask || p.club === me() || (S.seen || []).includes(p.club) || (S.short || []).some(x => x.id === p.id && daysBetween(x.d, S.date) >= 7);

@@ -382,9 +382,11 @@ TM_POS = {'goalkeeper': 'GK', 'centre-back': 'CB', 'left-back': 'LB', 'right-bac
 
 try:
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_facts.json'), encoding='utf-8') as _f:
-        TM_FACTS = json.load(_f).get('players') or {}
+        _tm = json.load(_f)
+        TM_FACTS = _tm.get('players') or {}
+        TM_SQUADS = {c: set(v) for c, v in (_tm.get('squads') or {}).items()}
 except Exception:
-    TM_FACTS = {}
+    TM_FACTS, TM_SQUADS = {}, {}
 TRAIT_PTS = 3
 try:
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cm_traits.json'), encoding='utf-8') as _f:
@@ -720,5 +722,11 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             extra['intl'] = json.load(f)['windows']
     except (OSError, ValueError, KeyError):
         pass
+    # academy: a club's players that Transfermarkt's first-team list leaves out start the game in its reserves
+    _cn = {c['id']: c['name'] for c in clubs}
+    for x in out_players:
+        sq = TM_SQUADS.get(_cn.get(x['club']))
+        if sq and x['id'] not in sq:
+            x['ac'] = 1
     return {'season': season, 'updated': today, 'league': 'Premier League', 'complete': len(clubs) == len(teams) and len(teams) >= 18,
             'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures, **extra}
