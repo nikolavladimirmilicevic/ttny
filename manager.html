@@ -151,6 +151,37 @@ tr.me td{background:rgba(79,209,139,.10)}
 .pl.subs{color:var(--muted)}
 .pl.pick{background:rgba(79,209,139,.14)}
 .pl .no{color:var(--muted);font-weight:700;text-align:right}
+.tboard{display:grid;gap:10px}
+.tbforms{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.tbf{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 7px 5px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:inherit;font:600 11px/1 var(--body);cursor:pointer}
+.tbf svg{width:30px;height:38px}.tbf svg rect{fill:none;stroke:rgba(243,239,230,.3)}.tbf svg circle{fill:rgba(243,239,230,.75)}
+.tbf.on{border-color:var(--gold);background:rgba(240,192,64,.12)}.tbf.on svg circle{fill:var(--gold)}.tbf:hover{border-color:rgba(243,239,230,.45)}
+.tbgrid{display:grid;grid-template-columns:minmax(300px,1.05fr) minmax(280px,1fr);gap:16px;align-items:start}
+@media(max-width:820px){.tbgrid{grid-template-columns:1fr}}
+.tbpitch .pitch{max-width:460px}
+.tok{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:0;padding:2px;z-index:2;width:86px;color:inherit;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.tok .dot{position:relative;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 12.5px/1 var(--body);background:var(--k1,#ddd);color:var(--k2,#111);border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 6px rgba(0,0,0,.45)}
+.tok .dot em{position:absolute;right:-6px;top:-5px;font:800 9px/1 var(--body);font-style:normal;background:var(--gold);color:#111;border-radius:50%;width:14px;height:14px;display:grid;place-items:center}
+.tok .nm{font-size:11.5px;font-weight:600;text-shadow:0 1px 2px #000,0 0 6px rgba(0,0,0,.6);white-space:nowrap;max-width:86px;overflow:hidden;text-overflow:ellipsis}
+.tok .cb{display:block;width:30px;height:3px;border-radius:2px;background:rgba(0,0,0,.45);position:relative;overflow:hidden}.tok .cb::after{content:'';position:absolute;inset:0;width:var(--w);background:var(--c)}
+.tok.ok .dot{border-color:var(--warn)}.tok.bad .dot{border-color:var(--loss);border-width:3px}.tok.empty .dot{background:rgba(0,0,0,.35);color:#fff;border-style:dashed}
+.tok.sel .dot{outline:3px solid var(--gold);outline-offset:2px}.tok.over .dot,.tbrow.over,.tbzone.over{outline:2px dashed var(--gold);outline-offset:2px}
+.tok.dragging,.tbrow.dragging{opacity:.35}
+.tbghost{position:fixed;z-index:999;transform:translate(-50%,-130%);pointer-events:none;background:var(--gold);color:#111;font:700 12px/1 var(--body);padding:6px 9px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.tbleg{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:8px}.tbleg .lg{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid;margin-right:4px;vertical-align:-1px}.tbleg .lg.ok{border-color:var(--warn)}.tbleg .lg.bad{border-color:var(--loss)}
+.tbside{min-width:0}.tbtabs{display:flex;gap:4px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+.tbtabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--dim,#9aa);font:600 13px/1 var(--body);padding:9px 10px 8px;cursor:pointer}.tbtabs button.on{color:var(--gold);border-bottom-color:var(--gold)}
+.tbrow{display:grid;grid-template-columns:38px minmax(0,1fr) auto auto 24px;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px solid var(--line);cursor:grab;user-select:none;-webkit-user-select:none;border-radius:6px}
+.tbrow:hover{background:rgba(255,255,255,.04)}.tbrow.sel{background:rgba(240,192,64,.14);outline:1px solid var(--gold)}
+.tbrow .pos{font:700 10.5px/1 var(--body);text-align:center;padding:4px 0;border-radius:5px;background:rgba(255,255,255,.07);color:var(--gold)}
+.tbrow .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tbrow .cnd{font-size:12px;font-variant-numeric:tabular-nums;color:var(--dim,#9aa)}
+.tbrow .ib{width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--dim,#9aa);font:italic 700 11px/1 Georgia,serif;cursor:pointer}
+.tbzone{min-height:36px;border-radius:8px}
+.tboard .instr{grid-template-columns:104px minmax(0,1fr)}.tboard .instr .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%;min-width:0}.tboard .instr .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px;text-align:center}
+@media(max-width:520px){.tboard .instr{grid-template-columns:1fr}}
+.tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
+.tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+@media(max-width:520px){.tok{width:68px}.tok .nm{font-size:10.5px;max-width:68px}.tok .dot{width:30px;height:30px}.tbrow{grid-template-columns:34px minmax(0,1fr) auto 24px}.tbrow>.small{display:none}}
 .instr{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;align-items:center}
 @media(max-width:520px){.instr{grid-template-columns:1fr 1fr}}
 .seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:9px;overflow:hidden}
@@ -1914,55 +1945,146 @@ function tacticHint(t){
   if (t.tack === 0) L.push('Easy tackling keeps players on the pitch and gives opponents room.');
   return L.join(' ') || 'A balanced approach.';
 }
+/* ---- the tactics board: one board for the week and for the match. The pitch is the centre of it: every player a
+   token (number, name, a bar for his condition or, in a match, his energy; a ring for how well he fits the place),
+   dragged to another place or swapped with a team-mate, a player from the list dragged onto a place to put him there
+   (in a match: to bring him on). A tap and a tap does the same where dragging is awkward. Beside it, in tabs: the
+   squad, the team's instructions, the picked player's own, set pieces. Formations as small diagrams. ---- */
+const POSXY = (() => { const m = {}; for (const f of Object.values(FORMS)) for (const [c, x, y] of f) if (!m[c]) m[c] = [x, y]; return m; })();
+let TB = { sel: null, tab: 'squad' };
+function formIcon(f){
+  const dots = FORMS[f].map(([, x, y]) => `<circle cx="${(x * .3 + 1).toFixed(1)}" cy="${(y * .4 + 1).toFixed(1)}" r="2.1"/>`).join('');
+  return `<svg viewBox="0 0 32 40" aria-hidden="true"><rect x=".5" y=".5" width="31" height="39" rx="3"/>${dots}</svg>`;
+}
+// the two worlds the board works in: the week (a formation and eleven slots) and a live match (the side on the pitch)
+function boardWeek(){
+  const t = S.tac[me()], slots = FORMS[t.form];
+  return { live: false, t, slots,
+    places: slots.map(([code, x, y], i) => { const id = t.xi[i]; return { i, code, x, y, id, p: id ? P.get(id) : null, e: id ? ps(id).cond : 0 }; }),
+    bench: t.bench.slice(), rest: squadOf(me()).filter(p => !t.xi.includes(p.id) && !t.bench.includes(p.id)).sort((a, b) => ovrNow(b) - ovrNow(a)).map(p => p.id),
+    put(id, i){ const p = P.get(id); if (!avail(id)) return toast(`${cmName(p.n)} is not available.`);
+      if (!canPlay(p, slots[i][0])) return toast(`${cmName(p.n)} does not play ${slots[i][0]}.`);
+      const old = t.xi[i], was = t.xi.indexOf(id); if (was >= 0) t.xi[was] = old || null; t.xi[i] = id; t.bench = t.bench.filter(x => x !== id);
+      if (old && was < 0 && !t.bench.includes(old) && t.bench.length < BENCH) t.bench.push(old); return true; },
+    swap(i, j){ const a = t.xi[i] && P.get(t.xi[i]), b = t.xi[j] && P.get(t.xi[j]);
+      if (a && !canPlay(a, slots[j][0])) return toast(`${cmName(a.n)} does not play ${slots[j][0]}.`);
+      if (b && !canPlay(b, slots[i][0])) return toast(`${cmName(b.n)} does not play ${slots[i][0]}.`);
+      [t.xi[i], t.xi[j]] = [t.xi[j], t.xi[i]]; return true; },
+    toBench(id){ const i = t.xi.indexOf(id); if (t.bench.includes(id)) return true; if (t.bench.length >= BENCH) return toast(`${BENCH} substitutes at most.`);
+      if (i >= 0) t.xi[i] = null; t.bench.push(id); return true; },
+    toRest(id){ const i = t.xi.indexOf(id); if (i >= 0) t.xi[i] = null; t.bench = t.bench.filter(x => x !== id); return true; },
+    form(f){ const ids = t.xi.filter(Boolean), sl = FORMS[f], xi = placeXI(sl, ids.map(id => P.get(id))).map((id, i) => id && canPlay(P.get(id), sl[i][0]) ? id : null);
+      for (const id of ids) if (!xi.includes(id) && !t.bench.includes(id) && t.bench.length < BENCH) t.bench.push(id);
+      t.form = f; t.xi = xi; return true; },
+    done(){ save(); view(); } };
+}
+function boardLive(){
+  const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A, t = us.t, slots = FORMS[t.form] || [];
+  const used = new Set(), places = us.on.map((x, i) => { let k = slots.findIndex((s, j) => !used.has(j) && s[0] === x.pos); if (k >= 0) used.add(k);
+    const [px, py] = k >= 0 ? [slots[k][1], slots[k][2]] : (POSXY[x.pos] || [50, 50]); return { i, code: x.pos, x: px, y: py, id: x.id, p: x.p, e: x.e }; });
+  // two in the same spot (a shape gone out of shape after a red card): nudge one aside
+  places.forEach((a, i) => places.slice(0, i).forEach(b => { if (Math.abs(a.x - b.x) < 6 && Math.abs(a.y - b.y) < 5) a.x = Math.min(92, a.x + 14); }));
+  return { live: true, t, slots, us, places, bench: us.bench.filter(id => P.get(id)), rest: [],
+    put(id, i){ if (M.over) return toast('The match is over.'); if (us.subs >= 5) return toast('No more substitutions allowed.');
+      const out = us.on[i]; if (!out) return; if (!avail(id)) return toast(`${cmName(P.get(id).n)} is not available.`);
+      return substitute(M, us, out, false, id) || false; },
+    swap(i, j){ const a = us.on[i], b = us.on[j]; if (!a || !b) return;
+      if (!canPlay(a.p, b.pos)) return toast(`${cmName(a.p.n)} does not play ${b.pos}.`); if (!canPlay(b.p, a.pos)) return toast(`${cmName(b.p.n)} does not play ${a.pos}.`);
+      [a.pos, b.pos] = [b.pos, a.pos]; say(M, us, 'minor', `${nm(a)} and ${nm(b)} swap places.`); return true; },
+    toBench(){ return toast('Bring someone on instead: drag a substitute onto him.'); }, toRest(){ return false; },
+    form(f){ const sl = FORMS[f], on = us.on.filter(x => !x.off), xi = placeXI(sl.slice(0, Math.max(1, on.length)), on.map(x => x.p));
+      // the eleven (or ten) into the new shape, each where he plays; a man who fits nowhere keeps his position
+      xi.forEach((id, k) => { const x = on.find(y => y.id === id); if (x && canPlay(x.p, sl[k][0])) x.pos = sl[k][0]; });
+      t.form = f; say(M, us, 'minor', `${esc(club(us.cid).name)} change shape: ${f}.`); return true; },
+    done(){ viewMatch(); } };
+}
+function boardHTML(B){
+  const t = B.t, sel = TB.sel, tab = TB.tab, cap = t.set && t.set.cap;
+  const fitCls = (p, code) => { if (!p) return 'empty'; const k = fitTier(p, code); return k < 0 ? 'bad' : k >= 2 ? 'ok' : ''; };
+  const bar = e => `<i class="cb" style="--w:${Math.round(e)}%;--c:${e >= 80 ? 'var(--win)' : e >= 62 ? 'var(--gold)' : 'var(--loss)'}"></i>`;
+  const token = pl => `<button class="tok ${fitCls(pl.p, pl.code)} ${sel === 's:' + pl.i ? 'sel' : ''}" data-drag="s:${pl.i}" data-drop="s:${pl.i}" style="left:${pl.x}%;top:${pl.y}%" title="${pl.p ? esc(pl.p.n) + ' · ' + pl.code : pl.code}">
+    <span class="dot">${pl.p ? (pl.p.no || '•') : '+'}${pl.p && pl.id === cap ? '<em>C</em>' : ''}${pl.p && t.pi && t.pi[pl.id] && Object.keys(t.pi[pl.id]).length ? '<i class="pim" title="Own instructions">i</i>' : ''}</span><span class="nm">${pl.p ? esc(surname(pl.p.n)) : pl.code}</span>${pl.p ? bar(pl.e) : ''}</button>`;
+  const xi = B.places.filter(x => x.p), str = xi.length ? Math.round(xi.reduce((s, x) => s + fitIn(x.p, x.code), 0) / Math.max(11, xi.length)) : 0;
+  const pitch = `<div class="tbpitch" style="--k1:${kitOf(me())[0]};--k2:${kitOf(me())[1]}"><div class="pitch"><div class="bx t"></div><div class="bx"></div>${B.places.map(token).join('')}</div>
+    <div class="tbleg small dim"><span><i class="lg ok"></i>rarely plays there</span><span><i class="lg bad"></i>not his position</span><span>${B.live ? 'bar: energy' : 'bar: condition'}</span>${B.live ? '' : `<span>strength <b class="yel">${str}</b></span>`}</div></div>`;
+  const row = (id, where) => { const p = P.get(id); if (!p) return ''; const q = ps(id), e = B.live ? 100 : q.cond, out = !avail(id);
+    return `<div class="tbrow ${sel === 'p:' + id ? 'sel' : ''} ${out ? 'c-out' : ''}" data-drag="p:${id}" data-drop="${where}"><span class="pos">${p.prim}</span><span class="nm"><b class="${nameCls(p)}">${esc(cmName(p.n))}</b>${playerFlags(p)}</span><span class="small dim">${cmPos(p.pos)}</span>${B.live ? '' : `<span class="cnd">${Math.round(e)}%</span>`}<button class="ib" data-prof="${id}" title="Profile">i</button></div>`; };
+  const squad = B.live
+    ? `<div class="ptitle">Substitutes <span class="pill">${B.us.subs}/5 used</span></div>${B.bench.map(id => row(id, 'bench')).join('') || '<p class="empty">Nobody left on the bench.</p>'}
+       <p class="small dim">Drag a substitute onto a player on the pitch to bring him on, or tap one and then the other. Drag one player onto another to swap their places.</p>`
+    : `<div class="ptitle">Substitutes <span class="pill">${B.bench.length}/${BENCH}</span></div><div class="tbzone" data-drop="bench">${B.bench.map(id => row(id, 'bench')).join('') || '<p class="small dim">Drag players here.</p>'}</div>
+       <div class="ptitle">Not in the squad</div><div class="tbzone" data-drop="rest">${B.rest.map(id => row(id, 'rest')).join('')}</div>`;
+  const seg = (key, Lb) => `<span class="seg" data-tk="${key}">${Lb.map((n, i) => `<button data-v="${i}" class="${t[key] === i ? 'on' : ''}">${n}</button>`).join('')}</span>`;
+  const tog = (k, n) => `<button class="tog ${t[k] ? 'on' : ''}" data-ttg="${k}">${t[k] ? '✓' : '·'} ${n}</button>`;
+  const team = `${B.live ? `<div class="tbshout">${[['push', 'Push forward'], ['hold', 'Hold what we have'], ['calm', 'Calm down'], ['press', 'Get stuck in']].map(([k, n]) => `<button class="btn sm" data-shout="${k}">${n}</button>`).join('')}</div>` : ''}
+    <div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('counter', 'Counter Attack')}${tog('mbb', 'Men Behind Ball')}</span></div><p class="small" style="margin-top:10px">${tacticHint(t)}</p>`;
+  const pid = sel && sel.startsWith('s:') ? (B.places[+sel.slice(2)] || {}).id : sel && sel.startsWith('p:') ? +sel.slice(2) : null, pp = pid && P.get(pid);
+  const player = pp ? `<div class="ptitle">${esc(pp.n)} <span class="small dim">${cmPos(pp.pos)}</span></div><div class="instr">${PI.map(([k, n, opts]) => { const v = t.pi && t.pi[pid] && t.pi[pid][k];
+      return `<span class="yel"><b>${n}</b></span><span class="seg" data-pi="${pid}|${k}"><button data-v="" class="${v == null ? 'on' : ''}">Team</button>${opts.map((x, i) => `<button data-v="${i}" class="${v === i ? 'on' : ''}">${x}</button>`).join('')}</span>`; }).join('')}</div>`
+    : '<p class="empty">Tap a player on the pitch to give him his own instructions.</p>';
+  const xiP = B.places.filter(x => x.p).map(x => x.p);
+  const spSel = (k, n) => `<span class="yel"><b>${n}</b></span><select class="dd" data-sp="${k}">${xiP.map(p => `<option value="${p.id}" ${t.set && t.set[k] === p.id ? 'selected' : ''}>${esc(cmName(p.n))}</option>`).join('')}</select>`;
+  const setp = `<div class="instr">${spSel('cap', 'Captain')}${spSel('pen', 'Penalties')}${spSel('fk', 'Free Kicks')}${spSel('cor', 'Corners')}</div>`;
+  const tabs = [['squad', B.live ? 'Substitutes' : 'Squad'], ['team', 'Team'], ['player', 'Player'], ['set', 'Set Pieces']];
+  const forms = `<div class="tbforms" role="radiogroup" aria-label="Formation">${FORM_ORDER.map(f => `<button class="tbf ${f === t.form ? 'on' : ''}" data-form="${f}" role="radio" aria-checked="${f === t.form}">${formIcon(f)}<span>${f}</span></button>`).join('')}</div>`;
+  return `<div class="tboard">${forms}<div class="tbgrid">${pitch}<div class="tbside"><nav class="tbtabs">${tabs.map(([k, n]) => `<button data-tbt="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</nav>
+    <div class="tbbody">${({ squad, team, player, set: setp })[tab] || squad}</div></div></div></div>`;
+}
+function boardWire(B){
+  const t = B.t, done = () => B.done();
+  document.querySelectorAll('[data-form]').forEach(b => b.addEventListener('click', () => { if (b.dataset.form !== t.form && B.form(b.dataset.form)) { TB.sel = null; done(); } }));
+  document.querySelectorAll('[data-tbt]').forEach(b => b.addEventListener('click', () => { TB.tab = b.dataset.tbt; done(); }));
+  document.querySelectorAll('.seg[data-tk] button').forEach(b => b.addEventListener('click', () => { const k = b.parentElement.dataset.tk; t[k] = +b.dataset.v;
+    if (B.live && !LIVE.M.over) say(LIVE.M, B.us, 'minor', `${esc(club(me()).name)} change their ${k === 'men' ? 'approach: ' + MENT[t.men].toLowerCase() : k === 'pass' ? 'passing: ' + PASS[t.pass].toLowerCase() : 'tackling: ' + TACK[t.tack].toLowerCase()}.`); done(); }));
+  document.querySelectorAll('[data-ttg]').forEach(b => b.addEventListener('click', () => { t[b.dataset.ttg] = !t[b.dataset.ttg]; done(); }));
+  document.querySelectorAll('.seg[data-pi] button').forEach(b => b.addEventListener('click', () => { const [id, k] = b.parentElement.dataset.pi.split('|'); t.pi = t.pi || {}; t.pi[id] = t.pi[id] || {};
+    if (b.dataset.v === '') delete t.pi[id][k]; else t.pi[id][k] = +b.dataset.v; done(); }));
+  document.querySelectorAll('[data-sp]').forEach(s => s.addEventListener('change', () => { t.set = t.set || {}; t.set[s.dataset.sp] = +s.value; done(); }));
+  document.querySelectorAll('[data-prof]').forEach(b => { b.addEventListener('pointerdown', e => e.stopPropagation()); b.addEventListener('click', e => { e.stopPropagation(); if (B.live) return toast('After the match.'); go({ s: 'player', id: +b.dataset.prof }); }); });
+  // in a match the shouts are quick changes to the instructions
+  document.querySelectorAll('[data-shout]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.shout, M = LIVE.M;
+    if (k === 'push'){ t.men = Math.min(4, t.men + 1); t.mbb = false; } if (k === 'hold'){ t.men = Math.max(0, t.men - 1); t.mbb = true; t.counter = true; }
+    if (k === 'calm'){ t.tack = Math.max(0, t.tack - 1); t.press = false; } if (k === 'press'){ t.tack = Math.min(2, t.tack + 1); t.press = true; }
+    if (!M.over) say(M, B.us, 'minor', `From the touchline: ${b.textContent.toLowerCase()}!`); toast(`${b.textContent}: ${MENT[t.men].toLowerCase()}, ${TACK[t.tack].toLowerCase()} tackling.`); done(); }));
+  const act = (a, b) => {   // a dragged (or tapped first) onto b
+    const [ka, va] = a.split(':'), [kb, vb] = b.split(':'); let ok = false;
+    if (ka === 's' && kb === 's' && va !== vb) ok = B.swap(+va, +vb);
+    else if (ka === 'p' && kb === 's') ok = B.put(+va, +vb);
+    else if (ka === 's' && kb === 'p'){ const id = (B.places[+va] || {}).id; ok = B.put(+vb, +va); void id; }
+    else if (kb === 'bench'){ const id = ka === 's' ? (B.places[+va] || {}).id : +va; ok = id && B.toBench(id); }
+    else if (kb === 'rest'){ const id = ka === 's' ? (B.places[+va] || {}).id : +va; ok = id && B.toRest(id); }
+    TB.sel = null; if (ok) done(); else done();
+  };
+  const tap = k => { if (!TB.sel){ TB.sel = k; if (k.startsWith('s:') && TB.tab === 'set') TB.tab = 'player'; return done(); }
+    if (TB.sel === k){ TB.sel = null; return done(); }
+    if (TB.tab === 'player' && k.startsWith('s:') && TB.sel.startsWith('s:')){ TB.sel = k; return done(); }   // on the Player tab a tap picks whose instructions
+    if (TB.sel.startsWith('p:') && k.startsWith('p:')){ TB.sel = k; return done(); }
+    act(TB.sel, k); };
+  document.querySelectorAll('.tboard [data-drag]').forEach(el => el.addEventListener('pointerdown', e => {
+    if (e.button > 0 || e.target.closest('[data-prof]')) return;
+    const touchRow = e.pointerType === 'touch' && el.classList.contains('tbrow');   // a list row on a phone: the finger scrolls, so tap only
+    const sx = e.clientX, sy = e.clientY; let ghost = null, over = null;
+    const move = ev => { if (touchRow) return;
+      if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 7){ ghost = document.createElement('div'); ghost.className = 'tbghost';
+        const p = el.dataset.drag.startsWith('s:') ? (B.places[+el.dataset.drag.slice(2)] || {}).p : P.get(+el.dataset.drag.slice(2)); ghost.textContent = p ? cmName(p.n) : ''; document.body.appendChild(ghost); el.classList.add('dragging'); }
+      if (ghost){ ev.preventDefault(); ghost.style.left = ev.clientX + 'px'; ghost.style.top = ev.clientY + 'px';
+        const tg = document.elementFromPoint(ev.clientX, ev.clientY), d = tg && tg.closest('[data-drop]'); if (over && over !== d) over.classList.remove('over'); over = d; if (d && d !== el) d.classList.add('over'); } };
+    const up = ev => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      if (over) over.classList.remove('over');
+      if (ghost){ ghost.remove(); el.classList.remove('dragging'); const tg = document.elementFromPoint(ev.clientX, ev.clientY), d = tg && tg.closest('[data-drop]'); if (d && d.dataset.drop !== el.dataset.drag) act(el.dataset.drag, d.dataset.drop); }
+      else if (ev.type === 'pointerup' && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 12) tap(el.dataset.drag); };
+    window.addEventListener('pointermove', move, { passive: false }); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  }));
+}
 function clubTactics(cid, o){
-  const t = S.tac[me()], slots = FORMS[t.form], sub = V.sub || 'overview', inXI = new Set(t.xi), onB = new Set(t.bench);
-  const fitCls = (p, pos) => { if (!p) return 'empty'; const k = fitTier(p, pos); return k < 0 ? 'bad' : k >= 2 ? 'ok' : ''; };
-  const strength = Math.round(t.xi.reduce((s, id, i) => s + (id ? fitIn(P.get(id), slots[i][0]) : 0), 0) / 11);
-  const pickPos = PICK && PICK.slot != null ? slots[PICK.slot][0] : null;
-  const others = squadOf(me()).filter(p => !inXI.has(p.id)).sort((a, b) => pickPos ? fitIn(b, pickPos) - fitIn(a, pickPos) : (onB.has(b.id) - onB.has(a.id)) || ovrNow(b) - ovrNow(a));
-  const list = `${t.xi.map((id, i) => { const p = id && P.get(id); return `<div class="pl ${PICK && PICK.slot === i ? 'pick' : ''}" data-slot="${i}"><span class="no">${p ? p.no || '' : ''}</span><span><b>${p ? esc(cmName(p.n)) : '<span class="dim">Empty</span>'}</b>${p && t.set && t.set.cap === id ? ' <span class="tag">capt</span>' : ''}</span><span class="yel small">${slots[i][0]}</span><b></b></div>`; }).join('')}
-    <div class="ptitle" style="margin-top:8px">${pickPos ? `Who plays ${pickPos}?` : 'Substitutes and the rest'}</div>
-    ${others.map(p => `<div class="pl subs ${avail(p.id) ? '' : 'c-out'}" data-put="${p.id}"><span class="no">${p.no || ''}</span><span class="${nameCls(p)}">${esc(cmName(p.n))}${playerFlags(p)}</span><span class="small">${onB.has(p.id) ? `<button class="box sub" data-bench="${p.id}">S${t.bench.indexOf(p.id) + 1}</button>` : avail(p.id) ? `<button class="box" data-bench="${p.id}" title="Substitute">+</button>` : ''}</span><b></b></div>`).join('')}`;
-  const seg = (key, L) => `<span class="seg" data-k="${key}">${L.map((n, i) => `<button data-v="${i}" class="${t[key] === i ? 'on' : ''}">${n}</button>`).join('')}</span>`;
-  const tog = (key, n) => `<button class="tog ${t[key] ? 'on' : ''}" data-tg="${key}">${t[key] ? '✓' : '·'} ${n}</button>`;
-  const xiPlayers = t.xi.filter(Boolean).map(id => P.get(id));
-  const spSel = (k, n) => `<span class="yel"><b>${n}</b></span><select class="dd" data-sp="${k}">${xiPlayers.map(p => `<option value="${p.id}" ${t.set && t.set[k] === p.id ? 'selected' : ''}>${esc(cmName(p.n))}</option>`).join('')}</select>`;
-  let right;
-  if (sub === 'overview') right = `<div class="pitch"><div class="bx t"></div><div class="bx"></div>${slots.map(([pos, x, y], i) => { const p = t.xi[i] ? P.get(t.xi[i]) : null; return `<button class="slot ${fitCls(p, pos)} ${PICK && PICK.slot === i ? 'pick' : ''}" data-slot="${i}" style="left:${x}%;top:${y}%"><span class="dot">${p ? (p.no || '•') : '+'}</span><span class="nm">${p ? esc(surname(p.n)) : pos}</span></button>`; }).join('')}</div>
-    <p class="small dim c">Click a place (on the pitch or in the list), then a player to put him there, or two places to swap. A player goes only where he is registered (as in the Draft). Orange ring: a position he rarely plays; red: not his position (only when nobody else can fill it).</p>`;
-  if (sub === 'team') right = `<div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('counter', 'Counter Attack')}${tog('mbb', 'Men Behind Ball')}</span></div><p class="small" style="margin-top:10px">${tacticHint(t)}</p>`;
-  if (sub === 'player'){ const id = PICK && PICK.pi || t.xi.find(Boolean), p = id && P.get(id);
-    right = p ? `<div class="ptitle">${esc(p.n)}</div><div class="instr">${PI.map(([k, n, opts]) => { const v = t.pi && t.pi[id] && t.pi[id][k]; return `<span class="yel"><b>${n}</b></span><select class="dd" data-pi="${id}|${k}"><option value="" ${v == null ? 'selected' : ''}>As the team</option>${opts.map((x, i) => `<option value="${i}" ${v === i ? 'selected' : ''}>${x}</option>`).join('')}</select>`; }).join('')}</div><p class="small dim">Pick another player in the list to give him his own instructions.</p>` : '<p class="empty">Pick your side first.</p>'; }
-  if (sub === 'set') right = `<div class="instr">${spSel('cap', 'Captain')}${spSel('pen', 'Penalties')}${spSel('fk', 'Free Kicks')}${spSel('cor', 'Corners')}</div>`;
-  o.act = `<select class="dd" id="form" aria-label="Formation">${FORM_ORDER.map(f => `<option ${f === t.form ? 'selected' : ''}>${f}</option>`).join('')}</select>`;
-  o.tools = `<span class="seg" id="tsub">${[['overview', 'Overview'], ['team', 'Team Instructions'], ['player', 'Player Instructions'], ['set', 'Set Pieces']].map(([k, n]) => `<button data-v="${k}" class="${sub === k ? 'on' : ''}">${n}</button>`).join('')}</span><span style="flex:1"></span><button class="btn sm" id="auto">Assistant's choice</button>`;
+  if (V.sub && V.sub !== TB.vsub){ TB.tab = { overview: 'squad', team: 'team', player: 'player', set: 'set' }[V.sub] || 'squad'; TB.vsub = V.sub; }
+  const B = boardWeek();
   o.title = `${esc(club(me()).name)} Tactics`;
-  o.body = `<div class="tac" style="--k1:${kitOf(me())[0]};--k2:${kitOf(me())[1]}"><div>${list}</div><div>${right}</div></div>`;
+  o.tools = `<span class="small dim">Drag players on the pitch or onto it from the list; or tap one, then the other.</span><span style="flex:1"></span><button class="btn sm" id="auto">Assistant's choice</button>`;
+  o.body = boardHTML(B);
   frame(o);
-  $('#form').addEventListener('change', e => { const f = e.target.value, ids = t.xi.filter(Boolean), sl = FORMS[f];
-    // the same eleven in the new shape, by the placement rules; anyone with no place he plays drops to the bench
-    const xi = placeXI(sl, ids.map(id => P.get(id))).map((id, i) => id && canPlay(P.get(id), sl[i][0]) ? id : null);
-    for (const id of ids) if (!xi.includes(id) && !t.bench.includes(id) && t.bench.length < BENCH) t.bench.push(id);
-    t.form = f; t.xi = xi; PICK = null; save(); view(); });
-  $('#auto').addEventListener('click', () => { const a = autoTactic(me()); Object.assign(t, { form: a.form, xi: a.xi, bench: a.bench, set: a.set }); PICK = null; save(); view(); });
-  document.querySelectorAll('#tsub button').forEach(b => b.addEventListener('click', () => { V = { ...V, sub: b.dataset.v }; view(); }));
-  document.querySelectorAll('.seg[data-k] button').forEach(b => b.addEventListener('click', () => { t[b.parentElement.dataset.k] = +b.dataset.v; save(); view(); }));
-  document.querySelectorAll('[data-tg]').forEach(b => b.addEventListener('click', () => { t[b.dataset.tg] = !t[b.dataset.tg]; save(); view(); }));
-  document.querySelectorAll('[data-sp]').forEach(s => s.addEventListener('change', () => { t.set = t.set || {}; t.set[s.dataset.sp] = +s.value; save(); }));
-  document.querySelectorAll('[data-pi]').forEach(s => s.addEventListener('change', () => { const [id, k] = s.dataset.pi.split('|'); t.pi = t.pi || {}; t.pi[id] = t.pi[id] || {}; if (s.value === '') delete t.pi[id][k]; else t.pi[id][k] = +s.value; save(); }));
-  document.querySelectorAll('[data-slot]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.slot;
-    if (sub === 'player'){ if (t.xi[i]) PICK = { pi: t.xi[i] }; view(); return; }
-    if (PICK && PICK.slot != null && PICK.slot !== i){ const a = t.xi[PICK.slot] && P.get(t.xi[PICK.slot]), b2 = t.xi[i] && P.get(t.xi[i]);
-      if (a && !canPlay(a, slots[i][0])) toast(`${cmName(a.n)} does not play ${slots[i][0]}.`); else if (b2 && !canPlay(b2, slots[PICK.slot][0])) toast(`${cmName(b2.n)} does not play ${slots[PICK.slot][0]}.`);
-      else [t.xi[i], t.xi[PICK.slot]] = [t.xi[PICK.slot], t.xi[i]]; PICK = null; save(); }
-    else if (PICK && PICK.slot === i) PICK = null; else PICK = { slot: i };
-    view(); }));
-  document.querySelectorAll('[data-put]').forEach(r => r.addEventListener('click', e => { if (e.target.closest('[data-bench]')) return; const id = +r.dataset.put;
-    if (!PICK || PICK.slot == null){ go({ s: 'player', id }); return; }
-    if (!avail(id)){ toast('He is not available.'); return; }
-    if (!canPlay(P.get(id), slots[PICK.slot][0])){ toast(`${cmName(P.get(id).n)} does not play ${slots[PICK.slot][0]}.`); return; }
-    const old = t.xi[PICK.slot]; t.xi[PICK.slot] = id; t.bench = t.bench.filter(x => x !== id); if (old && t.bench.length < BENCH) t.bench.push(old); PICK = null; save(); view(); }));
-  document.querySelectorAll('[data-bench]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const id = +b.dataset.bench; if (t.bench.includes(id)) t.bench = t.bench.filter(x => x !== id); else if (t.bench.length < BENCH) t.bench.push(id); else toast('Seven substitutes at most.'); save(); view(); }));
+  $('#auto').addEventListener('click', () => { const a = autoTactic(me()); Object.assign(B.t, { form: a.form, xi: a.xi, bench: a.bench, set: a.set }); TB.sel = null; save(); view(); });
+  boardWire(B);
 }
 
 /* ---- a player ---- */
@@ -2749,7 +2871,7 @@ function viewMatch(){
   on('skip', () => { clearTimeout(TIMER); L.started = true; L.paused = true; L.atHT = false; while (step(M)) L.others.forEach(o => step(o)); L.others.forEach(o => playOut(o)); viewMatch(); });
   on('done', () => { LIVE = null; if (L.shield) finishShield(M); else if (L.lc) finishLC(M, L.others); else if (L.cup) finishCup(M, L.others); else finishLeague(M, L.others); passDays(1); save(); HIST.push(V); V = { s: 'news', i: 0 }; view(); scrollTo(0, 0); });
   document.querySelectorAll('[data-spd]').forEach(b => b.addEventListener('click', () => { SPEED = +b.dataset.spd; OPT.spd = SPEED; saveOpt(); viewMatch(); }));
-  document.querySelectorAll('[data-mt]').forEach(b => b.addEventListener('click', () => { MTAB = b.dataset.mt; viewMatch(); }));
+  document.querySelectorAll('[data-mt]').forEach(b => b.addEventListener('click', () => { MTAB = b.dataset.mt; if (MTAB === 'tactics' && L.started && !L.paused){ L.paused = true; clearTimeout(TIMER); } TB.sel = null; if (MTAB === 'tactics') TB.tab = 'squad'; viewMatch(); }));
   wireMatchPanel();
 }
 function mPanel(){
@@ -2768,13 +2890,12 @@ function mPanel(){
     return `<table><thead><tr><th></th><th>Club</th><th class="c">Pld</th><th class="c">GD</th><th class="c">Pts</th></tr></thead><tbody>${st.map((r, i) => `<tr class="${r.id === me() ? 'me' : ''}"><td>${i + 1}</td><td class="nm">${crest(r.id)}<b>${esc(club(r.id).name)}</b></td><td class="c">${r.p}</td><td class="c">${r.gd > 0 ? '+' : ''}${r.gd}</td><td class="c yel"><b>${r.pts}</b></td></tr>`).join('')}</tbody></table>`; }
   if (MTAB === 'scores' && OPT.bg === 'off' && !M.over) return '<p class="empty">The other results come in at full time (Game Settings: Other Matches).</p>';
   if (MTAB === 'scores') return L.others.length ? `<table><tbody>${L.others.map(o => `<tr><td class="r" style="width:40%"><b>${esc(club(o.h).name)}</b></td><td class="c"><span class="pill">${o.H.goals} - ${o.A.goals}</span>${o.pens ? ` <span class="small dim">(${o.pens[0]}-${o.pens[1]} p)</span>` : ''}</td><td style="width:40%"><b>${esc(club(o.a).name)}</b></td><td class="small yel">${o.over ? 'FT' : o.min ? label(o) + "'" : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">No other matches today.</p>';
-  if (MTAB === 'tactics'){ const t = us.t, seg = (key, Lb) => `<span class="seg" data-mk="${key}">${Lb.map((n, i) => `<button data-v="${i}" class="${t[key] === i ? 'on' : ''}">${n}</button>`).join('')}</span>`, tog = (k, n) => `<button class="tog ${t[k] ? 'on' : ''}" data-mt2="${k}">${t[k] ? '✓' : '·'} ${n}</button>`;
-    return `<div class="cols2"><div><div class="ptitle">Team Instructions</div><div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('counter', 'Counter')}${tog('mbb', 'Men Behind Ball')}</span></div></div>
-      <div><div class="ptitle">Substitutions ${us.subs}/5</div>${M.over ? '<p class="dim">The match is over.</p>' : `<div class="cols2"><div><div class="small yel">On the pitch</div>${us.on.map(x => `<div class="pl ${L.sel && L.sel.off === x.id ? 'pick' : ''}" data-off="${x.id}"><span class="yel small">${x.pos}</span><b>${esc(surname(x.p.n))}</b><span></span><span class="small dim">${Math.round(x.e)}%</span></div>`).join('')}</div><div><div class="small yel">Substitutes</div>${us.bench.map(id => P.get(id)).filter(Boolean).map(p => `<div class="pl ${L.sel && L.sel.on === p.id ? 'pick' : ''}" data-on="${p.id}"><span class="yel small">${p.prim}</span><b>${esc(surname(p.n))}</b><span></span><span></span></div>`).join('') || '<p class="dim small">None left</p>'}</div></div><p class="small dim">The percentages are energy. Pick one to take off and one to bring on.</p>`}</div></div>`; }
+  if (MTAB === 'tactics') return boardHTML(boardLive());
   return '';
 }
 function wireMatchPanel(){
   const L = LIVE; if (!L) return; const M = L.M, us = M.h === me() ? M.H : M.A;
+  if (MTAB === 'tactics') boardWire(boardLive());
   document.querySelectorAll('.seg[data-mk] button').forEach(b => b.addEventListener('click', () => { const k = b.parentElement.dataset.mk; us.t[k] = +b.dataset.v; if (!M.over) say(M, us, 'minor', `${esc(club(us.cid).name)} change their ${k === 'men' ? 'approach: ' + MENT[us.t.men].toLowerCase() : k === 'pass' ? 'passing: ' + PASS[us.t.pass].toLowerCase() : 'tackling: ' + TACK[us.t.tack].toLowerCase()}.`); viewMatch(); }));
   document.querySelectorAll('[data-mt2]').forEach(b => b.addEventListener('click', () => { us.t[b.dataset.mt2] = !us.t[b.dataset.mt2]; viewMatch(); }));
   document.querySelectorAll('[data-off]').forEach(b => b.addEventListener('click', () => { L.sel = { off: +b.dataset.off, on: L.sel && L.sel.on }; trySub(); }));
