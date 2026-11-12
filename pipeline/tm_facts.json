@@ -1,5 +1,5 @@
 {
-"source": "Transfermarkt pages Nikola supplied (squad pages of the 20 clubs, Nov 2026; most valuable players list; home page 12.11.2026). Transfermarkt is the source of truth where it conflicts with anything else: market values (eur, € millions) and contract end years (con) here win over the model. Premier League overview page (12.11.2026): contract extensions, latest value updates, league facts.",
+"source": "Transfermarkt pages Nikola supplied (squad pages of the 20 clubs, Nov 2026; most valuable players list; home page 12.11.2026). Transfermarkt is the source of truth where it conflicts with anything else: market values (eur, € millions) and contract end years (con) here win over the model. Premier League overview page (12.11.2026): contract extensions, latest value updates, league facts. Premier League overview page, second capture (12.11.2026): latest transfers, honours 2025/26, values.",
 "updated": "2026-11-12",
 "players": {
 "162489": {
@@ -868,7 +868,7 @@
 "eur": 75.0
 },
 "21138": {
-"eur": 35.0
+"eur": 35
 },
 "41621": {
 "eur": 45.0
@@ -975,7 +975,8 @@
 "eur": 5.0
 },
 "400033": {
-"eur": 0.3
+"eur": 0.3,
+"con": 2028
 },
 "336659": {
 "eur": 25.0
@@ -1429,6 +1430,17 @@
 "reigning": "Arsenal",
 "total_eur_bn": 14.11,
 "players": 547,
-"avg_age": 26.3
+"avg_age": 26.3,
+"cup_winner": "Manchester City",
+"europe": [
+[
+"Aston Villa",
+"Europa League"
+],
+[
+"Crystal Palace",
+"Conference League"
+]
+]
 }
 }
