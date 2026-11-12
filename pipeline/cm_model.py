@@ -645,10 +645,10 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         out_players.append({'id': r['pid'], 'n': display(e, r['pid']) if (e.get('sq') or e.get('n')) else (w.get('name') or str(r['pid'])), 'nat': e.get('nat') or w.get('nat'),
                             'age': age, **({'bd': e['bd'][:10]} if e.get('bd') else {}), 'no': e.get('no'), 'club': r['tid'], 'prim': pos, 'pos': r['pos'], 'ht': ht, 'wt': wt,
                             'ovr': rating, 'r': ratings, 'a': a, 'style': style, 'val': val,
-                            'frm': w.get('frm'), **({'nt': 1} if w.get('nt') else {}),   # plays for his country (call-ups); not shown **({'inj': inj_level(cm, r['pid'], lastseen)} if inj_level(cm, r['pid'], lastseen) else {}),
+                            **({'nt': 1} if w.get('nt') else {}),   # plays for his country (call-ups); not shown **({'inj': inj_level(cm, r['pid'], lastseen)} if inj_level(cm, r['pid'], lastseen) else {}),
                             # how his starts split over his registered positions (shares, same order as 'pos')
                             **({'pc': _shares(w if w.get('pc') else (r.get('gw') or {}), r['pos'])} if len(r['pos']) > 1 else {}),
-                            's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None,
+                            # no numbers from the season under way: the game always starts from zero (Nikola's rule)
                             **({'out': r['back']} if r.get('back') else {}), **({'outw': r['why']} if r.get('why') else {}), **({'lo': r['lo']} if r.get('lo') else {})})
     # market values: a log-linear fit of the Transfermarkt squad values Nikola supplied for the 20 clubs (Nov 2026,
     # 484 players, € at 0.855 to the £) on our own numbers only: rating, age, club strength, position, national-team
