@@ -1,5 +1,5 @@
 {
-"source": "Transfermarkt pages Nikola supplied (squad pages of the 20 clubs, Nov 2026; most valuable players list; home page 12.11.2026). Transfermarkt is the source of truth where it conflicts with anything else: market values (eur, € millions) and contract end years (con) here win over the model. Premier League overview page (12.11.2026): contract extensions, latest value updates, league facts. Premier League overview page, second capture (12.11.2026): latest transfers, honours 2025/26, values. Squad pages of Brighton, Hull, Sunderland and Crystal Palace (12.11.2026). Squad pages of 19 clubs re-applied in full (12.11.2026): squads, positions, numbers, names. Coventry squad page (12.11.2026). Player profiles of Bradley Slade and Cameron Humphreys (12.11.2026). Detailed squad pages of all 20 clubs (12.11.2026): birth dates, heights, feet, contracts, values.",
+"source": "Transfermarkt pages Nikola supplied (squad pages of the 20 clubs, Nov 2026; most valuable players list; home page 12.11.2026). Transfermarkt is the source of truth where it conflicts with anything else: market values (eur, € millions) and contract end years (con) here win over the model. Premier League overview page (12.11.2026): contract extensions, latest value updates, league facts. Premier League overview page, second capture (12.11.2026): latest transfers, honours 2025/26, values. Squad pages of Brighton, Hull, Sunderland and Crystal Palace (12.11.2026). Squad pages of 19 clubs re-applied in full (12.11.2026): squads, positions, numbers, names. Coventry squad page (12.11.2026). Player profiles of Bradley Slade and Cameron Humphreys (12.11.2026). Detailed squad pages of all 20 clubs (12.11.2026): birth dates, heights, feet, contracts, values. Staff pages of all 20 clubs (12.11.2026): head coaches and backroom staff.",
 "updated": "2026-11-12",
 "players": {
 "162489": {
@@ -4433,6 +4433,860 @@
 82090,
 138786,
 8598
+]
+},
+"coaches": {
+"Man City": {
+"n": "Enzo Maresca",
+"age": 46,
+"nat": "Italy",
+"since": "01/07/2026",
+"until": 2029
+},
+"Arsenal": {
+"n": "Mikel Arteta",
+"age": 44,
+"nat": "Spain",
+"since": "22/12/2019",
+"until": 2030
+},
+"Chelsea": {
+"n": "Xabi Alonso",
+"age": 44,
+"nat": "Spain",
+"since": "01/07/2026",
+"until": 2030
+},
+"Liverpool": {
+"n": "Andoni Iraola",
+"age": 44,
+"nat": "Spain",
+"since": "01/07/2026",
+"until": 2028
+},
+"Tottenham": {
+"n": "Roberto De Zerbi",
+"age": 47,
+"nat": "Italy",
+"since": "31/03/2026",
+"until": 2031
+},
+"Newcastle": {
+"n": "Matthias Jaissle",
+"age": 38,
+"nat": "Germany",
+"since": "05/08/2026",
+"until": 2030
+},
+"Brighton": {
+"n": "Fabian Hürzeler",
+"age": 33,
+"nat": "Germany",
+"since": "01/07/2024",
+"until": 2029
+},
+"Brentford": {
+"n": "Keith Andrews",
+"age": 46,
+"nat": "Ireland",
+"since": "01/07/2025",
+"until": 2032
+},
+"Aston Villa": {
+"n": "Unai Emery",
+"age": 55,
+"nat": "Spain",
+"since": "01/11/2022",
+"until": 2029
+},
+"Bournemouth": {
+"n": "Marco Rose",
+"age": 50,
+"nat": "Germany",
+"since": "01/07/2026",
+"until": 2029
+},
+"Nott'm Forest": {
+"n": "Oliver Glasner",
+"age": 52,
+"nat": "Austria",
+"since": "06/07/2026",
+"until": 2029
+},
+"Sunderland": {
+"n": "Régis Le Bris",
+"age": 50,
+"nat": "France",
+"since": "01/07/2024",
+"until": 2028
+},
+"Leeds": {
+"n": "Daniel Farke",
+"age": 50,
+"nat": "Germany",
+"since": "04/07/2023",
+"until": 2027
+},
+"Everton": {
+"n": "David Moyes",
+"age": 63,
+"nat": "Scotland",
+"since": "11/01/2025",
+"until": null
+},
+"Fulham": {
+"n": "Álvaro Arbeloa",
+"age": 43,
+"nat": "Spain",
+"since": "07/07/2026",
+"until": 2029
+},
+"Ipswich": {
+"n": "Gary O'Neil",
+"age": 43,
+"nat": "England",
+"since": "01/07/2026",
+"until": 2029
+},
+"Coventry": {
+"n": "Frank Lampard",
+"age": 48,
+"nat": "England",
+"since": "28/11/2024",
+"until": 2029
+},
+"Hull City": {
+"n": "Sergej Jakirović",
+"age": 49,
+"nat": "Croatia",
+"since": "01/07/2025",
+"until": 2028
+}
+},
+"staff": {
+"Man City": [
+{
+"r": "ass",
+"n": "Willy Caballero",
+"age": 45,
+"nat": "Argentina"
+},
+{
+"r": "coach",
+"n": "Danny Walker",
+"age": 41,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "James French",
+"age": 39,
+"nat": "Portugal"
+},
+{
+"r": "coach",
+"n": "Simon Bitcon",
+"age": 51,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Richard Wright",
+"age": 49,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "James Baldwin",
+"age": 51,
+"nat": "England"
+}
+],
+"Arsenal": [
+{
+"r": "ass",
+"n": "Albert Stuivenberg",
+"age": 56,
+"nat": "Netherlands"
+},
+{
+"r": "coach",
+"n": "Nicolas Jover",
+"age": 45,
+"nat": "France"
+},
+{
+"r": "coach",
+"n": "Isa Hussein",
+"age": null,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Eoin Clarkin",
+"age": 44,
+"nat": "Ireland"
+},
+{
+"r": "gk",
+"n": "Iñaki Caña",
+"age": 51,
+"nat": "Spain"
+},
+{
+"r": "phys",
+"n": "Simon Murphy",
+"age": 38,
+"nat": "England"
+}
+],
+"Chelsea": [
+{
+"r": "ass",
+"n": "Sebastián Parrilla",
+"age": 49,
+"nat": "Argentina"
+},
+{
+"r": "coach",
+"n": "Austin MacPhee",
+"age": 47,
+"nat": "Scotland"
+},
+{
+"r": "coach",
+"n": "André Reis",
+"age": 29,
+"nat": "Portugal"
+},
+{
+"r": "coach",
+"n": "Ismael Camenforte",
+"age": 42,
+"nat": "Spain"
+},
+{
+"r": "gk",
+"n": "James Russell",
+"age": 39,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "Meirion Jones",
+"age": null,
+"nat": "England"
+}
+],
+"Liverpool": [
+{
+"r": "ass",
+"n": "Pablo de la Torre",
+"age": 37,
+"nat": "Spain"
+},
+{
+"r": "coach",
+"n": "Luiz Fernando Iubel",
+"age": 37,
+"nat": "Brazil"
+},
+{
+"r": "coach",
+"n": "Shaun Cooper",
+"age": 43,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Tommy Elphick",
+"age": 39,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Colin Stewart",
+"age": 46,
+"nat": "Scotland"
+},
+{
+"r": "phys",
+"n": "Lee Nobes",
+"age": 51,
+"nat": "England"
+}
+],
+"Man Utd": [
+{
+"r": "ass",
+"n": "Travis Binnion",
+"age": 40,
+"nat": "Ireland"
+},
+{
+"r": "coach",
+"n": "Charlie Owen",
+"age": 40,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Michael Clegg",
+"age": 49,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Craig Mawson",
+"age": 47,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "Jordan Reece",
+"age": 44,
+"nat": "England"
+}
+],
+"Tottenham": [
+{
+"r": "ass",
+"n": "Andreas Georgson",
+"age": 44,
+"nat": "Sweden"
+},
+{
+"r": "coach",
+"n": "Marcello Quinto",
+"age": 41,
+"nat": "Italy"
+},
+{
+"r": "coach",
+"n": "Enrico Venturelli",
+"age": 46,
+"nat": "Italy"
+},
+{
+"r": "coach",
+"n": "Cameron Campbell",
+"age": 35,
+"nat": "Scotland"
+},
+{
+"r": "gk",
+"n": "Dean Brill",
+"age": 40,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "Matt Davies",
+"age": 40,
+"nat": "England"
+}
+],
+"Newcastle": [
+{
+"r": "ass",
+"n": "Engin Yanova",
+"age": 49,
+"nat": "Türkiye"
+},
+{
+"r": "coach",
+"n": "Martin Mark",
+"age": 33,
+"nat": "Denmark"
+},
+{
+"r": "coach",
+"n": "James Allan",
+"age": 37,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Craig Musham",
+"age": 38,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Shwan Jalal",
+"age": 43,
+"nat": "Iraq"
+},
+{
+"r": "phys",
+"n": "Daniel Marti",
+"age": 42,
+"nat": "Spain"
+}
+],
+"Brighton": [
+{
+"r": "ass",
+"n": "Jonas Scheuermann",
+"age": 40,
+"nat": "Germany"
+},
+{
+"r": "coach",
+"n": "Yannick Euvrard",
+"age": 40,
+"nat": "Belgium"
+},
+{
+"r": "coach",
+"n": "Bobby Zamora",
+"age": 45,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Dominic May",
+"age": 38,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Jelle ten Rouwelaar",
+"age": 45,
+"nat": "Netherlands"
+},
+{
+"r": "phys",
+"n": "Jack O'Doherty",
+"age": 36,
+"nat": "England"
+}
+],
+"Brentford": [
+{
+"r": "ass",
+"n": "Kevin O'Connor",
+"age": 44,
+"nat": "Ireland"
+},
+{
+"r": "coach",
+"n": "Mehmet Ali",
+"age": 40,
+"nat": "Türkiye"
+},
+{
+"r": "coach",
+"n": "Stephen Rice",
+"age": 42,
+"nat": "Ireland"
+},
+{
+"r": "coach",
+"n": "Jack Lester",
+"age": 51,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Manuel Sotelo",
+"age": 45,
+"nat": "Spain"
+},
+{
+"r": "phys",
+"n": "Wayne Gill",
+"age": 50,
+"nat": "England"
+}
+],
+"Aston Villa": [
+{
+"r": "ass",
+"n": "Pablo Villanueva",
+"age": 50,
+"nat": "Spain"
+},
+{
+"r": "coach",
+"n": "Albert Carbó",
+"age": 36,
+"nat": "Spain"
+},
+{
+"r": "coach",
+"n": "Patrick Moore",
+"age": 34,
+"nat": "Ireland"
+},
+{
+"r": "coach",
+"n": "Moisés Del Hoyo",
+"age": 45,
+"nat": "Spain"
+},
+{
+"r": "gk",
+"n": "Javi García",
+"age": 47,
+"nat": "Spain"
+},
+{
+"r": "phys",
+"n": "Alan Smith",
+"age": 59,
+"nat": "England"
+}
+],
+"Bournemouth": [
+{
+"r": "ass",
+"n": "Frank Geideck",
+"age": 59,
+"nat": "Germany"
+},
+{
+"r": "coach",
+"n": "Nicolas Gagnon",
+"age": null,
+"nat": "Canada"
+},
+{
+"r": "coach",
+"n": "Matt Harrold",
+"age": 42,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Charlie Moore",
+"age": 36,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Neil Moss",
+"age": 51,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "David Gardner",
+"age": 38,
+"nat": "England"
+}
+],
+"Crystal Palace": [
+{
+"r": "ass",
+"n": "Patrick McCarthy",
+"age": 43,
+"nat": "Ireland"
+},
+{
+"r": "coach",
+"n": "Jamie Goldsmith",
+"age": 37,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Max Davidson",
+"age": 24,
+"nat": "Northern Ireland"
+},
+{
+"r": "gk",
+"n": "Andy Quy",
+"age": 50,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "Francesca Hawgood",
+"age": null,
+"nat": "England"
+}
+],
+"Nott'm Forest": [
+{
+"r": "ass",
+"n": "Andy Reid",
+"age": 44,
+"nat": "Ireland"
+},
+{
+"r": "coach",
+"n": "Michael Berktold",
+"age": 46,
+"nat": "Austria"
+},
+{
+"r": "coach",
+"n": "Josh Bridge",
+"age": 29,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Lauren Horner",
+"age": null,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Wayne Hennessey",
+"age": 39,
+"nat": "Wales"
+},
+{
+"r": "phys",
+"n": "Jon Alty",
+"age": 41,
+"nat": "England"
+}
+],
+"Sunderland": [
+{
+"r": "ass",
+"n": "Michael Proctor",
+"age": 46,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Scott Ainsley",
+"age": 51,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Keith McGrath",
+"age": 33,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Luke Cooper",
+"age": 32,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Neil Cutler",
+"age": 50,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "Peter Brand",
+"age": 51,
+"nat": "England"
+}
+],
+"Leeds": [
+{
+"r": "ass",
+"n": "Edmund Riemer",
+"age": 41,
+"nat": "Germany"
+},
+{
+"r": "coach",
+"n": "Chris Domogalla",
+"age": 40,
+"nat": "Germany"
+},
+{
+"r": "coach",
+"n": "Rubén Crespo",
+"age": 40,
+"nat": "Spain"
+},
+{
+"r": "coach",
+"n": "Paraskevas Polychronopoulos",
+"age": 38,
+"nat": "Greece"
+},
+{
+"r": "gk",
+"n": "Ed Wootten",
+"age": 42,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "Daryl Carter",
+"age": 38,
+"nat": "England"
+}
+],
+"Everton": [
+{
+"r": "ass",
+"n": "Billy McKinlay",
+"age": 57,
+"nat": "Scotland"
+},
+{
+"r": "coach",
+"n": "Dave Reddington",
+"age": 45,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Jack Dowling",
+"age": 36,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "David Lucas",
+"age": 48,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "Craig Yuill",
+"age": 45,
+"nat": "England"
+}
+],
+"Fulham": [
+{
+"r": "ass",
+"n": "Julián Carmona",
+"age": 43,
+"nat": "Spain"
+},
+{
+"r": "coach",
+"n": "Ali Melloul",
+"age": 40,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Colin Omogbehin",
+"age": 52,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Jack Grinstead",
+"age": 34,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Geoff Warne",
+"age": 46,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "Thomas Jackson",
+"age": 50,
+"nat": "England"
+}
+],
+"Ipswich": [
+{
+"r": "ass",
+"n": "Sone Aluko",
+"age": 37,
+"nat": "Nigeria"
+},
+{
+"r": "coach",
+"n": "Stuart Lewis",
+"age": 39,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Jon Ashton",
+"age": 44,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Matt Allen",
+"age": 39,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Rene Gilmartin",
+"age": 39,
+"nat": "Ireland"
+},
+{
+"r": "phys",
+"n": "Jon Urwin",
+"age": 44,
+"nat": "England"
+}
+],
+"Coventry": [
+{
+"r": "ass",
+"n": "Chris Jones",
+"age": 50,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Andy Young",
+"age": 36,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Abbie Forman",
+"age": 28,
+"nat": "England"
+},
+{
+"r": "gk",
+"n": "Sal Bibbo",
+"age": 52,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "Emma Young",
+"age": 27,
+"nat": "England"
+}
+],
+"Hull City": [
+{
+"r": "ass",
+"n": "Andy Dawson",
+"age": 48,
+"nat": "England"
+},
+{
+"r": "coach",
+"n": "Marin Ivancic",
+"age": 34,
+"nat": "Croatia"
+},
+{
+"r": "gk",
+"n": "Erbil Bozkurt",
+"age": 36,
+"nat": "England"
+},
+{
+"r": "phys",
+"n": "Alan Peacham",
+"age": 48,
+"nat": "England"
+}
 ]
 }
 }

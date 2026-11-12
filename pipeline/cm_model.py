@@ -715,6 +715,25 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
                     c[k] = h[k]
         ko = {(f[0], f[1], f[2]): f[3:] for f in hb.get('fixtures') or []}
         fixtures = [f + ([ko[(f[0], f[2], f[3])][0], ko[(f[0], f[2], f[3])][1]] if (f[0], f[2], f[3]) in ko else []) for f in fixtures]
+    # Transfermarkt's staff pages: the head coach (if he was in post when the game starts, mid-August) and the backroom
+    # staff by name; a club with nobody in post on Transfermarkt keeps the handbook's coach
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_facts.json'), encoding='utf-8') as f:
+            _tm = json.load(f)
+    except (OSError, ValueError):
+        _tm = {}
+    for c in clubs:
+        k = (_tm.get('coaches') or {}).get(c['name'])
+        if k and k.get('n'):
+            since = k.get('since') or ''
+            ymd = f'{since[6:10]}-{since[3:5]}-{since[0:2]}' if len(since) == 10 else ''
+            if not ymd or ymd <= f'{season}-08-15':
+                c['coach'] = k['n']
+                if k.get('until'):
+                    c['coach_until'] = k['until']
+        st = (_tm.get('staff') or {}).get(c['name'])
+        if st:
+            c['staff'] = st
     extra = {k: hb[k] for k in ('cup', 'rules', 'last_season') if hb and hb.get('season') == season and hb.get(k)}
     try:   # league facts from Transfermarkt (record champions and the like)
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_facts.json'), encoding='utf-8') as f:

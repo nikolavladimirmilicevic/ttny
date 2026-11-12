@@ -2229,6 +2229,9 @@ function ensureStaff(){
   if (S.staff) return;
   const r = rng(`staff-${S.seed}`), lvl = clamp(6 + (club(me()).q - 72) * .5, 5, 15);
   S.staff = [makeStaff('ass', lvl, r), makeStaff('coach', lvl, r), makeStaff('coach', lvl, r), makeStaff('coach', lvl - 1, r), makeStaff('gk', lvl, r), makeStaff('phys', lvl, r)];
+  // the club's real backroom staff by name (Transfermarkt's staff page); their abilities stay the game's own
+  const real = (club(me()).staff || []).slice();
+  for (const x of S.staff){ const i = real.findIndex(y => y.r === x.role); if (i < 0) continue; const y = real.splice(i, 1)[0]; x.n = y.n; if (y.age) x.age = y.age; if (y.nat) x.nat = y.nat; }
 }
 function staffPool(){
   const key = S.date.slice(0, 7);
@@ -2243,7 +2246,7 @@ function scrStaff(tab){
   ensureStaff(); const pool = staffPool(), mine = S.staff, wageAll = mine.reduce((t, x) => t + x.w, 0);
   const cell = (v, hi) => `<td class="c ${hi ? 'yel' : ''}"><b>${v}</b></td>`;
   const row = (x, act) => { const m = { ass: 'ju', coach: 'co', gk: 'cg', phys: 'ph' }[x.role];
-    return `<tr><td><b>${esc(x.n)}</b>${x.int && act === 'hire' ? ' <span class="tag" style="background:#1E6B43;color:#fff">Interested</span>' : ''}</td><td class="dim">${STAFF_ROLES[x.role][0]}</td><td class="c">${x.age}</td>${cell(x.co, m === 'co')}${cell(x.cg, m === 'cg')}${cell(x.ju, m === 'ju')}${cell(x.mm, false)}${cell(x.ph, m === 'ph')}<td class="r">${wage(x.w)}</td>
+    return `<tr><td>${x.nat ? flag(x.nat) : ''}<b>${esc(x.n)}</b>${x.int && act === 'hire' ? ' <span class="tag" style="background:#1E6B43;color:#fff">Interested</span>' : ''}</td><td class="dim">${STAFF_ROLES[x.role][0]}</td><td class="c">${x.age}</td>${cell(x.co, m === 'co')}${cell(x.cg, m === 'cg')}${cell(x.ju, m === 'ju')}${cell(x.mm, false)}${cell(x.ph, m === 'ph')}<td class="r">${wage(x.w)}</td>
       <td class="r">${act === 'hire' ? `<button class="btn sm" data-hire="${x.id}">Offer Contract</button>` : `<button class="btn sm" data-fire="${x.id}">Release</button>`}</td></tr>`; };
   const head = `<thead><tr><th>Name</th><th>Job</th><th class="c">Age</th><th class="c" title="Coaching (outfield)">Coa</th><th class="c" title="Coaching (goalkeepers)">GK</th><th class="c" title="Judging Ability">Jud</th><th class="c" title="Man Management">Man</th><th class="c" title="Physiotherapy">Phy</th><th class="r">Wage</th><th></th></tr></thead>`;
   frame({ title: 'Player &amp; Staff Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: [['short', 'Short List'], ['search', 'Player Search'], ['staff', 'Staff Search'], ['sc1', 'Scout #1'], ['sc2', 'Scout #2']], topOn: 'staff',
