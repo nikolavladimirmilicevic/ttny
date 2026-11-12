@@ -655,7 +655,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     if hb and hb.get('season') == season:
         for c in clubs:
             h = (hb.get('clubs') or {}).get(str(c['id'])) or {}
-            if h.get('coach') and not c.get('coach'):
+            if h.get('coach'):   # the handbook (Oct 2026) is fresher than the API's coach careers (still Guardiola, Slot)
                 c['coach'] = h['coach']
             for k in ('cap', 'sponsor', 'kitm', 'last', 'att'):
                 if h.get(k):
