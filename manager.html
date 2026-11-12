@@ -1817,6 +1817,8 @@ function nextFixture(cid){
   const L = [];
   for (let i = S.round; i < S.rounds.length; i++){ const m = S.rounds[i].m.find(x => x.h === cid || x.a === cid); if (m){ L.push({ date: S.rounds[i].date, comp: 'League', m }); break; } }
   if (S.cup.stage < 5 && S.cup.alive.includes(cid)) L.push({ date: S.cupDates[S.cup.stage], comp: CUP + ' · ' + CUP_NAMES[S.cup.stage], m: null });
+  if (S.shield && !S.shield.done && (S.shield.h === cid || S.shield.a === cid)) L.push({ date: S.shield.date, comp: SHIELD, m: { h: S.shield.h, a: S.shield.a } });
+  if (S.lc && S.lc.stage < 6 && S.lc.alive.concat(S.lc.stage === 1 ? S.lc.wait : []).includes(cid)) L.push({ date: S.lc.dates[S.lc.stage], comp: LC + ' · ' + LC_NAMES[S.lc.stage], m: null });
   return L.sort((a, b) => a.date < b.date ? -1 : 1)[0];
 }
 function clubNext(cid, o){
@@ -1827,7 +1829,7 @@ function clubNext(cid, o){
   const strict = cond.ref.s >= 13 ? 'strict' : cond.ref.s <= 7 ? 'lenient' : 'fair';
   const top = id => squadOf(id).slice().sort((a, b) => ovrNow(b) - ovrNow(a)).slice(0, 5);
   o.body = `<div class="ptitle">${f.comp}: ${esc(club(f.m.h).name)} v ${esc(club(f.m.a).name)}</div>
-    <div class="cols2"><dl class="kv"><dt>Date</dt><dd>${fmtDate(f.date, true)}</dd><dt>Venue</dt><dd>${esc(club(f.m.h).venue || '')}</dd><dt>Referee</dt><dd>${esc(cond.ref.n)} (${strict})</dd><dt>Forecast</dt><dd>${esc(cond.weather)}, ${cond.temp}°C</dd></dl>
+    <div class="cols2"><dl class="kv"><dt>Date</dt><dd>${fmtDate(f.date, true)}</dd><dt>Venue</dt><dd>${f.comp === SHIELD ? 'Wembley Stadium' : esc(club(f.m.h).venue || '')}</dd><dt>Referee</dt><dd>${esc(cond.ref.n)} (${strict})</dd><dt>Forecast</dt><dd>${esc(cond.weather)}, ${cond.temp}°C</dd></dl>
     <dl class="kv"><dt>${esc(club(opp).name)}</dt><dd>${S.round ? ordinal(pos(opp)) + ', ' + row(opp).pts + ' pts' : 'the season has not started'}</dd><dt>Form</dt><dd class="form">${(row(opp).form || []).map(x => `<span class="${x}">${x}</span>`).join('') || '-'}</dd><dt>Usual shape</dt><dd>${esc(S.tac[opp].form)}, ${MENT[S.tac[opp].men].toLowerCase()}</dd><dt>Players to watch</dt><dd>${top(opp).map(p => `<a class="sky" style="cursor:pointer" data-pl="${p.id}">${esc(cmName(p.n))}</a>`).join(', ')}</dd></dl></div>`;
   frame(o); wirePlayers(top(opp).map(p => p.id));
 }
@@ -1836,10 +1838,13 @@ function clubFixtures(cid, o){
   const rows = [];
   S.rounds.forEach((r, i) => { const m = r.m.find(x => x.h === cid || x.a === cid); if (m){ const res = S.results.find(x => x.n === i + 1); rows.push({ date: r.date, comp: 'League', m, rr: res && res.res.find(x => x.h === m.h && x.a === m.a) }); } });
   S.cupDates.forEach((d, i) => { const lg = S.cup.log.find(l => l.stage === i), cr = lg && lg.res.find(x => x.h === cid || x.a === cid); if (cr || (i >= S.cup.stage && S.cup.alive.includes(cid))) rows.push({ date: d, comp: 'Cup ' + CUP_NAMES[i], m: cr ? { h: cr.h, a: cr.a } : null, rr: cr }); });
+  if (S.shield && (S.shield.h === cid || S.shield.a === cid)) rows.push({ date: S.shield.date, comp: SHIELD, m: { h: S.shield.h, a: S.shield.a }, rr: S.shield.res, nr: 1 });
+  if (S.lc) S.lc.dates.forEach((d, i) => { const lg = S.lc.log.find(l => l.stage === i), cr = lg && lg.res.find(x => x.h === cid || x.a === cid);
+    if (cr || (i >= S.lc.stage && (S.lc.alive.includes(cid) || S.lc.stage <= 1 && S.lc.wait.includes(cid)) && (i > 0 || !LG.has(cid)))) rows.push({ date: d, comp: LC + ' ' + LC_NAMES[i], m: cr ? { h: cr.h, a: cr.a } : null, rr: cr, nr: 1 }); });
   rows.sort((a, b) => a.date < b.date ? -1 : 1);
   const res = rr => { if (!rr) return ''; const r = rr.w === cid ? 'W' : rr.w == null ? 'D' : 'L'; return `<span class="form"><span class="${r}">${r}</span></span> ${rr.s[0]}-${rr.s[1]}${rr.p ? ` (${rr.p[0]}-${rr.p[1]} p)` : ''}`; };
   o.body = `<div class="tw"><table><thead><tr><th>Date</th><th>Competition</th><th>Opponents</th><th>Venue</th><th>Result</th></tr></thead><tbody>${rows.map(x => !x.m ? `<tr><td>${fmtDate(x.date)}</td><td>${x.comp}</td><td colspan="3" class="dim">Drawn on the day</td></tr>`
-    : `<tr class="${x.rr ? 'click' : ''}" ${x.rr ? `data-rep="${x.m.h}|${x.m.a}|${x.comp === 'League' ? 'League' : 'Cup'}"` : ''}><td>${fmtDate(x.date)}</td><td>${x.comp}</td><td><b>${esc(club(x.m.h === cid ? x.m.a : x.m.h).name)}</b></td><td>${x.m.h === cid ? 'Home' : 'Away'}</td><td>${res(x.rr)}</td></tr>`).join('')}</tbody></table></div>`;
+    : `<tr class="${x.rr && !x.nr ? 'click' : ''}" ${x.rr && !x.nr ? `data-rep="${x.m.h}|${x.m.a}|${x.comp === 'League' ? 'League' : 'Cup'}"` : ''}><td>${fmtDate(x.date)}</td><td>${x.comp}</td><td><b>${esc(club(x.m.h === cid ? x.m.a : x.m.h).name)}</b></td><td>${x.comp === SHIELD || x.comp === LC + ' Final' ? 'Wembley' : x.m.h === cid ? 'Home' : 'Away'}</td><td>${res(x.rr)}</td></tr>`).join('')}</tbody></table></div>`;
   frame(o);
   document.querySelectorAll('[data-rep]').forEach(r => r.addEventListener('click', () => { const [h, a, comp] = r.dataset.rep.split('|'); const rr = allResults().find(x => x.h === +h && x.a === +a && x.comp === comp); if (rr) go({ s: 'club', cid, tab: 'last', rr }); }));
 }
@@ -2665,7 +2670,7 @@ function viewPre(){
     `<div class="banner"><span></span><h1>Next Match<span class="sub">${L.shield ? SHIELD + ' · Wembley' : L.lc ? `${LC} · ${esc(L.cup)}${L.cup === 'Final' ? ' · Wembley' : ''}` : L.cup ? esc(CUP) + ' · ' + esc(L.cup) : esc(D.league)}</span></h1><span></span></div>
     <div class="mteams"><div class="t" style="background:${kh};color:${kh2}">${crest(M.h, 'mcr')}<span>${esc(club(M.h).name)}</span></div><div class="t" style="background:${ka};color:${ka2}">${crest(M.a, 'mcr')}<span>${esc(club(M.a).name)}</span></div></div>
     <section class="pane"><dl class="kv"><dt>Date</dt><dd>${fmtDate(S.date, true)}</dd>${(() => { const fm = !L.cup && ((S.rounds[S.round] || {}).m || []).find(x => x.h === M.h && x.a === M.a); const wd = new Date(S.date + 'T12:00:00Z').getUTCDay(), dflt = wd === 0 || wd === 6 ? '15:00' : '19:45';   // the league's default kick-offs
-      return fm ? `<dt>Kick-off</dt><dd>${fm.ko || dflt}${fm.tv ? ` <span class="pill">${esc(fm.tv)}</span>` : ''}</dd>` : ''; })()}<dt>Venue</dt><dd>${esc(club(M.h).venue || '')}</dd><dt>Referee</dt><dd>${esc(M.ref.n)}: ${strict}</dd><dt>Weather</dt><dd>${esc(M.weather)}, ${M.temp}°C${wxNote}</dd><dt>Opponents</dt><dd>${esc(club(opp).name)}${S.round ? ', ' + ordinal(st.findIndex(r => r.id === opp) + 1) : ''}, ${esc(M.h === me() ? M.A.t.form : M.H.t.form)}</dd></dl>
+      return fm ? `<dt>Kick-off</dt><dd>${fm.ko || dflt}${fm.tv ? ` <span class="pill">${esc(fm.tv)}</span>` : ''}</dd>` : ''; })()}<dt>Venue</dt><dd>${L.shield || (L.lc && L.cup === 'Final') ? 'Wembley Stadium' : esc(club(M.h).venue || '')}</dd><dt>Referee</dt><dd>${esc(M.ref.n)}: ${strict}</dd><dt>Weather</dt><dd>${esc(M.weather)}, ${M.temp}°C${wxNote}</dd><dt>Opponents</dt><dd>${esc(club(opp).name)}${S.round ? ', ' + ordinal(st.findIndex(r => r.id === opp) + 1) : ''}, ${esc(M.h === me() ? M.A.t.form : M.H.t.form)}</dd></dl>
       <div class="cols2" style="margin-top:10px"><div><div class="ptitle">${esc(club(M.h).name)}</div>${line(M.H)}</div><div><div class="ptitle">${esc(club(M.a).name)}</div>${line(M.A)}</div></div></section>
     <div class="bn"><button id="totac2">Back</button><button id="tomatch2">Next</button></div>`);
   const goMatch = () => { L.pre = false; viewMatch(); }, toTac = () => { LIVE = null; go({ s: 'club', cid: me(), tab: 'tactics' }); toast('Press Continue Game when you are ready for the match.'); };
