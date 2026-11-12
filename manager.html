@@ -345,18 +345,72 @@ const money = v => (v < 0 ? '−' : '') + '£' + (Math.abs(v) >= 1e6 ? (Math.abs
 /* =====================================================================================================================
    formations: slot positions on a pitch 100 wide and 100 deep (0 = their goal line), and the position each slot asks for
    ===================================================================================================================== */
-const FORMS = {
-  '4-4-2':   [['GK', 50, 93], ['LB', 14, 74], ['CB', 38, 78], ['CB', 62, 78], ['RB', 86, 74], ['LMF', 14, 50], ['CMF', 38, 54], ['CMF', 62, 54], ['RMF', 86, 50], ['CF', 38, 24], ['CF', 62, 24]],
-  '4-3-3':   [['GK', 50, 93], ['LB', 14, 74], ['CB', 38, 78], ['CB', 62, 78], ['RB', 86, 74], ['CMF', 28, 54], ['DMF', 50, 62], ['CMF', 72, 54], ['LWF', 16, 26], ['CF', 50, 20], ['RWF', 84, 26]],
-  '4-2-3-1': [['GK', 50, 93], ['LB', 14, 74], ['CB', 38, 78], ['CB', 62, 78], ['RB', 86, 74], ['DMF', 38, 61], ['DMF', 62, 61], ['LMF', 16, 40], ['AMF', 50, 40], ['RMF', 84, 40], ['CF', 50, 18]],
-  '4-1-4-1': [['GK', 50, 93], ['LB', 14, 74], ['CB', 38, 78], ['CB', 62, 78], ['RB', 86, 74], ['DMF', 50, 62], ['LMF', 14, 44], ['CMF', 38, 46], ['CMF', 62, 46], ['RMF', 86, 44], ['CF', 50, 20]],
-  '4-4-1-1': [['GK', 50, 93], ['LB', 14, 74], ['CB', 38, 78], ['CB', 62, 78], ['RB', 86, 74], ['LMF', 14, 52], ['CMF', 38, 56], ['CMF', 62, 56], ['RMF', 86, 52], ['SS', 50, 34], ['CF', 50, 18]],
-  '4-3-1-2': [['GK', 50, 93], ['LB', 14, 74], ['CB', 38, 78], ['CB', 62, 78], ['RB', 86, 74], ['CMF', 26, 56], ['DMF', 50, 62], ['CMF', 74, 56], ['AMF', 50, 38], ['CF', 38, 20], ['CF', 62, 20]],
-  '3-5-2':   [['GK', 50, 93], ['CB', 26, 78], ['CB', 50, 80], ['CB', 74, 78], ['LMF', 10, 50], ['CMF', 32, 54], ['DMF', 50, 62], ['CMF', 68, 54], ['RMF', 90, 50], ['CF', 38, 22], ['CF', 62, 22]],
-  '3-4-3':   [['GK', 50, 93], ['CB', 26, 78], ['CB', 50, 80], ['CB', 74, 78], ['LMF', 12, 52], ['CMF', 38, 56], ['CMF', 62, 56], ['RMF', 88, 52], ['LWF', 18, 26], ['CF', 50, 20], ['RWF', 82, 26]],
-  '5-3-2':   [['GK', 50, 93], ['LB', 10, 68], ['CB', 30, 78], ['CB', 50, 80], ['CB', 70, 78], ['RB', 90, 68], ['CMF', 30, 52], ['DMF', 50, 58], ['CMF', 70, 52], ['CF', 38, 24], ['CF', 62, 24]],
-  '5-4-1':   [['GK', 50, 93], ['LB', 10, 68], ['CB', 30, 78], ['CB', 50, 80], ['CB', 70, 78], ['RB', 90, 68], ['LMF', 14, 46], ['CMF', 38, 50], ['CMF', 62, 50], ['RMF', 86, 46], ['CF', 50, 20]],
+// the 14 PES 2021 preset formations, as in the Draft game (index.html): lines from the back, each left to right
+const FORM_DEF = {
+  '4-2-3-1': ['LB CB CB RB', 'DMF DMF', 'LMF AMF RMF', 'CF'], '4-1-4-1': ['LB CB CB RB', 'DMF', 'LMF AMF AMF RMF', 'CF'],
+  '4-3-2-1': ['LB CB CB RB', 'CMF CMF CMF', 'AMF AMF', 'CF'], '4-2-2-2': ['LB CB CB RB', 'CMF CMF', 'LMF RMF', 'CF CF'],
+  '4-3-1-2': ['LB CB CB RB', 'CMF CMF CMF', 'AMF', 'CF CF'], '4-2-1-3': ['LB CB CB RB', 'DMF DMF', 'AMF', 'LWF CF RWF'],
+  '4-1-2-3': ['LB CB CB RB', 'DMF', 'AMF AMF', 'LWF CF RWF'], '3-2-4-1': ['CB CB CB', 'DMF DMF', 'LMF AMF AMF RMF', 'CF'],
+  '3-2-3-2': ['CB CB CB', 'DMF DMF', 'LMF AMF RMF', 'CF CF'], '3-3-2-2': ['CB CB CB', 'LMF DMF RMF', 'CMF CMF', 'CF CF'],
+  '3-2-2-3': ['CB CB CB', 'CMF CMF', 'LMF RMF', 'LWF CF RWF'], '5-2-2-1': ['LB CB CB CB RB', 'DMF DMF', 'LMF RMF', 'CF'],
+  '5-2-1-2': ['LB CB CB CB RB', 'DMF DMF', 'AMF', 'CF CF'], '5-3-2': ['LB CB CB CB RB', 'CMF CMF CMF', 'CF CF'],
 };
+const FORMS = {};
+for (const [f, rows] of Object.entries(FORM_DEF)){
+  const out = [['GK', 50, 92]], L = rows.length, XS = { 1: [50], 2: [36, 64], 3: [22, 50, 78], 4: [13, 37, 63, 87], 5: [10, 30, 50, 70, 90] };
+  const YN = { DMF: 4, AMF: -3, LMF: -2, RMF: -2 }, CX = { 1: [50], 2: [37, 63], 3: [28, 50, 72], 4: [22, 41, 59, 78], 5: [10, 30, 50, 70, 90] };
+  rows.forEach((row, i) => {
+    const codes = row.split(' '), wide = c => /^L(B|MF|WF)$/.test(c) ? 'L' : /^R(B|MF|WF)$/.test(c) ? 'R' : '';
+    const central = codes.filter(c => !wide(c)), cx = i === 0 && central.length === codes.length ? (codes.length === 3 ? [27, 50, 73] : XS[codes.length]) : CX[central.length] || [];
+    let ci = 0;
+    const xs = codes.map(c => wide(c) === 'L' ? (i === 0 && codes.length === 5 ? 10 : 13) : wide(c) === 'R' ? (i === 0 && codes.length === 5 ? 90 : 87) : cx[ci++]);
+    const y = 76 - i * (58 / Math.max(1, L - 1));
+    codes.forEach((c, j) => out.push([c, xs[j], Math.round(y + (YN[c] || 0))]));
+  });
+  FORMS[f] = out;
+}
+const FORM_ORDER = Object.keys(FORMS).sort();
+/* placing players, by the Draft game's rules: a player plays only in a position he is registered in; as many as
+   possible in their main position, then in a strong other one (half or more of his main position's starts), then
+   in their less played ones, and only then the better player. Solved exactly (Hungarian method). A position he is
+   not registered in is used only when no squad member can fill it (injuries, bans). */
+const isWeak = (p, code) => { if (!p.pc) return code !== p.prim; const i = p.pos.indexOf(code); return i < 0 || p.pc[i] <= Math.max(...p.pc) / 2; };
+function fitTier(p, code){ const r = p.pos.indexOf(code); if (r < 0) return -1; if (code === p.prim) return 0; return isWeak(p, code) ? 1 + Math.min(r, 5) : 1; }
+const canPlay = (p, code) => !!p && p.pos.includes(code);
+const FIT_BASE = 12, FIT_BIG = Math.pow(FIT_BASE, 8), FIT_OUT = FIT_BIG * 4;
+const fitWeight = (p, code, q) => { const t = fitTier(p, code); return t < 0 ? -FIT_BIG : Math.pow(FIT_BASE, 7 - t) + q / 1000; };
+function hungarian(cost){   // rows <= cols, minimise; returns the column of each row
+  const n = cost.length, m = cost[0].length, INF = 1e18, u = Array(n + 1).fill(0), v = Array(m + 1).fill(0), p = Array(m + 1).fill(0), way = Array(m + 1).fill(0);
+  for (let i = 1; i <= n; i++){
+    p[0] = i; let j0 = 0; const minv = Array(m + 1).fill(INF), used = Array(m + 1).fill(false);
+    do { used[j0] = true; const i0 = p[j0]; let delta = INF, j1 = 0;
+      for (let j = 1; j <= m; j++) if (!used[j]){ const cur = cost[i0 - 1][j - 1] - u[i0] - v[j]; if (cur < minv[j]){ minv[j] = cur; way[j] = j0; } if (minv[j] < delta){ delta = minv[j]; j1 = j; } }
+      for (let j = 0; j <= m; j++) if (used[j]){ u[p[j]] += delta; v[j] -= delta; } else minv[j] -= delta;
+      j0 = j1; } while (p[j0] !== 0);
+    do { const j1 = way[j0]; p[j0] = p[j1]; j0 = j1; } while (j0);
+  }
+  const res = Array(n).fill(-1); for (let j = 1; j <= m; j++) if (p[j]) res[p[j] - 1] = j - 1; return res;
+}
+// the best placement of these players in these slots; q: how good he is there (breaks ties only)
+function placeXI(slots, players, q = (p, code) => fitIn(p, code)){
+  const pl = players.filter(Boolean).slice(); if (!pl.length) return slots.map(() => null);
+  while (pl.length < slots.length) pl.push(null);
+  const cost = slots.map(s => pl.map(p => !p ? FIT_OUT * 2 : fitTier(p, s[0]) < 0 ? FIT_OUT - q(p, s[0]) / 1000 : FIT_BIG - fitWeight(p, s[0], q(p, s[0]))));
+  return hungarian(cost).map(j => j >= 0 && pl[j] ? pl[j].id : null);
+}
+/* picking the eleven from a whole squad: the better players first (a manager does not drop Rice for a lesser
+   natural DMF), only in positions they are registered in, a point or two for a main or strong position; then the
+   chosen eleven are placed by the rules above */
+const pickBonus = (p, code) => { const k = fitTier(p, code); return k < 0 ? null : k === 0 ? 2 : k === 1 ? 1 : 0; };
+function pickXI(slots, players, q = (p, code) => fitIn(p, code)){
+  const pl = players.filter(Boolean).slice(); if (!pl.length) return { xi: slots.map(() => null), v: -1e9 };
+  while (pl.length < slots.length) pl.push(null);
+  const cost = slots.map(s => pl.map(p => { if (!p) return 1e7; const b = pickBonus(p, s[0]); return b == null ? 1e5 - q(p, s[0]) : 1000 - q(p, s[0]) - b; }));
+  const col = hungarian(cost), chosen = col.map(j => pl[j]).filter(Boolean);
+  const v = col.reduce((t, j, i) => t - cost[i][j], 0);
+  return { xi: placeXI(slots, chosen, q), v };
+}
+const xiScore = (slots, xi, q = (p, code) => fitIn(p, code)) => xi.reduce((t, id, i) => t + (id ? fitWeight(P.get(id), slots[i][0], q(P.get(id), slots[i][0])) : -FIT_BIG * 2), 0);
 
 /* =====================================================================================================================
    the saved game
@@ -460,35 +514,39 @@ const PI = [
   ['tack', 'Tackling', ['Easy', 'Normal', 'Hard']], ['mark', 'Marking', ['Zonal', 'Man']], ['hold', 'Hold up ball', ['No', 'Yes']], ['free', 'Free role', ['No', 'Yes']],
 ];
 function bestXI(cid, form, rest){
-  const slots = FORMS[form], pool = squadOf(cid).filter(p => avail(p.id)), used = new Set(), xi = Array(11).fill(null);
-  const score = (p, pos) => fitIn(p, pos) * (rest ? (0.72 + 0.28 * ps(p.id).cond / 100) : 1);
-  const order = slots.map((s, i) => i).sort((a, b) => (slots[a][0] === 'GK' ? -1 : 0) - (slots[b][0] === 'GK' ? -1 : 0));
-  for (const i of order){ let best = null, bs = -1; for (const p of pool) if (!used.has(p.id)){ const v = score(p, slots[i][0]); if (v > bs){ bs = v; best = p; } } if (best){ xi[i] = best.id; used.add(best.id); } }
+  const slots = FORMS[form], pool = squadOf(cid).filter(p => avail(p.id));
+  const q = (p, pos) => fitIn(p, pos) * (rest ? (0.72 + 0.28 * ps(p.id).cond / 100) : 1);
+  const { xi, v } = pickXI(slots, pool, q), used = new Set(xi.filter(Boolean));
   const bench = pool.filter(p => !used.has(p.id)).sort((a, b) => ovrNow(b) - ovrNow(a));
   const gk = bench.find(p => p.prim === 'GK'), rest2 = bench.filter(p => p !== gk);
-  return { xi, bench: [gk, ...rest2].filter(Boolean).slice(0, 7).map(p => p.id) };
+  return { xi, bench: [gk, ...rest2].filter(Boolean).slice(0, 7).map(p => p.id), score: v };
 }
+// the formation that suits a squad best, by the same rules
+function bestForm(cid, rest){ let best = FORM_ORDER[0], bv = -Infinity; for (const f of FORM_ORDER){ const v = bestXI(cid, f, rest).score; if (v > bv){ bv = v; best = f; } } return best; }
 function setPieces(cid, xi){
   const L = xi.filter(Boolean).map(id => P.get(id)), best = k => (L.filter(p => p.prim !== 'GK').sort((a, b) => A(b, k) - A(a, k))[0] || {}).id;
   const cap = L.slice().sort((a, b) => (b.age + ovrNow(b) / 4) - (a.age + ovrNow(a) / 4))[0];
   return { cap: cap && cap.id, pen: best('pk'), fk: best('pk'), cor: best('cu') };
 }
 function autoTactic(cid){
-  let best = '4-2-3-1', bv = -1;
-  for (const f of Object.keys(FORMS)){ const { xi } = bestXI(cid, f); const v = xi.reduce((t, id, i) => t + (id ? fitIn(P.get(id), FORMS[f][i][0]) : 0), 0); if (v > bv){ bv = v; best = f; } }
-  const { xi, bench } = bestXI(cid, best);
+  const best = bestForm(cid), { xi, bench } = bestXI(cid, best);
   const q = club(cid).q || 75, top = Math.max(...D.clubs.map(c => c.q)), r0 = rng(`t-${cid}`);
   return { form: best, xi, bench, men: q >= top - 3 ? 3 : q < top - 9 ? 1 : 2, pass: [0, 1, 2, 0][Math.floor(r0() * 4)], tack: 1, press: q >= top - 5, offside: r0() < .3, counter: q < top - 6, mbb: q < top - 10, set: setPieces(cid, xi), pi: {} };
 }
 // before a match: anyone unavailable leaves the eleven; for every club but yours, rotation as well
 function readyTactic(cid){
   const t = S.tac[cid];
-  if (cid !== me()){ const f = bestXI(cid, t.form, true); t.xi = f.xi; t.bench = f.bench; t.set = setPieces(cid, t.xi); return t; }
+  if (cid !== me()){ if (!FORMS[t.form]) t.form = bestForm(cid);
+    let f = bestXI(cid, t.form, true);
+    // someone would have to play out of position (injuries, bans): the shape that fits who is left
+    if (f.xi.some((id, i) => !id || !canPlay(P.get(id), FORMS[t.form][i][0]))){ t.form = bestForm(cid, true); f = bestXI(cid, t.form, true); }
+    t.xi = f.xi; t.bench = f.bench; t.set = setPieces(cid, t.xi); return t; }
   const slots = FORMS[t.form];
   t.xi = t.xi.map(id => id && avail(id) ? id : null); t.bench = t.bench.filter(id => avail(id) && !t.xi.includes(id));
   const used = new Set([...t.xi, ...t.bench].filter(Boolean));
   t.xi = t.xi.map((id, i) => { if (id) return id;
-    const cand = [...t.bench.map(x => P.get(x)), ...squadOf(cid).filter(p => avail(p.id) && !used.has(p.id))].filter(Boolean).sort((a, b) => fitIn(b, slots[i][0]) - fitIn(a, slots[i][0]))[0];
+    const tier = p => { const k = fitTier(p, slots[i][0]); return k < 0 ? 99 : k; };
+    const cand = [...t.bench.map(x => P.get(x)), ...squadOf(cid).filter(p => avail(p.id) && !used.has(p.id))].filter(Boolean).sort((a, b) => tier(a) - tier(b) || fitIn(b, slots[i][0]) - fitIn(a, slots[i][0]))[0];
     if (cand){ used.add(cand.id); t.bench = t.bench.filter(x => x !== cand.id); return cand.id; } return null; });
   const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => t.xi.includes(v)));
   t.set = Object.assign(setPieces(cid, t.xi), keep);
@@ -656,9 +714,14 @@ function injure(M, side, who_){
 }
 function substitute(M, side, out, forced, inId){
   if (side.subs >= 5) return false;
-  const pos = out.pos, cands = side.bench.map(id => P.get(id)).filter(p => p && avail(p.id));
-  const p = inId ? P.get(inId) : cands.sort((a, b) => fitIn(b, pos) - fitIn(a, pos))[0];
+  let pos = out.pos; const cands = side.bench.map(id => P.get(id)).filter(p => p && avail(p.id)), tier = (p, c) => { const k = fitTier(p, c); return k < 0 ? 99 : k; };
+  const p = inId ? P.get(inId) : cands.sort((a, b) => tier(a, pos) - tier(b, pos) || fitIn(b, pos) - fitIn(a, pos))[0];
   if (!p) return false;
+  if (!canPlay(p, pos)){   // he does not play there: a team-mate who does moves over, and he takes that one's place
+    const mate = side.on.find(y => y !== out && !y.off && canPlay(y.p, pos) && canPlay(p, y.pos));
+    if (mate){ const was = mate.pos; mate.pos = pos; pos = was; }
+    else if (!forced && side.cid === me()){ toast(`${cmName(p.n)} does not play ${pos}, and nobody on the pitch can make room for him.`); return false; }
+  }
   side.bench = side.bench.filter(id => id !== p.id);
   const i = side.on.indexOf(out), x = { id: p.id, p, pos, e: 100, st: A(p, 'st'), sub: M.min };
   side.on.splice(i, 1, x); out.off = true; side.subs++; side.subbed.push([out.id, p.id, M.min]);
@@ -1016,7 +1079,10 @@ function saveAs(name){
 function adopt(s){
   if (!(s && s.v === 2 && C.has(s.club) && Object.keys(s.table).length === D.clubs.length && Object.keys(s.table).every(id => C.has(+id)))) return false;
   S = s;
-  for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x)); }
+  for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x));
+    // a shape from before the PES presets: the club's best preset, the same players placed by the rules
+    if (!FORMS[t.form]){ const ids = t.xi.filter(Boolean); t.form = bestForm(+id); const sl = FORMS[t.form]; t.xi = placeXI(sl, ids.map(x => P.get(x)));
+      if (t.xi.filter(Boolean).length < Math.min(11, ids.length)) Object.assign(t, bestXI(+id, t.form)); } }
   for (const p of D.players) if (!S.con[p.id]) S.con[p.id] = contractFor(p);
   longInjured();
   if (!S.slot){ S.slot = 'Game in play'; save(); try { localStorage.removeItem(STORE); } catch (e) {} }
@@ -1195,10 +1261,12 @@ function toggleSel(id){
   if (t.bench.includes(id)){ t.bench = t.bench.filter(x => x !== id); save(); return; }
   if (!avail(id)){ toast('He is not available.'); return; }
   if (TARGET != null){
-    if (typeof TARGET === 'number'){ const old = t.xi[TARGET]; t.xi[TARGET] = id; if (old && t.bench.length < 7) t.bench.push(old); }
+    if (typeof TARGET === 'number'){ const code = FORMS[t.form][TARGET][0]; if (!canPlay(P.get(id), code)){ toast(`${cmName(P.get(id).n)} does not play ${code}.`); return; } const old = t.xi[TARGET]; t.xi[TARGET] = id; if (old && t.bench.length < 7) t.bench.push(old); }
     else { const j = +TARGET.slice(1); if (j < t.bench.length) t.bench[j] = id; else if (t.bench.length < 7) t.bench.push(id); }
     TARGET = null; save(); return; }
-  const i = t.xi.indexOf(null); if (i >= 0) t.xi[i] = id; else if (t.bench.length < 7) t.bench.push(id); else toast('Your side and substitutes are full.');
+  // the first free place in the side that he plays, his main position first; otherwise the bench
+  const sl = FORMS[t.form], free = t.xi.map((x, j) => j).filter(j => !t.xi[j] && canPlay(P.get(id), sl[j][0])).sort((a, b) => fitTier(P.get(id), sl[a][0]) - fitTier(P.get(id), sl[b][0]));
+  if (free.length) t.xi[free[0]] = id; else if (t.bench.length < 7) t.bench.push(id); else toast('Your side and substitutes are full.');
   save();
 }
 function wirePlayers(list){ document.querySelectorAll('[data-pl]').forEach(r => r.addEventListener('click', e => { if (e.target.closest('[data-sel],[data-bench]')) return; go({ s: 'player', id: +r.dataset.pl, list }); })); }
@@ -1285,7 +1353,7 @@ function tacticHint(t){
 }
 function clubTactics(cid, o){
   const t = S.tac[me()], slots = FORMS[t.form], sub = V.sub || 'overview', inXI = new Set(t.xi), onB = new Set(t.bench);
-  const fitCls = (p, pos) => { if (!p) return 'empty'; const d = ovrNow(p) - fitIn(p, pos); return d <= 2 ? '' : d <= 8 ? 'ok' : 'bad'; };
+  const fitCls = (p, pos) => { if (!p) return 'empty'; const k = fitTier(p, pos); return k < 0 ? 'bad' : k >= 2 ? 'ok' : ''; };
   const strength = Math.round(t.xi.reduce((s, id, i) => s + (id ? fitIn(P.get(id), slots[i][0]) : 0), 0) / 11);
   const pickPos = PICK && PICK.slot != null ? slots[PICK.slot][0] : null;
   const others = squadOf(me()).filter(p => !inXI.has(p.id)).sort((a, b) => pickPos ? fitIn(b, pickPos) - fitIn(a, pickPos) : (onB.has(b.id) - onB.has(a.id)) || ovrNow(b) - ovrNow(a));
@@ -1298,18 +1366,20 @@ function clubTactics(cid, o){
   const spSel = (k, n) => `<span class="yel"><b>${n}</b></span><select class="dd" data-sp="${k}">${xiPlayers.map(p => `<option value="${p.id}" ${t.set && t.set[k] === p.id ? 'selected' : ''}>${esc(cmName(p.n))}</option>`).join('')}</select>`;
   let right;
   if (sub === 'overview') right = `<div class="pitch"><div class="bx t"></div><div class="bx"></div>${slots.map(([pos, x, y], i) => { const p = t.xi[i] ? P.get(t.xi[i]) : null; return `<button class="slot ${fitCls(p, pos)} ${PICK && PICK.slot === i ? 'pick' : ''}" data-slot="${i}" style="left:${x}%;top:${y}%"><span class="dot">${p ? (p.no || '•') : '+'}</span><span class="nm">${p ? esc(surname(p.n)) : pos}</span></button>`; }).join('')}</div>
-    <p class="small dim c">Click a place (on the pitch or in the list), then a player to put him there, or two places to swap. Orange ring: out of position; red: far out.</p>`;
+    <p class="small dim c">Click a place (on the pitch or in the list), then a player to put him there, or two places to swap. A player goes only where he is registered (as in the Draft). Orange ring: a position he rarely plays; red: not his position (only when nobody else can fill it).</p>`;
   if (sub === 'team') right = `<div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('counter', 'Counter Attack')}${tog('mbb', 'Men Behind Ball')}</span></div><p class="small" style="margin-top:10px">${tacticHint(t)}</p>`;
   if (sub === 'player'){ const id = PICK && PICK.pi || t.xi.find(Boolean), p = id && P.get(id);
     right = p ? `<div class="ptitle">${esc(p.n)}</div><div class="instr">${PI.map(([k, n, opts]) => { const v = t.pi && t.pi[id] && t.pi[id][k]; return `<span class="yel"><b>${n}</b></span><select class="dd" data-pi="${id}|${k}"><option value="" ${v == null ? 'selected' : ''}>As the team</option>${opts.map((x, i) => `<option value="${i}" ${v === i ? 'selected' : ''}>${x}</option>`).join('')}</select>`; }).join('')}</div><p class="small dim">Pick another player in the list to give him his own instructions.</p>` : '<p class="empty">Pick your side first.</p>'; }
   if (sub === 'set') right = `<div class="instr">${spSel('cap', 'Captain')}${spSel('pen', 'Penalties')}${spSel('fk', 'Free Kicks')}${spSel('cor', 'Corners')}</div>`;
-  o.act = `<select class="dd" id="form" aria-label="Formation">${Object.keys(FORMS).map(f => `<option ${f === t.form ? 'selected' : ''}>${f}</option>`).join('')}</select>`;
+  o.act = `<select class="dd" id="form" aria-label="Formation">${FORM_ORDER.map(f => `<option ${f === t.form ? 'selected' : ''}>${f}</option>`).join('')}</select>`;
   o.tools = `<span class="seg" id="tsub">${[['overview', 'Overview'], ['team', 'Team Instructions'], ['player', 'Player Instructions'], ['set', 'Set Pieces']].map(([k, n]) => `<button data-v="${k}" class="${sub === k ? 'on' : ''}">${n}</button>`).join('')}</span><span style="flex:1"></span><button class="btn sm" id="auto">Assistant's choice</button>`;
   o.title = `${esc(club(me()).name)} Tactics`;
   o.body = `<div class="tac" style="--k1:${kitOf(me())[0]};--k2:${kitOf(me())[1]}"><div>${list}</div><div>${right}</div></div>`;
   frame(o);
-  $('#form').addEventListener('change', e => { const f = e.target.value, ids = t.xi.filter(Boolean), sl = FORMS[f], xi = Array(11).fill(null), used = new Set();
-    sl.map((s, i) => i).sort((a, b) => (sl[a][0] === 'GK' ? -1 : 0) - (sl[b][0] === 'GK' ? -1 : 0)).forEach(i => { let b = null, bv = -1; for (const id of ids) if (!used.has(id)){ const v = fitIn(P.get(id), sl[i][0]); if (v > bv){ bv = v; b = id; } } if (b){ xi[i] = b; used.add(b); } });
+  $('#form').addEventListener('change', e => { const f = e.target.value, ids = t.xi.filter(Boolean), sl = FORMS[f];
+    // the same eleven in the new shape, by the placement rules; anyone with no place he plays drops to the bench
+    const xi = placeXI(sl, ids.map(id => P.get(id))).map((id, i) => id && canPlay(P.get(id), sl[i][0]) ? id : null);
+    for (const id of ids) if (!xi.includes(id) && !t.bench.includes(id) && t.bench.length < 7) t.bench.push(id);
     t.form = f; t.xi = xi; PICK = null; save(); view(); });
   $('#auto').addEventListener('click', () => { const a = autoTactic(me()); Object.assign(t, { form: a.form, xi: a.xi, bench: a.bench, set: a.set }); PICK = null; save(); view(); });
   document.querySelectorAll('#tsub button').forEach(b => b.addEventListener('click', () => { V = { ...V, sub: b.dataset.v }; view(); }));
@@ -1319,12 +1389,15 @@ function clubTactics(cid, o){
   document.querySelectorAll('[data-pi]').forEach(s => s.addEventListener('change', () => { const [id, k] = s.dataset.pi.split('|'); t.pi = t.pi || {}; t.pi[id] = t.pi[id] || {}; if (s.value === '') delete t.pi[id][k]; else t.pi[id][k] = +s.value; save(); }));
   document.querySelectorAll('[data-slot]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.slot;
     if (sub === 'player'){ if (t.xi[i]) PICK = { pi: t.xi[i] }; view(); return; }
-    if (PICK && PICK.slot != null && PICK.slot !== i){ [t.xi[i], t.xi[PICK.slot]] = [t.xi[PICK.slot], t.xi[i]]; PICK = null; save(); }
+    if (PICK && PICK.slot != null && PICK.slot !== i){ const a = t.xi[PICK.slot] && P.get(t.xi[PICK.slot]), b2 = t.xi[i] && P.get(t.xi[i]);
+      if (a && !canPlay(a, slots[i][0])) toast(`${cmName(a.n)} does not play ${slots[i][0]}.`); else if (b2 && !canPlay(b2, slots[PICK.slot][0])) toast(`${cmName(b2.n)} does not play ${slots[PICK.slot][0]}.`);
+      else [t.xi[i], t.xi[PICK.slot]] = [t.xi[PICK.slot], t.xi[i]]; PICK = null; save(); }
     else if (PICK && PICK.slot === i) PICK = null; else PICK = { slot: i };
     view(); }));
   document.querySelectorAll('[data-put]').forEach(r => r.addEventListener('click', e => { if (e.target.closest('[data-bench]')) return; const id = +r.dataset.put;
     if (!PICK || PICK.slot == null){ go({ s: 'player', id }); return; }
     if (!avail(id)){ toast('He is not available.'); return; }
+    if (!canPlay(P.get(id), slots[PICK.slot][0])){ toast(`${cmName(P.get(id).n)} does not play ${slots[PICK.slot][0]}.`); return; }
     const old = t.xi[PICK.slot]; t.xi[PICK.slot] = id; t.bench = t.bench.filter(x => x !== id); if (old && t.bench.length < 7) t.bench.push(old); PICK = null; save(); view(); }));
   document.querySelectorAll('[data-bench]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const id = +b.dataset.bench; if (t.bench.includes(id)) t.bench = t.bench.filter(x => x !== id); else if (t.bench.length < 7) t.bench.push(id); else toast('Seven substitutes at most.'); save(); view(); }));
 }
@@ -1726,7 +1799,7 @@ function wireMatchPanel(){
   document.querySelectorAll('[data-off]').forEach(b => b.addEventListener('click', () => { L.sel = { off: +b.dataset.off, on: L.sel && L.sel.on }; trySub(); }));
   document.querySelectorAll('[data-on]').forEach(b => b.addEventListener('click', () => { L.sel = { on: +b.dataset.on, off: L.sel && L.sel.off }; trySub(); }));
 }
-function trySub(){ const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A; if (L.sel && L.sel.off && L.sel.on){ const out = us.on.find(x => x.id === L.sel.off); if (!out || !substitute(M, us, out, false, L.sel.on)) toast('No more substitutions allowed.'); L.sel = null; } viewMatch(); }
+function trySub(){ const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A; if (L.sel && L.sel.off && L.sel.on){ const out = us.on.find(x => x.id === L.sel.off); if (us.subs >= 5) toast('No more substitutions allowed.'); else if (out) substitute(M, us, out, false, L.sel.on); L.sel = null; } viewMatch(); }
 function run(){
   clearTimeout(TIMER);
   const L = LIVE; if (!L || L.paused) return;
