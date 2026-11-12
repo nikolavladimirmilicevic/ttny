@@ -765,7 +765,7 @@ function units(side, M){
 }
 const logit = x => 1 / (1 + Math.exp(-x));
 const WHO = {
-  shot: { ST: 7.5, W: 6.2, AM: 4.4, CM: 2.6, WM: 3.4, DM: 1.1, FB: 1, CB: .7, GK: 0 },   // goals spread like the league's: a top scorer in the high 20s to mid 30s
+  shot: { ST: 6.8, W: 5.8, AM: 4.3, CM: 2.6, WM: 3.4, DM: 1.1, FB: 1.0, CB: .7, GK: 0 },   // goals spread like the league's: a top scorer from the mid 20s to the high 30s (recalibrated 12.11.2026)
   head: { ST: 7, CB: 5, W: 2, AM: 1.5, CM: 2, WM: 1.5, DM: 2, FB: 1, GK: 0 },
   pass: { AM: 8, CM: 6, WM: 5, W: 5, ST: 3, DM: 3, FB: 3, CB: 1, GK: 0 },
   tackle: { CB: 7, DM: 7, FB: 5, CM: 4, WM: 2, AM: 1, W: 1, ST: .5, GK: 0 },
@@ -776,7 +776,7 @@ const WHO = {
 function who(side, kind, attr, not){
   const t = side.t, L = side.on.filter(x => x !== not && x.pos !== 'GK');
   if (!L.length) return side.on[0];
-  const ws = L.map(x => { let w = (WHO[kind][ROLE[x.pos]] || 1) * Math.pow(A(x.p, attr || 'oa') / 70, kind === 'foul' ? 1.2 : kind === 'shot' ? 2 : 3) * (0.6 + 0.4 * x.e / 100);
+  const ws = L.map(x => { let w = (WHO[kind][ROLE[x.pos]] || 1) * Math.pow(A(x.p, attr || 'oa') / 70, kind === 'foul' ? 1.2 : kind === 'shot' ? 1.6 : 3) * (0.6 + 0.4 * x.e / 100);
     if (kind === 'foul'){ if ((side.ev[x.id] || {}).yc) w *= .3; w *= [.6, 1, 1.5][piOf(t, x.id, 'tack', t.tack)]; }
     if (kind === 'shot') w *= [.6, 1, 1.5][piOf(t, x.id, 'runs', 1)] * (piOf(t, x.id, 'free', 0) ? 1.2 : 1);
     if (kind === 'pass') w *= [.7, 1, 1.4][piOf(t, x.id, 'tb', 1)] * (piOf(t, x.id, 'free', 0) ? 1.3 : 1);
@@ -822,7 +822,7 @@ function shot(M, S1, S2, u1, u2, kind, forced){
   const keep = gk ? u2.gk : 35;
   const base = { open: .17, head: .12, fk: .07, far: .045, pen: .76, counter: .2, offside: .32 }[kind];
   const q = kind === 'pen' ? base * (0.8 + 0.2 * A(x.p, 'pk') / 75) * (1.08 - 0.08 * keep / 75)
-    : base * Math.exp((skill * eff(S1, x) - keep) / 26) * (kind === 'open' ? (0.8 + 0.4 * logit((u1.cre - u2.def) / 14)) : 1) * (M.wk === 2 && kind !== 'head' ? .92 : 1);
+    : base * Math.exp((skill * eff(S1, x) - keep) / 30) * (kind === 'open' ? (0.8 + 0.4 * logit((u1.cre - u2.def) / 14)) : 1) * (M.wk === 2 && kind !== 'head' ? .92 : 1);
   const onT = kind === 'pen' ? .92 : Math.max(q + .05, Math.min(.55, .31 + .1 * (skill - 65) / 20));
   S1.sh++; evAdd(S1, x, 'sh');
   const assist = ['open', 'head', 'counter'].includes(kind) ? (Math.random() < .78 ? who(S1, 'pass', kind === 'head' ? 'lf' : 'lp', x) : null) : null;
@@ -893,7 +893,7 @@ function aiManage(M, side){
 function minute(M){
   const H = M.H, Aw = M.A, uh = units(H, M), ua = units(Aw, M);
   // possession: the midfields; pressing hurts a short-passing side; men behind the ball give it away
-  let x = (uh.mid - ua.mid) / 26 + (uh.cre - ua.cre) / 50;
+  let x = (uh.mid - ua.mid) / 39 + (uh.cre - ua.cre) / 70;
   if (Aw.t.press && H.t.pass === 2) x -= .08; if (H.t.press && Aw.t.pass === 2) x += .08;
   if (H.t.mbb) x -= .15; if (Aw.t.mbb) x += .15;
   const att = Math.random() < logit(x) ? H : Aw, def = att === H ? Aw : H, u1 = att === H ? uh : ua, u2 = att === H ? ua : uh;
@@ -914,10 +914,10 @@ function minute(M){
       if (Math.random() < .62 + (read - A(fw.p, 'oa')) / 60){ att.off++; if (M.live && Math.random() < .5) say(M, att, 'minor', `${nm(fw)} is caught offside. The trap works.`); zone = 1; }
       else { say(M, att, '', `${nm(fw)} times his run and beats the offside trap!`); shot(M, att, def, u1, u2, 'offside', fw); }
     } else {
-      const q = logit((u1.att * .55 + u1.cre * .45 - u2.def) / 28);
+      const q = logit((u1.att * .55 + u1.cre * .45 - u2.def) / 40);
       // game state: a side three up eases off and keeps the ball, one two up late on sits a little deeper
       const lead = att.goals - def.goals, ease = lead >= 3 ? .62 : lead === 2 && M.min >= 70 ? .88 : 1;
-      if (Math.random() < q * .815 * ease){
+      if (Math.random() < q * .82 * ease){
         const t = att.t, lsBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'ls', 1) - 1), 0) * .012, crBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'cross', 1) - 1), 0) * .02 + (t.pass === 3 ? .06 : 0);
         const k = Math.random();
         if (k < .017){ const f = who(def, 'foul', 'ag'); say(M, att, 'yel', `Penalty! ${nm(f)} brings his man down in the box.`); rateAdd(def, f, -.4); shot(M, att, def, u1, u2, 'pen', att.on.find(y => y.id === (t.set || {}).pen)); }
