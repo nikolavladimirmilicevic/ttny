@@ -376,6 +376,8 @@ const FORM_ORDER = Object.keys(FORMS).sort();
    possible in their main position, then in a strong other one (half or more of his main position's starts), then
    in their less played ones, and only then the better player. Solved exactly (Hungarian method). A position he is
    not registered in is used only when no squad member can fill it (injuries, bans). */
+// the matchday squad: eleven and nine substitutes, five of whom may come on (Premier League Rule L.29)
+let BENCH = 9;
 const isWeak = (p, code) => { if (!p.pc) return code !== p.prim; const i = p.pos.indexOf(code); return i < 0 || p.pc[i] <= Math.max(...p.pc) / 2; };
 function fitTier(p, code){ const r = p.pos.indexOf(code); if (r < 0) return -1; if (code === p.prim) return 0; return isWeak(p, code) ? 1 + Math.min(r, 5) : 1; }
 const canPlay = (p, code) => !!p && p.pos.includes(code);
@@ -443,7 +445,7 @@ function buildRounds(ids, seed){
   const rounds = [];
   if (real.length >= ids.length * (ids.length - 1) * .95){
     const by = new Map();
-    for (const [date, round, h, a] of real){ const n = parseInt(String(round).replace(/\D+/g, ''), 10) || 0; if (!by.has(n)) by.set(n, { date, m: [] }); const r = by.get(n); r.m.push({ h, a }); if (date < r.date) r.date = date; }
+    for (const [date, round, h, a, ko, tv] of real){ const n = parseInt(String(round).replace(/\D+/g, ''), 10) || 0; if (!by.has(n)) by.set(n, { date, m: [] }); const r = by.get(n); r.m.push({ h, a, ...(ko ? { ko } : {}), ...(tv ? { tv } : {}) }); if (date < r.date) r.date = date; }
     [...by.keys()].sort((a, b) => a - b).forEach(k => rounds.push(by.get(k)));
     for (let i = 1; i < rounds.length; i++) if (rounds[i].date <= rounds[i - 1].date) rounds[i].date = day(rounds[i - 1].date, 3);
   } else {
@@ -456,7 +458,7 @@ function buildRounds(ids, seed){
   }
   return rounds;
 }
-const CUP_NAMES = ['First round', 'Fourth round', 'Quarter-finals', 'Semi-finals', 'Final'];
+let CUP_NAMES = ['First round', 'Fourth round', 'Quarter-finals', 'Semi-finals', 'Final'], CUP = 'Cup';
 // what the board want, by how the club's squad ranks in the league
 const AIMS = [
   { name: 'Serious title challenge', pos: 1, text: 'Nothing less than the title will satisfy them.' },
@@ -469,12 +471,22 @@ const aimFor = rank => rank <= 2 ? 0 : rank <= 6 ? 1 : rank <= 11 ? 2 : rank <= 
 // fictional referees, each with his own strictness
 const REF_FIRST = ['Martin', 'Simon', 'Paul', 'Andrew', 'Chris', 'David', 'Robert', 'Gavin', 'Tony', 'Darren', 'Stuart', 'Michael', 'Craig', 'Jarred', 'Lee', 'Tim'];
 const REF_LAST = ['Harlow', 'Pemberton', 'Ashby', 'Kendrick', 'Moorcroft', 'Ellison', 'Brannigan', 'Hollis', 'Whitcombe', 'Danvers', 'Featherby', 'Garside', 'Lowther', 'Ormerod', 'Pickering', 'Rendall'];
+// where the board expect a club to finish: the squad's strength counts most, last season's place too (promoted: 18th)
+function expRank(cid){
+  const q = D.clubs.slice().sort((a, b) => b.q - a.q).map(c => c.id), last = c => c.last === 'promoted' ? 18 : (c.last && c.last.pos) || q.indexOf(c.id) + 1;
+  return D.clubs.slice().sort((a, b) => (q.indexOf(a.id) + 1) * .6 + last(a) * .4 - ((q.indexOf(b.id) + 1) * .6 + last(b) * .4) || b.q - a.q).findIndex(c => c.id === cid) + 1;
+}
 function newGame(cid, manager){
   const ids = D.clubs.map(c => c.id), seed = `${D.season}-${cid}-${Date.now()}`, r0 = rng(seed);
   const rounds = buildRounds(ids, seed);
   const cupR = [1, 2, 3, 4, 5].map(k => Math.round(rounds.length * k / 6));
-  const cupDates = cupR.map(i => day(rounds[i - 1].date, 3));
-  const rank = D.clubs.slice().sort((a, b) => b.q - a.q).findIndex(c => c.id === cid) + 1, aim = aimFor(rank);
+  let cupDates = cupR.map(i => day(rounds[i - 1].date, 3));
+  if (D.cup && (D.cup.rounds || []).length >= 5){
+    const busy = d => rounds.some(r => r.date === d);
+    cupDates = D.cup.rounds.slice(-5).map(([, d]) => { if (!busy(d)) return d; for (const k of [-3, 3, -4, 4, -7]){ const e = day(d, k); if (!busy(e)) return e; } return d; });
+    cupDates = cupDates.map((d, i) => i && d <= cupDates[i - 1] ? day(cupDates[i - 1], 7) : d);
+  }
+  const rank = expRank(cid), aim = aimFor(rank);
   const refs = REF_FIRST.map((f, i) => ({ n: `${f} ${REF_LAST[(i * 7 + 3) % REF_LAST.length]}`, s: 5 + Math.floor(r0() * 12) }));
   const q = club(cid).q;
   S = { v: 2, club: cid, manager: manager || 'The manager', season: D.season, seed, rounds, round: 0, cupDates, cup: { stage: 0, alive: ids.slice(), log: [] },
@@ -488,7 +500,9 @@ function newGame(cid, manager){
   for (const id of ids) S.tac[id] = autoTactic(id);
   const a = AIMS[aim];
   news('board', `Welcome to ${club(cid).name}`, `The chairman has appointed ${esc(S.manager)} as manager. The board's expectation for the season: <b>${a.name}</b>. ${a.text}`);
-  news('club', 'Your first match', `The league starts on ${fmtDate(rounds[0].date, true)} with ${matchLine(rounds[0].m.find(m => m.h === cid || m.a === cid))}. The cup's first round is on ${fmtDate(cupDates[0])}.`);
+  news('club', 'Your first match', `The league starts on ${fmtDate(rounds[0].date, true)} with ${matchLine(rounds[0].m.find(m => m.h === cid || m.a === cid))}. The ${esc(CUP)} starts with the ${CUP_NAMES[0].toLowerCase()} on ${fmtDate(cupDates[0])}.`);
+  const lc = club(cid), ch = D.last_season && club(D.last_season.champion);
+  if (ch) news('club', 'Last season', `${esc(ch.name)} are the champions of ${D.season - 1}/${String(D.season % 100).padStart(2, '0')}${ch.last && ch.last.pts ? ` with ${ch.last.pts} points` : ''}. ${lc === ch ? `You take over the champions (${lc.last.w} won, ${lc.last.d} drawn, ${lc.last.l} lost), and the board expect them to defend the title.` : lc.last === 'promoted' ? `${esc(lc.name)} come up from the Championship, and staying up is the first job.` : lc.last && lc.last.pos ? `${esc(lc.name)} finished ${ordinal(lc.last.pos)} with ${lc.last.pts} points (${lc.last.w} won, ${lc.last.d} drawn, ${lc.last.l} lost).` : ''}`);
   news('club', 'The backroom staff', 'Your assistant has picked a side and a formation to suit the squad. Look them over under Tactics, and set the training schedule under Training. Press Continue to move the calendar on.');
   save();
 }
@@ -521,7 +535,7 @@ function bestXI(cid, form, rest){
   const { xi, v } = pickXI(slots, pool, q), used = new Set(xi.filter(Boolean));
   const bench = pool.filter(p => !used.has(p.id)).sort((a, b) => ovrNow(b) - ovrNow(a));
   const gk = bench.find(p => p.prim === 'GK'), rest2 = bench.filter(p => p !== gk);
-  return { xi, bench: [gk, ...rest2].filter(Boolean).slice(0, 7).map(p => p.id), score: v };
+  return { xi, bench: [gk, ...rest2].filter(Boolean).slice(0, BENCH).map(p => p.id), score: v };
 }
 // the formation that suits a squad best, by the same rules
 function bestForm(cid, rest){ let best = FORM_ORDER[0], bv = -Infinity; for (const f of FORM_ORDER){ const v = bestXI(cid, f, rest).score; if (v > bv){ bv = v; best = f; } } return best; }
@@ -937,7 +951,7 @@ function finishCup(myM, others){
   for (const t of cur.ties){ const done = myM && t.h === myM.h && t.a === myM.a ? myM : (others || []).find(x => x.h === t.h && x.a === t.a); const M = done ? playOut(done) : playOut(newMatch(t.h, t.a, { cup: CUP_NAMES[cur.stage], date: S.date })); apply(M, 'cup'); res.push(summary(M)); }
   S.cup.log.push({ stage: cur.stage, res, date: S.date }); S.cup.alive = [...cur.bye, ...res.map(r => r.w)]; S.cup.stage++; delete S.cup.cur;
   afterMatchday(res, 'cup', CUP_NAMES[cur.stage]);
-  if (S.cup.stage === 5){ const w = S.cup.alive[0]; news('club', 'The cup final', w === me() ? `You have won the cup! ${esc(club(w).name)} lift the trophy, and the board are thrilled.` : `${esc(club(w).name)} win the cup.`); if (w === me()){ S.conf = Math.min(100, S.conf + 15); (S.hist = S.hist || []).push({ d: S.date, c: me(), t: 'Won the cup' }); } }
+  if (S.cup.stage === 5){ const w = S.cup.alive[0]; news('club', `The ${CUP} final`, w === me() ? `You have won the ${esc(CUP)}! ${esc(club(w).name)} lift the trophy, and the board are thrilled.` : `${esc(club(w).name)} win the ${esc(CUP)}.`); if (w === me()){ S.conf = Math.min(100, S.conf + 15); (S.hist = S.hist || []).push({ d: S.date, c: me(), t: `Won the ${CUP}` }); } }
   if (S.round >= S.rounds.length && S.cup.stage >= 5) endSeason();
   save();
 }
@@ -1284,26 +1298,26 @@ function clubSquad(cid, o){
   if (mine){ $('#clearxi').addEventListener('click', () => { t.xi = Array(11).fill(null); t.bench = []; save(); view(); });
     $('#autoxi').addEventListener('click', () => { const f = bestXI(me(), t.form, true); t.xi = f.xi; t.bench = f.bench; t.set = setPieces(me(), t.xi); save(); view(); }); }
 }
-function nextFree(){ const t = S.tac[me()], i = t.xi.indexOf(null); if (i >= 0) return FORMS[t.form][i][0]; return t.bench.length < 7 ? 'S' + (t.bench.length + 1) : null; }
+function nextFree(){ const t = S.tac[me()], i = t.xi.indexOf(null); if (i >= 0) return FORMS[t.form][i][0]; return t.bench.length < BENCH ? 'S' + (t.bench.length + 1) : null; }
 function toggleSel(id){
   const t = S.tac[me()];
   if (t.xi.includes(id)){ t.xi[t.xi.indexOf(id)] = null; save(); return; }
   if (t.bench.includes(id)){ t.bench = t.bench.filter(x => x !== id); save(); return; }
   if (!avail(id)){ toast('He is not available.'); return; }
   if (TARGET != null){
-    if (typeof TARGET === 'number'){ const code = FORMS[t.form][TARGET][0]; if (!canPlay(P.get(id), code)){ toast(`${cmName(P.get(id).n)} does not play ${code}.`); return; } const old = t.xi[TARGET]; t.xi[TARGET] = id; if (old && t.bench.length < 7) t.bench.push(old); }
-    else { const j = +TARGET.slice(1); if (j < t.bench.length) t.bench[j] = id; else if (t.bench.length < 7) t.bench.push(id); }
+    if (typeof TARGET === 'number'){ const code = FORMS[t.form][TARGET][0]; if (!canPlay(P.get(id), code)){ toast(`${cmName(P.get(id).n)} does not play ${code}.`); return; } const old = t.xi[TARGET]; t.xi[TARGET] = id; if (old && t.bench.length < BENCH) t.bench.push(old); }
+    else { const j = +TARGET.slice(1); if (j < t.bench.length) t.bench[j] = id; else if (t.bench.length < BENCH) t.bench.push(id); }
     TARGET = null; save(); return; }
   // the first free place in the side that he plays, his main position first; otherwise the bench
   const sl = FORMS[t.form], free = t.xi.map((x, j) => j).filter(j => !t.xi[j] && canPlay(P.get(id), sl[j][0])).sort((a, b) => fitTier(P.get(id), sl[a][0]) - fitTier(P.get(id), sl[b][0]));
-  if (free.length) t.xi[free[0]] = id; else if (t.bench.length < 7) t.bench.push(id); else toast('Your side and substitutes are full.');
+  if (free.length) t.xi[free[0]] = id; else if (t.bench.length < BENCH) t.bench.push(id); else toast('Your side and substitutes are full.');
   save();
 }
 function wirePlayers(list){ document.querySelectorAll('[data-pl]').forEach(r => r.addEventListener('click', e => { if (e.target.closest('[data-sel],[data-bench]')) return; go({ s: 'player', id: +r.dataset.pl, list }); })); }
 function nextFixture(cid){
   const L = [];
   for (let i = S.round; i < S.rounds.length; i++){ const m = S.rounds[i].m.find(x => x.h === cid || x.a === cid); if (m){ L.push({ date: S.rounds[i].date, comp: 'League', m }); break; } }
-  if (S.cup.stage < 5 && S.cup.alive.includes(cid)) L.push({ date: S.cupDates[S.cup.stage], comp: 'Cup · ' + CUP_NAMES[S.cup.stage], m: null });
+  if (S.cup.stage < 5 && S.cup.alive.includes(cid)) L.push({ date: S.cupDates[S.cup.stage], comp: CUP + ' · ' + CUP_NAMES[S.cup.stage], m: null });
   return L.sort((a, b) => a.date < b.date ? -1 : 1)[0];
 }
 function clubNext(cid, o){
@@ -1337,7 +1351,7 @@ function clubInfo(cid, o){
   if (mine){ const f = S.fin, max = Math.max(...f.wk.map(y => Math.abs(y.bal)), 1);
     fin = `<div><div class="ptitle">Finances</div><dl class="kv"><dt>Balance</dt><dd><b>${cash(f.bal)}</b></dd><dt>Transfer budget</dt><dd>${cash(f.budget)}</dd><dt>Wage bill</dt><dd>${wage(wk)}</dd><dt>Gate receipts</dt><dd>${cash(f.gate)}</dd><dt>TV and prize money</dt><dd>${cash(f.tv)}</dd><dt>Wages paid</dt><dd>${cash(f.wages)}</dd></dl>
       ${f.wk.length ? `<div style="display:flex;align-items:flex-end;gap:4px;height:90px;margin-top:10px">${f.wk.map(x => `<div style="flex:1;text-align:center" title="${cash(x.bal)}"><div style="height:${Math.round(70 * Math.abs(x.bal) / max)}px;background:${x.bal >= 0 ? 'var(--ok)' : 'var(--hot)'}"></div><div class="small dim">${new Date(x.m + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'short' })}</div></div>`).join('')}</div>` : ''}</div>`; }
-  o.body = `<div class="cols2"><div><div class="ptitle">General Info</div><dl class="kv"><dt>Stadium</dt><dd>${esc(c.venue || '')}</dd><dt>Capacity</dt><dd>${(c.cap || 0).toLocaleString('en-GB')}</dd><dt>City</dt><dd>${esc(c.city || '')}</dd><dt>League</dt><dd>${esc(D.league)}, ${S.round ? ordinal(pos) : '-'}</dd><dt>Squad</dt><dd>${sq.length} players, average age ${(sq.reduce((t, p) => t + p.age, 0) / sq.length).toFixed(1)}</dd><dt>Squad value</dt><dd>${cash(sq.reduce((t, p) => t + p.val, 0) * 1e6)}</dd>${mine ? `<dt>Board expect</dt><dd>${AIMS[S.aim].name}</dd>` : `<dt>Usual shape</dt><dd>${esc(S.tac[cid].form)}</dd>`}</dl></div>${fin}</div>`;
+  o.body = `<div class="cols2"><div><div class="ptitle">General Info</div><dl class="kv"><dt>Stadium</dt><dd>${esc(c.venue || '')}</dd><dt>Capacity</dt><dd>${(c.cap || 0).toLocaleString('en-GB')}${c.att ? ` <span class="small dim">(${c.att[1]}% full last season)</span>` : ''}</dd>${!mine && c.coach ? `<dt>Manager</dt><dd>${esc(c.coach)}</dd>` : ''}<dt>Last season</dt><dd>${c.last === 'promoted' ? 'Promoted from the Championship' : c.last && c.last.pos ? `${ordinal(c.last.pos)}, ${c.last.pts} pts` : '-'}</dd>${c.kitm ? `<dt>Kit</dt><dd>${esc(c.kitm)}${c.sponsor ? ', ' + esc(c.sponsor) : ''}</dd>` : ''}<dt>City</dt><dd>${esc(c.city || '')}</dd><dt>League</dt><dd>${esc(D.league)}, ${S.round ? ordinal(pos) : '-'}</dd><dt>Squad</dt><dd>${sq.length} players, average age ${(sq.reduce((t, p) => t + p.age, 0) / sq.length).toFixed(1)}</dd><dt>Squad value</dt><dd>${cash(sq.reduce((t, p) => t + p.val, 0) * 1e6)}</dd>${mine ? `<dt>Board expect</dt><dd>${AIMS[S.aim].name}</dd>` : `<dt>Usual shape</dt><dd>${esc(S.tac[cid].form)}</dd>`}</dl></div>${fin}</div>`;
   frame(o);
 }
 function lastResult(cid){ const L = allResults().filter(r => r.h === cid || r.a === cid).sort((a, b) => a.date < b.date ? -1 : 1); return L[L.length - 1]; }
@@ -1409,7 +1423,7 @@ function clubTactics(cid, o){
   $('#form').addEventListener('change', e => { const f = e.target.value, ids = t.xi.filter(Boolean), sl = FORMS[f];
     // the same eleven in the new shape, by the placement rules; anyone with no place he plays drops to the bench
     const xi = placeXI(sl, ids.map(id => P.get(id))).map((id, i) => id && canPlay(P.get(id), sl[i][0]) ? id : null);
-    for (const id of ids) if (!xi.includes(id) && !t.bench.includes(id) && t.bench.length < 7) t.bench.push(id);
+    for (const id of ids) if (!xi.includes(id) && !t.bench.includes(id) && t.bench.length < BENCH) t.bench.push(id);
     t.form = f; t.xi = xi; PICK = null; save(); view(); });
   $('#auto').addEventListener('click', () => { const a = autoTactic(me()); Object.assign(t, { form: a.form, xi: a.xi, bench: a.bench, set: a.set }); PICK = null; save(); view(); });
   document.querySelectorAll('#tsub button').forEach(b => b.addEventListener('click', () => { V = { ...V, sub: b.dataset.v }; view(); }));
@@ -1428,8 +1442,8 @@ function clubTactics(cid, o){
     if (!PICK || PICK.slot == null){ go({ s: 'player', id }); return; }
     if (!avail(id)){ toast('He is not available.'); return; }
     if (!canPlay(P.get(id), slots[PICK.slot][0])){ toast(`${cmName(P.get(id).n)} does not play ${slots[PICK.slot][0]}.`); return; }
-    const old = t.xi[PICK.slot]; t.xi[PICK.slot] = id; t.bench = t.bench.filter(x => x !== id); if (old && t.bench.length < 7) t.bench.push(old); PICK = null; save(); view(); }));
-  document.querySelectorAll('[data-bench]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const id = +b.dataset.bench; if (t.bench.includes(id)) t.bench = t.bench.filter(x => x !== id); else if (t.bench.length < 7) t.bench.push(id); else toast('Seven substitutes at most.'); save(); view(); }));
+    const old = t.xi[PICK.slot]; t.xi[PICK.slot] = id; t.bench = t.bench.filter(x => x !== id); if (old && t.bench.length < BENCH) t.bench.push(old); PICK = null; save(); view(); }));
+  document.querySelectorAll('[data-bench]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const id = +b.dataset.bench; if (t.bench.includes(id)) t.bench = t.bench.filter(x => x !== id); else if (t.bench.length < BENCH) t.bench.push(id); else toast('Seven substitutes at most.'); save(); view(); }));
 }
 
 /* ---- a player ---- */
@@ -1579,7 +1593,7 @@ function setupFlow(state, files){
       body: `${state === 'quick' ? '<p class="c dim small" style="margin-top:0">Pick a club and go straight to the first match day: the assistant has picked the side.</p>' : ''}<div class="two">${clubs.map(c2 => `<button class="nat" data-club="${c2.id}"><b>${esc(c2.name)}</b><span>ENG <em>PRM</em></span></button>`).join('')}</div>` }; }
   if (state === 'preview'){ const sq = squadOf(c.id).slice().sort((a, b) => ({ GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[a.prim]] - { GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[b.prim]]) || ovrNow(b) - ovrNow(a)), half = Math.ceil(sq.length / 2);
     const row = p => `<div class="sqr" style="cursor:default"><span></span><span class="nm ${ovrNow(p) < 66 && p.age <= 21 ? 'c-res' : ''}">${esc(cmName(p.n))}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
-    const rank = D.clubs.slice().sort((a, b) => b.q - a.q).findIndex(x => x.id === c.id) + 1;
+    const rank = expRank(c.id);
     return { title: esc(c.name), k1: (c.kit || [])[0], k2: (c.kit || [])[1], sub: `${AIMS[aimFor(rank)].name} · ${(c.cap || 0).toLocaleString('en-GB')} seats`, back: 'team', act: '<button class="btn y" id="take">Take Control</button>',
       body: `<div class="ptitle">Position(s)</div><div class="sq"><div>${sq.slice(0, half).map(row).join('')}</div><div>${sq.slice(half).map(row).join('')}</div></div>` }; }
   if (state === 'status') return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Manager Status', back: 'preview', nextLabel: 'Finish', next: () => { NEWG.file = NEWG.file || `${NEWG.first} ${NEWG.last}`.trim() + ' ' + c.name; to('file'); },
@@ -1615,7 +1629,7 @@ const SLOT_CODE = { GK: 'GK', CB: 'DC', LB: 'DL', RB: 'DR', DMF: 'DM', CMF: 'MC'
 let TARGET = null;   // the place the next pick goes to, when one is chosen in the strip
 function slotStrip(){
   const t = S.tac[me()], slots = FORMS[t.form];
-  return `<div class="strip2">${slots.map((s, i) => `<button class="${t.xi[i] ? 'on' : ''} ${TARGET === i ? 'tg' : ''}" data-tg="${i}" title="${t.xi[i] ? esc(P.get(t.xi[i]).n) : 'Empty'}">${SLOT_CODE[s[0]]}</button>`).join('')}${Array.from({ length: 7 }, (_, j) => `<button class="${t.bench[j] ? 'on' : ''} ${TARGET === 'b' + j ? 'tg' : ''}" data-tg="b${j}" title="${t.bench[j] ? esc(P.get(t.bench[j]).n) : 'Empty'}">SB${j + 1}</button>`).join('')}</div>`;
+  return `<div class="strip2">${slots.map((s, i) => `<button class="${t.xi[i] ? 'on' : ''} ${TARGET === i ? 'tg' : ''}" data-tg="${i}" title="${t.xi[i] ? esc(P.get(t.xi[i]).n) : 'Empty'}">${SLOT_CODE[s[0]]}</button>`).join('')}${Array.from({ length: BENCH }, (_, j) => `<button class="${t.bench[j] ? 'on' : ''} ${TARGET === 'b' + j ? 'tg' : ''}" data-tg="b${j}" title="${t.bench[j] ? esc(P.get(t.bench[j]).n) : 'Empty'}">SB${j + 1}</button>`).join('')}</div>`;
 }
 // the first team and the reserves: the 25 best senior players and whoever is picked; the rest are reserves
 function firstTeam(cid){ const t = S.tac[cid], L = squadOf(cid).slice().sort((a, b) => ovrNow(b) - ovrNow(a)), keep = new Set(L.slice(0, 25).map(p => p.id)); for (const id of [...t.xi, ...t.bench]) if (id) keep.add(id); return keep; }
@@ -1786,9 +1800,10 @@ function viewPre(){
   const strict = M.ref.s >= 13 ? 'strict, quick to book' : M.ref.s <= 7 ? 'lenient, lets the game flow' : 'fair';
   const wxNote = M.wk === 2 ? ' (a heavy pitch: short passing and ball control suffer)' : M.wk === 3 ? ' (long and direct passing suffer)' : M.wk === 5 ? ' (players will tire faster)' : M.wk === 6 ? ' (a slippery pitch)' : '';
   mframe(`<div class="date"><span>${WD[new Date(S.date + 'T12:00:00Z').getUTCDay()]}</span><span>${shortDate(S.date)}</span><span>PM</span></div><button class="sb go" id="tomatch">Go to Match</button><button class="sb" id="totac">${esc(club(me()).name)} Tactics</button>`,
-    `<div class="banner"><span></span><h1>Next Match<span class="sub">${L.cup ? 'Cup · ' + esc(L.cup) : esc(D.league)}</span></h1><span></span></div>
+    `<div class="banner"><span></span><h1>Next Match<span class="sub">${L.cup ? esc(CUP) + ' · ' + esc(L.cup) : esc(D.league)}</span></h1><span></span></div>
     <div class="mteams"><div class="t" style="background:${kh};color:${kh2}"><span>${esc(club(M.h).name)}</span></div><div class="t" style="background:${ka};color:${ka2}"><span>${esc(club(M.a).name)}</span></div></div>
-    <section class="pane"><dl class="kv"><dt>Date</dt><dd>${fmtDate(S.date, true)}</dd><dt>Venue</dt><dd>${esc(club(M.h).venue || '')}</dd><dt>Referee</dt><dd>${esc(M.ref.n)}: ${strict}</dd><dt>Weather</dt><dd>${esc(M.weather)}, ${M.temp}°C${wxNote}</dd><dt>Opponents</dt><dd>${esc(club(opp).name)}${S.round ? ', ' + ordinal(st.findIndex(r => r.id === opp) + 1) : ''}, ${esc(M.h === me() ? M.A.t.form : M.H.t.form)}</dd></dl>
+    <section class="pane"><dl class="kv"><dt>Date</dt><dd>${fmtDate(S.date, true)}</dd>${(() => { const fm = !L.cup && ((S.rounds[S.round] || {}).m || []).find(x => x.h === M.h && x.a === M.a); const wd = new Date(S.date + 'T12:00:00Z').getUTCDay(), dflt = wd === 0 || wd === 6 ? '15:00' : '19:45';   // the league's default kick-offs
+      return fm ? `<dt>Kick-off</dt><dd>${fm.ko || dflt}${fm.tv ? ` <span class="pill">${esc(fm.tv)}</span>` : ''}</dd>` : ''; })()}<dt>Venue</dt><dd>${esc(club(M.h).venue || '')}</dd><dt>Referee</dt><dd>${esc(M.ref.n)}: ${strict}</dd><dt>Weather</dt><dd>${esc(M.weather)}, ${M.temp}°C${wxNote}</dd><dt>Opponents</dt><dd>${esc(club(opp).name)}${S.round ? ', ' + ordinal(st.findIndex(r => r.id === opp) + 1) : ''}, ${esc(M.h === me() ? M.A.t.form : M.H.t.form)}</dd></dl>
       <div class="cols2" style="margin-top:10px"><div><div class="ptitle">${esc(club(M.h).name)}</div>${line(M.H)}</div><div><div class="ptitle">${esc(club(M.a).name)}</div>${line(M.A)}</div></div></section>
     <div class="bn"><button id="totac2">Back</button><button id="tomatch2">Next</button></div>`);
   const goMatch = () => { L.pre = false; viewMatch(); }, toTac = () => { LIVE = null; go({ s: 'club', cid: me(), tab: 'tactics' }); toast('Press Continue Game when you are ready for the match.'); };
@@ -1880,6 +1895,8 @@ function run(){
   if (!D || !D.clubs || D.clubs.length < 4){ $('#app').innerHTML = `${header()}<p class="loading">The league is being put together. Come back tomorrow.</p>`; return; }
   for (const [k, n] of D.attrs || []) ATTR_NAME[k] = n;
   D.players.forEach(p => P.set(p.id, p)); D.clubs.forEach(c => C.set(c.id, c));
+  if (D.cup && (D.cup.rounds || []).length >= 5){ CUP_NAMES = D.cup.rounds.slice(-5).map(r => r[0]); CUP = D.cup.name || 'Cup'; }
+  if (D.rules && D.rules.bench) BENCH = D.rules.bench;
   adopt(loadSave());
   view();
 })();

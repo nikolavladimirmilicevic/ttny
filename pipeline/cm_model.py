@@ -376,6 +376,14 @@ TM_POS = {'goalkeeper': 'GK', 'centre-back': 'CB', 'left-back': 'LB', 'right-bac
           'left winger': 'LWF', 'right winger': 'RWF', 'second striker': 'SS', 'centre-forward': 'CF'}
 
 
+def load_handbook():
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pl_handbook.json'), encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
 def load_fixes():
     try:
         return json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cm_fixes.json'), encoding='utf-8')).get('fixes') or []
@@ -641,5 +649,19 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     clubs.sort(key=lambda c: -c['q'])
     have = {c['id'] for c in clubs}
     fixtures = [[m[1], m[2], m[3], m[4]] for m in (cm_fx or {}).get('m', []) if m[3] in have and m[4] in have]
+    # the league's own handbook (pipeline/pl_handbook.json, facts only): head coach where the API has none, ground
+    # capacity, shirt sponsor and kit maker, last season's place, kick-off times and TV picks, the FA Cup's dates
+    hb = load_handbook()
+    if hb and hb.get('season') == season:
+        for c in clubs:
+            h = (hb.get('clubs') or {}).get(str(c['id'])) or {}
+            if h.get('coach') and not c.get('coach'):
+                c['coach'] = h['coach']
+            for k in ('cap', 'sponsor', 'kitm', 'last', 'att'):
+                if h.get(k):
+                    c[k] = h[k]
+        ko = {(f[0], f[1], f[2]): f[3:] for f in hb.get('fixtures') or []}
+        fixtures = [f + ([ko[(f[0], f[2], f[3])][0], ko[(f[0], f[2], f[3])][1]] if (f[0], f[2], f[3]) in ko else []) for f in fixtures]
+    extra = {k: hb[k] for k in ('cup', 'rules', 'last_season') if hb and hb.get('season') == season and hb.get(k)}
     return {'season': season, 'updated': today, 'league': 'Premier League', 'complete': len(clubs) == len(teams) and len(teams) >= 18,
-            'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures}
+            'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures, **extra}
