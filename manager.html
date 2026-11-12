@@ -1200,7 +1200,7 @@ function view(){
   if (!D) return;
   if (!S || SETUP_OPEN){ viewSetup(); return; }
   if (LIVE){ viewMatch(); return; }
-  ({ news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, transfers: scrTransfers })[V.s]();
+  ({ news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, transfers: scrTransfers })[V.s]();
 }
 function frame(o){
   // o: { title, sub, k1, k2, top: [[key,label,disabled]], topOn, bottom, bottomOn, tools, body, next, act }
@@ -1393,7 +1393,7 @@ function scrNews(){
   if (cur && cur.n){ cur.n = 0; save(); }
   const slot = n => n.c === 'match' || n.c === 'discipline' ? 'EVE' : n.c === 'injury' ? 'PM' : 'AM';
   frame({ title: `${esc(S.manager)} News`, top: [['all', 'All'], ['club', 'Club & Board'], ['comp', 'Competitions'], ['inj', 'Injuries and Bans']], topOn: F,
-    onTab: t => { if (['media', 'trans', 'jobs', 'rec'].includes(t)){ go(t === 'media' ? { s: 'manager', tab: 'con' } : t === 'trans' ? { s: 'transfers' } : t === 'jobs' ? { s: 'managers', tab: 'jobs' } : { s: 'managers', tab: 'rep' }); return; } V = { s: 'news', f: t, i: 0 }; view(); },
+    onTab: t => { if (['media', 'trans', 'jobs', 'rec'].includes(t)){ go(t === 'media' ? { s: 'manager', tab: 'con' } : t === 'trans' ? { s: 'transfers' } : t === 'jobs' ? { s: 'managers', tab: 'jobs' } : { s: 'records' }); return; } V = { s: 'news', f: t, i: 0 }; view(); },
     bottom: [['media', 'Contracts and Media'], ['trans', 'Transfers'], ['jobs', 'Jobs'], ['rec', 'Records']],
     tools: `<span style="flex:1"></span><button class="btn sm" id="nextun" ${S.news.some(n => n.n) ? '' : 'disabled'}>Next Unread</button>`,
     body: L.length ? `<div class="nl">${L.map((n, j) => `<div data-i="${j}" class="${j === i ? 'on' : ''} ${n.n ? 'new' : ''}"><span>${WD[new Date(n.d + 'T12:00:00Z').getUTCDay()].slice(0, 3)} ${shortDate(n.d)}</span><span>${slot(n)}</span><b>${esc(n.t)}</b></div>`).join('')}</div>
@@ -2084,6 +2084,26 @@ function scrManagers(){
   document.querySelectorAll('[data-apply]').forEach(b => b.addEventListener('click', () => { const cid = +b.dataset.apply;
     if (!jobOK(cid)){ (S.applied = S.applied || {})[cid] = S.date; news('board', `${club(cid).name} say no`, `${esc(club(cid).name)} have thanked you for your interest but want a manager with a bigger name.`); toast(`${club(cid).name} turn you down.`); save(); view(); return; }
     takeJob(cid); save(); go({ s: 'club', cid, tab: 'squad' }); }));
+}
+// records: the league's past winners (last season from the handbook, then the seasons of this game) and this game's
+// records: biggest wins, most goals in a game, the best seasons by a player
+function scrRecords(){
+  const past = [...(D.last_season ? [{ s: D.season - 1, champ: D.last_season.champion, cup: null, real: true }] : []), ...(S.past || [])].reverse();
+  const all = [...(S.past || []).flatMap(() => []), ...allResults()];
+  const big = all.slice().sort((a, b) => Math.abs(b.s[0] - b.s[1]) - Math.abs(a.s[0] - a.s[1]) || (b.s[0] + b.s[1]) - (a.s[0] + a.s[1])).slice(0, 5);
+  const most = all.slice().sort((a, b) => (b.s[0] + b.s[1]) - (a.s[0] + a.s[1])).slice(0, 5);
+  const seasons = D.players.flatMap(p => [...((S.pl[p.id] || {}).hs || []).map(h => ({ p, ...h })), ...(S.pl[p.id] && S.pl[p.id].apps ? [{ p, s: S.season, apps: S.pl[p.id].apps, g: S.pl[p.id].g, a: S.pl[p.id].a, cur: true }] : [])]);
+  const topG = seasons.filter(x => x.g).sort((a, b) => b.g - a.g).slice(0, 5), topA = seasons.filter(x => x.a).sort((a, b) => b.a - a.a).slice(0, 5);
+  const sn = y => `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
+  const res = x => `<tr><td>${crest(x.h)}${esc(club(x.h).name)}</td><td class="c"><span class="pill">${x.s[0]} - ${x.s[1]}</span></td><td>${crest(x.a)}${esc(club(x.a).name)}</td><td class="r dim">${x.comp}, ${fmtDate(x.date)}</td></tr>`;
+  const pl = (x, v) => `<tr class="click" data-pl="${x.p.id}"><td>${flag(x.p.nat)}<b>${esc(x.p.n)}</b></td><td class="dim">${sn(x.s)}${x.cur ? ' (so far)' : ''}</td><td class="r yel"><b>${v}</b></td></tr>`;
+  frame({ title: 'Records', sub: esc(D.league), top: [['r', 'Records']], topOn: 'r',
+    body: `<div class="cols2"><div><div class="ptitle">Champions</div><table><tbody>${past.map(x => `<tr><td>${sn(x.s)}</td><td>${crest(x.champ)}<b>${esc(club(x.champ).name)}</b></td><td class="dim">${x.cup ? `${esc(CUP)}: ${esc(club(x.cup).name)}` : ''}</td></tr>`).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table>
+      <div class="ptitle">Most goals in a season</div><table><tbody>${topG.map(x => pl(x, x.g)).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table>
+      <div class="ptitle">Most assists in a season</div><table><tbody>${topA.map(x => pl(x, x.a)).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table></div>
+      <div><div class="ptitle">Biggest wins this season</div><table><tbody>${big.map(res).join('') || '<tr><td class="dim">No games yet</td></tr>'}</tbody></table>
+      <div class="ptitle">Most goals in a game this season</div><table><tbody>${most.map(res).join('') || '<tr><td class="dim">No games yet</td></tr>'}</tbody></table></div></div>` });
+  document.querySelectorAll('[data-pl]').forEach(b => b.addEventListener('click', () => go({ s: 'player', id: +b.dataset.pl })));
 }
 function scrTransfers(){
   const months = []; for (let d = S.rounds[0].date.slice(0, 7), i = 0; i < 12; i++){ months.push(d); const [y, m] = d.split('-').map(Number); d = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; }
