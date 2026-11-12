@@ -494,7 +494,9 @@ const kitOf = id => (club(id).kit || ['#8899AA', '#FFFFFF']);
 const me = () => S && S.club;
 // a player's running state this season: condition, morale, injury days, ban, bookings, the season's numbers, training deltas
 const ps = id => S.pl[id] || (S.pl[id] = { cond: 100, mor: 65, injD: 0, light: 0, sus: 0, yc: 0, apps: 0, sub: 0, g: 0, a: 0, rt: [], mom: 0, d: {} });
-const avail = id => { const x = ps(id); return !x.injD && !x.sus; };
+// out on loan at a club outside the league (Transfermarkt) for the game's first season: his club's, but not here
+const onLoan = p => !!(p && p.lo && S && S.season === D.season);
+const avail = id => { const x = ps(id); return !x.injD && !x.sus && !onLoan(P.get(id)); };
 // a player's attribute: the data's value, this game's small shake at the start (r), and how he has grown since (d)
 const A = (p, k) => { const q = S && S.pl[p.id]; return clamp(Math.round(((p.a && p.a[k]) || 50) + ((q && q.r && q.r[k]) || 0) + ((q && q.d[k]) || 0)), 1, 99); };
 const ovrNow = p => { const q = S && S.pl[p.id]; if (!q || !q.d) return p.ovr; const ks = KEYS_OF[ROLE[p.prim]] || []; return clamp(Math.round(p.ovr + ks.reduce((t, k) => t + (q.d[k] || 0) + ((q.r && q.r[k]) || 0), 0) / Math.max(1, ks.length)), 30, 99); };
@@ -605,7 +607,7 @@ function newGame(cid, manager){
     results: [], news: [], refs, aim, conf: 62, rep: 'Unproven', done: false, sacked: false,
     train: { sched: 'General', int: 1, last: day(rounds[0].date, -6) },
     fin: { bal: Math.round((40 + (q - 70) * 6) * 1e6), wk: [], gate: 0, tv: 0, wages: 0, budget: Math.round(Math.max(12, (q - 70) * 9) * 1e6) },
-    con: {}, started: Date.now() };
+    con: {}, started: Date.now(), loans: Object.fromEntries((D.loans || []).filter(l => P.has(l.id)).map(l => [l.id, { from: l.from, to: l.to }])) };
   for (const p of D.players) S.con[p.id] = contractFor(p);
   ensureStaff();
   // every game a little different: each attribute of each player moves -2, -1, 0, +1 or +2, one chance in five each,
@@ -632,7 +634,7 @@ function longInjured(){
 }
 // contracts: years left and weekly wage, from the player's value (a fixed draw per player)
 // a contract: until the year Transfermarkt gives (cy) when we have it, otherwise one to four more seasons
-function contractFor(p){ const rr = rng(`c-${p.id}`); return { y: p.cy || D.season + 1 + Math.floor(rr() * 4), w: Math.round(Math.max(8, p.val * (1.3 + rr() * .6)) * 1000 / 5) * 5 }; }
+function contractFor(p){ const rr = rng(`c-${p.id}`); return { y: p.cy || D.season + 1 + (p.lo ? 1 : 0) + Math.floor(rr() * (p.lo ? 3 : 4)), w: Math.round(Math.max(8, p.val * (1.3 + rr() * .6)) * 1000 / 5) * 5 }; }
 const matchLine = m => m ? `${esc(club(m.h).name)} v ${esc(club(m.a).name)}` : 'a rest';
 function news(cat, title, body){ S.news.unshift({ c: cat, t: title, b: body, d: S.date, n: 1 }); S.news = S.news.slice(0, 120); }
 
@@ -1252,6 +1254,7 @@ function newSeason(){
   for (const [id, ln] of Object.entries(S.loans || {})){ const p = P.get(+id); if (p && p.club === ln.to && C.has(ln.from)){ moveP(p, ln.from, 0, 'Loan return'); if (ln.from === me() || ln.to === me()) news('club', `${p.n} returns`, `<b>${esc(p.n)}</b>'s loan is over and he goes back to ${esc(club(ln.from).name)}.`); } }
   S.loans = {}; S.loanAsk = {};
   S.season = was + 1; applyMoves();
+  for (const p of D.players) if (p.lo && was === D.season && p.club === me()) news('club', `${p.n} is back`, `<b>${esc(p.n)}</b> returns from his loan at ${esc(p.lo)}.`);
   retireAndIntake();
   // contracts ending 30 June: your players whose deals have run out leave on a free; the other clubs renew theirs
   for (const p of D.players){ const c = S.con[p.id]; if (!c || c.y > S.season) continue;   // 'until 30.6.y': the season that just ended ran to 30 June of S.season
@@ -1590,6 +1593,7 @@ function playerFlags(p){
   if (q.mor < 35) out.push('<span class="tag" title="Unhappy">Unh</span>');
   if (q.req === S.season) out.push('<span class="tag" title="Transfer request">Req</span>');
   if (q.away && S.date <= q.away) out.push('<span class="tag" title="With his national team">Int</span>');
+  if (onLoan(p)) out.push(`<span class="tag" title="On loan at ${esc(p.lo)} until the summer">Loan</span>`);
   if (S.con[p.id] && S.con[p.id].y <= S.season + 1) out.push('<span class="tag" title="Contract expires at the end of the season">Ctr</span>');
   return out.join('');
 }
@@ -2155,7 +2159,7 @@ function transferTick(){
     if (Math.random() < .22){
       const others = D.clubs.filter(c => c.id !== me()), to = others[Math.floor(Math.random() * others.length)];
       const need = squadOf(to.id).sort((a, b) => ovrNow(b) - ovrNow(a))[13], bar = need ? ovrNow(need) : 70;
-      const pool = D.players.filter(p => p.club !== to.id && p.club !== me() && squadOf(p.club).length > 20 && squadRank(p) >= 7 && ovrNow(p) >= bar - 1 && ovrNow(p) <= bar + 6 && !(S.moves || {})[p.id]);
+      const pool = D.players.filter(p => p.club !== to.id && p.club !== me() && !onLoan(p) && squadOf(p.club).length > 20 && squadRank(p) >= 7 && ovrNow(p) >= bar - 1 && ovrNow(p) <= bar + 6 && !(S.moves || {})[p.id]);
       const p = pool[Math.floor(Math.random() * pool.length)];
       if (p){ const fee = roundFee(p.val * 1e6 * (.9 + Math.random() * .4)); S.con[p.id] = { y: S.season + 2 + Math.floor(Math.random() * 3), w: wageDemand(p) }; moveP(p, to.id, fee); }
     }

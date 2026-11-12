@@ -468,6 +468,8 @@ def apply_fixes(rows, fixes, teams, wc, people, wp, season):
             hit['fix_ovr'] = float(fx['ovr'])
         if fx.get('out'):
             hit['back'] = fx['out']; hit['why'] = fx.get('why')
+        if fx.get('lo'):   # out on loan at another club until the summer (Transfermarkt)
+            hit['lo'] = fx['lo']
         if fx.get('dob'):   # Transfermarkt's date of birth over the API's
             hit['e'] = {k: v for k, v in dict(hit['e'], bd=fx['dob']).items() if k != 'age'}
 
@@ -647,7 +649,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
                             # how his starts split over his registered positions (shares, same order as 'pos')
                             **({'pc': _shares(w if w.get('pc') else (r.get('gw') or {}), r['pos'])} if len(r['pos']) > 1 else {}),
                             's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None,
-                            **({'out': r['back']} if r.get('back') else {}), **({'outw': r['why']} if r.get('why') else {})})
+                            **({'out': r['back']} if r.get('back') else {}), **({'outw': r['why']} if r.get('why') else {}), **({'lo': r['lo']} if r.get('lo') else {})})
     # market values: a log-linear fit of the Transfermarkt squad values Nikola supplied for the 20 clubs (Nov 2026,
     # 484 players, € at 0.855 to the £) on our own numbers only: rating, age, club strength, position, national-team
     # starts, goals + assists per start. Only these coefficients are kept, no single player's value; +13% for the
@@ -734,7 +736,11 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         st = (_tm.get('staff') or {}).get(c['name'])
         if st:
             c['staff'] = st
+    _cid = {c['name']: c['id'] for c in clubs}
+    _pl = [{'id': l['id'], 'from': _cid[l['from']], 'to': _cid[l['to']]} for l in _tm.get('pl_loans') or [] if l['from'] in _cid and l['to'] in _cid]
     extra = {k: hb[k] for k in ('cup', 'rules', 'last_season') if hb and hb.get('season') == season and hb.get(k)}
+    if _pl:
+        extra['loans'] = _pl   # loans within the league: back to the parent club at the end of the season
     try:   # league facts from Transfermarkt (record champions and the like)
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_facts.json'), encoding='utf-8') as f:
             lf = json.load(f).get('league')

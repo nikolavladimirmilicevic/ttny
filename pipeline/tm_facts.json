@@ -1,5 +1,5 @@
 {
-"source": "Transfermarkt pages Nikola supplied (squad pages of the 20 clubs, Nov 2026; most valuable players list; home page 12.11.2026). Transfermarkt is the source of truth where it conflicts with anything else: market values (eur, € millions) and contract end years (con) here win over the model. Premier League overview page (12.11.2026): contract extensions, latest value updates, league facts. Premier League overview page, second capture (12.11.2026): latest transfers, honours 2025/26, values. Squad pages of Brighton, Hull, Sunderland and Crystal Palace (12.11.2026). Squad pages of 19 clubs re-applied in full (12.11.2026): squads, positions, numbers, names. Coventry squad page (12.11.2026). Player profiles of Bradley Slade and Cameron Humphreys (12.11.2026). Detailed squad pages of all 20 clubs (12.11.2026): birth dates, heights, feet, contracts, values. Staff pages of all 20 clubs (12.11.2026): head coaches and backroom staff.",
+"source": "Transfermarkt pages Nikola supplied (squad pages of the 20 clubs, Nov 2026; most valuable players list; home page 12.11.2026). Transfermarkt is the source of truth where it conflicts with anything else: market values (eur, € millions) and contract end years (con) here win over the model. Premier League overview page (12.11.2026): contract extensions, latest value updates, league facts. Premier League overview page, second capture (12.11.2026): latest transfers, honours 2025/26, values. Squad pages of Brighton, Hull, Sunderland and Crystal Palace (12.11.2026). Squad pages of 19 clubs re-applied in full (12.11.2026): squads, positions, numbers, names. Coventry squad page (12.11.2026). Player profiles of Bradley Slade and Cameron Humphreys (12.11.2026). Detailed squad pages of all 20 clubs (12.11.2026): birth dates, heights, feet, contracts, values. Staff pages of all 20 clubs (12.11.2026): head coaches and backroom staff. Premier League transfers page, 2026/27 (12.11.2026): loans.",
 "updated": "2026-11-12",
 "players": {
 "162489": {
@@ -5288,5 +5288,37 @@
 "nat": "England"
 }
 ]
+},
+"pl_loans": [
+{
+"id": 21998,
+"from": "Chelsea",
+"to": "Crystal Palace"
+},
+{
+"id": 284324,
+"from": "Chelsea",
+"to": "Aston Villa"
+},
+{
+"id": 63577,
+"from": "Chelsea",
+"to": "Tottenham"
+},
+{
+"id": 81573,
+"from": "Man City",
+"to": "Tottenham"
+},
+{
+"id": 19187,
+"from": "Man City",
+"to": "Everton"
+},
+{
+"id": 25287,
+"from": "Tottenham",
+"to": "Sunderland"
 }
+]
 }
