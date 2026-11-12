@@ -252,6 +252,13 @@ def youth_ovr(age, base):
     return min(64, 50 + 2.5 * max(0, age - 16) + (base - 80) * .2)
 
 
+def _shares(w, pos):
+    m = dict(zip(w.get('pos') or [], w.get('pc') or []))
+    v = [float(m.get(q, 0) or 0) for q in pos]
+    t = sum(v)
+    return [round(x / t, 2) for x in v] if t else None
+
+
 def grid_pos(xi, grid):
     """A position from a lineup's grid ("row:column", row 1 the keeper, the last row the forwards, column 1 on the left)."""
     try:
@@ -407,7 +414,9 @@ def apply_fixes(rows, fixes, teams, wc, people, wp, season):
         if pos:
             hit['gp'] = pos
             if hit['w'] and hit['w'].get('prim') != pos:
-                hit['w'] = dict(hit['w'], prim=pos, pos=[pos] + [q for q in (hit['w'].get('pos') or []) if q != pos])
+                old = dict(zip(hit['w'].get('pos') or [], hit['w'].get('pc') or []))
+                npos = [pos] + [q for q in (hit['w'].get('pos') or []) if q != pos]
+                hit['w'] = dict(hit['w'], prim=pos, pos=npos, pc=[old.get(q, 0) for q in npos])
         if fx.get('no') is not None:
             hit['e'] = dict(hit['e'], no=fx['no'])
         if fx.get('name'):   # the name he goes by, where the API's differs
@@ -560,6 +569,8 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
                             'age': age, **({'bd': e['bd'][:10]} if e.get('bd') else {}), 'no': e.get('no'), 'club': r['tid'], 'prim': pos, 'pos': r['pos'], 'ht': ht, 'wt': wt,
                             'ovr': rating, 'r': ratings, 'a': a, 'style': style, 'val': val,
                             'frm': w.get('frm'), 'inj': rnd.choice([1, 2, 2, 2, 3]),
+                            # how his starts split over his registered positions (shares, same order as 'pos')
+                            **({'pc': _shares(w, r['pos'])} if len(r['pos']) > 1 else {}),
                             's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None,
                             **({'out': r['back']} if r.get('back') else {}), **({'outw': r['why']} if r.get('why') else {})})
     # shirt numbers: the API's lists can be out of date, two players with one number; it stays with the one who has

@@ -1296,18 +1296,31 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
             raw = Counter(s[3] for s in st if s[3] and not s[9])
             if not raw:
                 continue
+            # the double pivot of a 4-2-3-1 is DMF DMF in PES's preset, but in real football the pair behind an AMF
+            # splits the job: such a start counts half as DMF and half as CMF (and as a start in both for the 2-start rule)
+            def pivot(s):
+                return s[3] == 'DMF' and ((lu.get(str(s[4])) or {}).get(str(s[8])) or {}).get('f') == '4-2-3-1'
+            for s in st:
+                if s[3] and not s[9] and pivot(s):
+                    raw['CMF'] += 1
             # each start weighs by how recent it is (half as much six months back) and half as much in a friendly,
             # so his positions follow where he plays now, not where he was tried in pre-season
             cnt = Counter()
             for s in st:
                 if s[3] and not s[9]:
-                    cnt[s[3]] += start_weight(s[0], fx.get(s[4]) or {})
+                    w_ = start_weight(s[0], fx.get(s[4]) or {})
+                    if pivot(s):
+                        cnt['DMF'] += w_ / 2; cnt['CMF'] += w_ / 2
+                    else:
+                        cnt[s[3]] += w_
             seen.add(pid)
             # offered positions: every position he started in, most frequent first;
             # on a tie, the one he played most recently first (starts are newest first)
             last = {}
             for i, s in enumerate(st):
                 last.setdefault(s[3], i)
+                if s[3] and not s[9] and pivot(s):
+                    last.setdefault('CMF', i)
             # on a tie, the one in the line the API most often lists him in (G, D, M, F), then the most recent
             pos = [k for k, _ in sorted(cnt.items(), key=lambda kv: (-kv[1], -letters[pid][LETTER.get(kv[0], '')], last[kv[0]]))]
             pos = pos or ['CMF']

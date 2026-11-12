@@ -227,3 +227,8 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 - The engine still works out how good a player is behind the scenes (team picks, match engine); it just never shows a number for it.
 - The card on the left of the profile is gone (position, number and name are already in the banner and the info). The positions pitch is coloured by how well he plays each position, CM-style words with no number: Natural, Accomplished, Competent, Awkward, Unconvincing. Masked players show only their usual positions.
 - Only the positions the player is registered in (from the API data) get a colour, graded against his best of them; every other position is Unconvincing.
+
+### Positions from real starts
+- The profile's positions pitch is coloured by where the player has actually started in API line-ups (recent starts weigh more): Main position (most starts), Regular (25% of his starts or more), Occasional (registered, under 25%), Not played there. Hover a position for its share. This replaces the old FM-style words, which came from our own attribute-based position ratings (circular) and were in the wrong order.
+- cm.json carries `pc` per player with more than one position: the share of his starts in each, in the order of `pos`.
+- Double pivot: PES's 4-2-3-1 preset reads the pair behind the AMF as DMF DMF. In real football that pair splits the job, so each such start now counts half as DMF and half as CMF (pipeline/update.py). Rice, Caicedo, Szoboszlai and others now have both DMF and CMF; a lone holder (4-3-3, 4-1-4-1) is still a DMF. world.json follows with the next nightly run; cm.json was rebuilt from the cached data now.
