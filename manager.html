@@ -487,6 +487,42 @@ const squadOf = cid => D.players.filter(p => p.club === cid);
    a new game: the schedule (the real fixture list where the data has it), the cup's dates, the board's expectations,
    contracts and wages, the money
    ===================================================================================================================== */
+/* international breaks: FIFA's men's windows (cm.json intl, from pipeline/fifa_calendar.json); for a season not yet
+   published, the 2025-2030 pattern: a 16-day window from the Monday on or after 21 September, nine days from the
+   Monday on or after 9 November and from the Monday on or after 22 March */
+function intlWindows(season){
+  const known = (D.intl || []).filter(([a]) => a >= `${season}-08-01` && a < `${season + 1}-08-01`).map(([a, b, n]) => [a, b, n || 2]);
+  if (known.length) return known.filter(([a]) => a.slice(5, 7) !== '06');
+  const mon = d => { while (new Date(d + 'T12:00:00Z').getUTCDay() !== 1) d = day(d, 1); return d; };
+  const a = mon(`${season}-09-21`), b = mon(`${season}-11-09`), c = mon(`${season + 1}-03-22`);
+  return [[a, day(a, 15), 4], [b, day(b, 8), 2], [c, day(c, 8), 2]];
+}
+// call-ups: the players who play for their countries go when a window opens and come back when it closes, a little
+// tired, now and then hurt; they miss their club training while away
+function intlTick(){
+  S.intl = S.intl || {};
+  for (const [a, b, n] of intlWindows(S.season)){
+    const key = a, t0 = S.t0 || (S.t0 = S.date);
+    if (S.date > b && !S.intl[key] && a >= t0){   // the calendar jumped over the whole window: they went and came back
+      const mine = D.players.filter(p => p.nt && p.club === me());
+      news('club', 'International break', `The league stopped from ${fmtDate(a)} to ${fmtDate(b)} for ${n} international matches.${mine.length ? ` Away with their countries: ${mine.map(p => `${flag(p.nat)}<b>${esc(p.n)}</b>`).join(', ')}.` : ''}`);
+      S.intl[key] = 'away';
+    }
+    if (S.date >= a && S.date <= b && !S.intl[key]){
+      S.intl[key] = 'away'; const L = D.players.filter(p => p.nt), mine = L.filter(p => p.club === me());
+      for (const p of L) ps(p.id).away = b;
+      news('club', 'International break', `The league stops until ${fmtDate(b)} for ${n} international matches.${mine.length ? ` Called up from your squad: ${mine.map(p => `${flag(p.nat)}<b>${esc(p.n)}</b>`).join(', ')}.` : ''}`);
+    }
+    if (S.date > b && S.intl[key] !== 'back'){
+      if (!S.intl[key]){ S.intl[key] = 'back'; continue; }   // a window that passed before this game (or this save) began
+      S.intl[key] = 'back'; const hurt = [];
+      for (const p of D.players.filter(x => x.nt)){ const q = ps(p.id); q.away = null;
+        const r = rng(`intl-${p.id}-${a}`); q.cond = Math.max(55, q.cond - 6 - Math.round(r() * 10));
+        if (r() < .02 * n / 2 && !q.injD){ q.injD = 7 + Math.floor(r() * 24); if (p.club === me()) hurt.push(p); } }
+      for (const p of hurt) news('injury', `${p.n} hurt on international duty`, `<b>${esc(p.n)}</b> picked up an injury with ${esc(p.nat)} and is out for about ${Math.ceil(ps(p.id).injD / 7)} week${ps(p.id).injD > 7 ? 's' : ''}.`);
+    }
+  }
+}
 function buildRounds(ids, seed, season = D.season){
   const real = season === D.season ? (D.fixtures || []).filter(f => ids.includes(f[2]) && ids.includes(f[3])) : [];
   const rounds = [];
@@ -501,7 +537,9 @@ function buildRounds(ids, seed, season = D.season){
     const n = L.length, half = [];
     for (let r = 0; r < n - 1; r++){ const m = []; for (let i = 0; i < n / 2; i++){ const a = L[i], b = L[n - 1 - i]; if (a && b) m.push(r % 2 ? { h: a, a: b } : { h: b, a }); } half.push(m); L.splice(1, 0, L.pop()); }
     let start = `${season || 2026}-08-15`; while (new Date(start + 'T12:00:00Z').getUTCDay() !== 6) start = day(start, 1);   // the Saturday on or after 15 August
-    [...half, ...half.map(m => m.map(x => ({ h: x.a, a: x.h })))].forEach((m, i) => rounds.push({ date: day(start, i * 7), m }));
+    // a round a week, none in an international window (FIFA's dates, or the usual pattern for seasons not yet published)
+    const iw = intlWindows(season); let dt = start;
+    [...half, ...half.map(m => m.map(x => ({ h: x.a, a: x.h })))].forEach(m => { while (iw.some(([a, b]) => dt >= a && dt <= b)) dt = day(dt, 7); rounds.push({ date: dt, m }); dt = day(dt, 7); });
   }
   return rounds;
 }
@@ -961,6 +999,7 @@ function passDays(n){
   transferTick();
   contractWarn();
   if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
+  intlTick();
 }
 // a word from the assistant when your players' contracts are in their last season: at the start of it and in January
 function contractWarn(){
@@ -990,6 +1029,7 @@ const coachLevel = gk => { const st = (S.staff || []).filter(x => x.role === (gk
 function trainWeek(wk){
   const keys = Object.keys(ATTR_NAME), reg = trainReg();
   for (const p of D.players){ const q = ps(p.id), rr = rng(`${S.seed}-${p.id}-${wk}`), age = p.age, mine = p.club === me(), gk = p.prim === 'GK';
+    if (q.away && S.date <= q.away) continue;   // with his country
     const grow = age <= 19 ? .32 : age <= 21 ? .22 : age <= 24 ? .1 : age <= 27 ? .03 : age <= 29 ? 0 : age <= 31 ? -.06 : -.14;
     const R = gk ? reg.gk : reg.out, parts = Object.keys(R).filter(k => k !== 'gk' || gk), tot = parts.reduce((t, k) => t + R[k], 0);
     const load = mine ? tot / Math.max(1, parts.length) : 2;   // 0 to 3
@@ -1482,6 +1522,7 @@ function playerFlags(p){
   if (q.cond < 65) out.push('<span class="tag tir" title="Very tired">Tir</span>');
   if (q.mor < 35) out.push('<span class="tag" title="Unhappy">Unh</span>');
   if (q.req === S.season) out.push('<span class="tag" title="Transfer request">Req</span>');
+  if (q.away && S.date <= q.away) out.push('<span class="tag" title="With his national team">Int</span>');
   if (S.con[p.id] && S.con[p.id].y <= S.season + 1) out.push('<span class="tag" title="Contract expires at the end of the season">Ctr</span>');
   return out.join('');
 }

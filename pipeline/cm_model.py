@@ -628,7 +628,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         out_players.append({'id': r['pid'], 'n': display(e, r['pid']) if (e.get('sq') or e.get('n')) else (w.get('name') or str(r['pid'])), 'nat': e.get('nat') or w.get('nat'),
                             'age': age, **({'bd': e['bd'][:10]} if e.get('bd') else {}), 'no': e.get('no'), 'club': r['tid'], 'prim': pos, 'pos': r['pos'], 'ht': ht, 'wt': wt,
                             'ovr': rating, 'r': ratings, 'a': a, 'style': style, 'val': val,
-                            'frm': w.get('frm'), **({'inj': inj_level(cm, r['pid'], lastseen)} if inj_level(cm, r['pid'], lastseen) else {}),
+                            'frm': w.get('frm'), **({'nt': 1} if w.get('nt') else {}),   # plays for his country (call-ups); not shown **({'inj': inj_level(cm, r['pid'], lastseen)} if inj_level(cm, r['pid'], lastseen) else {}),
                             # how his starts split over his registered positions (shares, same order as 'pos')
                             **({'pc': _shares(w if w.get('pc') else (r.get('gw') or {}), r['pos'])} if len(r['pos']) > 1 else {}),
                             's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None,
@@ -690,5 +690,10 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         ko = {(f[0], f[1], f[2]): f[3:] for f in hb.get('fixtures') or []}
         fixtures = [f + ([ko[(f[0], f[2], f[3])][0], ko[(f[0], f[2], f[3])][1]] if (f[0], f[2], f[3]) in ko else []) for f in fixtures]
     extra = {k: hb[k] for k in ('cup', 'rules', 'last_season') if hb and hb.get('season') == season and hb.get(k)}
+    try:   # FIFA's international windows (pipeline/fifa_calendar.json)
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fifa_calendar.json'), encoding='utf-8') as f:
+            extra['intl'] = json.load(f)['windows']
+    except (OSError, ValueError, KeyError):
+        pass
     return {'season': season, 'updated': today, 'league': 'Premier League', 'complete': len(clubs) == len(teams) and len(teams) >= 18,
             'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures, **extra}
