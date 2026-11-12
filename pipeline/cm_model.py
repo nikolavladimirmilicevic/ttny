@@ -453,7 +453,7 @@ def apply_fixes(rows, fixes, teams, wc, people, wp, season):
             hit = {'pid': pid, 'tid': tid, 'e': e, 'w': wp.get(pid), 'p90': _per90(s), 'st': s}
             rows.append(hit)
         if pos:
-            hit['gp'] = pos
+            hit['gp'] = pos; hit['fixpos'] = pos
             if hit['w'] and hit['w'].get('prim') != pos:
                 old = dict(zip(hit['w'].get('pos') or [], hit['w'].get('pc') or []))
                 npos = [pos] + [q for q in (hit['w'].get('pos') or []) if q != pos]
@@ -564,6 +564,12 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
                 r['pos'] = [order[0]] + [k for k in order[1:] if gc[k] >= 2]
                 r['prim'] = order[0]
                 r['gw'] = {'pos': r['pos'], 'pc': [gc[k] for k in r['pos']]}
+            fp = r.get('fixpos')   # a position set in cm_fixes.json (Transfermarkt's) is his main one
+            if fp and r['prim'] != fp:
+                gw = r.get('gw') or {'pos': list(r['pos']), 'pc': [gc.get(k, 0) for k in r['pos']]}
+                old = dict(zip(gw['pos'], gw['pc']))
+                r['pos'] = [fp] + [k for k in r['pos'] if k != fp]; r['prim'] = fp
+                r['gw'] = {'pos': r['pos'], 'pc': [old.get(k, 0) for k in r['pos']]}
     # z-scores of season numbers within each position group, shrunk toward 0 by minutes
     metrics = ['g90', 'a90', 'sot', 'kp90', 'acc', 'def90', 'int90', 'past90', 'drs90', 'drpct', 'duw', 'fc90', 'cards90', 'sv90', 'gc90']
     groups = {}
