@@ -613,12 +613,19 @@ function readyTactic(cid){
     if (f.xi.some((id, i) => !id || !canPlay(P.get(id), FORMS[t.form][i][0]))){ t.form = bestForm(cid, true); f = bestXI(cid, t.form, true); }
     t.xi = f.xi; t.bench = f.bench; t.set = setPieces(cid, t.xi); return t; }
   const slots = FORMS[t.form];
-  t.xi = t.xi.map(id => id && avail(id) ? id : null); t.bench = t.bench.filter(id => avail(id) && !t.xi.includes(id));
+  // a regular who missed games through injury or a ban gets his place back from his stand-in once he is fit, unless you
+  // have changed that place yourself since (then the stand-in is your pick)
+  t.out = t.out || {}; t.stand = t.stand || {};
+  for (const i of Object.keys(t.out)){ const back = t.out[i], cur = t.xi[i];
+    if (!P.has(back) || P.get(back).club !== cid || t.xi.includes(back) && t.xi.indexOf(back) !== +i){ delete t.out[i]; delete t.stand[i]; continue; }
+    if (cur !== t.stand[i]){ delete t.out[i]; delete t.stand[i]; continue; }
+    if (avail(back) && canPlay(P.get(back), slots[i] ? slots[i][0] : '')){ t.xi[i] = back; t.bench = t.bench.filter(x => x !== back); if (cur && t.bench.length < BENCH && !t.bench.includes(cur)) t.bench.push(cur); delete t.out[i]; delete t.stand[i]; } }
+  t.xi = t.xi.map((id, i) => { if (id && !avail(id)){ t.out[i] = id; return null; } return id; }); t.bench = t.bench.filter(id => avail(id) && !t.xi.includes(id));
   const used = new Set([...t.xi, ...t.bench].filter(Boolean));
   t.xi = t.xi.map((id, i) => { if (id) return id;
     const tier = p => { const k = fitTier(p, slots[i][0]); return k < 0 ? 99 : k; };
     const cand = [...t.bench.map(x => P.get(x)), ...squadOf(cid).filter(p => avail(p.id) && !used.has(p.id))].filter(Boolean).sort((a, b) => tier(a) - tier(b) || fitIn(b, slots[i][0]) - fitIn(a, slots[i][0]))[0];
-    if (cand){ used.add(cand.id); t.bench = t.bench.filter(x => x !== cand.id); return cand.id; } return null; });
+    if (cand){ used.add(cand.id); t.bench = t.bench.filter(x => x !== cand.id); if (t.out[i]) t.stand[i] = cand.id; return cand.id; } return null; });
   const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => t.xi.includes(v)));
   t.set = Object.assign(setPieces(cid, t.xi), keep);
   return t;
