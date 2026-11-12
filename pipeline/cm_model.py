@@ -670,6 +670,12 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             x['val'] = round(t['eur'] / 1.17, 1) if t['eur'] >= 1.17 else round(max(.05, t['eur'] / 1.17), 2)
         if t.get('con'):
             x['cy'] = t['con']
+        if t.get('dob'):   # Transfermarkt's birth date, height and foot over the API's
+            x['bd'] = t['dob']; x['age'] = age_of({'bd': t['dob']}, today)
+        if t.get('ht'):
+            x['ht'] = t['ht']
+        if t.get('ft'):
+            x['ft'] = t['ft']
     # shirt numbers: the API's lists can be out of date, two players with one number; it stays with the one who has
     # played more for the club these two seasons, the other goes without
     by = {}

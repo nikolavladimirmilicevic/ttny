@@ -1823,7 +1823,7 @@ function playerCard(p, q, con, born){
     return [TT(ATTR_NAME[k]), `${d >= 1 && kn ? '<span class="up">▲</span> ' : d <= -1 && kn ? '<span class="dn">▼</span> ' : ''}<span class="${vcls(v)}">${showA(p, v)}</span>`]; });
   if (p.inj) rows.push(['Injury Resistance', `<span class="${vcls([90, 75, 55][p.inj - 1])}">${4 - p.inj}</span>`]);
   rows.sort((x, y) => x[0].localeCompare(y[0]));
-  const tail = [['Height', p.ht ? p.ht + ' cm' : '-'], ['Weight', p.wt ? p.wt + ' kg' : '-'], ['Playing Style', esc(p.style || '-')], ['Morale', morWord(q.mor)], ['Condition', Math.round(q.cond) + '%']].map(([n, v]) => [n, `<span class="org">${v}</span>`]);
+  const tail = [['Height', p.ht ? p.ht + ' cm' : '-'], ['Weight', p.wt ? p.wt + ' kg' : '-'], ...(p.ft ? [['Preferred Foot', { L: 'Left', R: 'Right', B: 'Either' }[p.ft]]] : []), ['Playing Style', esc(p.style || '-')], ['Morale', morWord(q.mor)], ['Condition', Math.round(q.cond) + '%']].map(([n, v]) => [n, `<span class="org">${v}</span>`]);
   const all = [...rows, ...tail], per = Math.ceil(all.length / 3);
   const col = i => `<div>${all.slice(i * per, (i + 1) * per).map(([n, v]) => `<div class="crow"><span>${n}</span><b>${v}</b></div>`).join('')}</div>`;
   // positions: coloured by how his real starts split over the positions he is registered in
