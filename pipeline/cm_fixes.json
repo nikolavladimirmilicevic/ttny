@@ -1,14 +1,121 @@
 {
-  "about": "Hand corrections for the manager game's squads, for what the API gets wrong or late (a player back from a loan, a signing it has not listed). Each entry puts one player in one club. player: his name as the API spells it, or id: his API id. club: the club, by name. A player the API does not know at all also needs pos (GK CB LB RB DMF CMF AMF LMF RMF LWF RWF SS CF), and may have dob (YYYY-MM-DD), nat and no. out: YYYY-MM-DD makes him injured until then. name: the name he goes by, where the API's differs. ovr: his overall, set by hand. remove: true takes him out of the game. note: for you. Checked against the clubs' own squad lists on 11 November 2026.",
-  "fixes": [
-    {"player": "Evan Ferguson", "id": 129643, "club": "Brighton", "note": "back from a loan at Roma", "pos": "CF", "no": 28},
-    {"player": "Vítězslav Jaroš", "id": 162687, "club": "Liverpool", "note": "back from a loan at Ajax", "pos": "GK", "no": 56},
-    {"player": "Vitor Nunes", "id": 414359, "club": "Manchester City", "name": "Vitor Reis", "note": "the API calls him Vitor Nunes"},
-    {"player": "Gustavo Nunes", "club": "Brentford", "pos": "LWF", "dob": "2005-11-20", "nat": "Brazil", "no": 39, "note": "back from a loan at Swansea; not in the API"},
-    {"player": "Mateo Joseph", "club": "Leeds", "pos": "CF", "dob": "2003-10-19", "nat": "Spain", "note": "back from a loan at Mallorca; not in the API"},
-    {"player": "Ji-soo Kim", "club": "Brentford", "pos": "CB", "dob": "2004-12-24", "nat": "Korea Republic", "no": 36, "note": "back from a loan at Kaiserslautern; not in the API"},
-    {"player": "Eliot Matazo", "club": "Hull City", "pos": "CMF", "dob": "2002-02-15", "nat": "Belgium", "no": 8, "note": "not in the API"},
-    {"player": "Abdoullah Ba", "club": "Sunderland", "pos": "RWF", "dob": "2003-07-31", "nat": "Mauritania", "no": 46, "note": "not in the API"},
-    {"player": "Alex Borto", "club": "Fulham", "pos": "GK", "dob": "2003-11-06", "nat": "United States", "no": 36, "note": "up from the under-21s; not in the API"}
-  ]
+ "about": "Hand corrections for the manager game's squads, for what the API gets wrong or late (a player back from a loan, a signing it has not listed). Each entry puts one player in one club. player: his name as the API spells it, or id: his API id. club: the club, by name. A player the API does not know at all also needs pos (GK CB LB RB DMF CMF AMF LMF RMF LWF RWF SS CF), and may have dob (YYYY-MM-DD) or age, nat and no. out: YYYY-MM-DD makes him injured until then. name: the name he goes by, where the API's differs. ovr: his overall, set by hand. remove: true takes him out of the game. note: for you. Checked against the clubs' own squad lists on 11 November 2026.",
+ "fixes": [
+  {
+   "player": "Evan Ferguson",
+   "id": 129643,
+   "club": "Brighton",
+   "note": "back from a loan at Roma",
+   "pos": "CF",
+   "no": 28
+  },
+  {
+   "player": "Vítězslav Jaroš",
+   "id": 162687,
+   "club": "Liverpool",
+   "note": "back from a loan at Ajax",
+   "pos": "GK",
+   "no": 56
+  },
+  {
+   "player": "Vitor Nunes",
+   "id": 414359,
+   "club": "Manchester City",
+   "name": "Vitor Reis",
+   "note": "the API calls him Vitor Nunes"
+  },
+  {
+   "player": "Gustavo Nunes",
+   "club": "Brentford",
+   "pos": "LWF",
+   "dob": "2005-11-20",
+   "nat": "Brazil",
+   "no": 39,
+   "note": "back from a loan at Swansea; not in the API"
+  },
+  {
+   "player": "Mateo Joseph",
+   "club": "Leeds",
+   "pos": "CF",
+   "dob": "2003-10-19",
+   "nat": "Spain",
+   "note": "back from a loan at Mallorca; not in the API"
+  },
+  {
+   "player": "Ji-soo Kim",
+   "club": "Brentford",
+   "pos": "CB",
+   "dob": "2004-12-24",
+   "nat": "Korea Republic",
+   "no": 36,
+   "note": "back from a loan at Kaiserslautern; not in the API"
+  },
+  {
+   "player": "Eliot Matazo",
+   "club": "Hull City",
+   "pos": "CMF",
+   "dob": "2002-02-15",
+   "nat": "Belgium",
+   "no": 8,
+   "note": "not in the API"
+  },
+  {
+   "player": "Abdoullah Ba",
+   "club": "Sunderland",
+   "pos": "RWF",
+   "dob": "2003-07-31",
+   "nat": "Mauritania",
+   "no": 46,
+   "note": "not in the API"
+  },
+  {
+   "player": "Alex Borto",
+   "club": "Fulham",
+   "pos": "GK",
+   "dob": "2003-11-06",
+   "nat": "United States",
+   "no": 36,
+   "note": "up from the under-21s; not in the API"
+  },
+  {
+   "player": "Harvey Cartwright",
+   "club": "Hull City",
+   "pos": "GK",
+   "age": 24,
+   "nat": "England",
+   "note": "in the squad per Transfermarkt (contract extension, Nov 2026); not in the API squad list"
+  },
+  {
+   "player": "Leo Shahar",
+   "club": "Newcastle",
+   "pos": "RB",
+   "age": 19,
+   "nat": "England",
+   "note": "in the squad per Transfermarkt (contract extension, Nov 2026); not in the API squad list"
+  },
+  {
+   "player": "Amario Cozier-Duberry",
+   "club": "Brighton",
+   "pos": "RWF",
+   "age": 21,
+   "nat": "England",
+   "note": "in the squad per Transfermarkt (contract extension, Nov 2026); not in the API squad list"
+  },
+  {
+   "player": "Zach Abbott",
+   "club": "Nott'm Forest",
+   "pos": "CB",
+   "age": 20,
+   "nat": "England",
+   "note": "in the squad per Transfermarkt (contract extension, Nov 2026); not in the API squad list"
+  },
+  {
+   "player": "Cameron Humphreys",
+   "club": "Ipswich",
+   "pos": "CMF",
+   "age": 23,
+   "nat": "England",
+   "note": "in the squad per Transfermarkt (contract extension, Nov 2026); not in the API squad list"
+  }
+ ]
 }

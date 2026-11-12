@@ -446,7 +446,7 @@ def apply_fixes(rows, fixes, teams, wc, people, wp, season):
         else:
             if pid is None:   # not in the API at all: a made-up id that stays the same from run to run
                 pid = -(int.from_bytes(_fold(fx.get('player')).encode()[:6].ljust(6, b'.'), 'big') % 10 ** 9)
-                e = {'n': fx.get('player'), 'sq': fx.get('player'), 'nat': fx.get('nat'), 'bd': fx.get('dob'), 'no': fx.get('no')}
+                e = {'n': fx.get('player'), 'sq': fx.get('player'), 'nat': fx.get('nat'), 'bd': fx.get('dob'), 'no': fx.get('no'), **({'age': fx['age']} if fx.get('age') else {})}
             else:
                 e = dict(people.get(str(pid)) or {})
             s = _stats(e, season, tid)
@@ -700,6 +700,13 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         ko = {(f[0], f[1], f[2]): f[3:] for f in hb.get('fixtures') or []}
         fixtures = [f + ([ko[(f[0], f[2], f[3])][0], ko[(f[0], f[2], f[3])][1]] if (f[0], f[2], f[3]) in ko else []) for f in fixtures]
     extra = {k: hb[k] for k in ('cup', 'rules', 'last_season') if hb and hb.get('season') == season and hb.get(k)}
+    try:   # league facts from Transfermarkt (record champions and the like)
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_facts.json'), encoding='utf-8') as f:
+            lf = json.load(f).get('league')
+        if lf:
+            extra['league_facts'] = lf
+    except (OSError, ValueError):
+        pass
     try:   # FIFA's international windows (pipeline/fifa_calendar.json)
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fifa_calendar.json'), encoding='utf-8') as f:
             extra['intl'] = json.load(f)['windows']
