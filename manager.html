@@ -1326,15 +1326,15 @@ function playerCard(p, q, con, born){
   const attr = key => { const v = A(p, key), d = q.d[key] || 0; return `<div class="pa"><span class="pv" style="background:${BARC(kn ? v : Math.floor(v / 10) * 10 + 5)}">${showA(p, v)}</span><span class="pn">${esc(TT(ATTR_NAME[key]))}${d >= 1 && kn ? ' <span class="up">▲</span>' : d <= -1 && kn ? ' <span class="dn">▼</span>' : ''}</span></div>`; };
   const grp = ([n, ks]) => `<div class="pg2"><div class="ph"><b>${n}</b></div><div class="pbar"></div>${ks.map(attr).join('')}${n === 'Physicality' ? `<div class="pa"><span class="pv" style="background:${BARC([90, 75, 62][(p.inj || 2) - 1])}">${4 - (p.inj || 2)}</span><span class="pn">Injury Resistance</span></div>` : ''}</div>`;
   const groups = GROUPS.filter(([n]) => p.prim === 'GK' || n !== 'Goalkeeping');
-  const best = Math.max(...Object.keys(GROUP).map(x => fitIn(p, x)));
+  const best = Math.max(...p.pos.map(x => fitIn(p, x)));
   const rows = [['LWF', 'SS', 'CF', 'RWF'], ['LMF', 'DMF', 'CMF', 'AMF', 'RMF'], ['LB', 'CB', 'RB'], ['GK']];
-  const pos = rows.map(r => `<div class="prow">${r.map(x => { const d = best - fitIn(p, x), lv = !kn ? (p.pos.includes(x) ? 1 : 5) : d <= 2 ? 1 : d <= 6 ? 2 : d <= 12 ? 3 : d <= 20 ? 4 : 5; return `<div class="pc f${lv}" title="${x}: ${FIT_WORD[lv]}"><span>${x}</span></div>`; }).join('')}</div>`).join('');
+  const pos = rows.map(r => `<div class="prow">${r.map(x => { const d = best - fitIn(p, x), lv = !p.pos.includes(x) ? 5 : !kn ? 1 : d <= 2 ? 1 : d <= 6 ? 2 : d <= 12 ? 3 : d <= 20 ? 4 : 5; return `<div class="pc f${lv}" title="${x}: ${FIT_WORD[lv]}"><span>${x}</span></div>`; }).join('')}</div>`).join('');
   const ks = Object.keys(ATTR_NAME), dist = x => ks.reduce((t, key) => t + Math.abs(A(x, key) - A(p, key)), 0);
   const sim = D.players.filter(x => x.id !== p.id && x.prim === p.prim).map(x => [x, dist(x)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
   const mini = x => { const kk = kitOf(x.club); return `<button class="pcard sm" data-pl="${x.id}" style="--k1:${kk[0]};--k2:${kk[1]}"><span class="pp">${cmPos([x.prim])}</span><b>${esc(cardName(x.n))}</b><span class="small">${esc(club(x.club).name)}</span></button>`; };
   return `<div class="pmast">
     <div class="pleft">      <div class="ptitle" style="margin-top:0">Positions</div><div class="ppitch">${pos}</div>
-      <div class="pkey">${[1, 2, 3, 4, 5].map(l => `<span><i class="pc f${l}"></i>${FIT_WORD[l]}</span>`).join('')}</div>${kn ? '' : '<p class="small dim">Masked: only his usual positions are known.</p>'}</div>
+      <div class="pkey">${[1, 2, 3, 4, 5].map(l => `<span><i class="pc f${l}"></i>${FIT_WORD[l]}</span>`).join('')}</div><p class="small dim">Coloured: the positions he is registered in. ${kn ? '' : 'Masked: how well he plays each is not yet known.'}</p></div>
     <div class="pright"><div class="pgrid">${groups.map(grp).join('')}</div>
       <div class="ptitle">Playing Style</div><p style="margin:0 0 8px">${esc(p.style || 'None')}</p>
       <div class="ptitle">Info</div><dl class="kv"><dt>Age</dt><dd>${p.age}</dd><dt>Nationality</dt><dd>${esc(p.nat || '-')}</dd><dt>Team</dt><dd>${esc(club(p.club).name)}${p.no ? ' · ' + p.no : ''}</dd><dt>Position</dt><dd class="yel">${cmPos(p.pos)}</dd>
