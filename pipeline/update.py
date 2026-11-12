@@ -730,6 +730,22 @@ def check_absent(pid, people):
     e['chk'] = TODAY.isoformat()
 
 
+NOT_INJURY = re.compile(r'suspen|card|red|yellow|duty|coach|rest|personal|loan|inelig|illness|virus|covid|birth|family|disciplin|fitness|lack', re.I)
+
+
+def injury_counts(inj):
+    """Fixtures each player missed injured, over the seasons kept (suspensions, illness, international duty and the
+    like left out; each fixture once)."""
+    seen, n = set(), {}
+    for c in inj.values():
+        for pid, fid, typ, why in c.get('r') or []:
+            if not pid or (pid, fid) in seen or NOT_INJURY.search(why or ''):
+                continue
+            seen.add((pid, fid))
+            n[str(pid)] = n.get(str(pid), 0) + 1
+    return n
+
+
 def update_cm(squads, people, meta, seen=None):
     """The manager game's league: its clubs (once a season), its fixture list (weekly), and for every club the squad
     and the players' season stats (every 14 days), a few clubs per run (CM_MAX calls at most)."""
@@ -753,6 +769,17 @@ def update_cm(squads, people, meta, seen=None):
                     x['teams']['home']['id'], x['teams']['away']['id'], x['fixture']['status']['short'], x['goals']['home'], x['goals']['away']]
                     for x in data.get('response', [])]}
             save('cm_fixtures', fx)
+        # injury history: every fixture a player missed hurt in the league, this season and the two before (one call a
+        # season; the current season again weekly). Feeds the players' injury resistance.
+        inj = load('cm_injuries', {})
+        for season in (cs, cs - 1, cs - 2):
+            c = inj.get(str(season))
+            if not c or (season == cs and days_old(c.get('f')) >= 7):
+                data = api('injuries', league=CM_LEAGUE, season=season)
+                inj[str(season)] = {'f': TODAY.isoformat(), 'r': [[(x.get('player') or {}).get('id'), (x.get('fixture') or {}).get('id'),
+                                    (x.get('player') or {}).get('type') or '', (x.get('player') or {}).get('reason') or ''] for x in data.get('response', [])]}
+                save('cm_injuries', inj)
+        cm['injn'] = injury_counts(inj)
         done = cm.setdefault('stats', {})
         for t in sorted(cm['teams'], key=lambda t: done.get(str(t['id']), '')):
             tid = t['id']

@@ -252,6 +252,22 @@ def youth_ovr(age, base):
     return min(64, 50 + 2.5 * max(0, age - 16) + (base - 80) * .2)
 
 
+VALUE_COEF = [2.7021, 0.135, -0.035, 0.1748, -0.127, -0.235, -0.0682, -0.062, -0.6654, 0.208, 0.2556, -0.13, -0.0518]
+
+
+def inj_level(cm, pid, lastseen):
+    """Injury proneness from the league's injury history (update.py: fixtures missed hurt over three seasons):
+    1 rarely injured (0-3), 2 average (4-15), 3 injury prone (16+). None until that history is in, or for a player
+    with no record who has not started in the league lately (new to it: not known)."""
+    n = (cm or {}).get('injn')
+    if not n:
+        return None
+    k = n.get(str(pid), 0)
+    if not k and str(pid) not in {str(x) for x in (lastseen or {})}:
+        return None
+    return 1 if k <= 3 else 2 if k <= 15 else 3
+
+
 def _shares(w, pos):
     m = dict(zip(w.get('pos') or [], w.get('pc') or []))
     v = [float(m.get(q, 0) or 0) for q in pos]
@@ -568,11 +584,26 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         out_players.append({'id': r['pid'], 'n': display(e, r['pid']) if (e.get('sq') or e.get('n')) else (w.get('name') or str(r['pid'])), 'nat': e.get('nat') or w.get('nat'),
                             'age': age, **({'bd': e['bd'][:10]} if e.get('bd') else {}), 'no': e.get('no'), 'club': r['tid'], 'prim': pos, 'pos': r['pos'], 'ht': ht, 'wt': wt,
                             'ovr': rating, 'r': ratings, 'a': a, 'style': style, 'val': val,
-                            'frm': w.get('frm'), 'inj': rnd.choice([1, 2, 2, 2, 3]),
+                            'frm': w.get('frm'), **({'inj': inj_level(cm, r['pid'], lastseen)} if inj_level(cm, r['pid'], lastseen) else {}),
                             # how his starts split over his registered positions (shares, same order as 'pos')
                             **({'pc': _shares(w, r['pos'])} if len(r['pos']) > 1 else {}),
                             's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None,
                             **({'out': r['back']} if r.get('back') else {}), **({'outw': r['why']} if r.get('why') else {})})
+    # market values: a log-linear fit of the Transfermarkt squad values Nikola supplied for the 20 clubs (Nov 2026,
+    # 484 players, € at 0.855 to the £) on our own numbers only: rating, age, club strength, position, national-team
+    # starts, goals + assists per start. Only these coefficients are kept, no single player's value; +13% for the
+    # fit's pull to the middle (the league's total matches Transfermarkt's)
+    _wof = {r['pid']: (r['w'] or {}) for r in rows}
+    _cq = {}
+    for x in out_players: _cq.setdefault(x['club'], []).append(x['ovr'])
+    _cq = {c: statistics.mean(sorted(v, reverse=True)[:14]) for c, v in _cq.items()}
+    for x in out_players:
+        o, ag, w = x['ovr'], x['age'] or 26, _wof.get(x['id'], {})
+        nt = min(w.get('nt', 0) or 0, 20); ga = ((w.get('ga', 0) or 0) + (w.get('aa', 0) or 0)) / max(1, w.get('starts', 1) or 1)
+        f = [1, o - 75, max(0, o - 80), max(0, o - 86), ag - 26, max(0, ag - 29), max(0, 23 - ag), _cq[x['club']] - 75,
+             x['prim'] == 'GK', x['prim'] in ('CF', 'SS', 'LWF', 'RWF', 'AMF'), math.log1p(nt), min(ga, 1.2), bool(w)]
+        v = 1.13 * math.exp(sum(c * float(z) for c, z in zip(VALUE_COEF, f)))
+        x['val'] = round(v, 1) if v >= 1 else round(max(.05, v), 2)
     # shirt numbers: the API's lists can be out of date, two players with one number; it stays with the one who has
     # played more for the club these two seasons, the other goes without
     by = {}

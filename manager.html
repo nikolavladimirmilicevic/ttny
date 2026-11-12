@@ -297,6 +297,19 @@ button.frow:hover{border-color:var(--gold)}
 .pkey{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:12px;color:var(--muted)}
 .pkey span{display:flex;align-items:center;gap:5px}.pkey i{display:inline-block;width:14px;height:10px;padding:0;flex:none}
 .pkey i.f4{background:#0E2A1B!important;outline:1px solid var(--line)}
+
+.cmattr{display:grid;grid-template-columns:repeat(3,1fr);gap:0 14px;margin:6px 0 12px}
+@media(max-width:760px){.cmattr{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.cmattr{grid-template-columns:1fr}}
+.crow{display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid var(--line);font-size:14.5px}
+.crow:nth-child(odd){background:rgba(255,255,255,.025)}
+.crow b{font-weight:700;font-size:15px}.crow .org{color:#F2A65A;font-weight:600}
+.cmlow{display:grid;grid-template-columns:1fr 290px;gap:16px;align-items:start}
+@media(max-width:760px){.cmlow{grid-template-columns:1fr}}
+.cmst td:first-child{color:var(--muted)}
+.avr{display:inline-block;min-width:44px;background:#5B2A86;color:#fff;border-radius:4px;padding:1px 6px;font-weight:700}
+.cmpos{text-align:center;color:#6FD3F2;font:700 20px/1.2 var(--display);letter-spacing:.03em;margin:14px 0 4px}
+.cmlow a{cursor:pointer}
 </style>
 </head><body>
 <div id="app"><p class="loading">Loading…</p></div>
@@ -633,9 +646,11 @@ function foul(M, S1, S2){
 function off(side, x){ side.on = side.on.filter(y => y !== x); x.off = true; }
 function injure(M, side, who_){
   const L = side.on.filter(y => y.pos !== 'GK'); if (!L.length) return;
-  const x = who_ && side.on.includes(who_) ? who_ : pick(L);
+  const wt = y => [.6, 1, 1.6][(y.p.inj || 2) - 1], tot = L.reduce((t, y) => t + wt(y), 0); let r = Math.random() * tot, x = L[L.length - 1];
+  for (const y of L){ r -= wt(y); if (r <= 0){ x = y; break; } }
+  if (who_ && side.on.includes(who_)) x = who_;
   const days = 3 + Math.floor(Math.random() * Math.random() * 50) + (Math.random() < .07 ? 40 : 0);
-  side.inj.push({ id: x.id, d: Math.round(days * ([1.2, 1, .8][(x.p.inj || 2) - 1] || 1)) });
+  side.inj.push({ id: x.id, d: Math.round(days * ([.85, 1, 1.2][(x.p.inj || 2) - 1] || 1)) });
   say(M, side, 'yel', `${nm(x)} is down injured. He can't carry on.`); M.inc.push({ l: label(M), side: sideKey(M, side), k: 'inj', t: surname(x.p.n) });
   if (!substitute(M, side, x, true)) off(side, x);
 }
@@ -1318,31 +1333,36 @@ function clubTactics(cid, o){
 /* ---- the player's profile, laid out like a PES database page: card, attribute groups with bars, radar, positions ---- */
 const cardName = n => { const w = String(n || '').trim().split(/\s+/), sn = surname(n); return w.length < 2 || sn === n ? n : `${w[0][0]}. ${sn}`; };
 // how a player's starts split over his registered positions (pipeline: API line-ups, recent starts weigh more)
-const FIT_WORD = { 1: 'Main position', 2: 'Regular (25%+ of starts)', 3: 'Occasional', 4: 'Not played there' };
+const FIT_WORD = { 1: 'Main', 2: 'Regular', 3: 'Occasional', 4: '' };
 const TT = t => String(t).replace(/\b[a-z]/g, c => c.toUpperCase()).replace(/\bGk\b/, 'GK');
 const GROUPS = [['Attacking', ['oa', 'fi', 'kp']], ['Dribbling', ['bc', 'dr', 'tp', 'ba']], ['Defending', ['he', 'ju', 'da', 'bw', 'ag']], ['Passing', ['lp', 'lf', 'pk', 'cu']], ['Physicality', ['sp', 'ac', 'pc', 'st']], ['Goalkeeping', ['ga', 'gc', 'gl', 'gr', 'gh']]];
 const BARC = v => v >= 90 ? '#5CE39A' : v >= 80 ? '#A8E063' : v >= 70 ? '#F2D33D' : v >= 60 ? '#F2A65A' : '#E57A62';
+const POS_LONG = { GK: 'Goalkeeper', CB: 'Defender (Centre)', LB: 'Defender (Left)', RB: 'Defender (Right)', DMF: 'Defensive Midfielder', CMF: 'Midfielder (Centre)',
+  LMF: 'Midfielder (Left)', RMF: 'Midfielder (Right)', AMF: 'Attacking Midfielder (Centre)', LWF: 'Winger (Left)', RWF: 'Winger (Right)', SS: 'Second Striker', CF: 'Striker (Centre)' };
 function playerCard(p, q, con, born){
-  const kn = known(p), k = kitOf(p.club);
-  const attr = key => { const v = A(p, key), d = q.d[key] || 0; return `<div class="pa"><span class="pv" style="background:${BARC(kn ? v : Math.floor(v / 10) * 10 + 5)}">${showA(p, v)}</span><span class="pn">${esc(TT(ATTR_NAME[key]))}${d >= 1 && kn ? ' <span class="up">▲</span>' : d <= -1 && kn ? ' <span class="dn">▼</span>' : ''}</span></div>`; };
-  const grp = ([n, ks]) => `<div class="pg2"><div class="ph"><b>${n}</b></div><div class="pbar"></div>${ks.map(attr).join('')}${n === 'Physicality' ? `<div class="pa"><span class="pv" style="background:${BARC([90, 75, 62][(p.inj || 2) - 1])}">${4 - (p.inj || 2)}</span><span class="pn">Injury Resistance</span></div>` : ''}</div>`;
-  const groups = GROUPS.filter(([n]) => p.prim === 'GK' || n !== 'Goalkeeping');
-  const rows = [['LWF', 'SS', 'CF', 'RWF'], ['LMF', 'DMF', 'CMF', 'AMF', 'RMF'], ['LB', 'CB', 'RB'], ['GK']];
-  const pos = rows.map(r => `<div class="prow">${r.map(x => { const i = p.pos.indexOf(x), sh = i < 0 ? 0 : p.pc ? p.pc[i] : i === 0 ? 1 : null, lv = i < 0 ? 4 : i === 0 ? 1 : sh == null || sh >= .25 ? 2 : 3;
-      return `<div class="pc f${lv}" title="${x}: ${FIT_WORD[lv]}${sh != null && i >= 0 ? ` (${Math.round(sh * 100)}% of his starts)` : ''}"><span>${x}</span></div>`; }).join('')}</div>`).join('');
+  const kn = known(p);
+  // every single attribute, alphabetical, in three columns like CM 01/02; his other details close the last column
+  const rows = Object.keys(ATTR_NAME).filter(k => p.prim === 'GK' || !GK_KEYS.includes(k)).map(k => { const v = A(p, k), d = q.d[k] || 0;
+    return [TT(ATTR_NAME[k]), `${d >= 1 && kn ? '<span class="up">▲</span> ' : d <= -1 && kn ? '<span class="dn">▼</span> ' : ''}<span class="${vcls(v)}">${showA(p, v)}</span>`]; });
+  if (p.inj) rows.push(['Injury Resistance', `<span class="${vcls([90, 75, 55][p.inj - 1])}">${4 - p.inj}</span>`]);
+  rows.sort((x, y) => x[0].localeCompare(y[0]));
+  const tail = [['Height', p.ht ? p.ht + ' cm' : '-'], ['Weight', p.wt ? p.wt + ' kg' : '-'], ['Playing Style', esc(p.style || '-')], ['Morale', morWord(q.mor)], ['Condition', Math.round(q.cond) + '%']].map(([n, v]) => [n, `<span class="org">${v}</span>`]);
+  const all = [...rows, ...tail], per = Math.ceil(all.length / 3);
+  const col = i => `<div>${all.slice(i * per, (i + 1) * per).map(([n, v]) => `<div class="crow"><span>${n}</span><b>${v}</b></div>`).join('')}</div>`;
+  // positions: coloured by how his real starts split over the positions he is registered in
+  const prow = [['LWF', 'SS', 'CF', 'RWF'], ['LMF', 'DMF', 'CMF', 'AMF', 'RMF'], ['LB', 'CB', 'RB'], ['GK']];
+  const pitch = prow.map(r => `<div class="prow">${r.map(x => { const i = p.pos.indexOf(x), sh = i < 0 ? null : p.pc ? p.pc[i] : i === 0 ? 1 : null, lv = i < 0 ? 4 : i === 0 ? 1 : sh == null || sh >= .25 ? 2 : 3;
+    return `<div class="pc f${lv}" title="${x}${i >= 0 ? ': ' + FIT_WORD[lv] + (sh != null ? ` (${Math.round(sh * 100)}% of his starts)` : '') : ''}"><span>${x}</span></div>`; }).join('')}</div>`).join('');
   const ks = Object.keys(ATTR_NAME), dist = x => ks.reduce((t, key) => t + Math.abs(A(x, key) - A(p, key)), 0);
   const sim = D.players.filter(x => x.id !== p.id && x.prim === p.prim).map(x => [x, dist(x)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
-  const mini = x => { const kk = kitOf(x.club); return `<button class="pcard sm" data-pl="${x.id}" style="--k1:${kk[0]};--k2:${kk[1]}"><span class="pp">${cmPos([x.prim])}</span><b>${esc(cardName(x.n))}</b><span class="small">${esc(club(x.club).name)}</span></button>`; };
-  return `<div class="pmast">
-    <div class="pleft">      <div class="ptitle" style="margin-top:0">Positions</div><div class="ppitch">${pos}</div>
-      <div class="pkey">${[1, 2, 3, 4].map(l => `<span><i class="pc f${l}"></i>${FIT_WORD[l]}</span>`).join('')}</div><p class="small dim">From where he has started in real line-ups; hover a position for its share.</p></div>
-    <div class="pright"><div class="pgrid">${groups.map(grp).join('')}</div>
-      <div class="ptitle">Playing Style</div><p style="margin:0 0 8px">${esc(p.style || 'None')}</p>
-      <div class="ptitle">Info</div><dl class="kv"><dt>Age</dt><dd>${p.age}</dd><dt>Nationality</dt><dd>${esc(p.nat || '-')}</dd><dt>Team</dt><dd>${esc(club(p.club).name)}${p.no ? ' · ' + p.no : ''}</dd><dt>Position</dt><dd class="yel">${cmPos(p.pos)}</dd>
-        <dt>Height</dt><dd>${p.ht ? p.ht + ' cm' : '-'}</dd><dt>Weight</dt><dd>${p.wt ? p.wt + ' kg' : '-'}</dd><dt>Market Value</dt><dd>${valueOf(p)}</dd><dt>Contract</dt><dd>${con ? `30.6.${String(con.y).slice(2)}, ${wage(con.w)}` : '-'}</dd>
-        <dt>Condition</dt><dd>${Math.round(q.cond)}%</dd><dt>Morale</dt><dd>${morWord(q.mor)}</dd></dl>
-      ${kn ? '' : '<p class="small dim">Attribute masking: you will know his exact numbers once you have played his club, or after a week on your short list.</p>'}
-      <div class="ptitle">Similar Players</div><div class="psim">${sim.map(mini).join('')}</div></div></div>`;
+  const real = p.s ? `<tr><td>${D.season - 1}/${String(D.season % 100).padStart(2, '0')} (real)</td><td class="c">${p.s[0]}</td><td class="c">${p.s[1]}</td><td class="c">${p.s[2]}</td><td class="c">-</td><td class="c">-</td><td class="c"><span class="avr">${p.s[3] ? (+p.s[3]).toFixed(2) : '----'}</span></td></tr>` : '';
+  return `<div class="born">${born}. ${esc(p.nat || '')}.</div>
+    <div class="cmattr">${col(0)}${col(1)}${col(2)}</div>
+    <div class="cmlow"><div class="tw"><table class="cmst"><thead><tr><th></th><th class="c">Apps</th><th class="c">Gls</th><th class="c">Asts</th><th class="c">MoM</th><th class="c">Yel</th><th class="c">Av R</th></tr></thead><tbody>
+      <tr><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td class="c">${q.apps || '-'}</td><td class="c">${q.apps ? q.g : '-'}</td><td class="c">${q.apps ? q.a : '-'}</td><td class="c">${q.apps ? q.mom : '-'}</td><td class="c">${q.apps ? q.yc : '-'}</td><td class="c"><span class="avr">${q.apps ? avgRt(q) : '----'}</span></td></tr>${real}</tbody></table>
+      <div class="small dim" style="margin-top:8px">Similar: ${sim.map(x => `<a class="sky" data-pl="${x.id}">${esc(cmName(x.n))}</a>`).join(', ')}</div></div>
+      <div><div class="ppitch">${pitch}</div><div class="pkey">${[1, 2, 3].map(l => `<span><i class="pc f${l}"></i>${FIT_WORD[l]}</span>`).join('')}</div></div></div>
+    <div class="cmpos">${p.pos.map(x => POS_LONG[x] || x).join(', ')}</div>`;
 }
 function scrPlayer(){
   const p = P.get(V.id); if (!p){ V = { s: 'news' }; view(); return; }
@@ -1354,12 +1374,12 @@ function scrPlayer(){
   let body;
   if (tab === 'profile') body = playerCard(p, q, con, born);
   if (tab === 'pos') body = `<div class="ptitle">Ability in every position</div><div class="tw"><table><thead><tr>${posList.map(x => `<th class="c">${cmPos([x])}</th>`).join('')}</tr></thead><tbody><tr>${posList.map(x => `<td class="c av ${vcls(fitIn(p, x))}" style="${p.pos.includes(x) ? 'outline:1px solid var(--yel)' : ''}">${fitIn(p, x)}</td>`).join('')}</tr></tbody></table></div>`;
-  if (tab === 'inj') body = `<div class="ptitle">Injuries &amp; Bans</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Fitness</dt><dd>${q.injD ? `<span style="color:var(--hot)">Injured, out about ${Math.ceil(q.injD / 7)} week(s)</span>` : q.light ? 'Back from injury, not yet sharp' : 'Fit'}</dd><dt>Condition</dt><dd>${Math.round(q.cond)}%</dd><dt>Bookings</dt><dd>${q.yc} this season</dd><dt>Banned</dt><dd>${q.sus ? `${q.sus} match(es)` : 'No'}</dd><dt>Proneness</dt><dd>${['Rarely injured', 'Average', 'Injury prone'][(p.inj || 2) - 1] || 'Average'}</dd></dl>`;
+  if (tab === 'inj') body = `<div class="ptitle">Injuries &amp; Bans</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Fitness</dt><dd>${q.injD ? `<span style="color:var(--hot)">Injured, out about ${Math.ceil(q.injD / 7)} week(s)</span>` : q.light ? 'Back from injury, not yet sharp' : 'Fit'}</dd><dt>Condition</dt><dd>${Math.round(q.cond)}%</dd><dt>Bookings</dt><dd>${q.yc} this season</dd><dt>Banned</dt><dd>${q.sus ? `${q.sus} match(es)` : 'No'}</dd><dt>Proneness</dt><dd>${p.inj ? ['Rarely injured', 'Average', 'Injury prone'][p.inj - 1] : 'Not known yet'}</dd></dl>`;
   if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Club</dt><dd>${esc(club(p.club).name)}</dd><dt>Wage</dt><dd>${wage(con.w)}</dd><dt>Expires</dt><dd>30.6.${String(con.y).slice(2)}</dd><dt>Value</dt><dd>${valueOf(p)}</dd><dt>Squad number</dt><dd>${p.no || '-'}</dd></dl>`;
   if (tab === 'hist') body = `<div class="ptitle">History</div><div class="tw"><table><thead><tr><th>Season</th><th>Club</th><th class="r">Apps</th><th class="r">Gls</th><th class="r">Asts</th><th class="r">Av R</th></tr></thead><tbody>
     ${p.s ? `<tr><td>${D.season - 1}/${String(D.season % 100).padStart(2, '0')} (real)</td><td>${esc(club(p.club).name)}</td><td class="r">${p.s[0]}</td><td class="r">${p.s[1]}</td><td class="r">${p.s[2]}</td><td class="r">${p.s[3] ? (+p.s[3]).toFixed(2) : '-'}</td></tr>` : ''}
     <tr class="me"><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td>${esc(club(p.club).name)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${avgRt(q)}</td></tr></tbody></table></div>`;
-  body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
+  if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
   frame(ofClub(p.club, { title: esc(p.n), sub: `${esc(club(p.club).name)}${p.no ? ' · ' + p.no : ''}`,
@@ -1368,7 +1388,7 @@ function scrPlayer(){
     onTab: k => { V = { ...V, tab: k }; view(); }, body,
     next: at >= 0 && at < list.length - 1 ? () => { V = { ...V, id: list[at + 1] }; view(); } : null }));
   const pk = $('#pick'); if (pk) pk.addEventListener('click', () => { toggleSel(p.id); view(); });
-  document.querySelectorAll('.psim [data-pl]').forEach(b => b.addEventListener('click', () => go({ s: 'player', id: +b.dataset.pl })));
+  document.querySelectorAll('.cmlow [data-pl]').forEach(b => b.addEventListener('click', () => go({ s: 'player', id: +b.dataset.pl })));
   const sl = $('#slb'); if (sl) sl.addEventListener('click', () => { S.short = S.short || []; if (S.short.some(x => x.id === p.id)) S.short = S.short.filter(x => x.id !== p.id); else S.short.push({ id: p.id, d: S.date }); save(); view(); });
 }
 
