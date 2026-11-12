@@ -227,7 +227,7 @@ def _style(a, pos):
 
 
 def display(e, pid):
-    return html.unescape(_display(e, pid))   # the API sends some names HTML-escaped ('Nico O&apos;Reilly')
+    return re.sub(r'\s+', ' ', html.unescape(_display(e, pid))).strip()   # the API sends some names HTML-escaped ('Nico O&apos;Reilly') or with double spaces
 
 
 def _display(e, pid):
@@ -380,6 +380,11 @@ TM_POS = {'goalkeeper': 'GK', 'centre-back': 'CB', 'left-back': 'LB', 'right-bac
           'left winger': 'LWF', 'right winger': 'RWF', 'second striker': 'SS', 'centre-forward': 'CF'}
 
 
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_facts.json'), encoding='utf-8') as _f:
+        TM_FACTS = json.load(_f).get('players') or {}
+except Exception:
+    TM_FACTS = {}
 TRAIT_PTS = 3
 try:
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cm_traits.json'), encoding='utf-8') as _f:
@@ -650,6 +655,11 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
              x['prim'] == 'GK', x['prim'] in ('CF', 'SS', 'LWF', 'RWF', 'AMF'), math.log1p(nt), min(ga, 1.2), bool(w)]
         v = 1.13 * math.exp(sum(c * float(z) for c, z in zip(VALUE_COEF, f))) * (1.2 if gkx else 1)   # with the age shift, keepers land on Transfermarkt's level
         x['val'] = round(v, 1) if v >= 1 else round(max(.05, v), 2)
+        t = TM_FACTS.get(str(x['id'])) or {}
+        if t.get('eur') is not None:   # Transfermarkt's own value wins (€ to £ at the game's rate)
+            x['val'] = round(t['eur'] / 1.17, 1) if t['eur'] >= 1.17 else round(max(.05, t['eur'] / 1.17), 2)
+        if t.get('con'):
+            x['cy'] = t['con']
     # shirt numbers: the API's lists can be out of date, two players with one number; it stays with the one who has
     # played more for the club these two seasons, the other goes without
     by = {}
