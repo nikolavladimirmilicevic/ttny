@@ -34,7 +34,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 @media(max-width:440px){.mark .trk span{display:none}.mark .trk{padding:5px 6px;margin-left:2px}.mark .mtxt{display:none}.mark img{height:32px}.games a{padding:5px 10px;font-size:12px}}
 @media(max-width:400px){.games a{padding:5px 7px;font-size:11.5px}.mark .trk{display:none}}
 /* the frame */
-.cm{display:grid;grid-template-columns:150px 1fr;gap:12px;max-width:1180px;margin:0 auto;padding:0 16px 30px}
+.cm{display:grid;grid-template-columns:200px 1fr;gap:12px;max-width:1180px;margin:0 auto;padding:0 16px 30px}
 .side{background:var(--panel);border-radius:14px;display:flex;flex-direction:column;align-items:stretch;padding:10px 8px;gap:4px;align-self:start;position:sticky;top:10px}
 .date{background:var(--panel-2);border-radius:10px;text-align:center;padding:8px 4px;font:600 15px/1.25 var(--display);letter-spacing:.04em;text-transform:uppercase}
 .date span{display:block}.date span:first-child{color:var(--gold)}.date span:last-child{color:var(--muted);font-size:12px}
@@ -47,6 +47,19 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .sb.go:hover{filter:brightness(1.08)}
 .sb.mgr,.sb.myclub{color:var(--text);font-weight:700}
 .sb.on{background:var(--panel-3);color:var(--text);box-shadow:inset 3px 0 0 var(--gold)}
+.mtree{display:flex;flex-direction:column;gap:1px;margin-top:2px}
+.mi{display:flex;align-items:center;gap:5px;width:100%;text-align:left;background:none;border:0;border-radius:7px;color:var(--muted);font-weight:500;font-size:13px;padding:6px 8px 6px calc(8px + var(--d) * 11px);line-height:1.2}
+.mi.d0{font-size:14px;font-weight:600;color:var(--text);padding-top:8px;padding-bottom:8px}
+.mi.mgr,.mi.myclub{font-weight:700}
+.mi:hover{background:var(--panel-2);color:var(--text)}
+.mi.path{color:var(--text)}
+.mi.on{background:var(--panel-3);color:var(--text);box-shadow:inset 3px 0 0 var(--gold)}
+.mi.ctx{color:var(--gold)}
+.mi .car{font-style:normal;font-size:10px;width:10px;flex:0 0 10px;color:var(--muted)}
+.mi span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mi .mcr{width:14px;height:14px;object-fit:contain;vertical-align:-2px;margin-right:5px}
+.msub{display:flex;flex-direction:column;gap:1px}
+.mi .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--warn);color:#2A1700;font-size:11px;line-height:18px;text-align:center}
 .sb .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--warn);color:#2A1700;font-size:11px;line-height:18px;text-align:center}
 .main{display:flex;flex-direction:column;gap:8px;min-width:0}
 /* the title */
@@ -209,6 +222,7 @@ tr.me td{background:rgba(79,209,139,.10)}
   .sb{width:auto;flex:1 0 auto;text-align:center;background:var(--panel-2);padding:7px 8px;font-size:12.5px}
   .sb.go{flex-basis:100%;order:-1;margin:0}
   .sb.on{box-shadow:inset 0 -2px 0 var(--gold)}
+  .mtree{flex-basis:100%}
 }
 
 .subbar{background:var(--panel);border-radius:10px;text-align:center;padding:9px;font:600 20px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--gold)}
@@ -1306,6 +1320,56 @@ function view(){
   if (LIVE){ viewMatch(); return; }
   ({ news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, transfers: scrTransfers })[V.s]();
 }
+// the left menu: every screen and every tab, opening in a cascade (CM's menus without hunting for tabs on the page)
+let MOPEN = new Set(), MSHUT = new Set(), MITEMS = {};
+const MDEF = { news: { f: 'all' }, club: { tab: 'squad' }, comp: { tab: 'table' }, find: { tab: 'search' }, managers: { tab: 'rep' }, manager: { tab: 'hist' } };
+const vEq = v => v && Object.keys(v).every(k => (V[k] != null ? V[k] : k === 'cid' && V.s === 'club' ? me() : (MDEF[V.s] || {})[k]) === v[k]);
+function menuTree(o, unread){
+  const mine = me(), cv = (cid, tab) => ({ s: 'club', cid, tab });
+  const clubKids = cid => (cid === mine
+    ? [['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['info', 'Finances &amp; Info'], ['tactics', 'Tactics'], ['training', 'Training'], ['last', 'Last Match'], ['board', 'Board']]
+    : [['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['info', 'General Info'], ['last', 'Last Match']]).map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: cv(cid, t) }));
+  const T = [
+    { id: 'mgr', cls: 'mgr', label: `${esc(S.manager)}${unread ? `<span class="badge">${unread}</span>` : ''}`, v: { s: 'news' }, kids: [
+      { id: 'news', label: 'News', v: { s: 'news', f: 'all' }, kids: [['all', 'All'], ['club', 'Club &amp; Board'], ['comp', 'Competitions'], ['inj', 'Injuries and Bans']].map(([f, n]) => ({ id: 'n.' + f, label: n, v: { s: 'news', f } })) },
+      { id: 'career', label: 'Career', v: { s: 'manager', tab: 'hist' }, kids: [
+        { id: 'k.hist', label: 'History', v: { s: 'manager', tab: 'hist' } }, { id: 'k.con', label: 'Contract &amp; Media', v: { s: 'manager', tab: 'con' } },
+        { id: 'k.rep', label: 'Manager Stats', v: { s: 'managers', tab: 'rep' } }, { id: 'k.jobs', label: 'Jobs', v: { s: 'managers', tab: 'jobs' } },
+        { id: 'k.hall', label: 'Hall of Fame', act: () => { SETUP_OPEN = true; SETUP = 'hall'; view(); } }] }] },
+    { id: 'my', cls: 'myclub', label: esc(club(mine).name), v: cv(mine, 'squad'), kids: [...clubKids(mine), { id: 'my.tr', label: 'Transfers', v: { s: 'transfers' } }] },
+    { id: 'comp', label: 'Competitions', v: { s: 'comp', tab: 'table' }, kids: [['table', 'Table'], ['results', 'Results'], ['fixtures', 'Fixtures'], ['cup', esc(CUP === 'Cup' ? 'The Cup' : CUP)], ['tstats', 'Team Stats'], ['pstats', 'Player Stats'], ['refs', 'Referee Stats'], ['awards', 'Awards']].map(([t, n]) => ({ id: 'cp.' + t, label: n, v: { s: 'comp', tab: t } })).concat([{ id: 'cp.rec', label: 'Records', v: { s: 'records' } }]) },
+    { id: 'clubs', label: 'Nations &amp; Clubs', v: { s: 'clubs' }, kids: [{ id: 'eng', label: 'England', v: { s: 'clubs' }, kids: D.clubs.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'squad'), kids: clubKids(c.id) })) }] },
+    { id: 'find', label: 'Find', v: { s: 'find', tab: 'search' }, kids: [['short', 'Short List'], ['search', 'Player Search'], ['staff', 'Staff Search'], ['sc1', 'Scout #1'], ['sc2', 'Scout #2']].map(([t, n]) => ({ id: 'f.' + t, label: n, v: { s: 'find', tab: t } })) },
+    { id: 'opt', label: 'Game Options', v: { s: 'options' } }];
+  // the deepest item that is this screen; a screen the tree does not hold (a player, a comparison) gets its own entry
+  let hit = null;
+  const walk = (L, up) => L.forEach(it => { it.up = up; if (vEq(it.v) && (!hit || (up[0] || it.id) === (hit.up[0] || hit.id) && up.length >= hit.up.length)) hit = it; if (it.kids) walk(it.kids, [...up, it.id]); });
+  walk(T, []);
+  if (!hit){
+    const tabsOf = [...(o.top || []), ...(o.bottom || [])].filter(t => !t[2]);
+    const ctx = { id: 'ctx', cls: 'ctx', label: o.title, kids: tabsOf.map(([k, n]) => ({ id: 'x.' + k, label: n, act: () => o.onTab && o.onTab(k), on: k === o.topOn || k === o.bottomOn })), up: [] };
+    ctx.kids.forEach(k => { k.up = ['ctx']; });
+    T.unshift(ctx); hit = ctx.kids.find(k => k.on) || ctx;
+  }
+  return { T, path: new Set([...(hit ? hit.up : []), hit && hit.id]), hit };
+}
+function menuHTML(o, unread){
+  const { T, path, hit } = menuTree(o, unread); MITEMS = {};
+  const isOpen = it => it.kids && it.kids.length && ((MOPEN.has(it.id) || path.has(it.id)) && !MSHUT.has(it.id) || it.id === 'ctx');
+  const row = (it, d) => { MITEMS[it.id] = it; const op = isOpen(it);
+    return `<button class="mi d${d} ${it.cls || ''} ${it === hit ? 'on' : path.has(it.id) ? 'path' : ''}" data-mi="${it.id}" style="--d:${d}">${it.kids && it.kids.length && it.id !== 'ctx' ? `<i class="car">${op ? '▾' : '▸'}</i>` : ''}<span>${it.label}</span></button>${op ? `<div class="msub">${it.kids.map(k => row(k, d + 1)).join('')}</div>` : ''}`; };
+  return `<nav class="mtree" aria-label="Menu">${T.map(it => row(it, 0)).join('')}</nav>`;
+}
+function wireMenu(){
+  document.querySelectorAll('[data-mi]').forEach(b => b.addEventListener('click', () => {
+    const it = MITEMS[b.dataset.mi]; if (!it) return;
+    const onPath = b.classList.contains('on') || b.classList.contains('path'), open = !!b.nextElementSibling && b.nextElementSibling.classList.contains('msub');
+    if (it.kids && it.kids.length && open && onPath && it.id !== 'ctx'){ MSHUT.add(it.id); MOPEN.delete(it.id); view(); return; }
+    MSHUT.delete(it.id); MOPEN = new Set([...(it.up || []), it.id]);
+    if (it.act) it.act(); else if (it.v && !onPath) go(it.v); else if (it.v && !vEq(it.v)) go(it.v); else view();
+  }));
+  const on = document.querySelector('.mtree .on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
+}
 function frame(o){
   // o: { title, sub, k1, k2, top: [[key,label,disabled]], topOn, bottom, bottomOn, tools, body, next, act }
   const unread = S.news.filter(n => n.n).length, ev = events()[0], today = ev && ev.date === S.date;
@@ -1316,20 +1380,13 @@ function frame(o){
       <div class="date"><span>${WD[dt.getUTCDay()]}</span><span>${shortDate(S.date)}</span><span>${today ? 'PM' : 'AM'}</span></div>
       <div class="arrows"><button id="navb" aria-label="Back" ${HIST.length ? '' : 'disabled'}>←</button><button id="navf" aria-label="Forward" ${FWD.length ? '' : 'disabled'}>→</button></div>
       ${S.done ? (S.next ? '<button class="sb go" id="nextseason">Start the Next Season</button>' : S.sacked ? '<button class="sb go" id="findjob">Find a Job</button>' : '') : `<button class="sb go" id="cont">Continue Game</button>`}
-      <button class="sb mgr ${V.s === 'news' ? 'on' : ''}" data-side="news">${esc(S.manager)}${unread ? `<span class="badge">${unread}</span>` : ''}</button>
-      <button class="sb myclub ${V.s === 'club' && V.cid === me() ? 'on' : ''}" data-side="club">${esc(club(me()).name)}</button>
-      <button class="sb ${V.s === 'comp' ? 'on' : ''}" data-side="comp">Competitions</button>
-      <button class="sb ${V.s === 'clubs' ? 'on' : ''}" data-side="clubs">Nations &amp; Clubs</button>
-      <button class="sb ${V.s === 'find' ? 'on' : ''}" data-side="find">Find</button>
-      <button class="sb ${V.s === 'options' ? 'on' : ''}" data-side="options">Game Options</button>
+      ${menuHTML(o, unread)}
       ${unread && V.s !== 'news' ? '<button class="sb newsflag" data-side="news">You Have News</button>' : ''}
     </aside>
     <div class="main">
       <div class="banner ${o.crest ? 'wc' : ''}" style="--k1:${o.k1 || '#2A44D0'};--k2:${o.k2 || '#fff'}"><span class="bcr">${o.crest ? crest(o.crest, 'bigcr') : ''}</span><h1>${o.title}${o.sub ? `<span class="sub">${o.sub}</span>` : ''}${o.info ? `<span class="binfo">${o.info}</span>` : ''}</h1><span class="act">${o.act || ''}</span></div>
-      ${tabs(o.top, o.topOn, 'ttop')}
       ${o.tools ? `<div class="tools">${o.tools}</div>` : ''}
       <section class="pane">${o.body}</section>
-      ${tabs(o.bottom, o.bottomOn, 'tbot')}
       <div class="bn"><button id="back" ${HIST.length ? '' : 'disabled'}>Back</button><button id="next" ${o.next ? '' : 'disabled'}>Next</button></div>
     </div></div>`;
   const on = (sel, f) => { const el = $(sel); if (el) el.addEventListener('click', f); };
@@ -1340,7 +1397,8 @@ function frame(o){
   on('#nextseason', () => { newSeason(); save(); V = { s: 'news' }; view(); });
   on('#findjob', () => go({ s: 'managers', tab: 'jobs' }));
   if (o.next) on('#next', o.next);
-  document.querySelectorAll('[data-side]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.side; go(k === 'club' ? { s: 'club', cid: me(), tab: 'squad' } : k === 'comp' ? { s: 'comp', tab: 'table' } : { s: k }); }));
+  document.querySelectorAll('[data-side]').forEach(b => b.addEventListener('click', () => go({ s: b.dataset.side })));
+  wireMenu(o);
   document.querySelectorAll('#ttop [data-t],#tbot [data-t]').forEach(b => b.addEventListener('click', () => o.onTab && o.onTab(b.dataset.t)));
 }
 const ofClub = (cid, more) => { const [k1, k2] = kitOf(cid); return Object.assign({ k1, k2, crest: cid }, more); };
