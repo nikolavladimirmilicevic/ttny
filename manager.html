@@ -532,7 +532,7 @@ function schedule(ids, seed, season){
   return { rounds, cupDates };
 }
 function newGame(cid, manager){
-  S = null; applyMoves();
+  S = null; rebuildPlayers();
   const ids = D.clubs.map(c => c.id), seed = `${D.season}-${cid}-${Date.now()}`, r0 = rng(seed);
   const { rounds, cupDates } = schedule(ids, seed, D.season);
   const rank = expRank(cid), aim = aimFor(rank);
@@ -947,6 +947,16 @@ function passDays(n){
   S.date = to;
   scoutTick();
   transferTick();
+  contractWarn();
+}
+// a word from the assistant when your players' contracts are in their last season: at the start of it and in January
+function contractWarn(){
+  for (const [k, d] of [['a', `${S.season}-08-01`], ['j', `${S.season + 1}-01-02`], ['m', `${S.season + 1}-04-01`]]){
+    const key = `${S.season}${k}`; if (S.date < d || (S.ctrWarn || []).includes(key)) continue;
+    (S.ctrWarn = S.ctrWarn || []).push(key);
+    const L = squadOf(me()).filter(p => S.con[p.id] && S.con[p.id].y <= S.season + 1 && (S.renew || {})[p.id] !== S.season).sort((a, b) => ovrNow(b) - ovrNow(a));
+    if (L.length) news('club', 'Contracts running out', `These players' contracts end on 30 June ${S.season + 1}, and they will leave on a free unless they sign again: ${L.map(p => `<b>${esc(p.n)}</b>`).join(', ')}. Offer new deals on their Contract screens.`);
+  }
 }
 const FOCUS = { General: null, Fitness: ['st', 'sp', 'ac', 'pc', 'ju', 'ba'], Tactics: ['da', 'oa', 'bw', 'lp'], Skills: ['bc', 'dr', 'tp', 'lp', 'lf', 'cu'], Shooting: ['fi', 'kp', 'cu', 'pk', 'oa'], Goalkeeping: GK_KEYS };
 // a week of training for every player: growth by age (the young improve, after 30 the legs go first), your schedule and intensity
@@ -1056,6 +1066,52 @@ function checkJob(){
   else if (S.ultimatum && S.round - S.ultimatum.from >= 5){ if (S.conf < 22){ S.sacked = true; S.done = true; (S.hist = S.hist || []).push({ d: S.date, c: me(), t: 'Sacked' }); news('board', 'Sacked', `The board have run out of patience and have terminated your contract. ${esc(club(me()).name)} thank you for your efforts.`); } else { S.ultimatum = null; news('board', 'The board', 'The board are pleased to see an improvement. The ultimatum has been lifted.'); } }
 }
 function standings(){ return Object.entries(S.table).map(([id, t]) => ({ id: +id, ...t, gd: t.gf - t.ga, pts: t.w * 3 + t.d })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || club(a.id).name.localeCompare(club(b.id).name)); }
+/* the end of a career and the start of one: at each new season the oldest may retire (from 35, all at 38), and every
+   club brings two or three youngsters (16 or 17) through from its academy, made in the shape of a real player in that
+   position, scaled down to a youngster's level; they grow with training like anyone young */
+const YOUTH_NAMES = {
+  England: [['Alfie', 'Harry', 'Jack', 'Oliver', 'George', 'Charlie', 'Freddie', 'Theo', 'Archie', 'Leo', 'Oscar', 'Max', 'Reggie', 'Kai', 'Jayden', 'Tyler', 'Ethan', 'Mason', 'Callum', 'Rio'],
+    ['Walker', 'Hughes', 'Bennett', 'Cooper', 'Ward', 'Turner', 'Mills', 'Holt', 'Barker', 'Fletcher', 'Gray', 'Parker', 'Harding', 'Brooks', 'Lowe', 'Shaw', 'Pearce', 'Doyle', 'Okafor', 'Mensah', 'Campbell', 'Francis']],
+  France: [['Lucas', 'Noah', 'Rayan', 'Enzo', 'Mathis', 'Yanis', 'Ilyes', 'Nolan'], ['Martin', 'Bernard', 'Diallo', 'Traoré', 'Lefebvre', 'Moreau', 'Camara', 'Girard']],
+  Spain: [['Pablo', 'Hugo', 'Álvaro', 'Mario', 'Iker', 'Marc'], ['García', 'López', 'Navarro', 'Romero', 'Torres', 'Ruiz']],
+  Netherlands: [['Daan', 'Sem', 'Milan', 'Luuk'], ['de Vries', 'Bakker', 'Visser', 'Smit']],
+  Ireland: [['Seán', 'Cian', 'Oisín', 'Conor'], ["O'Brien", 'Byrne', 'Kelly', 'Murphy']],
+  Scotland: [['Lewis', 'Fraser', 'Ross', 'Euan'], ['MacLeod', 'Robertson', 'Stewart', 'Fraser']],
+  Wales: [['Rhys', 'Dylan', 'Owain', 'Ieuan'], ['Jones', 'Evans', 'Davies', 'Price']],
+};
+function retireAndIntake(){
+  S.ret = S.ret || []; S.gen = S.gen || [];
+  for (const p of D.players.slice()){
+    const chance = p.age >= 38 ? 1 : p.age >= 35 ? (p.age - 34) * .3 : 0;
+    if (!chance || rng(`ret-${p.id}-${S.season}`)() >= chance) continue;
+    if (p.club === me()) news('club', `${p.n} retires`, `<b>${esc(p.n)}</b> has decided to hang up his boots at ${p.age}.`);
+    if (S.gen.some(x => x.id === p.id)) S.gen = S.gen.filter(x => x.id !== p.id); else S.ret.push(p.id);
+    for (const t of Object.values(S.tac)){ t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); }
+  }
+  const POSS = ['GK', 'CB', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'CMF', 'AMF', 'LMF', 'RMF', 'LWF', 'RWF', 'CF', 'CF'];
+  let nid = Math.min(-1000000, ...S.gen.map(x => x.id)) - 1;
+  const mineNew = [];
+  for (const c of D.clubs){
+    const rr = rng(`yi-${c.id}-${S.season}-${S.seed}`), n = 2 + (rr() < .4 ? 1 : 0);
+    for (let k = 0; k < n; k++){
+      const prim = POSS[Math.floor(rr() * POSS.length)], tmpls = D.all.filter(p => p.prim === prim && p.a), t = tmpls[Math.floor(rr() * tmpls.length)];
+      if (!t) continue;
+      const age = 16 + (rr() < .5 ? 1 : 0), ovr = Math.round(50 + rr() * 10 + (c.q - 75) * .4 + (rr() < .08 ? 8 : 0)), drop = t.ovr - ovr;
+      const a = {}; for (const [key, v] of Object.entries(t.a)) a[key] = clamp(Math.round(v - drop * (GK_KEYS.includes(key) === (prim === 'GK') ? 1 : .6) + (rr() - .5) * 6), 40, 99);
+      const r = {}; for (const [q, v] of Object.entries(t.r || {})) r[q] = clamp(Math.round(v - drop), 30, 99);
+      const natPool = rr() < .7 ? 'England' : ['France', 'Spain', 'Netherlands', 'Ireland', 'Scotland', 'Wales'][Math.floor(rr() * 6)], NM = YOUTH_NAMES[natPool];
+      const nm = `${NM[0][Math.floor(rr() * NM[0].length)]} ${NM[1][Math.floor(rr() * NM[1].length)]}`;
+      const used = new Set(squadOf(c.id).map(x => x.no)); let no = 30; while (used.has(no)) no++;
+      const p = { id: nid--, n: nm, nat: natPool === 'Ireland' ? 'Republic of Ireland' : natPool, age, club: c.id, prim, pos: [prim], ht: (t.ht || 180) - 4 + Math.round(rr() * 6), wt: (t.wt || 75) - 8 + Math.round(rr() * 5),
+        a, r: { ...r, [prim]: ovr }, ovr, val: +(Math.max(.2, Math.exp((ovr - 60) / 7.5) * .9 * 1.25 * 2.3)).toFixed(1), no, style: t.style, inj: 1 + Math.floor(rr() * 3), yth: S.season };
+      p._c0 = c.id; p._n0 = no; p._a0 = age - (S.season - D.season);
+      S.gen.push(p); D.players.push(p); P.set(p.id, p); S.con[p.id] = { y: S.season + 3, w: 1000 + Math.round(rr() * 4) * 500 }; ps(p.id);
+      if (c.id === me()) mineNew.push(p);
+    }
+  }
+  rebuildPlayers();
+  if (mineNew.length) news('club', 'Youth intake', `Your academy has brought through ${mineNew.length} youngsters: ${mineNew.map(p => `<b>${esc(p.n)}</b> (${cmPos(p.pos)}, ${p.age})`).join(', ')}. They are in the reserves; give them time.`);
+}
 // the next season: numbers into each player's history, a year on everyone, contracts that end, a new schedule
 function newSeason(){
   const ids = D.clubs.map(c => c.id), was = S.season;
@@ -1063,6 +1119,7 @@ function newSeason(){
     if (q.apps) (q.hs = q.hs || []).push({ s: was, c: p ? p.club : null, apps: q.apps, g: q.g, a: q.a, rt: q.rt.length ? +(q.rt.reduce((x, y) => x + y, 0) / q.rt.length).toFixed(2) : null });
     Object.assign(q, { apps: 0, sub: 0, g: 0, a: 0, rt: [], mom: 0, yc: 0, sus: 0, cond: 100 }); }
   S.season = was + 1; applyMoves();
+  retireAndIntake();
   // contracts ending 30 June: your players whose deals have run out leave on a free; the other clubs renew theirs
   for (const p of D.players){ const c = S.con[p.id]; if (!c || c.y > S.season) continue;   // 'until 30.6.y': the season that just ended ran to 30 June of S.season
     if (p.club === me()){ const to = D.clubs.filter(x => x.id !== me())[Math.floor(Math.random() * (D.clubs.length - 1))].id; S.con[p.id] = { y: S.season + 1 + Math.floor(Math.random() * 3), w: wageDemand(p) };
@@ -1205,13 +1262,21 @@ function saveAs(name){
 }
 // a save fits today's data when its clubs are all still in the league
 // the players' clubs and numbers as the data has them, then this game's transfers on top
+// the league's players in this game: the data's, less those who have retired, plus the youngsters who have come through
+function rebuildPlayers(){
+  if (!D.all) D.all = D.players.slice();
+  const gone = new Set((S && S.ret) || []);
+  D.players = D.all.filter(p => !gone.has(p.id)).concat((S && S.gen) || []);
+  P.clear(); D.players.forEach(p => P.set(p.id, p));
+  applyMoves();
+}
 function applyMoves(){ const yrs = S ? (S.season || D.season) - D.season : 0;
   for (const p of D.players){ p.club = p._c0 ?? p.club; p.no = p._n0 ?? p.no; if (p._a0 == null) p._a0 = p.age; p.age = p._a0 + yrs; }
   for (const [id, cid] of Object.entries((S && S.moves) || {})){ const p = P.get(+id); if (p && C.has(cid)) p.club = cid; }
   for (const [id, n] of Object.entries((S && S.nos) || {})){ const p = P.get(+id); if (p) p.no = n; } }
 function adopt(s){
   if (!(s && s.v === 2 && C.has(s.club) && Object.keys(s.table).length === D.clubs.length && Object.keys(s.table).every(id => C.has(+id)))) return false;
-  S = s; applyMoves();
+  S = s; rebuildPlayers();
   for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x));
     // a shape from before the PES presets: the club's best preset, the same players placed by the rules
     if (!FORMS[t.form]){ const ids = t.xi.filter(Boolean); t.form = bestForm(+id); const sl = FORMS[t.form]; t.xi = placeXI(sl, ids.map(x => P.get(x)));
@@ -2109,7 +2174,7 @@ function run(){
   try { const r = (await window.__cm) || await fetch('cm.json', { cache: 'no-cache' }); if (r.ok) D = await r.json(); } catch (e) {}
   if (!D || !D.clubs || D.clubs.length < 4){ $('#app').innerHTML = `${header()}<p class="loading">The league is being put together. Come back tomorrow.</p>`; return; }
   for (const [k, n] of D.attrs || []) ATTR_NAME[k] = n;
-  D.players.forEach(p => { P.set(p.id, p); p._c0 = p.club; p._n0 = p.no; }); D.clubs.forEach(c => C.set(c.id, c));
+  D.players.forEach(p => { P.set(p.id, p); p._c0 = p.club; p._n0 = p.no; }); D.all = D.players.slice(); D.clubs.forEach(c => C.set(c.id, c));
   if (D.cup && (D.cup.rounds || []).length >= 5){ CUP_NAMES = D.cup.rounds.slice(-5).map(r => r[0]); CUP = D.cup.name || 'Cup'; }
   if (D.rules && D.rules.bench) BENCH = D.rules.bench;
   adopt(loadSave());
