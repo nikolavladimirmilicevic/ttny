@@ -249,3 +249,8 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 ### Manager: saves to and from a file
 - Game Options has Export This Game to a File; Restore Saved Game has Import from a file… and Export the selected file. A save becomes `<name>.ttny.json` in the downloads, to keep it safe or carry it to another browser or device (saves otherwise live only in this browser's storage). An imported save that clashes with a name gets " (2)".
 - Fix: Game Options' Start New Game went to a screen that no longer exists; it opens Select League(s) now.
+
+### Manager: scouts, managers' names, positions for every club
+- Scout #1 and Scout #2 (Player & Staff Search): send one to watch a club; after 14 days his report arrives in News (Club & Board) with the men he rates, and that club's players are known in full from then on (attribute masking). You can call him back early.
+- The other clubs' managers: update.py asks the API for each club's head coach once a month (20 calls); cm.json gives `coach` per club and Manager Stats / Job Information use the real names.
+- Clubs outside the ranked list (no Draft data: Leeds, Everton, Ipswich, Hull, Coventry and others) now get positions from this league's own line-ups, read as the Draft reads them (PES slot codes, the 4-2-3-1 pivot half DMF, half CMF), every position started in at least twice, with shares. Before, most of their players had one guessed position (Leeds had no full-backs at all).
