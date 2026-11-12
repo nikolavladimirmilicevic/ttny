@@ -186,6 +186,12 @@ tr.me td{background:rgba(79,209,139,.10)}
 .sqc{display:inline-block;width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.1);margin-right:6px;vertical-align:middle;position:relative;overflow:hidden}.sqc i{position:absolute;inset:0;width:var(--w);background:var(--c)}
 .sqm{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:6px}
 .sqf{display:inline-flex;gap:2px;margin-right:6px;vertical-align:middle}.sqf i{width:6px;height:12px;border-radius:2px}
+.trtop{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;margin-bottom:6px}@media(max-width:860px){.trtop{grid-template-columns:1fr}}
+.trpre{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}.trpre button{display:grid;gap:3px;text-align:left;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:inherit;cursor:pointer}.trpre button span{font-size:11.5px;color:var(--dim);line-height:1.3}.trpre button.on{border-color:var(--gold);background:rgba(240,192,64,.1)}.trpre button.on b{color:var(--gold)}
+.trk{display:grid;grid-template-columns:90px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px;padding:5px 0}.trk span:first-child{color:var(--dim)}.trk b{font-size:12.5px;white-space:nowrap}
+.trm{display:block;height:7px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}.trm i{display:block;height:100%;border-radius:4px}
+.trp{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}.trp>div{display:grid;gap:2px}.trp .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trg{display:block;position:relative;width:90px;height:6px;border-radius:3px;background:rgba(255,255,255,.08)}.trg::after{content:'';position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:rgba(255,255,255,.3)}.trg i{position:absolute;top:0;bottom:0;border-radius:3px}
 .tboard{display:grid;gap:10px}
 .tbforms{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .tbf{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 7px 5px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:inherit;font:600 11px/1 var(--body);cursor:pointer}
@@ -2002,17 +2008,41 @@ function statBars(st, h, a){
   if (st.pas) L.splice(1, 0, ['Passes completed %', st.pas]);
   return L.map(([n, [x, y]]) => { const t = Math.max(1, x + y); return `<div class="sbar"><span class="l">${n}</span><b class="num">${x}</b><span class="b"><i style="width:${100 * x / t}%;background:${kh}"></i><i style="width:${100 * y / t}%;background:${ka === kh ? '#ccc' : ka}"></i></span><b class="num r">${y}</b></div>`; }).join('');
 }
+const TR_PRESETS = [
+  ['balanced', 'Balanced', 'The season: a bit of everything.', { out: { phys: 2, tac: 2, kick: 1, tech: 2 }, gk: { phys: 2, tac: 1, kick: 0, tech: 1, gk: 3 } }],
+  ['fitness', 'Fitness block', 'Pre-season or an international break: build the engine.', { out: { phys: 3, tac: 1, kick: 1, tech: 1 }, gk: { phys: 3, tac: 1, kick: 0, tech: 1, gk: 2 } }],
+  ['sharp', 'Match sharpness', 'A busy run of games: light work, fresh legs.', { out: { phys: 1, tac: 2, kick: 1, tech: 1 }, gk: { phys: 1, tac: 1, kick: 0, tech: 1, gk: 2 } }],
+  ['dev', 'Development', 'Technique and finishing, for a young side.', { out: { phys: 2, tac: 1, kick: 3, tech: 3 }, gk: { phys: 2, tac: 1, kick: 1, tech: 2, gk: 3 } }],
+  ['rest', 'Rest', 'Recovery above all.', { out: { phys: 0, tac: 1, kick: 0, tech: 1 }, gk: { phys: 0, tac: 1, kick: 0, tech: 0, gk: 1 } }]];
 function clubTraining(cid, o){
-  const f = S.train, sq = squadOf(me());
-  const rows = sq.map(p => { const q = ps(p.id), ks = Object.entries(q.d || {}).filter(([, v]) => Math.abs(v) >= .5).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])); return { p, ks, o: ovrNow(p) - p.ovr }; }).sort((a, b) => b.o - a.o || a.p.age - b.p.age);
-  const reg = trainReg(), coachNote = `Coaching: ${Math.round(coachLevel(false))}/20 outfield, ${Math.round(coachLevel(true))}/20 goalkeeping (see Staff).`;
-  const sched = (key, title) => `<div><div class="ptitle">${title}</div><table><tbody>${Object.keys(reg[key]).map(k => `<tr><td>${TR_PARTS[k][0]}</td><td class="r"><span class="seg">${TR_LEVELS.map((l, i) => `<button data-tr="${key}.${k}.${i}" class="${reg[key][k] === i ? 'on' : ''}">${l}</button>`).join('')}</span></td></tr>`).join('')}</tbody></table></div>`;
-  o.body = `<div class="ptitle">Training Schedules</div><div class="cols2">${sched('out', 'General')}${sched('gk', 'Goalkeepers')}</div>
-    <p class="small dim c">Each part works on its own attributes: Prep. Physics on pace, stamina and strength; Tactics on awareness and ball winning; Kicking on shooting, crossing and set pieces; Technique on control, dribbling, passing and heading. More work, faster change, but tired legs on match days; an intensive physical load brings the odd knock. ${coachNote}</p>
-    <div class="tw"><table><thead><tr><th>Name</th><th>Position</th><th class="r">Age</th><th>Changes this season</th></tr></thead><tbody>${rows.map(({ p, ks, o: d }) => `<tr class="click" data-pl="${p.id}"><td><b>${esc(cmName(p.n))}</b></td><td class="yel">${cmPos(p.pos)}</td><td class="r">${p.age}</td><td class="small">${ks.slice(0, 4).map(([k, v]) => `<span class="${v > 0 ? 'up' : 'dn'}" style="font-size:11.5px">${esc(ATTR_NAME[k])} ${v > 0 ? '+' : '−'}${Math.max(1, Math.round(Math.abs(v)))}</span>`).join(' · ') || '<span class="dim">no change yet</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+  const sq = squadOf(me()), reg = trainReg(), filt = V.tf || 'all';
+  const load = R => Object.values(R).reduce((t, v) => t + v, 0) / Object.values(R).length, lo = load(reg.out), rec = 6.2 - lo * .7 + (reg.out.phys - 1.5) * .25, risk = reg.out.phys === 3 && lo >= 2.5;
+  const same = (a, b) => Object.keys(b).every(k => a[k] === b[k]), cur = (TR_PRESETS.find(x => same(reg.out, x[3].out) && same(reg.gk, x[3].gk)) || [])[0];
+  const rows = sq.map(p => { const q = ps(p.id), ks = Object.entries(q.d || {}).filter(([, v]) => Math.abs(v) >= .5).sort((a, b) => b[1] - a[1]); return { p, q, ks, ch: ovrNow(p) - p.ovr, sum: Object.values(q.d || {}).reduce((t, v) => t + v, 0) }; });
+  const fl = { all: () => true, up: r => r.sum > .5, young: r => r.p.age <= 21, down: r => r.sum < -.5, gk: r => r.p.prim === 'GK' }[filt] || (() => true);
+  const sk = V.ts || 'sum', L = rows.filter(fl).sort((a, b) => sk === 'age' ? a.p.age - b.p.age : sk === 'name' ? surname(a.p.n).localeCompare(surname(b.p.n)) : sk === 'cond' ? b.q.cond - a.q.cond : b[sk] - a[sk] || a.p.age - b.p.age);
+  const part = (key, k) => `<div class="trp"><div><b>${TR_PARTS[k][0]}</b><span class="small dim">${TR_PARTS[k][1].slice(0, 5).map(a => esc(ATTR_NAME[a] || a)).join(', ')}</span></div><span class="seg">${TR_LEVELS.map((l, i) => `<button data-tr="${key}.${k}.${i}" class="${reg[key][k] === i ? 'on' : ''}">${l}</button>`).join('')}</span></div>`;
+  const meter = (v, max, c) => `<span class="trm"><i style="width:${Math.max(4, Math.min(100, 100 * v / max))}%;background:${c}"></i></span>`;
+  const th = (k, n, cls = '') => `<th class="${cls} srt ${sk === k ? 'on' : ''}" data-ts="${k}">${n}</th>`;
+  o.body = `<div class="trtop">
+      <div class="trc"><div class="ptitle">Programme</div><div class="trpre">${TR_PRESETS.map(([k, n, d]) => `<button class="${cur === k ? 'on' : ''}" data-pre="${k}" title="${esc(d)}"><b>${n}</b><span>${d}</span></button>`).join('')}</div></div>
+      <div class="trc"><div class="ptitle">This week</div>
+        <div class="trk"><span>Workload</span>${meter(lo, 3, lo >= 2.4 ? 'var(--loss)' : lo >= 1.6 ? 'var(--gold)' : 'var(--win)')}<b>${lo >= 2.4 ? 'Heavy' : lo >= 1.6 ? 'Normal' : 'Light'}</b></div>
+        <div class="trk"><span>Recovery</span>${meter(rec, 7, rec >= 5 ? 'var(--win)' : rec >= 4 ? 'var(--gold)' : 'var(--loss)')}<b>+${rec.toFixed(1)}% a day</b></div>
+        <div class="trk"><span>Injury risk</span>${meter(risk ? 3 : reg.out.phys >= 3 ? 2 : 1, 3, risk ? 'var(--loss)' : reg.out.phys >= 3 ? 'var(--gold)' : 'var(--win)')}<b>${risk ? 'Raised' : 'Normal'}</b></div>
+        <div class="trk"><span>Coaches</span>${meter(coachLevel(false), 20, 'var(--sky)')}<b>${Math.round(coachLevel(false))}/20 · GK ${Math.round(coachLevel(true))}/20</b></div></div></div>
+    <div class="cols2"><div><div class="ptitle">Outfield</div>${Object.keys(reg.out).map(k => part('out', k)).join('')}</div><div><div class="ptitle">Goalkeepers</div>${Object.keys(reg.gk).map(k => part('gk', k)).join('')}</div></div>
+    <p class="small dim">More work means faster change, but tired legs on match days; an intensive physical load brings the odd knock. Young players grow fastest; from about 30 the physical side fades, slower with physical work.</p>
+    <div class="ptitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">Development <span class="seg sqseg" id="trf">${[['all', 'All'], ['up', 'Improving'], ['young', '21 and under'], ['down', 'Declining'], ['gk', 'Goalkeepers']].map(([k, n]) => `<button data-v="${k}" class="${filt === k ? 'on' : ''}">${n} <span class="dim">${rows.filter({ all: () => true, up: r => r.sum > .5, young: r => r.p.age <= 21, down: r => r.sum < -.5, gk: r => r.p.prim === 'GK' }[k]).length}</span></button>`).join('')}</span></div>
+    <div class="tw sqt"><table><thead><tr>${th('name', 'Name')}<th>Pos</th>${th('age', 'Age', 'r')}${th('cond', 'Condition')}${th('ch', 'Overall', 'r')}${th('sum', 'Growth')}<th>Biggest changes</th></tr></thead><tbody>${L.map(({ p, q, ks, ch, sum }) => `<tr class="click" data-pl="${p.id}"><td class="sqn"><b>${esc(cmName(p.n))}</b>${p.yth ? ' <span class="tag">Youth</span>' : ''}</td><td class="yel">${p.prim}</td><td class="r">${p.age}</td><td><span class="sqc" style="--w:${Math.round(q.cond)}%;--c:${q.cond >= 85 ? 'var(--win)' : q.cond >= 68 ? 'var(--gold)' : 'var(--loss)'}"><i></i></span><span class="small">${Math.round(q.cond)}%</span></td>
+      <td class="r"><b>${ovrNow(p)}</b> ${ch ? `<span class="${ch > 0 ? 'up' : 'dn'} small">${ch > 0 ? '+' : '−'}${Math.abs(ch)}</span>` : ''}</td><td><span class="trg"><i style="${sum >= 0 ? `left:50%;width:${Math.min(50, sum * 5)}%;background:var(--win)` : `right:50%;width:${Math.min(50, -sum * 5)}%;background:var(--loss)`}"></i></span></td>
+      <td class="small">${ks.length ? [...ks.slice(0, 3), ...ks.filter(x => x[1] < 0).slice(-1)].filter((x, i, a) => a.indexOf(x) === i).map(([k, v]) => `<span class="${v > 0 ? 'up' : 'dn'}">${esc(ATTR_NAME[k])} ${v > 0 ? '+' : '−'}${Math.max(1, Math.round(Math.abs(v)))}</span>`).join(' · ') : '<span class="dim">no change yet</span>'}</td></tr>`).join('')}</tbody></table></div>`;
   frame(o);
   document.querySelectorAll('[data-tr]').forEach(b => b.addEventListener('click', () => { const [key, k, i] = b.dataset.tr.split('.'); trainReg()[key][k] = +i; save(); view(); }));
-  wirePlayers(rows.map(x => x.p.id));
+  document.querySelectorAll('[data-pre]').forEach(b => b.addEventListener('click', () => { const x = TR_PRESETS.find(y => y[0] === b.dataset.pre); S.train.reg = JSON.parse(JSON.stringify(x[3])); save(); toast(`Training: ${x[1]}.`); view(); }));
+  document.querySelectorAll('#trf button').forEach(b => b.addEventListener('click', () => { V = { ...V, tf: b.dataset.v }; view(); }));
+  document.querySelectorAll('[data-ts]').forEach(b => b.addEventListener('click', () => { V = { ...V, ts: b.dataset.ts }; view(); }));
+  wirePlayers(L.map(x => x.p.id));
 }
 function tacticHint(t){
   const L = [];
