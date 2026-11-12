@@ -705,7 +705,14 @@ def last_starts(fx, lu):
                 q = seen.setdefault(x[0], ['', 0, {}])
                 if q[0] < d:
                     q[0], q[1] = d, int(tid)
-                g = cm_model.grid_pos(side['xi'], x[1])
+                # the same PES position as the Draft's data (slot_code, the 4-2-3-1 pivot half DMF, half CMF);
+                # a line-up without a formation falls back on the grid alone
+                f = side.get('f')
+                g = slot_code(f, x[1], '') if f else None
+                if g == 'DMF' and f == '4-2-3-1':
+                    q[2]['DMF'] = q[2].get('DMF', 0) + .5; q[2]['CMF'] = q[2].get('CMF', 0) + .5
+                    continue
+                g = g or cm_model.grid_pos(side['xi'], x[1])
                 if g:
                     q[2][g] = q[2].get(g, 0) + 1
     return seen

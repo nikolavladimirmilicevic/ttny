@@ -459,12 +459,15 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             e = people.get(str(pid)) or {}
             w = wp.get(pid)
             s = _stats(e, season, t['id'])
-            rows.append({'pid': pid, 'tid': t['id'], 'e': e, 'w': w, 'p90': _per90(s), 'st': s})
+            ls = (lastseen or {}).get(pid) or (lastseen or {}).get(str(pid))
+            gc = (ls[2] if ls and len(ls) > 2 else None) or {}
+            rows.append({'pid': pid, 'tid': t['id'], 'e': e, 'w': w, 'p90': _per90(s), 'st': s, 'gc': gc,
+                         **({'gp': max(gc.items(), key=lambda kv: kv[1])[0]} if gc else {})})
     longs = long_term_out(people, squads, lastseen, {t['id'] for t in teams if squads.get(str(t['id']))}, season, today)
     for pid, (tid, back, why) in longs.items():
         e = people.get(str(pid)) or {}
         s = _stats(e, season, tid)
-        rows.append({'pid': pid, 'tid': tid, 'e': e, 'w': wp.get(pid), 'p90': _per90(s), 'st': s, 'back': back, 'why': why, 'gp': max((lastseen[pid][2] or {'CMF': 0}).items(), key=lambda kv: kv[1])[0]})
+        rows.append({'pid': pid, 'tid': tid, 'e': e, 'w': wp.get(pid), 'p90': _per90(s), 'st': s, 'back': back, 'why': why, 'gp': max((lastseen[pid][2] or {'CMF': 0}).items(), key=lambda kv: kv[1])[0], 'gc': lastseen[pid][2] or {}})
     apply_fixes(rows, fixes, teams, wc, people, wp, season)
     if not rows:
         return None
@@ -528,6 +531,14 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             r['pos'] = list(w.get('pos') or [w['prim']]); r['prim'] = w['prim']
         else:
             r['prim'] = r.get('gp') or _rough_pos(e.get('sp'), r['p90'], e.get('ht'), e.get('no')); r['pos'] = [r['prim']]
+            # a club outside the ranked list (no Draft data): his positions from this league's line-ups, as the Draft
+            # reads them: every position he started in at least twice, most starts first
+            gc = r.get('gc') or {}
+            if gc:
+                order = sorted(gc, key=lambda k: -gc[k])
+                r['pos'] = [order[0]] + [k for k in order[1:] if gc[k] >= 2]
+                r['prim'] = order[0]
+                r['gw'] = {'pos': r['pos'], 'pc': [gc[k] for k in r['pos']]}
     # z-scores of season numbers within each position group, shrunk toward 0 by minutes
     metrics = ['g90', 'a90', 'sot', 'kp90', 'acc', 'def90', 'int90', 'past90', 'drs90', 'drpct', 'duw', 'fc90', 'cards90', 'sv90', 'gc90']
     groups = {}
@@ -586,7 +597,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
                             'ovr': rating, 'r': ratings, 'a': a, 'style': style, 'val': val,
                             'frm': w.get('frm'), **({'inj': inj_level(cm, r['pid'], lastseen)} if inj_level(cm, r['pid'], lastseen) else {}),
                             # how his starts split over his registered positions (shares, same order as 'pos')
-                            **({'pc': _shares(w, r['pos'])} if len(r['pos']) > 1 else {}),
+                            **({'pc': _shares(w if w.get('pc') else (r.get('gw') or {}), r['pos'])} if len(r['pos']) > 1 else {}),
                             's': [st[IX['apps']], st[IX['g']], st[IX['a']], st[IX['rt']]] if st else None,
                             **({'out': r['back']} if r.get('back') else {}), **({'outw': r['why']} if r.get('why') else {})})
     # market values: a log-linear fit of the Transfermarkt squad values Nikola supplied for the 20 clubs (Nov 2026,
