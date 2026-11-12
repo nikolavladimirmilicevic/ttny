@@ -331,6 +331,7 @@ td.nm{white-space:nowrap}
 @media(max-width:600px){.banner.wc{grid-template-columns:1fr}.banner.wc>.bcr{display:flex}.banner .bcr{justify-content:center;padding:10px 0 0}.bigcr{width:44px;height:44px}.banner .binfo{gap:2px 12px;font-size:13px}}
 .cmborn{text-align:center;text-transform:none;font-size:18px;letter-spacing:.01em}
 .cmborn .flag{font-size:17px}
+.hon{margin:0 0 10px;padding-left:18px;line-height:1.7}
 </style>
 </head><body>
 <div id="app"><p class="loading">Loading…</p></div>
@@ -696,7 +697,7 @@ function units(side, M){
 }
 const logit = x => 1 / (1 + Math.exp(-x));
 const WHO = {
-  shot: { ST: 10, W: 6, AM: 5, CM: 2.5, WM: 3, DM: 1, FB: .8, CB: .5, GK: 0 },
+  shot: { ST: 7.5, W: 6.2, AM: 4.4, CM: 2.6, WM: 3.4, DM: 1.1, FB: 1, CB: .7, GK: 0 },   // goals spread like the league's: a top scorer in the high 20s to mid 30s
   head: { ST: 7, CB: 5, W: 2, AM: 1.5, CM: 2, WM: 1.5, DM: 2, FB: 1, GK: 0 },
   pass: { AM: 8, CM: 6, WM: 5, W: 5, ST: 3, DM: 3, FB: 3, CB: 1, GK: 0 },
   tackle: { CB: 7, DM: 7, FB: 5, CM: 4, WM: 2, AM: 1, W: 1, ST: .5, GK: 0 },
@@ -707,7 +708,7 @@ const WHO = {
 function who(side, kind, attr, not){
   const t = side.t, L = side.on.filter(x => x !== not && x.pos !== 'GK');
   if (!L.length) return side.on[0];
-  const ws = L.map(x => { let w = (WHO[kind][ROLE[x.pos]] || 1) * Math.pow(A(x.p, attr || 'oa') / 70, kind === 'foul' ? 1.2 : 3) * (0.6 + 0.4 * x.e / 100);
+  const ws = L.map(x => { let w = (WHO[kind][ROLE[x.pos]] || 1) * Math.pow(A(x.p, attr || 'oa') / 70, kind === 'foul' ? 1.2 : kind === 'shot' ? 2 : 3) * (0.6 + 0.4 * x.e / 100);
     if (kind === 'foul'){ if ((side.ev[x.id] || {}).yc) w *= .3; w *= [.6, 1, 1.5][piOf(t, x.id, 'tack', t.tack)]; }
     if (kind === 'shot') w *= [.6, 1, 1.5][piOf(t, x.id, 'runs', 1)] * (piOf(t, x.id, 'free', 0) ? 1.2 : 1);
     if (kind === 'pass') w *= [.7, 1, 1.4][piOf(t, x.id, 'tb', 1)] * (piOf(t, x.id, 'free', 0) ? 1.3 : 1);
@@ -804,7 +805,7 @@ function substitute(M, side, out, forced, inId){
   if (!canPlay(p, pos)){   // he does not play there: a team-mate who does moves over, and he takes that one's place
     const mate = side.on.find(y => y !== out && !y.off && canPlay(y.p, pos) && canPlay(p, y.pos));
     if (mate){ const was = mate.pos; mate.pos = pos; pos = was; }
-    else if (!forced && side.cid === me()){ toast(`${cmName(p.n)} does not play ${pos}, and nobody on the pitch can make room for him.`); return false; }
+    else if (!forced && inId && side.cid === me()){ toast(`${cmName(p.n)} does not play ${pos}, and nobody on the pitch can make room for him.`); return false; }
   }
   side.bench = side.bench.filter(id => id !== p.id);
   const i = side.on.indexOf(out), x = { id: p.id, p, pos, e: 100, st: A(p, 'st'), sub: M.min };
@@ -848,7 +849,7 @@ function minute(M){
       const q = logit((u1.att * .55 + u1.cre * .45 - u2.def) / 28);
       // game state: a side three up eases off and keeps the ball, one two up late on sits a little deeper
       const lead = att.goals - def.goals, ease = lead >= 3 ? .62 : lead === 2 && M.min >= 70 ? .88 : 1;
-      if (Math.random() < q * .765 * ease){
+      if (Math.random() < q * .815 * ease){
         const t = att.t, lsBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'ls', 1) - 1), 0) * .012, crBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'cross', 1) - 1), 0) * .02 + (t.pass === 3 ? .06 : 0);
         const k = Math.random();
         if (k < .017){ const f = who(def, 'foul', 'ag'); say(M, att, 'yel', `Penalty! ${nm(f)} brings his man down in the box.`); rateAdd(def, f, -.4); shot(M, att, def, u1, u2, 'pen', att.on.find(y => y.id === (t.set || {}).pen)); }
@@ -916,7 +917,7 @@ function apply(M, kind){
     const played = new Set([...s.on.map(x => x.id), ...s.subbed.flatMap(x => [x[0], x[1]])]);
     for (const x of s.on){ const q = ps(x.id); q.cond = clamp(q.cond - (100 - x.e) * .55, 30, 100); }
     for (const [o] of s.subbed){ const q = ps(o); q.cond = clamp(q.cond - 22, 30, 100); }
-    for (const id of played){ const q = ps(id), ev = s.ev[id] || {}; q.apps++; if (s.subbed.some(x => x[1] === id)) q.sub++; q.g += ev.g || 0; q.a += ev.a || 0; if (s.rate[id]) q.rt.push(s.rate[id]); if (M.mom === id) q.mom++; q.light = 0;
+    for (const id of played){ const q = ps(id), ev = s.ev[id] || {}; q.apps++; if (s.subbed.some(x => x[1] === id)) q.sub++; q.g += ev.g || 0; q.a += ev.a || 0; if (kind === 'league'){ q.lg = (q.lg || 0) + (ev.g || 0); q.la = (q.la || 0) + (ev.a || 0); } if (s.rate[id]) q.rt.push(s.rate[id]); if (M.mom === id) q.mom++; q.light = 0;
       if (ev.rc) q.sus = Math.max(q.sus, ev.straight ? 3 : 1);
       else if (ev.yc){ const before = q.yc; q.yc += ev.yc; if (before < 5 && q.yc >= 5) q.sus = Math.max(q.sus, 1); else if (before < 10 && q.yc >= 10) q.sus = Math.max(q.sus, 2); } }
     for (const j of s.inj) ps(j.id).injD = Math.max(ps(j.id).injD, Math.round(j.d));
@@ -959,6 +960,7 @@ function passDays(n){
   scoutTick();
   transferTick();
   contractWarn();
+  if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
 }
 // a word from the assistant when your players' contracts are in their last season: at the start of it and in January
 function contractWarn(){
@@ -1032,6 +1034,38 @@ function monthly(){
   S.fin.bal -= wages; S.fin.wages += wages;
   S.fin.wk.push({ m: S.date.slice(0, 7), bal: S.fin.bal });
   if (S.round >= 3) news('board', 'A word from the board', boardComment());
+}
+/* awards: Player and Manager of the Month on the 1st (the best average rating over at least three league games that
+   month; the most points), and at the end of the season the Golden Boot, the Playmaker award, the Player and the
+   Young Player of the Season */
+const ptsOf = cid => { const t = S.table[cid]; return t.w * 3 + t.d; };
+function monthSnap(){ S.mstat = { m: S.date.slice(0, 7), pl: Object.fromEntries(Object.entries(S.pl).map(([id, q]) => [id, [q.rt.length, q.rt.reduce((t, v) => t + v, 0)]])), pts: Object.fromEntries(D.clubs.map(c => [c.id, ptsOf(c.id)])) }; }
+function monthAwards(){
+  const prev = S.mstat; monthSnap();
+  if (!prev || prev.m === S.mstat.m || S.round < 3) return;
+  const mon = new Date(prev.m + '-15T12:00:00Z').toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' });
+  let best = null;
+  for (const [id, q] of Object.entries(S.pl)){ const [n0, s0] = prev.pl[id] || [0, 0], n = q.rt.length - n0; if (n < 3) continue; const avg = (q.rt.reduce((t, v) => t + v, 0) - s0) / n; if (!best || avg > best.avg) best = { id: +id, avg }; }
+  const mgr = D.clubs.map(c => ({ c: c.id, d: ptsOf(c.id) - (prev.pts[c.id] || 0) })).sort((a, b) => b.d - a.d || ptsOf(b.c) - ptsOf(a.c))[0];
+  S.awards = S.awards || [];
+  if (best && P.has(best.id)){ const p = P.get(best.id); S.awards.push({ s: S.season, k: `Player of the Month (${mon})`, id: p.id, c: p.club });
+    news('club', `Player of the Month: ${p.n}`, `<b>${esc(p.n)}</b> (${esc(club(p.club).name)}) is the ${esc(D.league)} Player of the Month for ${mon}, with an average rating of ${best.avg.toFixed(2)}.`); }
+  if (mgr && mgr.d > 0){ const nm = mgr.c === me() ? S.manager : coachOf(mgr.c) || club(mgr.c).name; S.awards.push({ s: S.season, k: `Manager of the Month (${mon})`, c: mgr.c, mgr: nm, me: mgr.c === me() });
+    news('club', `Manager of the Month: ${nm}`, `${mgr.c === me() ? `You are` : `<b>${esc(nm)}</b> of ${esc(club(mgr.c).name)} is`} the Manager of the Month for ${mon}: ${mgr.d} points.`); }
+}
+function seasonAwards(){
+  const L = D.players.map(p => ({ p, q: S.pl[p.id] })).filter(x => x.q && x.q.apps);
+  const avg = x => x.q.rt.length ? x.q.rt.reduce((t, v) => t + v, 0) / x.q.rt.length : 0;
+  const pick = (f, sort) => L.filter(f).sort(sort)[0];
+  // the Golden Boot and the Playmaker award count league games only, as the Premier League's do
+  const A2 = [['Golden Boot', pick(x => x.q.lg > 0, (a, b) => b.q.lg - a.q.lg || a.q.apps - b.q.apps), x => `${x.q.lg} league goals`],
+    ['Playmaker', pick(x => x.q.la > 0, (a, b) => b.q.la - a.q.la || a.q.apps - b.q.apps), x => `${x.q.la} league assists`],
+    ['Player of the Season', pick(x => x.q.rt.length >= 20, (a, b) => avg(b) - avg(a)), x => `average rating ${avg(x).toFixed(2)}`],
+    ['Young Player of the Season', pick(x => x.p.age <= 21 && x.q.rt.length >= 12, (a, b) => avg(b) - avg(a)), x => `average rating ${avg(x).toFixed(2)}`]];
+  S.awards = S.awards || [];
+  const lines = [];
+  for (const [k, x, why] of A2) if (x){ S.awards.push({ s: S.season, k, id: x.p.id, c: x.p.club, why: why(x) }); lines.push(`<b>${k}</b>: ${esc(x.p.n)} (${esc(club(x.p.club).name)}), ${why(x)}`); }
+  if (lines.length) news('club', 'The season\'s awards', lines.join('<br>'));
 }
 function cupDraw(){
   const alive = S.cup.alive.slice(), r0 = rng(`${S.seed}-cup-${S.cup.stage}`);
@@ -1153,8 +1187,8 @@ function retireAndIntake(){
 function newSeason(){
   const ids = D.clubs.map(c => c.id), was = S.season;
   for (const id in S.pl){ const q = S.pl[id], p = P.get(+id);
-    if (q.apps) (q.hs = q.hs || []).push({ s: was, c: p ? p.club : null, apps: q.apps, g: q.g, a: q.a, rt: q.rt.length ? +(q.rt.reduce((x, y) => x + y, 0) / q.rt.length).toFixed(2) : null });
-    Object.assign(q, { apps: 0, sub: 0, g: 0, a: 0, rt: [], mom: 0, yc: 0, sus: 0, cond: 100 }); }
+    if (q.apps) (q.hs = q.hs || []).push({ s: was, c: p ? p.club : null, apps: q.apps, g: q.g, a: q.a, lg: q.lg || 0, la: q.la || 0, rt: q.rt.length ? +(q.rt.reduce((x, y) => x + y, 0) / q.rt.length).toFixed(2) : null });
+    Object.assign(q, { apps: 0, sub: 0, g: 0, a: 0, lg: 0, la: 0, rt: [], mom: 0, yc: 0, sus: 0, cond: 100 }); }
   // loans end: everyone goes back to his club
   for (const [id, ln] of Object.entries(S.loans || {})){ const p = P.get(+id); if (p && p.club === ln.to && C.has(ln.from)){ moveP(p, ln.from, 0, 'Loan return'); if (ln.from === me() || ln.to === me()) news('club', `${p.n} returns`, `<b>${esc(p.n)}</b>'s loan is over and he goes back to ${esc(club(ln.from).name)}.`); } }
   S.loans = {}; S.loanAsk = {};
@@ -1168,7 +1202,7 @@ function newSeason(){
   const { rounds, cupDates } = schedule(ids, `${S.seed}-${S.season}`, S.season);
   Object.assign(S, { rounds, cupDates, round: 0, cup: { stage: 0, alive: ids.slice(), log: [] }, results: [], done: false, next: false, ultimatum: null,
     table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])), date: day(rounds[0].date, -6) });
-  S.train.last = S.date; S.lastTr = S.date;
+  S.train.last = S.date; S.lastTr = S.date; monthSnap();
   S.bids = (S.bids || []).filter(b => b.st === 'done'); S.offers = [];
   S.aim = aimFor(expRank(me())); S.conf = Math.max(45, Math.min(75, S.conf));
   const q = club(me()).q; S.fin.budget = Math.round(S.fin.budget * .5 + Math.max(12, (q - 70) * 9) * 1e6);
@@ -1177,6 +1211,7 @@ function newSeason(){
   news('board', `The ${S.season}/${String((S.season + 1) % 100).padStart(2, '0')} season`, `${esc(club(pv.champ).name)} were last season's champions${pv.cup ? `, ${esc(club(pv.cup).name)} won the ${esc(CUP)}` : ''}. The board's expectation this season: <b>${a.name}</b>. Your transfer budget: ${cash(S.fin.budget)}. The league starts on ${fmtDate(rounds[0].date, true)}.`);
 }
 function endSeason(){
+  seasonAwards();
   if (S.done) return;
   S.done = true;
   const st = standings(), pos = st.findIndex(r => r.id === me()) + 1, champ = st[0].id, aim = AIMS[S.aim];
@@ -1713,7 +1748,8 @@ function scrPlayer(){
   if (tab === 'con'){ const mineP = p.club === me(), left = con.y - S.season, dem = Math.round(Math.max(con.w * 1.15, p.val * 1500) / 500) * 500, ren = (S.renew || {})[p.id];
     body = `<div class="ptitle">Contract</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Club</dt><dd>${crest(p.club)}${esc(fullName(p.club))}</dd><dt>Wage</dt><dd>${wage(con.w)}</dd><dt>Expires</dt><dd>30.6.${String(con.y).slice(2)}${left <= 1 ? ' <span class="tag">Ends this season</span>' : ''}</dd><dt>Value</dt><dd>${known(p) || mineP ? valueOf(p) : 'about ' + cash(roundFee(p.val * 1e6))}</dd><dt>Squad number</dt><dd>${p.no || '-'}</dd></dl>
       ${mineP && left <= 2 && !(S.loans || {})[p.id] ? (ren === S.season ? '<p class="c dim">He has signed a new contract this season.</p>' : `<div class="ptitle">New Contract</div><p class="c">He would sign on for <b class="yel">${wage(dem)}</b>.</p><div class="tools" style="justify-content:center">${[2, 3, 4].map(y => `<button class="btn sm y" data-renew="${y}" data-w="${dem}">Until 30.6.${String(con.y + y - left).slice(2)}</button>`).join('')}</div>`) : ''}`; }
-  if (tab === 'hist') body = `<div class="ptitle">History</div><div class="tw"><table><thead><tr><th>Season</th><th>Club</th><th class="r">Apps</th><th class="r">Gls</th><th class="r">Asts</th><th class="r">Av R</th></tr></thead><tbody>${(q.hs || []).map(h => `<tr><td>${h.s}/${String((h.s + 1) % 100).padStart(2, '0')}</td><td>${h.c && C.has(h.c) ? esc(club(h.c).name) : '-'}</td><td class="r">${h.apps}</td><td class="r">${h.g}</td><td class="r">${h.a}</td><td class="r">${h.rt ?? '-'}</td></tr>`).join('')}
+  const hon = (S.awards || []).filter(a => a.id === p.id);
+  if (tab === 'hist') body = `${hon.length ? `<div class="ptitle">Honours</div><ul class="hon">${hon.map(a => `<li>${esc(a.k)}, ${a.s}/${String((a.s + 1) % 100).padStart(2, '0')}${a.why ? ` <span class="dim">(${a.why})</span>` : ''}</li>`).join('')}</ul>` : ''}<div class="ptitle">History</div><div class="tw"><table><thead><tr><th>Season</th><th>Club</th><th class="r">Apps</th><th class="r">Gls</th><th class="r">Asts</th><th class="r">Av R</th></tr></thead><tbody>${(q.hs || []).map(h => `<tr><td>${h.s}/${String((h.s + 1) % 100).padStart(2, '0')}</td><td>${h.c && C.has(h.c) ? esc(club(h.c).name) : '-'}</td><td class="r">${h.apps}</td><td class="r">${h.g}</td><td class="r">${h.a}</td><td class="r">${h.rt ?? '-'}</td></tr>`).join('')}
     <tr class="me"><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td>${esc(club(p.club).name)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${avgRt(q)}</td></tr></tbody></table></div>`;
   if (tab === 'tr') body = transferTab(p);
   if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
@@ -2240,16 +2276,18 @@ function scrRecords(){
   const all = [...(S.past || []).flatMap(() => []), ...allResults()];
   const big = all.slice().sort((a, b) => Math.abs(b.s[0] - b.s[1]) - Math.abs(a.s[0] - a.s[1]) || (b.s[0] + b.s[1]) - (a.s[0] + a.s[1])).slice(0, 5);
   const most = all.slice().sort((a, b) => (b.s[0] + b.s[1]) - (a.s[0] + a.s[1])).slice(0, 5);
-  const seasons = D.players.flatMap(p => [...((S.pl[p.id] || {}).hs || []).map(h => ({ p, ...h })), ...(S.pl[p.id] && S.pl[p.id].apps ? [{ p, s: S.season, apps: S.pl[p.id].apps, g: S.pl[p.id].g, a: S.pl[p.id].a, cur: true }] : [])]);
+  const seasons = D.players.flatMap(p => [...((S.pl[p.id] || {}).hs || []).map(h => ({ p, ...h })), ...(S.pl[p.id] && S.pl[p.id].apps ? [{ p, s: S.season, apps: S.pl[p.id].apps, g: S.pl[p.id].lg || 0, a: S.pl[p.id].la || 0, cur: true }] : [])].map(x => x.cur ? x : { ...x, g: x.lg ?? x.g, a: x.la ?? x.a }));
   const topG = seasons.filter(x => x.g).sort((a, b) => b.g - a.g).slice(0, 5), topA = seasons.filter(x => x.a).sort((a, b) => b.a - a.a).slice(0, 5);
   const sn = y => `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
   const res = x => `<tr><td>${crest(x.h)}${esc(club(x.h).name)}</td><td class="c"><span class="pill">${x.s[0]} - ${x.s[1]}</span></td><td>${crest(x.a)}${esc(club(x.a).name)}</td><td class="r dim">${x.comp}, ${fmtDate(x.date)}</td></tr>`;
   const pl = (x, v) => `<tr class="click" data-pl="${x.p.id}"><td>${flag(x.p.nat)}<b>${esc(x.p.n)}</b></td><td class="dim">${sn(x.s)}${x.cur ? ' (so far)' : ''}</td><td class="r yel"><b>${v}</b></td></tr>`;
   frame({ title: 'Records', sub: esc(D.league), top: [['r', 'Records']], topOn: 'r',
     body: `<div class="cols2"><div><div class="ptitle">Champions</div><table><tbody>${past.map(x => `<tr><td>${sn(x.s)}</td><td>${crest(x.champ)}<b>${esc(club(x.champ).name)}</b></td><td class="dim">${x.cup ? `${esc(CUP)}: ${esc(club(x.cup).name)}` : ''}</td></tr>`).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table>
-      <div class="ptitle">Most goals in a season</div><table><tbody>${topG.map(x => pl(x, x.g)).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table>
-      <div class="ptitle">Most assists in a season</div><table><tbody>${topA.map(x => pl(x, x.a)).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table></div>
-      <div><div class="ptitle">Biggest wins this season</div><table><tbody>${big.map(res).join('') || '<tr><td class="dim">No games yet</td></tr>'}</tbody></table>
+      <div class="ptitle">Most league goals in a season</div><table><tbody>${topG.map(x => pl(x, x.g)).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table>
+      <div class="ptitle">Most league assists in a season</div><table><tbody>${topA.map(x => pl(x, x.a)).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table></div>
+      <div>${(S.awards || []).filter(a => !/Month/.test(a.k)).length ? `<div class="ptitle">Season awards</div><table><tbody>${(S.awards || []).filter(a => !/Month/.test(a.k)).slice().reverse().map(a => `<tr${a.id ? ` class="click" data-pl="${a.id}"` : ''}><td class="dim">${sn(a.s)}</td><td>${esc(a.k)}</td><td>${a.id && P.has(a.id) ? flag(P.get(a.id).nat) + '<b>' + esc(P.get(a.id).n) + '</b>' : ''} <span class="dim">${a.why || ''}</span></td></tr>`).join('')}</tbody></table>` : ''}
+      ${(S.awards || []).filter(a => /Month/.test(a.k)).length ? `<div class="ptitle">This season, month by month</div><table><tbody>${(S.awards || []).filter(a => /Month/.test(a.k) && a.s === S.season).map(a => `<tr${a.id ? ` class="click" data-pl="${a.id}"` : ''}><td>${esc(a.k)}</td><td>${a.id && P.has(a.id) ? flag(P.get(a.id).nat) + '<b>' + esc(P.get(a.id).n) + '</b>' : esc(a.mgr || '')}</td><td class="dim">${crest(a.c)}${esc(club(a.c).name)}</td></tr>`).join('')}</tbody></table>` : ''}
+      <div class="ptitle">Biggest wins this season</div><table><tbody>${big.map(res).join('') || '<tr><td class="dim">No games yet</td></tr>'}</tbody></table>
       <div class="ptitle">Most goals in a game this season</div><table><tbody>${most.map(res).join('') || '<tr><td class="dim">No games yet</td></tr>'}</tbody></table></div></div>` });
   document.querySelectorAll('[data-pl]').forEach(b => b.addEventListener('click', () => go({ s: 'player', id: +b.dataset.pl })));
 }
