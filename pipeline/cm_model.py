@@ -643,10 +643,12 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     _cq = {c: statistics.mean(sorted(v, reverse=True)[:14]) for c, v in _cq.items()}
     for x in out_players:
         o, ag, w = x['ovr'], x['age'] or 26, _wof.get(x['id'], {})
+        gkx = x['prim'] == 'GK'
+        if gkx: ag -= 3   # keepers peak and decline about three years later than outfield players
         nt = min(w.get('nt', 0) or 0, 20); ga = ((w.get('ga', 0) or 0) + (w.get('aa', 0) or 0)) / max(1, w.get('starts', 1) or 1)
         f = [1, o - 75, max(0, o - 80), max(0, o - 86), ag - 26, max(0, ag - 29), max(0, 23 - ag), _cq[x['club']] - 75,
              x['prim'] == 'GK', x['prim'] in ('CF', 'SS', 'LWF', 'RWF', 'AMF'), math.log1p(nt), min(ga, 1.2), bool(w)]
-        v = 1.13 * math.exp(sum(c * float(z) for c, z in zip(VALUE_COEF, f)))
+        v = 1.13 * math.exp(sum(c * float(z) for c, z in zip(VALUE_COEF, f))) * (1.2 if gkx else 1)   # with the age shift, keepers land on Transfermarkt's level
         x['val'] = round(v, 1) if v >= 1 else round(max(.05, v), 2)
     # shirt numbers: the API's lists can be out of date, two players with one number; it stays with the one who has
     # played more for the club these two seasons, the other goes without
