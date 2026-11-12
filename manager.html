@@ -916,7 +916,7 @@ function minute(M){
     } else {
       const q = logit((u1.att * .55 + u1.cre * .45 - u2.def) / 40);
       // game state: a side three up eases off and keeps the ball, one two up late on sits a little deeper
-      const lead = att.goals - def.goals, ease = lead >= 3 ? .62 : lead === 2 && M.min >= 70 ? .88 : 1;
+      const lead = att.goals - def.goals, late = M.half === 2 && M.min >= 70, ease = lead >= 3 ? .62 : lead === 2 && late ? .88 : lead === 1 && late ? .86 : lead === -1 && late ? 1.15 : lead === 0 && M.half === 2 && M.min >= 75 ? .88 : 1;   // late on: one up protects it, one down goes for it, level settles
       if (Math.random() < q * .82 * ease){
         const t = att.t, lsBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'ls', 1) - 1), 0) * .012, crBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'cross', 1) - 1), 0) * .02 + (t.pass === 3 ? .06 : 0);
         const k = Math.random();
