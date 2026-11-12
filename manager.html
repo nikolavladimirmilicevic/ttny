@@ -1035,6 +1035,7 @@ function summary(M){
     st: { poss: [pct, 100 - pct], sh: [M.H.sh, M.A.sh], sot: [M.H.sot, M.A.sot], cor: [M.H.corners, M.A.corners], fou: [M.H.fouls, M.A.fouls], off: [M.H.off, M.A.off], yc: [M.H.yc, M.A.yc], rc: [M.H.rc, M.A.rc] } };
 }
 function afterMatchday(res, kind, stage){
+  if (kind === 'league') aiSackings();
   const mine = res.find(r => r.h === me() || r.a === me());
   if (mine){ S.seen = S.seen || []; const opp = mine.h === me() ? mine.a : mine.h; if (!S.seen.includes(opp)) S.seen.push(opp); }
   if (mine){
@@ -1144,6 +1145,7 @@ function endSeason(){
   S.rep = pos <= aim.pos - 3 ? 'Very good' : pos <= aim.pos ? 'Good' : pos <= aim.pos + 3 ? 'Average' : 'Poor';
   (S.hist = S.hist || []).push({ d: S.date, c: me(), t: pos === 1 ? 'Won the league' : `Finished ${ordinal(pos)} in the league` });
   S.next = pos <= aim.pos + 3 && !S.sacked;
+  if (!S.next && !S.sacked){ S.sacked = true; S.vac = S.vac || {}; S.vac[me()] = { d: S.date }; }
   (S.past = S.past || []).push({ s: S.season, table: st.map(r => [r.id, r.pts]), champ, cup: S.cup.stage >= 5 ? S.cup.alive[0] : null, club: me(), pos });
   news('board', 'The season is over', `${esc(club(champ).name)} are champions. You finished ${ordinal(pos)}, against a target of ${ordinal(aim.pos)}. ${verdict}`);
   try { const H = JSON.parse(localStorage.getItem('ttny.manager.hall') || '[]'); H.unshift({ m: S.manager, c: club(me()).name, s: S.season, pos, aim: aim.pos, pts: st[pos - 1].pts, cup: S.cup.alive[0] === me(), at: Date.now() }); localStorage.setItem('ttny.manager.hall', JSON.stringify(H.slice(0, 60))); } catch (e) {}
@@ -1198,7 +1200,7 @@ function frame(o){
     <aside class="side">
       <div class="date"><span>${WD[dt.getUTCDay()]}</span><span>${shortDate(S.date)}</span><span>${today ? 'PM' : 'AM'}</span></div>
       <div class="arrows"><button id="navb" aria-label="Back" ${HIST.length ? '' : 'disabled'}>←</button><button id="navf" aria-label="Forward" ${FWD.length ? '' : 'disabled'}>→</button></div>
-      ${S.done ? (S.next ? '<button class="sb go" id="nextseason">Start the Next Season</button>' : '') : `<button class="sb go" id="cont">Continue Game</button>`}
+      ${S.done ? (S.next ? '<button class="sb go" id="nextseason">Start the Next Season</button>' : S.sacked ? '<button class="sb go" id="findjob">Find a Job</button>' : '') : `<button class="sb go" id="cont">Continue Game</button>`}
       <button class="sb mgr ${V.s === 'news' ? 'on' : ''}" data-side="news">${esc(S.manager)}${unread ? `<span class="badge">${unread}</span>` : ''}</button>
       <button class="sb myclub ${V.s === 'club' && V.cid === me() ? 'on' : ''}" data-side="club">${esc(club(me()).name)}</button>
       <button class="sb ${V.s === 'comp' ? 'on' : ''}" data-side="comp">Competitions</button>
@@ -1221,6 +1223,7 @@ function frame(o){
   on('#navf', () => { if (!FWD.length) return; HIST.push(V); V = FWD.pop(); view(); });
   on('#cont', onContinue);
   on('#nextseason', () => { newSeason(); save(); V = { s: 'news' }; view(); });
+  on('#findjob', () => go({ s: 'managers', tab: 'jobs' }));
   if (o.next) on('#next', o.next);
   document.querySelectorAll('[data-side]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.side; go(k === 'club' ? { s: 'club', cid: me(), tab: 'squad' } : k === 'comp' ? { s: 'comp', tab: 'table' } : { s: k }); }));
   document.querySelectorAll('#ttop [data-t],#tbot [data-t]').forEach(b => b.addEventListener('click', () => o.onTab && o.onTab(b.dataset.t)));
@@ -2027,13 +2030,48 @@ function managers(){
   return D.clubs.map(c => { const mine = c.id === me(), rr = rng(`m-${c.id}`), score = mine ? ({ 'Unproven': 1, 'Poor': 0, 'Average': 1, 'Good': 2, 'Very good': 3 }[S.rep] ?? 1) * 20 + 10 : clamp(Math.round((c.q - 70) * 3.2 + rr() * 14), 0, 99);
     const pos = st.findIndex(r => r.id === c.id) + 1, exp = byQ.indexOf(c.id) + 1, diff = S.round >= 5 ? pos - exp : 0;
     const sec = mine ? (S.conf >= 62 ? 'Secure' : S.conf >= 40 ? 'Okay' : S.conf >= 22 ? 'Insecure' : 'Very Insecure') : diff <= 0 ? 'Secure' : diff <= 3 ? 'Okay' : diff <= 6 ? 'Insecure' : 'Very Insecure';
-    return { cid: c.id, name: mine ? S.manager : (c.coach || `${c.name} manager`), mine, score, rep: REP_WORDS[clamp(Math.floor(score / 17), 0, 5)], sec }; }).sort((a, b) => b.score - a.score);
+    const vac = !mine && (S.vac || {})[c.id]; return { cid: c.id, name: mine ? S.manager : vac ? 'Vacant' : coachOf(c.id), mine, vac: !!vac, score: vac ? -1 : score, rep: vac ? '-' : REP_WORDS[clamp(Math.floor(score / 17), 0, 5)], sec: vac ? 'Vacant' : sec }; }).sort((a, b) => b.score - a.score);
+}
+/* the managers' merry-go-round: a manager whose club is well below where it should be may be sacked; the club appoints
+   someone ten days later, unless you take the job first. Apply for any vacant job; whether you get it depends on your
+   reputation and the club's standing */
+const COACH_FIRST = ['Mark', 'Steve', 'Paul', 'Rui', 'Marco', 'Thomas', 'Graham', 'Sean', 'Luca', 'Ange', 'Niko', 'Ralf', 'Kevin', 'Danny'];
+const COACH_LAST = ['Hartley', 'Dunmore', 'Ferreira', 'Rossetti', 'Wingate', 'Mallory', 'Kessler', 'Brannan', 'Okoro', 'Lindqvist', 'Vidal', 'Thornbury', 'Castell', 'Rourke'];
+const coachOf = cid => (S.vac || {})[cid] ? null : ((S.coachOv || {})[cid] || club(cid).coach || `${club(cid).name} manager`);
+function aiSackings(){
+  S.vac = S.vac || {}; S.coachOv = S.coachOv || {};
+  for (const [cid, v] of Object.entries(S.vac)) if (+cid !== me() && daysBetween(v.d, S.date) >= 10){
+    const r = rng(`co-${cid}-${S.date}`), nm = `${COACH_FIRST[Math.floor(r() * COACH_FIRST.length)]} ${COACH_LAST[Math.floor(r() * COACH_LAST.length)]}`;
+    S.coachOv[cid] = nm; delete S.vac[cid]; news('club', `${club(+cid).name} appoint ${nm}`, `${esc(club(+cid).name)} have named <b>${esc(nm)}</b> as their new manager.`); }
+  if (S.round < 8) return;
+  const st = standings(), byQ = D.clubs.slice().sort((a, b) => b.q - a.q).map(c => c.id);
+  for (const c of D.clubs){ if (c.id === me() || S.vac[c.id]) continue;
+    const diff = (st.findIndex(r => r.id === c.id) + 1) - (byQ.indexOf(c.id) + 1);
+    if (diff >= 7 && Math.random() < .05){ const nm = coachOf(c.id); S.vac[c.id] = { d: S.date, prev: nm }; news('club', `${nm} sacked`, `${esc(c.name)} have parted company with <b>${esc(nm)}</b>, with the club ${ordinal(st.findIndex(r => r.id === c.id) + 1)} in the league.`); } }
+}
+const REP_SCORE = { 'Unproven': 1, 'Poor': 0, 'Average': 1, 'Good': 2, 'Very good': 3 };
+function jobOK(cid){ const rank = D.clubs.slice().sort((a, b) => b.q - a.q).findIndex(c => c.id === cid) + 1; return rank >= [15, 12, 7, 1][REP_SCORE[S.rep] ?? 1]; }
+function takeJob(cid){
+  const old = S.club, c = club(cid), q = c.q;
+  if (!S.sacked){ S.vac = S.vac || {}; S.vac[old] = { d: S.date }; }
+  if (S.vac) delete S.vac[cid];
+  S.club = cid; S.sacked = false; S.ultimatum = null; S.conf = 60; S.aim = aimFor(expRank(cid));
+  S.fin = { ...S.fin, bal: Math.round((40 + (q - 70) * 6) * 1e6), budget: Math.round(Math.max(12, (q - 70) * 9) * 1e6) };
+  const over = S.round >= S.rounds.length && S.cup.stage >= 5;
+  S.done = over; S.next = over;
+  (S.hist = S.hist || []).push({ d: S.date, c: cid, t: `Hired as ${c.name} manager` });
+  news('board', `Welcome to ${c.name}`, `The chairman has appointed ${esc(S.manager)} as manager. The board's expectation: <b>${AIMS[S.aim].name}</b>.`);
 }
 function scrManagers(){
   const tab = V.tab || 'rep', M = managers();
   const body = tab === 'rep' ? `<div class="ptitle">Reputation in England</div><table><tbody>${M.map((m, i) => `<tr class="${m.mine ? 'me' : ''}"><td><span class="pill">${ordinal(i + 1)}</span></td><td><b style="font-size:15px">${esc(m.name)}</b></td><td class="yel">${esc(club(m.cid).name)}</td><td class="r"><span class="pill" style="background:#3A1E66">${m.rep}</span></td></tr>`).join('')}</tbody></table>${D.clubs.some(c => c.coach) ? '' : '<p class="small dim">The other managers\' names come in with the next data update.</p>'}`
-    : (() => { const L = M.filter(m => /Insecure/.test(m.sec)); return `<div class="ptitle">Job Information · England</div>${L.length ? `<table><tbody>${L.map(m => `<tr class="${m.mine ? 'me' : ''}"><td><b>${esc(cmName(m.name))}</b></td><td class="sky">${esc(club(m.cid).name)}</td><td class="yel">England</td><td style="color:var(--warn)">PRM</td><td class="r"><span class="pill" style="background:#3A1E66">${m.sec}</span></td></tr>`).join('')}</tbody></table>` : '<p class="empty">No manager is under pressure just now.</p>'}<p class="small dim">Managers whose clubs sit well below where their squads should finish. Their jobs may soon be open.</p>`; })();
+    : (() => { const L = M.filter(m => /Insecure/.test(m.sec)), vac = Object.keys(S.vac || {}).map(Number).filter(cid => cid !== me() || !S.sacked).filter(cid => cid !== me());
+      const vacHTML = `<div class="ptitle">Vacancies</div>${vac.length ? `<table><tbody>${vac.map(cid => `<tr><td>${crest(cid)}<b>${esc(fullName(cid))}</b></td><td class="dim">${ordinal(standings().findIndex(r => r.id === cid) + 1)} in the league</td><td class="r"><button class="btn sm ${S.sacked ? 'y' : ''}" data-apply="${cid}">Apply</button></td></tr>`).join('')}</tbody></table>` : `<p class="empty">No club is looking for a manager just now.${S.sacked ? ' Keep an eye on the clubs below: their jobs may open.' : ''}</p>`}`;
+      return `${vacHTML}<div class="ptitle">Job Information · England</div>${L.length ? `<table><tbody>${L.map(m => `<tr class="${m.mine ? 'me' : ''}"><td><b>${esc(cmName(m.name))}</b></td><td class="sky">${esc(club(m.cid).name)}</td><td class="yel">England</td><td style="color:var(--warn)">PRM</td><td class="r"><span class="pill" style="background:#3A1E66">${m.sec}</span></td></tr>`).join('')}</tbody></table>` : '<p class="empty">No manager is under pressure just now.</p>'}<p class="small dim">Managers whose clubs sit well below where their squads should finish. Their jobs may soon be open.</p>`; })();
   frame({ title: 'Manager Stats', top: [['rep', 'Reputation'], ['jobs', 'Job Information']], topOn: tab, onTab: k => { V = { s: 'managers', tab: k }; view(); }, body });
+  document.querySelectorAll('[data-apply]').forEach(b => b.addEventListener('click', () => { const cid = +b.dataset.apply;
+    if (!jobOK(cid)){ (S.applied = S.applied || {})[cid] = S.date; news('board', `${club(cid).name} say no`, `${esc(club(cid).name)} have thanked you for your interest but want a manager with a bigger name.`); toast(`${club(cid).name} turn you down.`); save(); view(); return; }
+    takeJob(cid); save(); go({ s: 'club', cid, tab: 'squad' }); }));
 }
 function scrTransfers(){
   const months = []; for (let d = S.rounds[0].date.slice(0, 7), i = 0; i < 12; i++){ months.push(d); const [y, m] = d.split('-').map(Number); d = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; }
