@@ -613,7 +613,7 @@ function newGame(cid, manager){
     con: {}, started: Date.now(), loans: Object.fromEntries((D.loans || []).filter(l => P.has(l.id)).map(l => [l.id, { from: l.from, to: l.to }])) };
   S.lg = D.clubs.map(c => c.id);
   for (const p of D.pool) S.con[p.id] = contractFor(p);
-  chInit(); shieldSetup();
+  chInit(); shieldSetup(); lcSetup();
   ensureStaff();
   // every game a little different: each attribute of each player moves -2, -1, 0, +1 or +2, one chance in five each,
   // never out of 40-99 (a move that would leave it is not made)
@@ -677,6 +677,7 @@ function autoTactic(cid){
 }
 // before a match: anyone unavailable leaves the eleven; for every club but yours, rotation as well
 function readyTactic(cid){
+  if (!S.tac[cid]) S.tac[cid] = autoTactic(cid);   // a Championship club in a cup tie
   const t = S.tac[cid];
   if (cid !== me()){ if (!FORMS[t.form]) t.form = bestForm(cid);
     let f = bestXI(cid, t.form, true);
@@ -1027,8 +1028,47 @@ function finishShield(myM){
   news(r.h === me() || r.a === me() ? 'match' : 'comp', `The ${SHIELD}`, `${line}. ${r.w === me() ? 'The first trophy of the season is yours.' : `${esc(club(r.w).name)} take the first trophy of the season.`}`);
   save();
 }
+/* the League Cup: the 24 Championship clubs in the second round, the league's 20 join the 12 winners in the third;
+   then the fourth round, the quarter- and semi-finals (one match each) and the final at Wembley in March. A tie
+   between two Championship clubs is settled in the background from their strength; any tie with a league club is a
+   full match, live if it is yours. Level after 90 minutes: penalties */
+const LC = 'League Cup', LC_NAMES = ['Second Round', 'Third Round', 'Fourth Round', 'Quarter-final', 'Semi-final', 'Final'];
+function lcSetup(){
+  if (!hasCh()){ S.lc = null; return; }
+  const y = S.season, want = [`${y}-08-26`, `${y}-09-23`, `${y}-10-28`, `${y}-12-16`, `${y + 1}-01-20`, `${y + 1}-03-14`];
+  const busy = d => S.rounds.some(r => r.date === d) || (S.cupDates || []).includes(d) || (S.shield && S.shield.date === d);
+  const dates = want.map(d => { if (!busy(d)) return d; for (const k of [1, -1, 2, -2, 3, -3]){ const e = day(d, k); if (!busy(e)) return e; } return d; });
+  S.lc = { stage: 0, alive: D.second.clubs.map(c => c.id), wait: D.clubs.map(c => c.id), dates, log: [] };
+}
+function lcDraw(){
+  const L = S.lc, r0 = rng(`${S.seed}-lc-${S.season}-${L.stage}`), pool = L.stage === 1 ? [...L.alive, ...L.wait] : L.alive.slice();
+  for (let i = pool.length - 1; i > 0; i--){ const j = Math.floor(r0() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const ties = []; for (let i = 0; i + 1 < pool.length; i += 2) ties.push({ h: pool[i], a: pool[i + 1] });
+  return ties;
+}
+function finishLC(myM, others){
+  const L = S.lc, ties = L.cur || lcDraw(), res = [], name = LC_NAMES[L.stage], r = rng(`${S.seed}-lcr-${S.season}-${L.stage}`), date = L.dates[L.stage];
+  for (const t of ties){
+    if (!LG.has(t.h) && !LG.has(t.a) && !(myM && t.h === myM.h)){   // two Championship clubs: in the background
+      let [x, y] = chMatch(t.h, t.a, r, L.stage === 5); let p = null;
+      if (x === y){ p = [3 + Math.floor(r() * 3), 3 + Math.floor(r() * 3)]; if (p[0] === p[1]) p[r() < .5 ? 0 : 1]++; }
+      res.push({ h: t.h, a: t.a, s: [x, y], p, w: x > y || (p && p[0] > p[1]) ? t.h : t.a, hs: [], inc: [], st: {} }); continue; }
+    const done = myM && t.h === myM.h && t.a === myM.a ? myM : (others || []).find(o => o.h === t.h && o.a === t.a);
+    const M = done ? playOut(done) : playOut(newMatch(t.h, t.a, { cup: name, date }));
+    apply(M, 'lc'); res.push(summary(M)); }
+  L.log.push({ stage: L.stage, res, date }); L.alive = res.map(x => x.w); L.stage++; delete L.cur;
+  const mine = res.find(x => x.h === me() || x.a === me());
+  if (mine){ const us = mine.h === me(), won = mine.w === me();
+    news('match', L.stage === 6 && won ? `${LC} winners!` : `${LC} ${name}: ${won ? 'through' : 'out'}`, `${esc(club(mine.h).name)} ${mine.s[0]}-${mine.s[1]} ${esc(club(mine.a).name)}${mine.p ? ` (${mine.p[0]}-${mine.p[1]} on penalties)` : ''}. ${won ? (L.stage === 6 ? `You have won the ${LC}!` : `You are into the ${LC_NAMES[L.stage].toLowerCase()}.`) : `The ${LC} run is over.`}`);
+    const opp = us ? mine.a : mine.h; S.seen = S.seen || []; if (!S.seen.includes(opp) && LG.has(opp)) S.seen.push(opp); }
+  if (L.stage === 6){ const w = L.alive[0];
+    if (w === me()){ S.conf = Math.min(100, S.conf + 10); (S.hist = S.hist || []).push({ d: S.date, c: me(), t: `Won the ${LC}` }); }
+    else if (!mine) news('comp', `The ${LC} final`, `${esc(club(w).name)} win the ${LC}, ${res[0].s[0]}-${res[0].s[1]}${res[0].p ? ` (${res[0].p[0]}-${res[0].p[1]} on penalties)` : ''} against ${esc(club(res[0].w === res[0].h ? res[0].a : res[0].h).name)}.`); }
+  save();
+}
 function events(){
   const L = [];
+  if (S.lc && S.lc.stage < 6) L.push({ k: 'lc', date: S.lc.dates[S.lc.stage] });
   if (S.shield && !S.shield.done) L.push({ k: 'shield', date: S.shield.date });
   if (S.round < S.rounds.length) L.push({ k: 'league', date: S.rounds[S.round].date, r: S.rounds[S.round] });
   if (S.cup.stage < 5) L.push({ k: 'cup', date: S.cupDates[S.cup.stage] });
@@ -1104,6 +1144,12 @@ function onContinue(){
   if (ev.date > S.date){ passDays(daysBetween(S.date, nextStop(ev.date))); monthly(); save(); view(); return; }
   const missing = readyTactic(me()).xi.filter(x => !x).length;
   if (missing){ go({ s: 'club', cid: me(), tab: 'tactics' }); toast(`Your side has ${missing} empty place${missing > 1 ? 's' : ''}: pick a player for each.`); return; }
+  if (ev.k === 'lc'){
+    const ties = lcDraw(), mine = S.lc.alive.concat(S.lc.stage === 1 ? S.lc.wait : []).includes(me()) && ties.find(x => x.h === me() || x.a === me());
+    S.lc.cur = ties;
+    if (mine){ startLive(mine.h, mine.a, { cup: LC_NAMES[S.lc.stage], lc: true, others: ties.filter(x => x !== mine && (LG.has(x.h) || LG.has(x.a))) }); return; }
+    finishLC(null); view(); return;
+  }
   if (ev.k === 'shield'){
     if (S.shield.h === me() || S.shield.a === me()){ startLive(S.shield.h, S.shield.a, { cup: SHIELD, shield: true }); return; }
     finishShield(null); view(); return;
@@ -1356,7 +1402,7 @@ function newSeason(){
   const { rounds, cupDates } = schedule(ids, `${S.seed}-${S.season}`, S.season);
   Object.assign(S, { rounds, cupDates, round: 0, cup: { stage: 0, alive: ids.slice(), log: [] }, results: [], done: false, next: false, ultimatum: null,
     table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])), date: day(rounds[0].date, -6) });
-  S.train.last = S.date; S.lastTr = S.date; monthSnap(); chInit(); shieldSetup();
+  S.train.last = S.date; S.lastTr = S.date; monthSnap(); chInit(); shieldSetup(); lcSetup();
   S.bids = (S.bids || []).filter(b => b.st === 'done'); S.offers = [];
   S.aim = aimFor(expRank(me())); S.conf = Math.max(45, Math.min(75, S.conf));
   const q = club(me()).q; S.fin.budget = Math.round(S.fin.budget * .5 + Math.max(12, (q - 70) * 9) * 1e6);
@@ -1377,7 +1423,7 @@ function endSeason(){
   (S.hist = S.hist || []).push({ d: S.date, c: me(), t: pos === 1 ? 'Won the league' : `Finished ${ordinal(pos)} in the league` });
   S.next = pos <= aim.pos + 3 && !S.sacked && !rel;
   if (!S.next && !S.sacked){ S.sacked = true; S.vac = S.vac || {}; S.vac[me()] = { d: S.date }; }
-  (S.past = S.past || []).push({ s: S.season, table: st.map(r => [r.id, r.pts]), champ, cup: S.cup.stage >= 5 ? S.cup.alive[0] : null, club: me(), pos, ...(S.shield && S.shield.res ? { shield: S.shield.res.w } : {}), ...(S.ch && S.ch.up ? { up: S.ch.up, down, cht: chTable().map(r => [r.id, r.pts]) } : {}) });
+  (S.past = S.past || []).push({ s: S.season, table: st.map(r => [r.id, r.pts]), champ, cup: S.cup.stage >= 5 ? S.cup.alive[0] : null, club: me(), pos, ...(S.shield && S.shield.res ? { shield: S.shield.res.w } : {}), ...(S.lc && S.lc.stage >= 6 ? { lc: S.lc.alive[0] } : {}), ...(S.ch && S.ch.up ? { up: S.ch.up, down, cht: chTable().map(r => [r.id, r.pts]) } : {}) });
   if (S.ch && S.ch.up){ const [a, b, c] = S.ch.up.map(id => esc(club(id).name)), fin = (S.ch.po || []).find(x => x.fin);
     news('comp', 'Promotion and relegation', `Up from the Championship: <b>${a}</b> (champions), <b>${b}</b> and <b>${c}</b>${fin ? ` (play-off final, ${fin.w === fin.x ? fin.s : fin.s.split('-').reverse().join('-')} against ${esc(club(fin.w === fin.x ? fin.y : fin.x).name)})` : ''}. Down: ${down.map(id => `<b>${esc(club(id).name)}</b>`).join(', ')}.`); }
   news('board', 'The season is over', `${esc(club(champ).name)} are champions. You finished ${ordinal(pos)}, against a target of ${ordinal(aim.pos)}. ${verdict}`);
@@ -1441,7 +1487,7 @@ function menuTree(o, unread){
         { id: 'k.rep', label: 'Manager Stats', v: { s: 'managers', tab: 'rep' } }, { id: 'k.jobs', label: 'Jobs', v: { s: 'managers', tab: 'jobs' } },
         { id: 'k.hall', label: 'Hall of Fame', act: () => { SETUP_OPEN = true; SETUP = 'hall'; view(); } }] }] },
     { id: 'my', cls: 'myclub', label: esc(club(mine).name), v: cv(mine, 'squad'), kids: [...clubKids(mine), { id: 'my.tr', label: 'Transfers', v: { s: 'transfers' } }] },
-    { id: 'comp', label: 'Competitions', v: { s: 'comp', tab: 'table' }, kids: [['table', 'Table'], ['results', 'Results'], ['fixtures', 'Fixtures'], ['cup', esc(CUP === 'Cup' ? 'The Cup' : CUP)], ['tstats', 'Team Stats'], ['pstats', 'Player Stats'], ['refs', 'Referee Stats'], ['awards', 'Awards'], ...(S.ch ? [['ch', 'Championship']] : [])].map(([t, n]) => ({ id: 'cp.' + t, label: n, v: { s: 'comp', tab: t } })).concat([{ id: 'cp.rec', label: 'Records', v: { s: 'records' }, kids: [{ id: 'rec.r', label: 'League', v: { s: 'records', tab: 'r' } }, { id: 'rec.tr', label: 'Transfers', v: { s: 'records', tab: 'tr' } }] }]) },
+    { id: 'comp', label: 'Competitions', v: { s: 'comp', tab: 'table' }, kids: [['table', 'Table'], ['results', 'Results'], ['fixtures', 'Fixtures'], ['cup', esc(CUP === 'Cup' ? 'The Cup' : CUP)], ...(S.lc ? [['lc', LC]] : []), ['tstats', 'Team Stats'], ['pstats', 'Player Stats'], ['refs', 'Referee Stats'], ['awards', 'Awards'], ...(S.ch ? [['ch', 'Championship']] : [])].map(([t, n]) => ({ id: 'cp.' + t, label: n, v: { s: 'comp', tab: t } })).concat([{ id: 'cp.rec', label: 'Records', v: { s: 'records' }, kids: [{ id: 'rec.r', label: 'League', v: { s: 'records', tab: 'r' } }, { id: 'rec.tr', label: 'Transfers', v: { s: 'records', tab: 'tr' } }] }]) },
     { id: 'clubs', label: 'Nations &amp; Clubs', v: { s: 'clubs' }, kids: [{ id: 'eng', label: 'England', v: { s: 'clubs' }, kids: D.clubs.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'squad'), kids: clubKids(c.id) })).concat(hasCh() ? [{ id: 'engch', label: 'Championship', v: { s: 'clubs', lg: 'ch' }, kids: D.second.clubs.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'squad'),
       kids: [['squad', 'Squad'], ['info', 'General Info']].map(([t, n]) => ({ id: `c${c.id}.${t}`, label: n, v: t === 'squad' ? { ...cv(c.id, t), team: 'first' } : cv(c.id, t) })) })) }] : []) }] },
     { id: 'find', label: 'Find', v: { s: 'find', tab: 'search' }, kids: [['short', 'Short List'], ['search', 'Player Search'], ['staff', 'Staff Search'], ['sc1', 'Scout #1'], ['sc2', 'Scout #2']].map(([t, n]) => ({ id: 'f.' + t, label: n, v: { s: 'find', tab: t } })) },
@@ -1999,6 +2045,9 @@ function scrComp(){
     const res = c ? c.log.slice().reverse().slice(0, 3).map(l => `<div class="ptitle">Round ${l.n}</div><table><tbody>${l.res.map(([h, a, x, y]) => `<tr class="click" data-cv="${x >= y ? h : a}"><td class="r" style="width:42%">${esc(club(h).name)}</td><td class="c"><span class="pill">${x} - ${y}</span></td><td style="width:42%">${esc(club(a).name)}</td></tr>`).join('')}</tbody></table>`).join('') : '';
     const po = c && c.po ? `<div class="ptitle">Play-offs</div><table><tbody>${c.po.map(x => `<tr><td><span class="small dim">${x.fin ? 'Final' : 'Semi-final'}</span><br>${esc(club(x.x).name)} v ${esc(club(x.y).name)}</td><td class="c"><span class="pill">${x.s}</span></td><td class="yel r"><b>${esc(club(x.w).name)}</b></td></tr>`).join('')}</tbody></table>` : '';
     body = !c ? '<p class="empty">No Championship this season.</p>' : `<div class="cols2"><div><div class="ptitle">Championship · ${c.n} of ${c.fx.length} rounds played</div><div class="tw"><table><thead><tr><th></th><th>Club</th><th class="c">Pld</th><th class="c">Won</th><th class="c">Drn</th><th class="c">Lst</th><th class="c">For</th><th class="c">Ag</th><th class="c">Pts</th></tr></thead><tbody>${ct.map((r, i) => `<tr class="click ${c.up && c.up.includes(r.id) ? 'me' : ''}" data-cv="${r.id}" style="${i === 1 || i === 5 || i === m - 4 ? 'border-bottom:2px dashed var(--line)' : ''}"><td><span class="pill">${ordinal(i + 1)}</span></td><td class="nm">${crest(r.id)}<b style="font-size:14px">${esc(club(r.id).name)}</b></td>${cell(r.p)}${cell(r.w)}${cell(r.d)}${cell(r.l)}${cell(r.gf)}${cell(r.ga)}<td class="c"><span class="cell" style="color:var(--yel)"><b>${r.pts}</b></span></td></tr>`).join('')}</tbody></table></div><p class="small dim">Top two: promoted. Third to sixth: the play-offs, for the last place up. Bottom three: down to League One. The Championship is played in the background; its clubs cannot be managed.</p></div><div>${po}${res || '<p class="empty">No rounds played yet.</p>'}</div></div>`; }
+  if (tab === 'lc'){ const L = S.lc;
+    body = !L ? '<p class="empty">No League Cup this season.</p>' : `${L.stage < 6 ? `<p class="c">Next: <b>${LC_NAMES[L.stage]}</b> on ${fmtDate(L.dates[L.stage])}. ${L.stage === 0 ? 'The Championship clubs start; the league joins in the third round.' : `${L.alive.length + (L.stage === 1 ? L.wait.length : 0)} clubs left${L.alive.concat(L.stage === 1 ? L.wait : []).includes(me()) ? ', yours among them' : ''}.`}</p>` : `<p class="c"><b class="yel">${esc(club(L.alive[0]).name)}</b> won the ${LC}.</p>`}
+      ${L.log.slice().reverse().map(l => `<div class="ptitle">${LC_NAMES[l.stage]} · ${fmtDate(l.date)}</div><table><tbody>${l.res.map(x => `<tr class="${x.h === me() || x.a === me() ? 'me' : ''}"><td class="r" style="width:42%">${x.w === x.h ? '<b>' : ''}${esc(club(x.h).name)}${x.w === x.h ? '</b>' : ''}</td><td class="c"><span class="pill">${x.s[0]} - ${x.s[1]}${x.p ? ` (${x.p[0]}-${x.p[1]} p)` : ''}</span></td><td style="width:42%">${x.w === x.a ? '<b>' : ''}${esc(club(x.a).name)}${x.w === x.a ? '</b>' : ''}</td></tr>`).join('')}</tbody></table>`).join('')}`; }
   if (tab === 'results') body = S.results.slice().reverse().slice(0, 10).map(r => `<div class="ptitle">Round ${r.n} · ${fmtDate(r.date)}</div><table><tbody>${r.res.map(x => `<tr class="click ${x.h === me() || x.a === me() ? 'me' : ''}" data-rr="${r.n}|${x.h}|${x.a}"><td class="r" style="width:42%"><b>${esc(club(x.h).name)}</b></td><td class="c"><span class="pill">${x.s[0]} - ${x.s[1]}</span></td><td style="width:42%"><b>${esc(club(x.a).name)}</b></td></tr>`).join('')}</tbody></table>`).join('') || '<p class="empty">No results yet.</p>';
   if (tab === 'fixtures') body = S.rounds.slice(S.round, S.round + 3).map((r, k) => `<div class="ptitle">Round ${S.round + k + 1} · ${fmtDate(r.date)}</div><table><tbody>${r.m.map(x => `<tr class="${x.h === me() || x.a === me() ? 'me' : ''}"><td class="r" style="width:45%"><b>${esc(club(x.h).name)}</b></td><td class="c dim">v</td><td style="width:45%"><b>${esc(club(x.a).name)}</b></td></tr>`).join('')}</tbody></table>`).join('') || '<p class="empty">The league season is over.</p>';
   const shTxt = S.shield ? (S.shield.res ? (r => `<div class="ptitle">${SHIELD} · ${fmtDate(S.shield.date)}</div><table><tbody><tr class="${r.h === me() || r.a === me() ? 'me' : ''}"><td class="r" style="width:42%"><b>${esc(club(r.h).name)}</b></td><td class="c"><span class="pill">${r.s[0]} - ${r.s[1]}${r.p ? ` (${r.p[0]}-${r.p[1]} pens)` : ''}</span></td><td style="width:42%"><b>${esc(club(r.a).name)}</b></td></tr></tbody></table>`)(S.shield.res)
@@ -2015,7 +2064,7 @@ function scrComp(){
       body = `<div class="ptitle">${S.done ? 'Awards' : 'Awards: as things stand'}</div><div style="max-width:620px;margin:0 auto">${aw('Player of the Year', best, best && rt(best).toFixed(2))}${aw('Young Player of the Year', young, young && rt(young).toFixed(2))}${aw('Golden Boot', gb, gb && gb.q.g + ' goals')}${aw('Goalkeeper of the Year', pos('GK'))}${aw('Defender of the Year', pos('DEF'))}${aw('Midfielder of the Year', pos('MID'))}${aw('Forward of the Year', pos('FWD'))}</div>`; } }
   if (tab === 'refs'){ const R = {}; for (const r of allResults()){ if (!r.ref) continue; const x = R[r.ref] = R[r.ref] || { g: 0, yc: 0, rc: 0, pen: 0 }; x.g++; x.yc += (r.st.yc || [0, 0]).reduce((a, b) => a + b, 0); x.rc += (r.st.rc || [0, 0]).reduce((a, b) => a + b, 0); x.pen += (r.hs || []).filter(h => h.how === 'pen').length; }
     body = `<div class="ptitle">Referee Stats</div><div class="tw"><table><thead><tr><th>Referee</th><th class="r">Games</th><th class="r">Yellow</th><th class="r">Red</th><th class="r">Yellow a game</th><th class="r">Penalty goals</th></tr></thead><tbody>${Object.entries(R).sort((a, b) => b[1].yc / b[1].g - a[1].yc / a[1].g).map(([n, x]) => `<tr><td><b>${esc(n)}</b></td><td class="r">${x.g}</td><td class="r">${x.yc}</td><td class="r">${x.rc}</td><td class="r yel">${(x.yc / x.g).toFixed(2)}</td><td class="r">${x.pen}</td></tr>`).join('') || '<tr><td class="dim">No matches yet</td></tr>'}</tbody></table></div>`; }
-  frame({ title: esc(D.league), top: [['table', 'Table'], ['results', 'Results'], ['fixtures', 'Fixtures'], ['cup', esc(CUP === 'Cup' ? 'The Cup' : CUP)]], bottom: [['tstats', 'Team Stats'], ['pstats', 'Player Stats'], ['refs', 'Referee Stats'], ['awards', 'Awards'], ...(S.ch ? [['ch', 'Championship']] : [])], topOn: tab, bottomOn: tab,
+  frame({ title: esc(D.league), top: [['table', 'Table'], ['results', 'Results'], ['fixtures', 'Fixtures'], ['cup', esc(CUP === 'Cup' ? 'The Cup' : CUP)], ...(S.lc ? [['lc', LC]] : [])], bottom: [['tstats', 'Team Stats'], ['pstats', 'Player Stats'], ['refs', 'Referee Stats'], ['awards', 'Awards'], ...(S.ch ? [['ch', 'Championship']] : [])], topOn: tab, bottomOn: tab,
     onTab: t => { V = { s: 'comp', tab: t }; view(); }, body });
   document.querySelectorAll('[data-cv]').forEach(r => r.addEventListener('click', () => go({ s: 'club', cid: +r.dataset.cv, tab: 'squad' })));
   document.querySelectorAll('[data-rr]').forEach(r => r.addEventListener('click', () => { const [k, h, a] = r.dataset.rr.split('|').map(Number); const x = S.results.find(y => y.n === k).res.find(y => y.h === h && y.a === a); go({ s: 'club', cid: h, tab: 'last', rr: x }); }));
@@ -2050,6 +2099,7 @@ function autoStep(){
     if (Math.random() < (20 - ju) * .02){ const i = 1 + Math.floor(Math.random() * 10), alt = t.bench.find(id => id && canPlay(P.get(id), FORMS[t.form][i][0])); if (alt){ const was = t.xi[i]; t.xi[i] = alt; t.bench = t.bench.filter(x => x !== alt); if (was) t.bench.push(was); } } }
   readyTactic(me()); if (t.xi.some(x => !x)) Object.assign(t, bestXI(me(), t.form, true));
   if (ev.k === 'shield'){ finishShield(null); return true; }
+  if (ev.k === 'lc'){ S.lc.cur = lcDraw(); finishLC(null); return true; }
   if (ev.k === 'cup'){ const { ties, bye } = cupDraw(); S.cup.cur = { ties, bye, stage: S.cup.stage }; finishCup(null); passDays(1); return true; }
   finishLeague(null); passDays(1); return true;
 }
@@ -2558,7 +2608,7 @@ function scrRecords(){
   const pl = (x, v) => `<tr class="click" data-pl="${x.p.id}"><td>${flag(x.p.nat)}<b>${esc(x.p.n)}</b></td><td class="dim">${sn(x.s)}${x.cur ? ' (so far)' : ''}</td><td class="r yel"><b>${v}</b></td></tr>`;
   const rtab = V.tab === 'tr' ? 'tr' : 'r';
   frame({ title: 'Records', sub: esc(D.league), top: [['r', 'League'], ['tr', 'Transfers']], topOn: rtab, onTab: k => { V = { s: 'records', tab: k }; view(); },
-    body: rtab === 'tr' ? recTransfers() : `${D.league_facts ? `<p class="small dim">Record champions: <b>${esc(D.league_facts.record_champion)}</b>, ${D.league_facts.record_titles} titles${(() => { const n = (S.past || []).filter(x => club(x.champ).name === D.league_facts.record_champion).length; return n ? ` (${D.league_facts.record_titles + n} with this game's)` : ''; })()}.${(D.league_facts.europe || []).length ? ` ${sn(D.season - 1)} in Europe: ${D.league_facts.europe.map(([c, t]) => `<b>${esc(c)}</b> won the ${esc(t)}`).join(', ')}.` : ''}</p>` : ''}<div class="cols2"><div><div class="ptitle">Champions</div><table><tbody>${past.map(x => `<tr><td>${sn(x.s)}</td><td>${crest(x.champ)}<b>${esc(club(x.champ).name)}</b></td><td class="dim">${x.cup ? `${esc(CUP)}: ${esc(club(x.cup).name)}` : ''}${x.shield ? `<br>${SHIELD}: ${esc(club(x.shield).name)}` : ''}</td></tr>`).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table>
+    body: rtab === 'tr' ? recTransfers() : `${D.league_facts ? `<p class="small dim">Record champions: <b>${esc(D.league_facts.record_champion)}</b>, ${D.league_facts.record_titles} titles${(() => { const n = (S.past || []).filter(x => club(x.champ).name === D.league_facts.record_champion).length; return n ? ` (${D.league_facts.record_titles + n} with this game's)` : ''; })()}.${(D.league_facts.europe || []).length ? ` ${sn(D.season - 1)} in Europe: ${D.league_facts.europe.map(([c, t]) => `<b>${esc(c)}</b> won the ${esc(t)}`).join(', ')}.` : ''}</p>` : ''}<div class="cols2"><div><div class="ptitle">Champions</div><table><tbody>${past.map(x => `<tr><td>${sn(x.s)}</td><td>${crest(x.champ)}<b>${esc(club(x.champ).name)}</b></td><td class="dim">${x.cup ? `${esc(CUP)}: ${esc(club(x.cup).name)}` : ''}${x.lc ? `<br>${LC}: ${esc(club(x.lc).name)}` : ''}${x.shield ? `<br>${SHIELD}: ${esc(club(x.shield).name)}` : ''}</td></tr>`).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table>
       <div class="ptitle">Most league goals in a season</div><table><tbody>${topG.map(x => pl(x, x.g)).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table>
       <div class="ptitle">Most league assists in a season</div><table><tbody>${topA.map(x => pl(x, x.a)).join('') || '<tr><td class="dim">None yet</td></tr>'}</tbody></table></div>
       <div>${(S.awards || []).filter(a => !/Month/.test(a.k)).length ? `<div class="ptitle">Season awards</div><table><tbody>${(S.awards || []).filter(a => !/Month/.test(a.k)).slice().reverse().map(a => `<tr${a.id ? ` class="click" data-pl="${a.id}"` : ''}><td class="dim">${sn(a.s)}</td><td>${esc(a.k)}</td><td>${a.id && P.has(a.id) ? flag(P.get(a.id).nat) + '<b>' + esc(P.get(a.id).n) + '</b>' : ''} <span class="dim">${a.why || ''}</span></td></tr>`).join('')}</tbody></table>` : ''}
@@ -2597,8 +2647,8 @@ let TIMER = null, SPEED = OPT.spd, MTAB = 'overview';
 function startLive(h, a, opts){
   const M = newMatch(h, a, { live: true, cup: opts.cup, date: S.date });
   const others = (opts.others || []).map(m => newMatch(m.h, m.a, { cup: opts.cup, date: S.date }));
-  M.att = opts.shield ? 80000 + Math.round(Math.random() * 7000) : Math.round((club(h).cap || 30000) * clamp(.86 + (S.conf - 50) / 400 + Math.random() * .08, .65, 1));
-  LIVE = { M, others, cup: opts.cup, shield: !!opts.shield, started: false, paused: true, sel: null, pre: true, atHT: false };
+  M.att = opts.shield || (opts.lc && opts.cup === 'Final') ? 80000 + Math.round(Math.random() * 7000) : Math.round((club(h).cap || 30000) * clamp(.86 + (S.conf - 50) / 400 + Math.random() * .08, .65, 1));
+  LIVE = { M, others, cup: opts.cup, shield: !!opts.shield, lc: !!opts.lc, started: false, paused: true, sel: null, pre: true, atHT: false };
   MTAB = 'overview'; view(); scrollTo(0, 0);
 }
 const icon = k => ({ goal: '⚽ ', red: '🟥 ', yel: '🟨 ', inj: '✚ ', sub: '⇄ ' })[k] || '';
@@ -2612,7 +2662,7 @@ function viewPre(){
   const strict = M.ref.s >= 13 ? 'strict, quick to book' : M.ref.s <= 7 ? 'lenient, lets the game flow' : 'fair';
   const wxNote = M.wk === 2 ? ' (a heavy pitch: short passing and ball control suffer)' : M.wk === 3 ? ' (long and direct passing suffer)' : M.wk === 5 ? ' (players will tire faster)' : M.wk === 6 ? ' (a slippery pitch)' : '';
   mframe(`<div class="date"><span>${WD[new Date(S.date + 'T12:00:00Z').getUTCDay()]}</span><span>${shortDate(S.date)}</span><span>PM</span></div><button class="sb go" id="tomatch">Go to Match</button><button class="sb" id="totac">${esc(club(me()).name)} Tactics</button>`,
-    `<div class="banner"><span></span><h1>Next Match<span class="sub">${L.shield ? SHIELD + ' · Wembley' : L.cup ? esc(CUP) + ' · ' + esc(L.cup) : esc(D.league)}</span></h1><span></span></div>
+    `<div class="banner"><span></span><h1>Next Match<span class="sub">${L.shield ? SHIELD + ' · Wembley' : L.lc ? `${LC} · ${esc(L.cup)}${L.cup === 'Final' ? ' · Wembley' : ''}` : L.cup ? esc(CUP) + ' · ' + esc(L.cup) : esc(D.league)}</span></h1><span></span></div>
     <div class="mteams"><div class="t" style="background:${kh};color:${kh2}">${crest(M.h, 'mcr')}<span>${esc(club(M.h).name)}</span></div><div class="t" style="background:${ka};color:${ka2}">${crest(M.a, 'mcr')}<span>${esc(club(M.a).name)}</span></div></div>
     <section class="pane"><dl class="kv"><dt>Date</dt><dd>${fmtDate(S.date, true)}</dd>${(() => { const fm = !L.cup && ((S.rounds[S.round] || {}).m || []).find(x => x.h === M.h && x.a === M.a); const wd = new Date(S.date + 'T12:00:00Z').getUTCDay(), dflt = wd === 0 || wd === 6 ? '15:00' : '19:45';   // the league's default kick-offs
       return fm ? `<dt>Kick-off</dt><dd>${fm.ko || dflt}${fm.tv ? ` <span class="pill">${esc(fm.tv)}</span>` : ''}</dd>` : ''; })()}<dt>Venue</dt><dd>${esc(club(M.h).venue || '')}</dd><dt>Referee</dt><dd>${esc(M.ref.n)}: ${strict}</dd><dt>Weather</dt><dd>${esc(M.weather)}, ${M.temp}°C${wxNote}</dd><dt>Opponents</dt><dd>${esc(club(opp).name)}${S.round ? ', ' + ordinal(st.findIndex(r => r.id === opp) + 1) : ''}, ${esc(M.h === me() ? M.A.t.form : M.H.t.form)}</dd></dl>
@@ -2653,7 +2703,7 @@ function viewMatch(){
   on('play', () => { L.started = true; L.paused = false; L.atHT = false; run(); });
   on('pause', () => { L.paused = true; clearTimeout(TIMER); viewMatch(); });
   on('skip', () => { clearTimeout(TIMER); L.started = true; L.paused = true; L.atHT = false; while (step(M)) L.others.forEach(o => step(o)); L.others.forEach(o => playOut(o)); viewMatch(); });
-  on('done', () => { LIVE = null; if (L.shield) finishShield(M); else if (L.cup) finishCup(M, L.others); else finishLeague(M, L.others); passDays(1); save(); HIST.push(V); V = { s: 'news', i: 0 }; view(); scrollTo(0, 0); });
+  on('done', () => { LIVE = null; if (L.shield) finishShield(M); else if (L.lc) finishLC(M, L.others); else if (L.cup) finishCup(M, L.others); else finishLeague(M, L.others); passDays(1); save(); HIST.push(V); V = { s: 'news', i: 0 }; view(); scrollTo(0, 0); });
   document.querySelectorAll('[data-spd]').forEach(b => b.addEventListener('click', () => { SPEED = +b.dataset.spd; OPT.spd = SPEED; saveOpt(); viewMatch(); }));
   document.querySelectorAll('[data-mt]').forEach(b => b.addEventListener('click', () => { MTAB = b.dataset.mt; viewMatch(); }));
   wireMatchPanel();
