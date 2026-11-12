@@ -305,7 +305,11 @@ button.frow:hover{border-color:var(--gold)}
 .crow{display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid var(--line);font-size:14.5px}
 .crow:nth-child(odd){background:rgba(255,255,255,.025)}
 .crow b{font-weight:700;font-size:15px}.crow .org{color:#F2A65A;font-weight:600}
-.cmlow{display:grid;grid-template-columns:1fr 290px;gap:16px;align-items:start}
+.cmlow{display:grid;grid-template-columns:1fr 520px;gap:16px;align-items:start}
+.pside{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center}
+.hexbox{background:var(--panel-2);border-radius:10px;padding:4px}
+@media(max-width:1100px){.cmlow{grid-template-columns:1fr}}
+@media(max-width:480px){.pside{grid-template-columns:1fr}}
 @media(max-width:760px){.cmlow{grid-template-columns:1fr}}
 .cmst td:first-child{color:var(--muted)}
 @media(max-width:480px){.cmst th,.cmst td{padding:5px 3px;font-size:12.5px}.cmst td:first-child{white-space:normal}.avr{min-width:34px;padding:1px 3px}}
@@ -1491,12 +1495,24 @@ const FIT_WORD = { 1: 'Main', 2: 'Regular', 3: 'Occasional', 4: '' };
 const TT = t => String(t).replace(/\b[a-z]/g, c => c.toUpperCase()).replace(/\bGk\b/, 'GK');
 const GROUPS = [['Attacking', ['oa', 'fi', 'kp']], ['Dribbling', ['bc', 'dr', 'tp', 'ba']], ['Defending', ['he', 'ju', 'da', 'bw', 'ag']], ['Passing', ['lp', 'lf', 'pk', 'cu']], ['Physicality', ['sp', 'ac', 'pc', 'st']], ['Goalkeeping', ['ga', 'gc', 'gl', 'gr', 'gh']]];
 const BARC = v => v >= 90 ? '#5CE39A' : v >= 80 ? '#A8E063' : v >= 70 ? '#F2D33D' : v >= 60 ? '#F2A65A' : '#E57A62';
+const HEX = p => p.prim === 'GK'
+  ? [['AWR', ['ga']], ['CAT', ['gc']], ['CLR', ['gl']], ['REF', ['gr']], ['REA', ['gh']], ['KIC', ['kp', 'lf']]]
+  : [['SPD', ['sp', 'ac']], ['SHO', ['fi', 'kp', 'oa']], ['PAS', ['lp', 'lf', 'cu']], ['DRI', ['bc', 'dr', 'tp', 'ba']], ['STR', ['pc', 'ju', 'st']], ['DEF', ['da', 'bw', 'ag']]];
+function hexagon(p, kn){
+  const R = 78, cx = 110, cy = 100, pt = (i, r) => [cx + r * Math.sin(i * Math.PI / 3), cy - r * Math.cos(i * Math.PI / 3)];
+  const ring = f => Array.from({ length: 6 }, (_, i) => pt(i, R * f).join(',')).join(' '), H = HEX(p);
+  const v = H.map(([, ks]) => ks.reduce((t, k) => t + A(p, k), 0) / ks.length), sh = kn ? v : v.map(x => Math.floor(x / 10) * 10 + 5);
+  return `<svg viewBox="0 0 220 200" class="radar">${[1, .75, .5, .25].map(f => `<polygon points="${ring(f)}" fill="none" stroke="rgba(255,255,255,.14)"/>`).join('')}
+    ${Array.from({ length: 6 }, (_, i) => `<line x1="${cx}" y1="${cy}" x2="${pt(i, R)[0]}" y2="${pt(i, R)[1]}" stroke="rgba(255,255,255,.14)"/>`).join('')}
+    <polygon points="${sh.map((x, i) => pt(i, R * Math.max(.06, (x - 30) / 69)).join(',')).join(' ')}" fill="rgba(76,214,140,${kn ? .3 : .14})" stroke="#4CD68C" stroke-width="2" ${kn ? '' : 'stroke-dasharray="4 3"'}/>
+    ${H.map(([l], i) => { const [x, y] = pt(i, R + 13); return `<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--muted)">${l}</text>`; }).join('')}</svg>`;
+}
 const POS_LONG = { GK: 'Goalkeeper', CB: 'Defender (Centre)', LB: 'Defender (Left)', RB: 'Defender (Right)', DMF: 'Defensive Midfielder', CMF: 'Midfielder (Centre)',
   LMF: 'Midfielder (Left)', RMF: 'Midfielder (Right)', AMF: 'Attacking Midfielder (Centre)', LWF: 'Winger (Left)', RWF: 'Winger (Right)', SS: 'Second Striker', CF: 'Striker (Centre)' };
 function playerCard(p, q, con, born){
   const kn = known(p);
   // every single attribute, alphabetical, in three columns like CM 01/02; his other details close the last column
-  const rows = Object.keys(ATTR_NAME).filter(k => p.prim === 'GK' || !GK_KEYS.includes(k)).map(k => { const v = A(p, k), d = q.d[k] || 0;
+  const rows = Object.keys(ATTR_NAME).map(k => { const v = A(p, k), d = q.d[k] || 0;
     return [TT(ATTR_NAME[k]), `${d >= 1 && kn ? '<span class="up">▲</span> ' : d <= -1 && kn ? '<span class="dn">▼</span> ' : ''}<span class="${vcls(v)}">${showA(p, v)}</span>`]; });
   if (p.inj) rows.push(['Injury Resistance', `<span class="${vcls([90, 75, 55][p.inj - 1])}">${4 - p.inj}</span>`]);
   rows.sort((x, y) => x[0].localeCompare(y[0]));
@@ -1517,7 +1533,7 @@ function playerCard(p, q, con, born){
     <div class="cmlow"><div class="tw"><table class="cmst"><thead><tr><th></th><th class="c">Apps</th><th class="c">Gls</th><th class="c">Asts</th><th class="c">MoM</th><th class="c">Yel</th><th class="c">Av R</th></tr></thead><tbody>
       <tr><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td class="c">${q.apps || '-'}</td><td class="c">${q.apps ? q.g : '-'}</td><td class="c">${q.apps ? q.a : '-'}</td><td class="c">${q.apps ? q.mom : '-'}</td><td class="c">${q.apps ? q.yc : '-'}</td><td class="c"><span class="avr">${q.apps ? avgRt(q) : '----'}</span></td></tr>${real}</tbody></table>
       <div class="small dim" style="margin-top:8px">Similar: ${sim.map(x => `<a class="sky" data-pl="${x.id}">${flag(x.nat)}${esc(x.n)}</a> <span class="dim">(${esc(fullName(x.club))})</span>`).join(', ')}</div></div>
-      <div><div class="ppitch">${pitch}</div></div></div>`;
+      <div class="pside"><div class="hexbox">${hexagon(p, kn)}</div><div class="ppitch">${pitch}</div></div></div>`;
 }
 function scrPlayer(){
   const p = P.get(V.id); if (!p){ V = { s: 'news' }; view(); return; }
@@ -1536,7 +1552,7 @@ function scrPlayer(){
   if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
-  frame(ofClub(p.club, { title: `${esc(p.n)} <span class="bclub">(${esc(fullName(p.club))})</span>`,
+  frame(ofClub(p.club, { title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(${esc(fullName(p.club))})</span>`,
     act: mine ? `<button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
     top: [['profile', 'Profile'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['hist', 'History']], topOn: tab,
     onTab: k => { V = { ...V, tab: k }; view(); }, body,
