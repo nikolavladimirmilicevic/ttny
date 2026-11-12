@@ -657,7 +657,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             h = (hb.get('clubs') or {}).get(str(c['id'])) or {}
             if h.get('coach'):   # the handbook (Oct 2026) is fresher than the API's coach careers (still Guardiola, Slot)
                 c['coach'] = h['coach']
-            for k in ('cap', 'sponsor', 'kitm', 'last', 'att'):
+            for k in ('cap', 'sponsor', 'kitm', 'last', 'att', 'full'):
                 if h.get(k):
                     c[k] = h[k]
         ko = {(f[0], f[1], f[2]): f[3:] for f in hb.get('fixtures') or []}

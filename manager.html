@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Rubik:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Rubik:wght@400;500;700&family=Noto+Color+Emoji&display=swap">
 <style>
 /* Manager: laid out the classic way (a bar down the left with the date and Continue Game, a title, tabs above and
    below the content, Back and Next) and dressed like the other two games: the night blue, the panels, Oswald and Rubik,
@@ -312,6 +312,18 @@ button.frow:hover{border-color:var(--gold)}
 .avr{display:inline-block;min-width:44px;background:#5B2A86;color:#fff;border-radius:4px;padding:1px 6px;font-weight:700}
 .cmpos{text-align:center;color:#6FD3F2;font:700 20px/1.2 var(--display);letter-spacing:.03em;margin:14px 0 4px}
 .cmlow a{cursor:pointer}
+
+.flag{font-family:'Noto Color Emoji',sans-serif;font-size:14px;line-height:1;margin-right:5px;vertical-align:-1px}
+.banner.wc{grid-template-columns:auto 1fr auto}
+.banner .bcr{display:flex;align-items:center;padding-left:14px}
+.bigcr{width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+.banner .binfo{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 18px;font:500 14px/1.4 var(--body);text-transform:none;letter-spacing:0;margin-top:6px;white-space:normal}
+.banner .binfo .flag{font-size:16px}
+.cr{width:20px;height:20px;object-fit:contain;vertical-align:-5px;margin-right:7px}
+td.nm{white-space:nowrap}
+.mcr{width:30px;height:30px;object-fit:contain;margin-right:10px;flex:none}
+.mteams .t{display:flex;align-items:center}
+@media(max-width:600px){.banner.wc{grid-template-columns:1fr}.banner.wc>.bcr{display:flex}.banner .bcr{justify-content:center;padding:10px 0 0}.bigcr{width:44px;height:44px}.banner .binfo{gap:2px 12px;font-size:13px}}
 </style>
 </head><body>
 <div id="app"><p class="loading">Loading…</p></div>
@@ -332,6 +344,15 @@ const KEYS_OF = { GK: ['ga', 'gr', 'gc', 'gh', 'gl'], CB: ['da', 'bw', 'he', 'pc
   WM: ['lp', 'lf', 'dr', 'sp', 'st'], AM: ['lp', 'bc', 'tp', 'oa', 'dr'], W: ['dr', 'sp', 'ac', 'oa', 'bc'], ST: ['oa', 'fi', 'bc', 'he', 'kp'] };
 const GK_KEYS = ['ga', 'gc', 'gl', 'gr', 'gh'];
 const crestURL = id => `https://media.api-sports.io/football/teams/${id}.png`;
+const crest = (cid, cls = 'cr') => `<img class="${cls}" src="${crestURL(cid)}" alt="" loading="lazy" onerror="this.remove()">`;
+const fullName = cid => { const c = club(cid); return c.full || c.name; };
+// flags as in the Draft (index.html): emoji flags, England / Scotland / Wales by their tag sequences, Northern Ireland drawn
+const ISO = {'Chad':'TD','Niger':'NE','Gibraltar':'GI','Liechtenstein':'LI','Grenada':'GD','Pakistan':'PK','Mauritius':'MU','San Marino':'SM','England':'gb-eng','Scotland':'gb-sct','Wales':'gb-wls','Spain':'ES','Germany':'DE','Italy':'IT','France':'FR','Portugal':'PT','Netherlands':'NL','Belgium':'BE','Türkiye':'TR','Greece':'GR','Czechia':'CZ','Norway':'NO','Denmark':'DK','Sweden':'SE','Ukraine':'UA','Austria':'AT','Switzerland':'CH','Croatia':'HR','Serbia':'RS','Azerbaijan':'AZ','Hungary':'HU','Poland':'PL','Romania':'RO','Slovenia':'SI','Slovakia':'SK','Bulgaria':'BG','Cyprus':'CY','Israel':'IL','Brazil':'BR','Argentina':'AR','Uruguay':'UY','Colombia':'CO','Senegal':'SN','Nigeria':'NG','Ghana':'GH','Ivory Coast':'CI','Cameroon':'CM','Morocco':'MA','Japan':'JP','South Korea':'KR','USA':'US','Algeria':'DZ','Mali':'ML','Guinea':'GN','Egypt':'EG','Tunisia':'TN','Ecuador':'EC','Paraguay':'PY','Chile':'CL','Mexico':'MX','Canada':'CA','Australia':'AU','Republic of Ireland':'IE','Ireland':'IE','Georgia':'GE','Albania':'AL','Kosovo':'XK','Bosnia and Herzegovina':'BA','North Macedonia':'MK','Montenegro':'ME','Iceland':'IS','Finland':'FI','Burkina Faso':'BF','Gabon':'GA','Congo DR':'CD','Angola':'AO','Cape Verde Islands':'CV','Jamaica':'JM','Venezuela':'VE','Peru':'PE','Iran':'IR','Armenia':'AM','Russia':'RU','Lithuania':'LT','Luxembourg':'LU','Zambia':'ZM','Zimbabwe':'ZW','Gambia':'GM','Togo':'TG','Benin':'BJ','Equatorial Guinea':'GQ','Suriname':'SR','Curaçao':'CW','Haiti':'HT','China':'CN','Uzbekistan':'UZ','New Zealand':'NZ','South Africa':'ZA','Kenya':'KE','Estonia':'EE','Latvia':'LV','Belarus':'BY','Moldova':'MD','Costa Rica':'CR','Honduras':'HN','Panama':'PA','Bolivia':'BO','Sierra Leone':'SL','Mozambique':'MZ','Comoros':'KM','Iraq':'IQ','Liberia':'LR','Central African Republic':'CF','Jordan':'JO','Saudi Arabia':'SA','Congo':'CG','Guinea-Bissau':'GW','Qatar':'QA','Syria':'SY','Lebanon':'LB','Palestine':'PS','Faroe Islands':'FO','Malta':'MT','Andorra':'AD','Kazakhstan':'KZ','Trinidad and Tobago':'TT','Guadeloupe':'GP','Martinique':'MQ','French Guiana':'GF','Madagascar':'MG','Mauritania':'MR','Sudan':'SD','Tanzania':'TZ','Uganda':'UG','Rwanda':'RW','Burundi':'BI','Ethiopia':'ET','Libya':'LY','Philippines':'PH','Indonesia':'ID','Thailand':'TH','Vietnam':'VN','India':'IN','Cuba':'CU','Dominican Republic':'DO','El Salvador':'SV','Guatemala':'GT','Belize':'BZ','Korea Republic':'KR',"Côte d'Ivoire":'CI','Czech Republic':'CZ','Turkey':'TR','Cape Verde':'CV','Kyrgyz Republic':'KG','Kyrgyzstan':'KG','St. Kitts and Nevis':'KN','Saint Kitts and Nevis':'KN','St. Lucia':'LC','Saint Lucia':'LC','St. Vincent and the Grenadines':'VC','Saint Vincent and the Grenadines':'VC','Antigua and Barbuda':'AG','Barbados':'BB','Bermuda':'BM','Bahamas':'BS','Aruba':'AW','Montserrat':'MS','Dominica':'DM','Cayman Islands':'KY','Puerto Rico':'PR','Nicaragua':'NI','Guyana':'GY','Korea DPR':'KP','North Korea':'KP','Chinese Taipei':'TW','Hong Kong':'HK','Singapore':'SG','Malaysia':'MY','Oman':'OM','Bahrain':'BH','Kuwait':'KW','United Arab Emirates':'AE','Yemen':'YE','Afghanistan':'AF','Tajikistan':'TJ','Turkmenistan':'TM','Sri Lanka':'LK','Bangladesh':'BD','Nepal':'NP','Mongolia':'MN','Eswatini':'SZ','Namibia':'NA','Botswana':'BW','Lesotho':'LS','Malawi':'MW','Eritrea':'ER','Somalia':'SO','Djibouti':'DJ','South Sudan':'SS','Seychelles':'SC','São Tomé and Príncipe':'ST','Sao Tome and Principe':'ST','Cabo Verde':'CV','Fiji':'FJ','Papua New Guinea':'PG','New Caledonia':'NC','Tahiti':'PF','Solomon Islands':'SB','Vanuatu':'VU','Samoa':'WS','Réunion':'RE','Reunion':'RE','Mayotte':'YT','Bosnia':'BA','Macedonia':'MK','FYR Macedonia':'MK','Moldova Republic':'MD','Republic of Moldova':'MD','United States':'US','DR Congo':'CD','Iran IR':'IR','Holland':'NL','Great Britain':'GB','United Kingdom':'GB','Monaco':'MC','Vatican':'VA'};
+const NIR_FLAG = '<svg viewBox="0 0 30 20" width="1.35em" height=".9em" style="vertical-align:-.1em;border-radius:2px" aria-label="Northern Ireland"><rect width="30" height="20" fill="#fff"/><rect x="13" width="4" height="20" fill="#c8102e"/><rect y="8" width="30" height="4" fill="#c8102e"/><polygon points="15,5.2 17.6,9.7 12.4,9.7" fill="#fff"/><polygon points="15,14.8 12.4,10.3 17.6,10.3" fill="#fff"/><circle cx="15" cy="10" r="1.3" fill="#c8102e"/><rect x="13.8" y="2.6" width="2.4" height="1.8" rx=".5" fill="#f2c14e"/></svg>';
+const flagOf = name => { if (name === 'Northern Ireland') return NIR_FLAG; const c = ISO[name]; if (!c) return '';
+  if (c.startsWith('gb-')) return '\u{1F3F4}' + [...c.replace('-', '')].map(ch => String.fromCodePoint(0xE0000 + ch.charCodeAt(0))).join('') + '\u{E007F}';
+  return [...c].map(ch => String.fromCodePoint(0x1F1E6 + ch.charCodeAt(0) - 65)).join(''); };
+const flag = nat => { const f = flagOf(nat); return f ? `<span class="flag" title="${esc(nat)}">${f}</span>` : ''; };
 const surname = n => { const p = String(n || '').trim().split(/\s+/); if (p.length < 2) return n; const small = ['van', 'de', 'der', 'da', 'dos', 'di', 'el', 'ben', 'mac', 'le', 'ter', 'den']; let i = p.length - 1; while (i > 1 && small.includes(p[i - 1].toLowerCase())) i--; return p.slice(i).join(' '); };
 const attrClass = v => 'a' + Math.max(4, Math.min(9, Math.floor(v / 10)));
 const pick = L => L[Math.floor(Math.random() * L.length)];
@@ -1063,7 +1084,7 @@ function frame(o){
       ${unread && V.s !== 'news' ? '<button class="sb newsflag" data-side="news">You Have News</button>' : ''}
     </aside>
     <div class="main">
-      <div class="banner" style="--k1:${o.k1 || '#2A44D0'};--k2:${o.k2 || '#fff'}"><span></span><h1>${o.title}${o.sub ? `<span class="sub">${o.sub}</span>` : ''}</h1><span class="act">${o.act || ''}</span></div>
+      <div class="banner ${o.crest ? 'wc' : ''}" style="--k1:${o.k1 || '#2A44D0'};--k2:${o.k2 || '#fff'}"><span class="bcr">${o.crest ? crest(o.crest, 'bigcr') : ''}</span><h1>${o.title}${o.sub ? `<span class="sub">${o.sub}</span>` : ''}${o.info ? `<span class="binfo">${o.info}</span>` : ''}</h1><span class="act">${o.act || ''}</span></div>
       ${tabs(o.top, o.topOn, 'ttop')}
       ${o.tools ? `<div class="tools">${o.tools}</div>` : ''}
       <section class="pane">${o.body}</section>
@@ -1079,7 +1100,7 @@ function frame(o){
   document.querySelectorAll('[data-side]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.side; go(k === 'club' ? { s: 'club', cid: me(), tab: 'squad' } : k === 'comp' ? { s: 'comp', tab: 'table' } : { s: k }); }));
   document.querySelectorAll('#ttop [data-t],#tbot [data-t]').forEach(b => b.addEventListener('click', () => o.onTab && o.onTab(b.dataset.t)));
 }
-const ofClub = (cid, more) => { const [k1, k2] = kitOf(cid); return Object.assign({ k1, k2 }, more); };
+const ofClub = (cid, more) => { const [k1, k2] = kitOf(cid); return Object.assign({ k1, k2, crest: cid }, more); };
 function toastOK(t){ toast(t); }
 
 /* ---- setup: new game, quick start, restore and delete a saved game, settings, hall of fame, credits, web sites ---- */
@@ -1235,7 +1256,7 @@ function scrClub(){
   const cid = V.cid || me(), mine = cid === me(), tab = V.tab || 'squad', c = club(cid);
   const top = [['squad', 'Squad'], ['transfers', 'Transfers'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['info', mine ? 'Finances &amp; Info' : 'General Info']];
   const bottom = mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['league', esc(D.league)], ['last', 'Last Match']];
-  const o = ofClub(cid, { title: esc(c.name), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'table' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
+  const o = ofClub(cid, { title: esc(fullName(cid)), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'table' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
   (({ squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard })[tab] || clubSquad)(cid, o);
 }
 function playerFlags(p){
@@ -1263,7 +1284,7 @@ function clubSquad(cid, o){
     return i >= 0 ? `<button class="box on" data-sel="${p.id}" title="${slots[i][0]}">${i + 1}</button>` : b >= 0 ? `<button class="box sub" data-sel="${p.id}" title="Substitute">S${b + 1}</button>` : `<button class="box" data-sel="${p.id}" title="${nf ? 'Pick him: ' + nf : ''}"></button>`; };
   let body;
   if (view_ === 'pos'){
-    const half = Math.ceil(L.length / 2), row = p => `<div class="sqr ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${box(p)}<span class="nm ${nameCls(p)}">${esc(cmName(p.n))}${playerFlags(p)}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
+    const half = Math.ceil(L.length / 2), row = p => `<div class="sqr ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${box(p)}<span class="nm ${nameCls(p)}">${flag(p.nat)}${esc(cmName(p.n))}${playerFlags(p)}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
     body = `${mine ? slotStrip() : ''}<div class="ptitle">Position(s)</div><div class="sq"><div>${L.slice(0, half).map(row).join('')}</div><div>${L.slice(half).map(row).join('')}</div></div>`;
   } else {
     const AT = ['oa', 'bc', 'dr', 'lp', 'fi', 'he', 'sp', 'st', 'da', 'bw', 'pc', 'gr'];
@@ -1272,7 +1293,7 @@ function clubSquad(cid, o){
       : view_ === 'attr' ? `${th('', '')}${th('name', 'Name')}${AT.map(k => `<th class="r" title="${esc(ATTR_NAME[k])}">${esc((ATTR_NAME[k] || k).split(' ').map(w => w[0]).join('').slice(0, 3))}</th>`).join('')}`
       : view_ === 'stats' ? `${th('', '')}${th('name', 'Name')}<th class="r">Apps</th><th class="r">Sub</th>${th('gls', 'Gls', 'r')}<th class="r">Asts</th><th class="r">MoM</th><th class="r">Yel</th><th class="r">Red</th>${th('rt', 'Av R', 'r')}`
       : `${th('', '')}${th('name', 'Name')}${th('age', 'Age', 'r')}${th('val', 'Value', 'r')}${th('wage', 'Wage', 'r')}<th class="r">Expires</th>`;
-    const row = p => { const q = ps(p.id), base = `<td>${box(p)}</td><td class="${nameCls(p)}"><b>${esc(cmName(p.n))}</b>${playerFlags(p)}</td>`;
+    const row = p => { const q = ps(p.id), base = `<td>${box(p)}</td><td class="${nameCls(p)}">${flag(p.nat)}<b>${esc(cmName(p.n))}</b>${playerFlags(p)}</td>`;
       if (view_ === 'gen') return `${base}<td class="yel"><b>${cmPos(p.pos)}</b></td><td class="r">${p.age}</td><td class="r">${Math.round(q.cond)}%</td><td>${morWord(q.mor)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${avgRt(q)}</td>`;
       if (view_ === 'attr') return `${base}${AT.map(k => `<td class="r av ${vcls(A(p, k))}">${showA(p, A(p, k))}</td>`).join('')}`;
       if (view_ === 'stats') return `${base}<td class="r">${q.apps}</td><td class="r">${q.sub}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${q.mom}</td><td class="r">${q.yc}</td><td class="r">${q.rc || 0}</td><td class="r">${avgRt(q)}</td>`;
@@ -1359,7 +1380,7 @@ function clubLast(cid, o){
   const rr = V.rr || lastResult(cid);
   if (!rr){ o.body = '<p class="empty">No matches played yet.</p>'; frame(o); return; }
   const [kh, kh2] = kitOf(rr.h), [ka, ka2] = kitOf(rr.a);
-  o.body = `<div class="mteams"><div class="t" style="background:${kh};color:${kh2}"><span>${esc(club(rr.h).name)}</span><b>${rr.s[0]}</b></div><div class="t" style="background:${ka};color:${ka2}"><span>${esc(club(rr.a).name)}</span><b>${rr.s[1]}</b></div></div>
+  o.body = `<div class="mteams"><div class="t" style="background:${kh};color:${kh2}">${crest(rr.h, 'mcr')}<span>${esc(club(rr.h).name)}</span><b>${rr.s[0]}</b></div><div class="t" style="background:${ka};color:${ka2}">${crest(rr.a, 'mcr')}<span>${esc(club(rr.a).name)}</span><b>${rr.s[1]}</b></div></div>
     ${rr.p ? `<p class="c yel"><b>${rr.p[0]}-${rr.p[1]} on penalties</b></p>` : ''}
     <div class="cols2" style="margin-top:8px"><div><div class="ptitle">Match Report</div><div class="inc">${(rr.inc || []).map(x => `<div class="h">${x.side === 'h' ? icon(x.k) + esc(x.t) : ''}</div><div class="m">${x.l}'</div><div>${x.side === 'a' ? icon(x.k) + esc(x.t) : ''}</div>`).join('') || '<div></div><div class="m">-</div><div></div>'}</div>
       <dl class="kv" style="margin-top:10px">${rr.mom ? `<dt>Man of the match</dt><dd>${esc(P.get(rr.mom).n)}</dd>` : ''}${rr.ref ? `<dt>Referee</dt><dd>${esc(rr.ref)}</dd>` : ''}${rr.att ? `<dt>Attendance</dt><dd>${rr.att.toLocaleString('en-GB')}</dd>` : ''}<dt>Weather</dt><dd>${esc(rr.wx || '')}</dd></dl></div>
@@ -1474,13 +1495,11 @@ function playerCard(p, q, con, born){
   const ks = Object.keys(ATTR_NAME), dist = x => ks.reduce((t, key) => t + Math.abs(A(x, key) - A(p, key)), 0);
   const sim = D.players.filter(x => x.id !== p.id && x.prim === p.prim).map(x => [x, dist(x)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
   const real = p.s ? `<tr><td>${D.season - 1}/${String(D.season % 100).padStart(2, '0')} (real)</td><td class="c">${p.s[0]}</td><td class="c">${p.s[1]}</td><td class="c">${p.s[2]}</td><td class="c">-</td><td class="c">-</td><td class="c"><span class="avr">${p.s[3] ? (+p.s[3]).toFixed(2) : '----'}</span></td></tr>` : '';
-  return `<div class="born">${born}. ${esc(p.nat || '')}.</div>
-    <div class="cmattr">${col(0)}${col(1)}${col(2)}</div>
+  return `<div class="cmattr">${col(0)}${col(1)}${col(2)}</div>
     <div class="cmlow"><div class="tw"><table class="cmst"><thead><tr><th></th><th class="c">Apps</th><th class="c">Gls</th><th class="c">Asts</th><th class="c">MoM</th><th class="c">Yel</th><th class="c">Av R</th></tr></thead><tbody>
       <tr><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td class="c">${q.apps || '-'}</td><td class="c">${q.apps ? q.g : '-'}</td><td class="c">${q.apps ? q.a : '-'}</td><td class="c">${q.apps ? q.mom : '-'}</td><td class="c">${q.apps ? q.yc : '-'}</td><td class="c"><span class="avr">${q.apps ? avgRt(q) : '----'}</span></td></tr>${real}</tbody></table>
-      <div class="small dim" style="margin-top:8px">Similar: ${sim.map(x => `<a class="sky" data-pl="${x.id}">${esc(cmName(x.n))}</a>`).join(', ')}</div></div>
-      <div><div class="ppitch">${pitch}</div><div class="pkey">${[1, 2, 3].map(l => `<span><i class="pc f${l}"></i>${FIT_WORD[l]}</span>`).join('')}</div></div></div>
-    <div class="cmpos">${p.pos.map(x => `<span class="t${Math.min(2, fitTier(p, x))}">${POS_LONG[x] || x}</span>`).join(', ')}</div>`;
+      <div class="small dim" style="margin-top:8px">Similar: ${sim.map(x => `<a class="sky" data-pl="${x.id}">${flag(x.nat)}${esc(x.n)}</a> <span class="dim">(${esc(fullName(x.club))})</span>`).join(', ')}</div></div>
+      <div><div class="ppitch">${pitch}</div></div></div>`;
 }
 function scrPlayer(){
   const p = P.get(V.id); if (!p){ V = { s: 'news' }; view(); return; }
@@ -1500,7 +1519,9 @@ function scrPlayer(){
   if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
-  frame(ofClub(p.club, { title: esc(p.n), sub: `${esc(club(p.club).name)}${p.no ? ' · ' + p.no : ''}`,
+  const vb = known(p) || p.club === me() ? cash(p.val * 1e6) : `about ${cash(Math.round(p.val / 5) * 5e6 || p.val * 1e6)}`;
+  const info = [p.nat ? `${flag(p.nat)}${esc(p.nat)}` : '', `<b>${esc(fullName(p.club))}</b>${p.no ? `, number ${p.no}` : ''}`, born, POS_LONG[p.prim] || p.prim, `Value ${vb}`].filter(Boolean).map(x => `<span>${x}</span>`).join('');
+  frame(ofClub(p.club, { title: esc(p.n), info,
     act: mine ? `<button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
     top: [['profile', 'Profile'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['hist', 'History']], topOn: tab,
     onTab: k => { V = { ...V, tab: k }; view(); }, body,
@@ -1514,7 +1535,7 @@ function scrPlayer(){
 function scrComp(){
   const tab = V.tab || 'table', st = standings(), n = st.length;
   let body = '';
-  if (tab === 'table') body = `<div class="ptitle">League Table</div><div class="tw"><table><thead><tr><th></th><th>Club</th><th class="c">Pld</th><th class="c">Won</th><th class="c">Drn</th><th class="c">Lst</th><th class="c">For</th><th class="c">Ag</th><th class="c">Pts</th><th>Form</th></tr></thead><tbody>${st.map((r, i) => `<tr class="click ${r.id === me() ? 'me' : ''}" data-cv="${r.id}" style="${i === 3 || i === 5 || i === n - 4 ? 'border-bottom:2px dashed var(--line)' : ''}"><td><span class="pill">${ordinal(i + 1)}</span></td><td><b style="font-size:14px">${esc(club(r.id).name)}</b></td><td class="c"><span class="cell">${r.p}</span></td><td class="c"><span class="cell">${r.w}</span></td><td class="c"><span class="cell">${r.d}</span></td><td class="c"><span class="cell">${r.l}</span></td><td class="c"><span class="cell">${r.gf}</span></td><td class="c"><span class="cell">${r.ga}</span></td><td class="c"><span class="cell" style="color:var(--yel)"><b>${r.pts}</b></span></td><td class="form">${r.form.map(x => `<span class="${x}">${x}</span>`).join('')}</td></tr>`).join('')}</tbody></table></div><p class="small dim">Top four: the Champions League. Fifth and sixth: the Europa League. Bottom three: relegated.</p>`;
+  if (tab === 'table') body = `<div class="ptitle">League Table</div><div class="tw"><table><thead><tr><th></th><th>Club</th><th class="c">Pld</th><th class="c">Won</th><th class="c">Drn</th><th class="c">Lst</th><th class="c">For</th><th class="c">Ag</th><th class="c">Pts</th><th>Form</th></tr></thead><tbody>${st.map((r, i) => `<tr class="click ${r.id === me() ? 'me' : ''}" data-cv="${r.id}" style="${i === 3 || i === 5 || i === n - 4 ? 'border-bottom:2px dashed var(--line)' : ''}"><td><span class="pill">${ordinal(i + 1)}</span></td><td class="nm">${crest(r.id)}<b style="font-size:14px">${esc(club(r.id).name)}</b></td><td class="c"><span class="cell">${r.p}</span></td><td class="c"><span class="cell">${r.w}</span></td><td class="c"><span class="cell">${r.d}</span></td><td class="c"><span class="cell">${r.l}</span></td><td class="c"><span class="cell">${r.gf}</span></td><td class="c"><span class="cell">${r.ga}</span></td><td class="c"><span class="cell" style="color:var(--yel)"><b>${r.pts}</b></span></td><td class="form">${r.form.map(x => `<span class="${x}">${x}</span>`).join('')}</td></tr>`).join('')}</tbody></table></div><p class="small dim">Top four: the Champions League. Fifth and sixth: the Europa League. Bottom three: relegated.</p>`;
   if (tab === 'results') body = S.results.slice().reverse().slice(0, 10).map(r => `<div class="ptitle">Round ${r.n} · ${fmtDate(r.date)}</div><table><tbody>${r.res.map(x => `<tr class="click ${x.h === me() || x.a === me() ? 'me' : ''}" data-rr="${r.n}|${x.h}|${x.a}"><td class="r" style="width:42%"><b>${esc(club(x.h).name)}</b></td><td class="c"><span class="pill">${x.s[0]} - ${x.s[1]}</span></td><td style="width:42%"><b>${esc(club(x.a).name)}</b></td></tr>`).join('')}</tbody></table>`).join('') || '<p class="empty">No results yet.</p>';
   if (tab === 'fixtures') body = S.rounds.slice(S.round, S.round + 3).map((r, k) => `<div class="ptitle">Round ${S.round + k + 1} · ${fmtDate(r.date)}</div><table><tbody>${r.m.map(x => `<tr class="${x.h === me() || x.a === me() ? 'me' : ''}"><td class="r" style="width:45%"><b>${esc(club(x.h).name)}</b></td><td class="c dim">v</td><td style="width:45%"><b>${esc(club(x.a).name)}</b></td></tr>`).join('')}</tbody></table>`).join('') || '<p class="empty">The league season is over.</p>';
   if (tab === 'cup') body = (S.cup.log.map(l => `<div class="ptitle">${CUP_NAMES[l.stage]} · ${fmtDate(l.date)}</div><table><tbody>${l.res.map(x => `<tr class="click ${x.h === me() || x.a === me() ? 'me' : ''}" data-cr="${x.h}|${x.a}"><td class="r" style="width:42%">${x.w === x.h ? '<b>' : ''}${esc(club(x.h).name)}${x.w === x.h ? '</b>' : ''}</td><td class="c"><span class="pill">${x.s[0]} - ${x.s[1]}</span>${x.p ? ` <span class="small dim">(${x.p[0]}-${x.p[1]} p)</span>` : ''}</td><td style="width:42%">${x.w === x.a ? '<b>' : ''}${esc(club(x.a).name)}${x.w === x.a ? '</b>' : ''}</td></tr>`).join('')}</tbody></table>`).join('')) + (S.cup.stage < 5 ? `<p class="c">Next: <b class="yel">${CUP_NAMES[S.cup.stage]}</b> on ${fmtDate(S.cupDates[S.cup.stage])}. ${S.cup.alive.length} clubs left${S.cup.alive.includes(me()) ? ', yours among them' : ''}.</p>` : `<p class="c yel"><b>${esc(club(S.cup.alive[0]).name)} won the cup.</b></p>`);
@@ -1712,7 +1733,7 @@ function scrFind(){
   frame({ title: 'Player &amp; Staff Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: [['short', 'Short List'], ['search', 'Player Search'], ['staff', 'Staff Search', true], ['sc1', 'Scout #1'], ['sc2', 'Scout #2']], topOn: tab,
     onTab: k => { PICK2 = []; V = { s: 'find', tab: k }; view(); }, tools,
     body: `<div class="pgbar"><span class="dim small">${tab === 'short' ? 'Your short list' : qv || Object.values(F).some(Boolean) ? 'Search results' : 'Every player in the league'}</span><span class="pg"><button data-pg="0" ${pgc ? '' : 'disabled'}>«</button><button data-pg="${pgc - 1}" ${pgc ? '' : 'disabled'}>‹</button><span>Pg ${pgc + 1}/${pages}</span><button data-pg="${pgc + 1}" ${pgc < pages - 1 ? '' : 'disabled'}>›</button><button data-pg="${pages - 1}" ${pgc < pages - 1 ? '' : 'disabled'}>»</button></span></div>
-      <div class="tw"><table><thead><tr><th></th><th>Inf</th><th>Name</th><th>Club</th><th>Based</th><th>Position</th><th class="r">Age</th><th class="r">Value</th></tr></thead><tbody>${rows.map(p => `<tr class="click" data-pl="${p.id}"><td><button class="box ${PICK2.includes(p.id) ? 'on' : ''}" data-cmp="${p.id}">${PICK2.includes(p.id) ? PICK2.indexOf(p.id) + 1 : ''}</button></td><td>${inf(p)}</td><td><b>${esc(cmName(p.n))}</b></td><td class="sky">${esc(club(p.club).name)}</td><td class="yel">${esc(D.league)}</td><td class="yel">${cmPos(p.pos)}</td><td class="r">${p.age}</td><td class="r"><span class="pill">${valueOf(p)}</span></td></tr>`).join('') || `<tr><td colspan="8" class="empty">${tab === 'short' ? 'Your short list is empty: pick players in Player Search and add them.' : 'No players found.'}</td></tr>`}</tbody></table></div>
+      <div class="tw"><table><thead><tr><th></th><th>Inf</th><th>Name</th><th>Club</th><th>Based</th><th>Position</th><th class="r">Age</th><th class="r">Value</th></tr></thead><tbody>${rows.map(p => `<tr class="click" data-pl="${p.id}"><td><button class="box ${PICK2.includes(p.id) ? 'on' : ''}" data-cmp="${p.id}">${PICK2.includes(p.id) ? PICK2.indexOf(p.id) + 1 : ''}</button></td><td>${inf(p)}</td><td>${flag(p.nat)}<b>${esc(cmName(p.n))}</b></td><td class="sky">${esc(club(p.club).name)}</td><td class="yel">${esc(D.league)}</td><td class="yel">${cmPos(p.pos)}</td><td class="r">${p.age}</td><td class="r"><span class="pill">${valueOf(p)}</span></td></tr>`).join('') || `<tr><td colspan="8" class="empty">${tab === 'short' ? 'Your short list is empty: pick players in Player Search and add them.' : 'No players found.'}</td></tr>`}</tbody></table></div>
       <p class="c sky" style="font-size:16px;margin:10px 0 0"><b>${L.length} player${L.length === 1 ? '' : 's'} found</b></p>
       <div class="tools" style="justify-content:center;margin-top:8px"><button class="btn sm" id="cmp">Compare</button>${tab === 'short' ? '<button class="btn sm" id="unsl">Remove from Short List</button>' : '<button class="btn sm" id="addsl">Add to Short List</button>'}<span class="small dim">${PICK2.length} selected</span></div>` });
   const upd = (k, v) => { V = { ...V, f: { ...F, [k]: v }, pg: 0 }; view(); };
@@ -1801,7 +1822,7 @@ function viewPre(){
   const wxNote = M.wk === 2 ? ' (a heavy pitch: short passing and ball control suffer)' : M.wk === 3 ? ' (long and direct passing suffer)' : M.wk === 5 ? ' (players will tire faster)' : M.wk === 6 ? ' (a slippery pitch)' : '';
   mframe(`<div class="date"><span>${WD[new Date(S.date + 'T12:00:00Z').getUTCDay()]}</span><span>${shortDate(S.date)}</span><span>PM</span></div><button class="sb go" id="tomatch">Go to Match</button><button class="sb" id="totac">${esc(club(me()).name)} Tactics</button>`,
     `<div class="banner"><span></span><h1>Next Match<span class="sub">${L.cup ? esc(CUP) + ' · ' + esc(L.cup) : esc(D.league)}</span></h1><span></span></div>
-    <div class="mteams"><div class="t" style="background:${kh};color:${kh2}"><span>${esc(club(M.h).name)}</span></div><div class="t" style="background:${ka};color:${ka2}"><span>${esc(club(M.a).name)}</span></div></div>
+    <div class="mteams"><div class="t" style="background:${kh};color:${kh2}">${crest(M.h, 'mcr')}<span>${esc(club(M.h).name)}</span></div><div class="t" style="background:${ka};color:${ka2}">${crest(M.a, 'mcr')}<span>${esc(club(M.a).name)}</span></div></div>
     <section class="pane"><dl class="kv"><dt>Date</dt><dd>${fmtDate(S.date, true)}</dd>${(() => { const fm = !L.cup && ((S.rounds[S.round] || {}).m || []).find(x => x.h === M.h && x.a === M.a); const wd = new Date(S.date + 'T12:00:00Z').getUTCDay(), dflt = wd === 0 || wd === 6 ? '15:00' : '19:45';   // the league's default kick-offs
       return fm ? `<dt>Kick-off</dt><dd>${fm.ko || dflt}${fm.tv ? ` <span class="pill">${esc(fm.tv)}</span>` : ''}</dd>` : ''; })()}<dt>Venue</dt><dd>${esc(club(M.h).venue || '')}</dd><dt>Referee</dt><dd>${esc(M.ref.n)}: ${strict}</dd><dt>Weather</dt><dd>${esc(M.weather)}, ${M.temp}°C${wxNote}</dd><dt>Opponents</dt><dd>${esc(club(opp).name)}${S.round ? ', ' + ordinal(st.findIndex(r => r.id === opp) + 1) : ''}, ${esc(M.h === me() ? M.A.t.form : M.H.t.form)}</dd></dl>
       <div class="cols2" style="margin-top:10px"><div><div class="ptitle">${esc(club(M.h).name)}</div>${line(M.H)}</div><div><div class="ptitle">${esc(club(M.a).name)}</div>${line(M.A)}</div></div></section>
@@ -1832,7 +1853,7 @@ function viewMatch(){
   const side = `<div class="mclock">${clock}</div>${M.over ? `<button class="sb go" id="done">Continue Game</button>` : L.started && !L.paused ? '<button class="sb go" id="pause">Pause</button>' : `<button class="sb go" id="play">${!L.started ? 'Kick Off' : L.atHT ? 'Second Half' : 'Resume Match'}</button>`}
     ${M.over ? '' : '<button class="sb" id="skip">To Full Time</button>'}<button class="sb" data-mt="tactics">${esc(club(me()).name)} Tactics</button>
     <div class="date" style="margin-top:6px"><span class="small">Commentary Speed</span></div>${SPEEDS.map(([, n], i) => `<button class="sb ${SPEED === i ? 'on' : ''}" data-spd="${i}" style="padding:5px 3px;font-size:11.5px">${n}</button>`).join('')}`;
-  mframe(side, `<div class="mteams"><div class="t" style="background:${kh};color:${kh2}"><span>${esc(club(M.h).name)}</span><b>${M.H.goals}</b></div><div class="t" style="background:${ka};color:${ka2}"><span>${esc(club(M.a).name)}</span><b>${M.A.goals}</b></div></div>
+  mframe(side, `<div class="mteams"><div class="t" style="background:${kh};color:${kh2}">${crest(M.h, 'mcr')}<span>${esc(club(M.h).name)}</span><b>${M.H.goals}</b></div><div class="t" style="background:${ka};color:${ka2}">${crest(M.a, 'mcr')}<span>${esc(club(M.a).name)}</span><b>${M.A.goals}</b></div></div>
     ${M.pens ? `<p class="c yel" style="margin:2px 0"><b>Penalties: ${M.pens[0]}-${M.pens[1]}</b></p>` : ''}
     <nav class="tabs">${tabs.map(([k, n]) => `<button data-mt="${k}" class="${MTAB === k ? 'on' : ''}">${n}</button>`).join('')}</nav>
     <section class="pane" id="mpanel">${panelBody}</section>
@@ -1859,7 +1880,7 @@ function mPanel(){
   if (MTAB === 'table'){ if (L.cup) return '<p class="empty">A cup match: no table today.</p>';
     const tab = JSON.parse(JSON.stringify(S.table)); for (const m of [M, ...L.others]){ if (!m.min && !m.over) continue; for (const [s, gf, ga] of [[m.H, m.H.goals, m.A.goals], [m.A, m.A.goals, m.H.goals]]){ const t = tab[s.cid]; t.p++; t.gf += gf; t.ga += ga; if (gf > ga) t.w++; else if (gf === ga) t.d++; else t.l++; } }
     const st = Object.entries(tab).map(([id, t]) => ({ id: +id, ...t, gd: t.gf - t.ga, pts: t.w * 3 + t.d })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
-    return `<table><thead><tr><th></th><th>Club</th><th class="c">Pld</th><th class="c">GD</th><th class="c">Pts</th></tr></thead><tbody>${st.map((r, i) => `<tr class="${r.id === me() ? 'me' : ''}"><td>${i + 1}</td><td><b>${esc(club(r.id).name)}</b></td><td class="c">${r.p}</td><td class="c">${r.gd > 0 ? '+' : ''}${r.gd}</td><td class="c yel"><b>${r.pts}</b></td></tr>`).join('')}</tbody></table>`; }
+    return `<table><thead><tr><th></th><th>Club</th><th class="c">Pld</th><th class="c">GD</th><th class="c">Pts</th></tr></thead><tbody>${st.map((r, i) => `<tr class="${r.id === me() ? 'me' : ''}"><td>${i + 1}</td><td class="nm">${crest(r.id)}<b>${esc(club(r.id).name)}</b></td><td class="c">${r.p}</td><td class="c">${r.gd > 0 ? '+' : ''}${r.gd}</td><td class="c yel"><b>${r.pts}</b></td></tr>`).join('')}</tbody></table>`; }
   if (MTAB === 'scores' && OPT.bg === 'off' && !M.over) return '<p class="empty">The other results come in at full time (Game Settings: Other Matches).</p>';
   if (MTAB === 'scores') return L.others.length ? `<table><tbody>${L.others.map(o => `<tr><td class="r" style="width:40%"><b>${esc(club(o.h).name)}</b></td><td class="c"><span class="pill">${o.H.goals} - ${o.A.goals}</span>${o.pens ? ` <span class="small dim">(${o.pens[0]}-${o.pens[1]} p)</span>` : ''}</td><td style="width:40%"><b>${esc(club(o.a).name)}</b></td><td class="small yel">${o.over ? 'FT' : o.min ? label(o) + "'" : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">No other matches today.</p>';
   if (MTAB === 'tactics'){ const t = us.t, seg = (key, Lb) => `<span class="seg" data-mk="${key}">${Lb.map((n, i) => `<button data-v="${i}" class="${t[key] === i ? 'on' : ''}">${n}</button>`).join('')}</span>`, tog = (k, n) => `<button class="tog ${t[k] ? 'on' : ''}" data-mt2="${k}">${t[k] ? '✓' : '·'} ${n}</button>`;
