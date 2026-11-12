@@ -221,3 +221,7 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 ### Manager: player profile like a PES database page
 - The Profile tab is laid out like a PES 2021 database page: a card in the club's colours with the overall and six card stats (SPD SHO PAS DRI STR DEF; for keepers AWR CAT CLR REF REA KIC), the attributes grouped as Attacking / Dribbling / Defending / Passing / Physicality / Goalkeeping with coloured value pills and a bar per group, a hexagon radar, the rating in every position on a pitch, Playing Style, Info, and four Similar Players (same position, nearest overall).
 - With attribute masking on, other clubs' players show ranges (80-89) and a "?" overall until you know them.
+
+### Manager: no overall ratings anywhere
+- The game shows only single attributes. Nowhere is there an overall rating, a rating by position, or an average by attribute group: gone from the player card (no overall, no six card stats, no radar), the Positions tab, the squad's Ability column and sort, the development list, the tactics lists and the "Strength" line, the search's ability filter and sort, the compare screen and the match screens. The positions pitch on the profile only marks where the player plays. Similar Players are now the nearest by all single attributes.
+- The engine still works out how good a player is behind the scenes (team picks, match engine); it just never shows a number for it.

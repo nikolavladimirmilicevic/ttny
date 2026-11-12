@@ -269,7 +269,7 @@ button.frow:hover{border-color:var(--gold)}
 
 .pmast{display:grid;grid-template-columns:280px 1fr;gap:18px}
 @media(max-width:760px){.pmast{grid-template-columns:1fr}}
-.pcard{position:relative;display:block;width:100%;aspect-ratio:3/4;max-width:260px;margin:0 auto;border-radius:14px;padding:12px;text-align:center;color:#fff;border:0;
+.pcard{position:relative;display:block;width:100%;aspect-ratio:4/3;max-width:260px;margin:0 auto;border-radius:14px;padding:12px;text-align:center;color:#fff;border:0;
   background:linear-gradient(160deg,var(--k1) 0%,#0E1A2B 75%);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12)}
 .pcard .pp{position:absolute;left:12px;top:12px;background:#0B1422;color:var(--gold);font:700 13px/1 var(--display);padding:4px 7px;border-radius:5px}
 .pcard .po{position:absolute;left:12px;top:36px;font:800 46px/1 var(--display)}
@@ -285,12 +285,12 @@ button.frow:hover{border-color:var(--gold)}
 .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 22px;margin-bottom:12px}
 @media(max-width:600px){.pgrid{grid-template-columns:1fr}}
 .pg2 .ph{display:flex;align-items:center;gap:8px;font-size:16px}
-.pbar{height:5px;background:var(--panel-2);border-radius:3px;margin:6px 0 7px;overflow:hidden}.pbar i{display:block;height:100%}
+.pbar{height:2px;background:var(--line);margin:6px 0 7px}.pbar i{display:block;height:100%}
 .pa{display:flex;align-items:center;gap:9px;padding:2px 0}.pa .pn{font-size:14px}
 .radar{display:block;width:100%;max-width:260px;margin:8px auto 0}
 .ppitch{background:linear-gradient(#1E5E3A,#174A2E);border-radius:10px;padding:8px 6px;display:grid;gap:6px}
 .prow{display:flex;justify-content:center;gap:5px}
-.pc{flex:0 1 50px;background:rgba(0,0,0,.28);border-radius:6px;text-align:center;padding:3px 0}
+.pc{flex:0 1 50px;background:rgba(0,0,0,.28);border-radius:6px;text-align:center;padding:7px 0}
 .pc span{display:block;font-size:10.5px;color:#cfe;font-weight:600}.pc b{font-size:15px}
 .pc.on{background:var(--gold)}.pc.on span,.pc.on b{color:var(--gold-ink)}
 </style>
@@ -1139,12 +1139,12 @@ function clubSquad(cid, o){
   } else {
     const AT = ['oa', 'bc', 'dr', 'lp', 'fi', 'he', 'sp', 'st', 'da', 'bw', 'pc', 'gr'];
     const th = (k, n, cls = '') => `<th class="${cls}" ${k ? `data-sort="${k}"` : ''}>${n}${k && SORT.k === k ? (SORT.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
-    const head = view_ === 'gen' ? `${th('', '')}${th('name', 'Name')}${th('pos', 'Position')}${th('age', 'Age', 'r')}${th('ovr', 'Ability', 'r')}${th('cond', 'Cond', 'r')}<th>Morale</th>${th('', 'Apps', 'r')}${th('gls', 'Gls', 'r')}${th('rt', 'Av R', 'r')}`
+    const head = view_ === 'gen' ? `${th('', '')}${th('name', 'Name')}${th('pos', 'Position')}${th('age', 'Age', 'r')}${th('cond', 'Cond', 'r')}<th>Morale</th>${th('', 'Apps', 'r')}${th('gls', 'Gls', 'r')}${th('rt', 'Av R', 'r')}`
       : view_ === 'attr' ? `${th('', '')}${th('name', 'Name')}${AT.map(k => `<th class="r" title="${esc(ATTR_NAME[k])}">${esc((ATTR_NAME[k] || k).split(' ').map(w => w[0]).join('').slice(0, 3))}</th>`).join('')}`
       : view_ === 'stats' ? `${th('', '')}${th('name', 'Name')}<th class="r">Apps</th><th class="r">Sub</th>${th('gls', 'Gls', 'r')}<th class="r">Asts</th><th class="r">MoM</th><th class="r">Yel</th><th class="r">Red</th>${th('rt', 'Av R', 'r')}`
       : `${th('', '')}${th('name', 'Name')}${th('age', 'Age', 'r')}${th('val', 'Value', 'r')}${th('wage', 'Wage', 'r')}<th class="r">Expires</th>`;
     const row = p => { const q = ps(p.id), base = `<td>${box(p)}</td><td class="${nameCls(p)}"><b>${esc(cmName(p.n))}</b>${playerFlags(p)}</td>`;
-      if (view_ === 'gen') return `${base}<td class="yel"><b>${cmPos(p.pos)}</b></td><td class="r">${p.age}</td><td class="r ${vcls(ovrNow(p))}"><b>${showA(p, ovrNow(p))}</b></td><td class="r">${Math.round(q.cond)}%</td><td>${morWord(q.mor)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${avgRt(q)}</td>`;
+      if (view_ === 'gen') return `${base}<td class="yel"><b>${cmPos(p.pos)}</b></td><td class="r">${p.age}</td><td class="r">${Math.round(q.cond)}%</td><td>${morWord(q.mor)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${avgRt(q)}</td>`;
       if (view_ === 'attr') return `${base}${AT.map(k => `<td class="r av ${vcls(A(p, k))}">${showA(p, A(p, k))}</td>`).join('')}`;
       if (view_ === 'stats') return `${base}<td class="r">${q.apps}</td><td class="r">${q.sub}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${q.mom}</td><td class="r">${q.yc}</td><td class="r">${q.rc || 0}</td><td class="r">${avgRt(q)}</td>`;
       return `${base}<td class="r">${p.age}</td><td class="r">${valueOf(p)}</td><td class="r">${wage(S.con[p.id].w)}</td><td class="r">${S.con[p.id].y}</td>`; };
@@ -1153,7 +1153,7 @@ function clubSquad(cid, o){
   if (mine) body += `<p class="small dim" style="margin:8px 2px 0">Click a box to give that player the next free place in your ${esc(t.form)}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; click it again to take it back. ${t.xi.filter(Boolean).length}/11 picked, ${t.bench.length}/7 substitutes. Names in red: injured; pink: banned; blue: young reserves.</p>
     <div class="tools" style="margin-top:6px"><button class="btn sm" id="clearxi">Clear selection</button><button class="btn sm" id="autoxi">Assistant picks the side</button></div>`;
   o.tools = `<select class="dd" id="sqv" aria-label="View">${[['pos', 'View: Positions'], ['gen', 'View: General'], ['attr', 'View: Attributes'], ['stats', 'View: Stats'], ['con', 'View: Contract']].map(([k, n]) => `<option value="${k}" ${view_ === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
-    <select class="dd" id="sqs" aria-label="Sort by">${[['pos', 'Sort By: Position'], ['name', 'Sort By: Name'], ['ovr', 'Sort By: Ability'], ['age', 'Sort By: Age'], ['cond', 'Sort By: Condition'], ['gls', 'Sort By: Goals'], ['rt', 'Sort By: Rating'], ['val', 'Sort By: Value']].map(([k, n]) => `<option value="${k}" ${SORT.k === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    <select class="dd" id="sqs" aria-label="Sort by">${[['pos', 'Sort By: Position'], ['name', 'Sort By: Name'], ['age', 'Sort By: Age'], ['cond', 'Sort By: Condition'], ['gls', 'Sort By: Goals'], ['rt', 'Sort By: Rating'], ['val', 'Sort By: Value']].map(([k, n]) => `<option value="${k}" ${SORT.k === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <select class="dd" id="sqt" aria-label="Squad">${[['first', 'First Team'], ['res', 'Reserves'], ['all', 'Whole Squad']].map(([k, n]) => `<option value="${k}" ${team === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <span style="flex:1"></span>${mine ? '<button class="btn sm" id="clearsq">Clear Squad</button>' : ''}<select class="dd" id="sqf" aria-label="Filter">${[['all', 'Filter: All'], ['first', 'Filter: Picked'], ['gk', 'Filter: Goalkeepers'], ['def', 'Filter: Defenders'], ['mid', 'Filter: Midfielders'], ['fwd', 'Filter: Forwards'], ['avail', 'Filter: Available'], ['out', 'Filter: Injured & Banned']].map(([k, n]) => `<option value="${k}" ${filt === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
   o.body = body; frame(o);
@@ -1245,7 +1245,7 @@ function clubTraining(cid, o){
   const rows = sq.map(p => { const q = ps(p.id), ks = Object.entries(q.d || {}).filter(([, v]) => Math.abs(v) >= .5).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])); return { p, ks, o: ovrNow(p) - p.ovr }; }).sort((a, b) => b.o - a.o || a.p.age - b.p.age);
   o.body = `<div class="ptitle">Training Schedule</div><div class="instr" style="max-width:640px;margin:0 auto"><span class="yel"><b>Schedule</b></span><span class="seg" id="sched">${Object.keys(FOCUS).map(k => `<button data-v="${k}" class="${f.sched === k ? 'on' : ''}">${k}</button>`).join('')}</span><span class="yel"><b>Intensity</b></span><span class="seg" id="int">${['Light', 'Normal', 'Intense'].map((n, i) => `<button data-v="${i}" class="${f.int === i ? 'on' : ''}">${n}</button>`).join('')}</span></div>
     <p class="small dim c">The schedule decides what the players work on; the intensity how fast they change and how fresh they are on match days. Intense sessions bring the odd injury. The young improve most; after 30 pace and stamina fade.</p>
-    <div class="tw"><table><thead><tr><th>Name</th><th>Position</th><th class="r">Age</th><th class="r">Ability</th><th>Changes this season</th></tr></thead><tbody>${rows.map(({ p, ks, o: d }) => `<tr class="click" data-pl="${p.id}"><td><b>${esc(cmName(p.n))}</b></td><td class="yel">${cmPos(p.pos)}</td><td class="r">${p.age}</td><td class="r"><b class="${vcls(ovrNow(p))}">${ovrNow(p)}</b> ${d ? `<span class="${d > 0 ? 'up' : 'dn'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</span>` : ''}</td><td class="small">${ks.slice(0, 4).map(([k, v]) => `<span class="${v > 0 ? 'up' : 'dn'}" style="font-size:11.5px">${esc(ATTR_NAME[k])} ${v > 0 ? '+' : '−'}${Math.max(1, Math.round(Math.abs(v)))}</span>`).join(' · ') || '<span class="dim">no change yet</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+    <div class="tw"><table><thead><tr><th>Name</th><th>Position</th><th class="r">Age</th><th>Changes this season</th></tr></thead><tbody>${rows.map(({ p, ks, o: d }) => `<tr class="click" data-pl="${p.id}"><td><b>${esc(cmName(p.n))}</b></td><td class="yel">${cmPos(p.pos)}</td><td class="r">${p.age}</td><td class="small">${ks.slice(0, 4).map(([k, v]) => `<span class="${v > 0 ? 'up' : 'dn'}" style="font-size:11.5px">${esc(ATTR_NAME[k])} ${v > 0 ? '+' : '−'}${Math.max(1, Math.round(Math.abs(v)))}</span>`).join(' · ') || '<span class="dim">no change yet</span>'}</td></tr>`).join('')}</tbody></table></div>`;
   frame(o);
   document.querySelectorAll('#sched button').forEach(b => b.addEventListener('click', () => { f.sched = b.dataset.v; save(); view(); }));
   document.querySelectorAll('#int button').forEach(b => b.addEventListener('click', () => { f.int = +b.dataset.v; save(); view(); }));
@@ -1270,16 +1270,16 @@ function clubTactics(cid, o){
   const strength = Math.round(t.xi.reduce((s, id, i) => s + (id ? fitIn(P.get(id), slots[i][0]) : 0), 0) / 11);
   const pickPos = PICK && PICK.slot != null ? slots[PICK.slot][0] : null;
   const others = squadOf(me()).filter(p => !inXI.has(p.id)).sort((a, b) => pickPos ? fitIn(b, pickPos) - fitIn(a, pickPos) : (onB.has(b.id) - onB.has(a.id)) || ovrNow(b) - ovrNow(a));
-  const list = `${t.xi.map((id, i) => { const p = id && P.get(id); return `<div class="pl ${PICK && PICK.slot === i ? 'pick' : ''}" data-slot="${i}"><span class="no">${p ? p.no || '' : ''}</span><span><b>${p ? esc(cmName(p.n)) : '<span class="dim">Empty</span>'}</b>${p && t.set && t.set.cap === id ? ' <span class="tag">capt</span>' : ''}</span><span class="yel small">${slots[i][0]}</span><b class="${p ? vcls(fitIn(p, slots[i][0])) : ''}">${p ? fitIn(p, slots[i][0]) : ''}</b></div>`; }).join('')}
+  const list = `${t.xi.map((id, i) => { const p = id && P.get(id); return `<div class="pl ${PICK && PICK.slot === i ? 'pick' : ''}" data-slot="${i}"><span class="no">${p ? p.no || '' : ''}</span><span><b>${p ? esc(cmName(p.n)) : '<span class="dim">Empty</span>'}</b>${p && t.set && t.set.cap === id ? ' <span class="tag">capt</span>' : ''}</span><span class="yel small">${slots[i][0]}</span><b></b></div>`; }).join('')}
     <div class="ptitle" style="margin-top:8px">${pickPos ? `Who plays ${pickPos}?` : 'Substitutes and the rest'}</div>
-    ${others.map(p => `<div class="pl subs ${avail(p.id) ? '' : 'c-out'}" data-put="${p.id}"><span class="no">${p.no || ''}</span><span class="${nameCls(p)}">${esc(cmName(p.n))}${playerFlags(p)}</span><span class="small">${onB.has(p.id) ? `<button class="box sub" data-bench="${p.id}">S${t.bench.indexOf(p.id) + 1}</button>` : avail(p.id) ? `<button class="box" data-bench="${p.id}" title="Substitute">+</button>` : ''}</span><b class="${vcls(pickPos ? fitIn(p, pickPos) : ovrNow(p))}">${pickPos ? fitIn(p, pickPos) : ovrNow(p)}</b></div>`).join('')}`;
+    ${others.map(p => `<div class="pl subs ${avail(p.id) ? '' : 'c-out'}" data-put="${p.id}"><span class="no">${p.no || ''}</span><span class="${nameCls(p)}">${esc(cmName(p.n))}${playerFlags(p)}</span><span class="small">${onB.has(p.id) ? `<button class="box sub" data-bench="${p.id}">S${t.bench.indexOf(p.id) + 1}</button>` : avail(p.id) ? `<button class="box" data-bench="${p.id}" title="Substitute">+</button>` : ''}</span><b></b></div>`).join('')}`;
   const seg = (key, L) => `<span class="seg" data-k="${key}">${L.map((n, i) => `<button data-v="${i}" class="${t[key] === i ? 'on' : ''}">${n}</button>`).join('')}</span>`;
   const tog = (key, n) => `<button class="tog ${t[key] ? 'on' : ''}" data-tg="${key}">${t[key] ? '✓' : '·'} ${n}</button>`;
   const xiPlayers = t.xi.filter(Boolean).map(id => P.get(id));
   const spSel = (k, n) => `<span class="yel"><b>${n}</b></span><select class="dd" data-sp="${k}">${xiPlayers.map(p => `<option value="${p.id}" ${t.set && t.set[k] === p.id ? 'selected' : ''}>${esc(cmName(p.n))}</option>`).join('')}</select>`;
   let right;
   if (sub === 'overview') right = `<div class="pitch"><div class="bx t"></div><div class="bx"></div>${slots.map(([pos, x, y], i) => { const p = t.xi[i] ? P.get(t.xi[i]) : null; return `<button class="slot ${fitCls(p, pos)} ${PICK && PICK.slot === i ? 'pick' : ''}" data-slot="${i}" style="left:${x}%;top:${y}%"><span class="dot">${p ? (p.no || '•') : '+'}</span><span class="nm">${p ? esc(surname(p.n)) : pos}</span></button>`; }).join('')}</div>
-    <p class="small dim c">Strength <b class="yel">${strength}</b>. Click a place (on the pitch or in the list), then a player to put him there, or two places to swap. Orange ring: out of position; red: far out.</p>`;
+    <p class="small dim c">Click a place (on the pitch or in the list), then a player to put him there, or two places to swap. Orange ring: out of position; red: far out.</p>`;
   if (sub === 'team') right = `<div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('counter', 'Counter Attack')}${tog('mbb', 'Men Behind Ball')}</span></div><p class="small" style="margin-top:10px">${tacticHint(t)}</p>`;
   if (sub === 'player'){ const id = PICK && PICK.pi || t.xi.find(Boolean), p = id && P.get(id);
     right = p ? `<div class="ptitle">${esc(p.n)}</div><div class="instr">${PI.map(([k, n, opts]) => { const v = t.pi && t.pi[id] && t.pi[id][k]; return `<span class="yel"><b>${n}</b></span><select class="dd" data-pi="${id}|${k}"><option value="" ${v == null ? 'selected' : ''}>As the team</option>${opts.map((x, i) => `<option value="${i}" ${v === i ? 'selected' : ''}>${x}</option>`).join('')}</select>`; }).join('')}</div><p class="small dim">Pick another player in the list to give him his own instructions.</p>` : '<p class="empty">Pick your side first.</p>'; }
@@ -1314,35 +1314,22 @@ function clubTactics(cid, o){
 /* ---- the player's profile, laid out like a PES database page: card, attribute groups with bars, radar, positions ---- */
 const cardName = n => { const w = String(n || '').trim().split(/\s+/), sn = surname(n); return w.length < 2 || sn === n ? n : `${w[0][0]}. ${sn}`; };
 const TT = t => String(t).replace(/\b[a-z]/g, c => c.toUpperCase()).replace(/\bGk\b/, 'GK');
-const CARD6 = p => p.prim === 'GK'
-  ? [['AWR', ['ga']], ['CAT', ['gc']], ['CLR', ['gl']], ['REF', ['gr']], ['REA', ['gh']], ['KIC', ['kp', 'lf']]]
-  : [['SPD', ['sp', 'ac']], ['SHO', ['fi', 'kp', 'oa']], ['PAS', ['lp', 'lf', 'cu']], ['DRI', ['bc', 'dr', 'tp', 'ba']], ['STR', ['pc', 'ju', 'st']], ['DEF', ['da', 'bw', 'ag']]];
 const GROUPS = [['Attacking', ['oa', 'fi', 'kp']], ['Dribbling', ['bc', 'dr', 'tp', 'ba']], ['Defending', ['he', 'ju', 'da', 'bw', 'ag']], ['Passing', ['lp', 'lf', 'pk', 'cu']], ['Physicality', ['sp', 'ac', 'pc', 'st']], ['Goalkeeping', ['ga', 'gc', 'gl', 'gr', 'gh']]];
 const BARC = v => v >= 90 ? '#5CE39A' : v >= 80 ? '#A8E063' : v >= 70 ? '#F2D33D' : v >= 60 ? '#F2A65A' : '#E57A62';
-const avgK = (p, ks) => Math.round(ks.reduce((t, k) => t + A(p, k), 0) / ks.length);
-function radar(vals, labels, masked){
-  const R = 80, cx = 110, cy = 100, pt = (i, r) => [cx + r * Math.sin(i * Math.PI / 3), cy - r * Math.cos(i * Math.PI / 3)];
-  const ring = f => Array.from({ length: 6 }, (_, i) => pt(i, R * f).join(',')).join(' ');
-  return `<svg viewBox="0 0 220 200" class="radar">${[1, .75, .5, .25].map(f => `<polygon points="${ring(f)}" fill="none" stroke="var(--line)"/>`).join('')}
-    ${Array.from({ length: 6 }, (_, i) => `<line x1="${cx}" y1="${cy}" x2="${pt(i, R)[0]}" y2="${pt(i, R)[1]}" stroke="var(--line)"/>`).join('')}
-    ${masked ? '' : `<polygon points="${vals.map((v, i) => pt(i, R * Math.max(.05, (v - 30) / 69)).join(',')).join(' ')}" fill="rgba(76,214,140,.28)" stroke="#4CD68C" stroke-width="2"/>`}
-    ${labels.map((l, i) => { const [x, y] = pt(i, R + 13); return `<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--muted)">${l}</text>`; }).join('')}</svg>`;
-}
 function playerCard(p, q, con, born){
-  const kn = known(p), o = ovrNow(p), c6 = CARD6(p).map(([l, ks]) => [l, avgK(p, ks)]), k = kitOf(p.club);
+  const kn = known(p), k = kitOf(p.club);
   const attr = key => { const v = A(p, key), d = q.d[key] || 0; return `<div class="pa"><span class="pv" style="background:${BARC(kn ? v : Math.floor(v / 10) * 10 + 5)}">${showA(p, v)}</span><span class="pn">${esc(TT(ATTR_NAME[key]))}${d >= 1 && kn ? ' <span class="up">▲</span>' : d <= -1 && kn ? ' <span class="dn">▼</span>' : ''}</span></div>`; };
-  const grp = ([n, ks]) => { const v = avgK(p, ks); return `<div class="pg2"><div class="ph"><span class="pv" style="background:${BARC(kn ? v : Math.floor(v / 10) * 10 + 5)}">${showA(p, v)}</span><b>${n}</b></div><div class="pbar"><i style="width:${kn ? v : 0}%;background:${BARC(v)}"></i></div>${ks.map(attr).join('')}${n === 'Physicality' ? `<div class="pa"><span class="pv" style="background:${BARC([90, 75, 62][(p.inj || 2) - 1])}">${4 - (p.inj || 2)}</span><span class="pn">Injury Resistance</span></div>` : ''}</div>`; };
+  const grp = ([n, ks]) => `<div class="pg2"><div class="ph"><b>${n}</b></div><div class="pbar"></div>${ks.map(attr).join('')}${n === 'Physicality' ? `<div class="pa"><span class="pv" style="background:${BARC([90, 75, 62][(p.inj || 2) - 1])}">${4 - (p.inj || 2)}</span><span class="pn">Injury Resistance</span></div>` : ''}</div>`;
   const groups = GROUPS.filter(([n]) => p.prim === 'GK' || n !== 'Goalkeeping');
   const rows = [['LWF', 'SS', 'CF', 'RWF'], ['LMF', 'DMF', 'CMF', 'AMF', 'RMF'], ['LB', 'CB', 'RB'], ['GK']];
-  const pos = rows.map(r => `<div class="prow">${r.map(x => { const v = fitIn(p, x), on = p.pos.includes(x); return `<div class="pc ${on ? 'on' : ''}"><span>${x}</span><b class="${on ? '' : vcls(v)}">${kn ? v : '?'}</b></div>`; }).join('')}</div>`).join('');
-  const sim = D.players.filter(x => x.id !== p.id && x.prim === p.prim).sort((a, b) => Math.abs(ovrNow(a) - o) - Math.abs(ovrNow(b) - o) || ovrNow(b) - ovrNow(a)).slice(0, 4);
-  const mini = x => { const kk = kitOf(x.club); return `<button class="pcard sm" data-pl="${x.id}" style="--k1:${kk[0]};--k2:${kk[1]}"><span class="pp">${cmPos([x.prim])}</span><span class="po">${known(x) ? ovrNow(x) : '?'}</span><b>${esc(cardName(x.n))}</b><span class="small">${esc(club(x.club).name)}</span></button>`; };
+  const pos = rows.map(r => `<div class="prow">${r.map(x => { const on = p.pos.includes(x); return `<div class="pc ${on ? 'on' : ''}"><span>${x}</span></div>`; }).join('')}</div>`).join('');
+  const ks = Object.keys(ATTR_NAME), dist = x => ks.reduce((t, key) => t + Math.abs(A(x, key) - A(p, key)), 0);
+  const sim = D.players.filter(x => x.id !== p.id && x.prim === p.prim).map(x => [x, dist(x)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
+  const mini = x => { const kk = kitOf(x.club); return `<button class="pcard sm" data-pl="${x.id}" style="--k1:${kk[0]};--k2:${kk[1]}"><span class="pp">${cmPos([x.prim])}</span><b>${esc(cardName(x.n))}</b><span class="small">${esc(club(x.club).name)}</span></button>`; };
   return `<div class="pmast">
-    <div class="pleft"><div class="pcard" style="--k1:${k[0]};--k2:${k[1]}"><span class="pp">${esc(p.prim)}</span><span class="po">${kn ? o : '?'}</span>
-      <div class="p6">${c6.map(([l, v]) => `<span><b>${showA(p, v)}</b> ${l}</span>`).join('')}</div><b class="pnm">${esc(cardName(p.n))}</b></div>
-      <div class="ptag"><span class="pv" style="background:${kn ? BARC(o) : 'var(--panel-2)'}">${kn ? o : '?'}</span><b>${esc(p.n)}</b></div>
+    <div class="pleft"><div class="pcard" style="--k1:${k[0]};--k2:${k[1]}"><span class="pp">${esc(p.prim)}</span>${p.no ? `<span class="po">${p.no}</span>` : ''}<b class="pnm">${esc(cardName(p.n))}</b></div>
+      <div class="ptag"><b>${esc(p.n)}</b></div>
       <p class="small dim" style="margin:6px 0 0">${born}. ${esc(p.nat || '')}. ${esc(club(p.club).name)}, ${cmPos(p.pos)}.</p>
-      ${radar(c6.map(x => x[1]), c6.map(x => x[0]), !kn)}
       <div class="ptitle">Positions</div><div class="ppitch">${pos}</div></div>
     <div class="pright"><div class="pgrid">${groups.map(grp).join('')}</div>
       <div class="ptitle">Playing Style</div><p style="margin:0 0 8px">${esc(p.style || 'None')}</p>
@@ -1372,7 +1359,7 @@ function scrPlayer(){
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
   frame(ofClub(p.club, { title: esc(p.n), sub: `${esc(club(p.club).name)}${p.no ? ' · ' + p.no : ''}`,
     act: mine ? `<button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
-    top: [['profile', 'Profile'], ['pos', 'Positions'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['hist', 'History']], topOn: tab,
+    top: [['profile', 'Profile'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['hist', 'History']], topOn: tab,
     onTab: k => { V = { ...V, tab: k }; view(); }, body,
     next: at >= 0 && at < list.length - 1 ? () => { V = { ...V, id: list[at + 1] }; view(); } : null }));
   const pk = $('#pick'); if (pk) pk.addEventListener('click', () => { toggleSel(p.id); view(); });
@@ -1541,16 +1528,15 @@ function scrFind(){
   const tab = V.tab || 'search', qv = V.q || '', fold = s => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const F = V.f || {}, pg = V.pg || 0, per = 15;
   const sh = new Set((S.short || []).map(x => x.id));
-  let L = tab === 'short' ? D.players.filter(p => sh.has(p.id)) : D.players.filter(p => (!qv || fold(p.n).includes(fold(qv))) && (!F.g || GROUP[p.prim] === F.g) && (!F.age || p.age <= +F.age) && (!F.club || p.club === +F.club) && (!F.min || ovrNow(p) >= +F.min));
-  L = L.slice().sort((a, b) => V.sort === 'val' ? b.val - a.val : V.sort === 'ovr' ? ovrNow(b) - ovrNow(a) : surname(a.n).localeCompare(surname(b.n)));
+  let L = tab === 'short' ? D.players.filter(p => sh.has(p.id)) : D.players.filter(p => (!qv || fold(p.n).includes(fold(qv))) && (!F.g || GROUP[p.prim] === F.g) && (!F.age || p.age <= +F.age) && (!F.club || p.club === +F.club));
+  L = L.slice().sort((a, b) => V.sort === 'val' ? b.val - a.val : surname(a.n).localeCompare(surname(b.n)));
   const pages = Math.max(1, Math.ceil(L.length / per)), pgc = Math.min(pg, pages - 1), rows = L.slice(pgc * per, pgc * per + per);
   const inf = p => { const q = ps(p.id); return q.injD ? '<span class="tag inj">Inj</span>' : q.sus ? '<span class="tag sus">Sus</span>' : S.con[p.id] && S.con[p.id].y <= S.season + 1 ? '<span class="tag">Ctr</span>' : sh.has(p.id) ? '<span class="tag">SL</span>' : ''; };
   const tools = tab === 'short' ? `<span class="dim small">Players on your short list: their attributes are known after a week.</span>` : `<input type="text" id="fq" placeholder="Name" value="${esc(qv)}" style="flex:1;min-width:140px">
     <select class="dd" id="fg"><option value="">All positions</option>${[['GK', 'Goalkeepers'], ['DEF', 'Defenders'], ['MID', 'Midfielders'], ['FWD', 'Forwards']].map(([k, n]) => `<option value="${k}" ${F.g === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <select class="dd" id="fa"><option value="">Any age</option>${[19, 21, 23, 25, 28, 31].map(a => `<option value="${a}" ${+F.age === a ? 'selected' : ''}>${a} or under</option>`).join('')}</select>
-    <select class="dd" id="fm"><option value="">Any ability</option>${[60, 70, 75, 80, 85].map(a => `<option value="${a}" ${+F.min === a ? 'selected' : ''}>${a}+</option>`).join('')}</select>
     <select class="dd" id="fc"><option value="">All clubs</option>${D.clubs.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<option value="${c.id}" ${+F.club === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
-    <select class="dd" id="fs">${[['name', 'Sort: Name'], ['ovr', 'Sort: Ability'], ['val', 'Sort: Value']].map(([k, n]) => `<option value="${k}" ${(V.sort || 'name') === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
+    <select class="dd" id="fs">${[['name', 'Sort: Name'], ['val', 'Sort: Value']].map(([k, n]) => `<option value="${k}" ${(V.sort || 'name') === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
   frame({ title: 'Player &amp; Staff Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: [['short', 'Short List'], ['search', 'Player Search'], ['staff', 'Staff Search', true], ['sc1', 'Scout #1', true], ['sc2', 'Scout #2', true]], topOn: tab,
     onTab: k => { PICK2 = []; V = { s: 'find', tab: k }; view(); }, tools,
     body: `<div class="pgbar"><span class="dim small">${tab === 'short' ? 'Your short list' : qv || Object.values(F).some(Boolean) ? 'Search results' : 'Every player in the league'}</span><span class="pg"><button data-pg="0" ${pgc ? '' : 'disabled'}>«</button><button data-pg="${pgc - 1}" ${pgc ? '' : 'disabled'}>‹</button><span>Pg ${pgc + 1}/${pages}</span><button data-pg="${pgc + 1}" ${pgc < pages - 1 ? '' : 'disabled'}>›</button><button data-pg="${pages - 1}" ${pgc < pages - 1 ? '' : 'disabled'}>»</button></span></div>
@@ -1561,7 +1547,7 @@ function scrFind(){
   const on = (id, ev, f) => { const el = $('#' + id); if (el) el.addEventListener(ev, f); };
   on('fq', 'keydown', e => { if (e.key === 'Enter'){ V = { ...V, q: e.target.value.trim(), pg: 0 }; view(); } });
   on('fq', 'change', e => { V = { ...V, q: e.target.value.trim(), pg: 0 }; view(); });
-  on('fg', 'change', e => upd('g', e.target.value)); on('fa', 'change', e => upd('age', e.target.value)); on('fm', 'change', e => upd('min', e.target.value)); on('fc', 'change', e => upd('club', e.target.value));
+  on('fg', 'change', e => upd('g', e.target.value)); on('fa', 'change', e => upd('age', e.target.value)); on('fc', 'change', e => upd('club', e.target.value));
   on('fs', 'change', e => { V = { ...V, sort: e.target.value }; view(); });
   document.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => { V = { ...V, pg: +b.dataset.pg }; view(); }));
   document.querySelectorAll('[data-cmp]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const id = +b.dataset.cmp; PICK2 = PICK2.includes(id) ? PICK2.filter(x => x !== id) : [...PICK2, id].slice(-2); view(); }));
@@ -1579,7 +1565,6 @@ function scrCompare(){
       <tr><td class="r yel"><b>${cmPos(a.pos)}</b></td><td class="c dim">Position</td><td class="yel"><b>${cmPos(b.pos)}</b></td></tr>
       <tr><td class="r">${a.age}</td><td class="c dim">Age</td><td>${b.age}</td></tr>
       <tr><td class="r">${valueOf(a)}</td><td class="c dim">Value</td><td>${valueOf(b)}</td></tr>
-      <tr><td class="r av ${vcls(ovrNow(a))}">${showA(a, ovrNow(a))}</td><td class="c dim">Ability</td><td class="av ${vcls(ovrNow(b))}" style="text-align:left">${showA(b, ovrNow(b))}</td></tr>
       ${keys.map(k => { const x = A(a, k), y = A(b, k); return `<tr>${cell(a, x, y)}<td class="c dim">${esc(ATTR_NAME[k])}</td><td class="av ${vcls(y)}" style="text-align:left;${known(b) && y > x ? 'text-decoration:underline' : ''}">${showA(b, y)}</td></tr>`; }).join('')}</tbody></table></div>` });
 }
 
@@ -1639,7 +1624,7 @@ function mframe(side, body){
 }
 function viewPre(){
   const L = LIVE, M = L.M, opp = M.h === me() ? M.a : M.h, st = standings(), [kh, kh2] = kitOf(M.h), [ka, ka2] = kitOf(M.a);
-  const line = s => s.on.map(x => `<div class="arow"><span><span class="yel small" style="display:inline-block;width:34px">${x.pos}</span>${esc(cmName(x.p.n))}</span><span class="av ${vcls(fitIn(x.p, x.pos))}">${fitIn(x.p, x.pos)}</span></div>`).join('');
+  const line = s => s.on.map(x => `<div class="arow"><span><span class="yel small" style="display:inline-block;width:34px">${x.pos}</span>${esc(cmName(x.p.n))}</span><span></span></div>`).join('');
   const strict = M.ref.s >= 13 ? 'strict, quick to book' : M.ref.s <= 7 ? 'lenient, lets the game flow' : 'fair';
   const wxNote = M.wk === 2 ? ' (a heavy pitch: short passing and ball control suffer)' : M.wk === 3 ? ' (long and direct passing suffer)' : M.wk === 5 ? ' (players will tire faster)' : M.wk === 6 ? ' (a slippery pitch)' : '';
   mframe(`<div class="date"><span>${WD[new Date(S.date + 'T12:00:00Z').getUTCDay()]}</span><span>${shortDate(S.date)}</span><span>PM</span></div><button class="sb go" id="tomatch">Go to Match</button><button class="sb" id="totac">${esc(club(me()).name)} Tactics</button>`,
@@ -1706,7 +1691,7 @@ function mPanel(){
   if (MTAB === 'scores') return L.others.length ? `<table><tbody>${L.others.map(o => `<tr><td class="r" style="width:40%"><b>${esc(club(o.h).name)}</b></td><td class="c"><span class="pill">${o.H.goals} - ${o.A.goals}</span>${o.pens ? ` <span class="small dim">(${o.pens[0]}-${o.pens[1]} p)</span>` : ''}</td><td style="width:40%"><b>${esc(club(o.a).name)}</b></td><td class="small yel">${o.over ? 'FT' : o.min ? label(o) + "'" : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">No other matches today.</p>';
   if (MTAB === 'tactics'){ const t = us.t, seg = (key, Lb) => `<span class="seg" data-mk="${key}">${Lb.map((n, i) => `<button data-v="${i}" class="${t[key] === i ? 'on' : ''}">${n}</button>`).join('')}</span>`, tog = (k, n) => `<button class="tog ${t[k] ? 'on' : ''}" data-mt2="${k}">${t[k] ? '✓' : '·'} ${n}</button>`;
     return `<div class="cols2"><div><div class="ptitle">Team Instructions</div><div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('counter', 'Counter')}${tog('mbb', 'Men Behind Ball')}</span></div></div>
-      <div><div class="ptitle">Substitutions ${us.subs}/5</div>${M.over ? '<p class="dim">The match is over.</p>' : `<div class="cols2"><div><div class="small yel">On the pitch</div>${us.on.map(x => `<div class="pl ${L.sel && L.sel.off === x.id ? 'pick' : ''}" data-off="${x.id}"><span class="yel small">${x.pos}</span><b>${esc(surname(x.p.n))}</b><span></span><span class="small dim">${Math.round(x.e)}%</span></div>`).join('')}</div><div><div class="small yel">Substitutes</div>${us.bench.map(id => P.get(id)).filter(Boolean).map(p => `<div class="pl ${L.sel && L.sel.on === p.id ? 'pick' : ''}" data-on="${p.id}"><span class="yel small">${p.prim}</span><b>${esc(surname(p.n))}</b><span></span><span class="small ${vcls(ovrNow(p))}">${ovrNow(p)}</span></div>`).join('') || '<p class="dim small">None left</p>'}</div></div><p class="small dim">The percentages are energy. Pick one to take off and one to bring on.</p>`}</div></div>`; }
+      <div><div class="ptitle">Substitutions ${us.subs}/5</div>${M.over ? '<p class="dim">The match is over.</p>' : `<div class="cols2"><div><div class="small yel">On the pitch</div>${us.on.map(x => `<div class="pl ${L.sel && L.sel.off === x.id ? 'pick' : ''}" data-off="${x.id}"><span class="yel small">${x.pos}</span><b>${esc(surname(x.p.n))}</b><span></span><span class="small dim">${Math.round(x.e)}%</span></div>`).join('')}</div><div><div class="small yel">Substitutes</div>${us.bench.map(id => P.get(id)).filter(Boolean).map(p => `<div class="pl ${L.sel && L.sel.on === p.id ? 'pick' : ''}" data-on="${p.id}"><span class="yel small">${p.prim}</span><b>${esc(surname(p.n))}</b><span></span><span></span></div>`).join('') || '<p class="dim small">None left</p>'}</div></div><p class="small dim">The percentages are energy. Pick one to take off and one to bring on.</p>`}</div></div>`; }
   return '';
 }
 function wireMatchPanel(){
