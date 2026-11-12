@@ -7,7 +7,7 @@ says (goals, passes, dribbles, tackles, duels, saves, each per 90 minutes and co
 shrunk toward the middle when he has played little), by his height and weight (heading, jumping, physical contact,
 balance) and by his age (pace fades after 28, stamina after 31), with a small fixed draw per player so no two are alike.
 """
-import datetime, json, math, os, random, re, statistics
+import datetime, html, json, math, os, random, re, statistics
 from statistics import NormalDist
 
 ATTRS = [
@@ -227,6 +227,10 @@ def _style(a, pos):
 
 
 def display(e, pid):
+    return html.unescape(_display(e, pid))   # the API sends some names HTML-escaped ('Nico O&apos;Reilly')
+
+
+def _display(e, pid):
     """The name he goes by, as in the draft game: 'L. Díaz' + first names 'Luis Fernando' -> 'Luis Díaz'; 'Evanilson'
     and 'Rayan' stay as they are; the full name from the API only when there is nothing else."""
     sq, firsts = e.get('sq') or '', (e.get('fn') or '').split()
@@ -374,6 +378,14 @@ def _fold(s):
 TM_POS = {'goalkeeper': 'GK', 'centre-back': 'CB', 'left-back': 'LB', 'right-back': 'RB', 'defensive midfield': 'DMF',
           'central midfield': 'CMF', 'attacking midfield': 'AMF', 'left midfield': 'LMF', 'right midfield': 'RMF',
           'left winger': 'LWF', 'right winger': 'RWF', 'second striker': 'SS', 'centre-forward': 'CF'}
+
+
+TRAIT_PTS = 3
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cm_traits.json'), encoding='utf-8') as _f:
+        TRAITS = json.load(_f).get('p') or {}
+except Exception:
+    TRAITS = {}
 
 
 def load_handbook():
@@ -585,6 +597,19 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             a['pc'] += 2 * z('duw'); a['ag'] += 1.5 * z('fc90') + 1 * z('cards90')
             a['cu'] += 1 * z('a90')
         own = GKA if g == 'GK' else OUT
+        # his character (pipeline/cm_traits.json: the few attributes that stand out in his PES 2021 profile, names only):
+        # +3 on his strengths, -3 on his weaknesses, the rest shifted so his position's rating stays where it was
+        tr = TRAITS.get(str(r['pid']))
+        if tr and PROF:
+            before = pos_rating({k: clip(v) for k, v in a.items()}, pos)
+            for k in tr.get('s', []): a[k] += TRAIT_PTS
+            for k in tr.get('w', []): a[k] -= TRAIT_PTS
+            rest = [k for k in own if k not in tr.get('s', []) and k not in tr.get('w', [])]
+            wk = dict(zip(PROF['keys'], PROF['rating'][pos]['w']))
+            wsum = sum(wk.get(k, 0) for k in rest)
+            if wsum > .05:
+                shift = (before - pos_rating({k: clip(v) for k, v in a.items()}, pos)) / wsum
+                for k in rest: a[k] += shift
         if not PROF:   # the old profiles: shift so his position's rating lands on his overall
             shift = o - pos_rating(a, pos)
             for k in own:
