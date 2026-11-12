@@ -349,6 +349,8 @@ td.nm{white-space:nowrap}
 @media(max-width:600px){.banner.wc{grid-template-columns:1fr}.banner.wc>.bcr{display:flex}.banner .bcr{justify-content:center;padding:10px 0 0}.bigcr{width:44px;height:44px}.banner .binfo{gap:2px 12px;font-size:13px}}
 .cmborn{text-align:center;text-transform:none;font-size:18px;letter-spacing:.01em}
 .cmborn .flag{font-size:17px}
+.cmborn .loanl{font-size:14px;color:var(--warn);margin-top:3px}
+.lo{font-size:11.5px;color:var(--muted);font-weight:500;margin-left:5px;white-space:nowrap}
 .hon{margin:0 0 10px;padding-left:18px;line-height:1.7}
 </style>
 </head><body>
@@ -1593,11 +1595,11 @@ function playerFlags(p){
   if (q.mor < 35) out.push('<span class="tag" title="Unhappy">Unh</span>');
   if (q.req === S.season) out.push('<span class="tag" title="Transfer request">Req</span>');
   if (q.away && S.date <= q.away) out.push('<span class="tag" title="With his national team">Int</span>');
-  if (onLoan(p)) out.push(`<span class="tag" title="On loan at ${esc(p.lo)} until the summer">Loan</span>`);
+  if (onLoan(p)) out.push(`<span class="tag" title="On loan until the summer">Loan</span><span class="lo">${esc(p.lo)}</span>`);
   if (S.con[p.id] && S.con[p.id].y <= S.season + 1) out.push('<span class="tag" title="Contract expires at the end of the season">Ctr</span>');
   return out.join('');
 }
-const nameCls = p => { const q = ps(p.id); return q.injD ? 'c-inj' : q.sus ? 'c-sus' : ovrNow(p) < 66 && p.age <= 21 ? 'c-res' : ''; };
+const nameCls = p => { const q = ps(p.id); return q.injD ? 'c-inj' : q.sus ? 'c-sus' : ''; };
 const avgRt = q => q.rt.length ? (q.rt.reduce((a, b) => a + b, 0) / q.rt.length).toFixed(2) : '-';
 const morWord = m => m >= 85 ? 'Superb' : m >= 70 ? 'Very Good' : m >= 55 ? 'Good' : m >= 40 ? 'Okay' : m >= 25 ? 'Poor' : 'Very Poor';
 function clubSquad(cid, o){
@@ -1629,7 +1631,7 @@ function clubSquad(cid, o){
       return `${base}<td class="r">${p.age}</td><td class="r">${valueOf(p)}</td><td class="r">${wage(S.con[p.id].w)}</td><td class="r">${S.con[p.id].y}</td>`; };
     body = `<div class="tw"><table><thead><tr>${head}</tr></thead><tbody>${L.map(p => `<tr class="click ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${row(p)}</tr>`).join('')}</tbody></table></div>`;
   }
-  if (mine) body += `<p class="small dim" style="margin:8px 2px 0">Click a box to give that player the next free place in your ${esc(t.form)}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; click it again to take it back. ${t.xi.filter(Boolean).length}/11 picked, ${t.bench.length}/${BENCH} substitutes. Names in red: injured; pink: banned; blue: young reserves.</p>
+  if (mine) body += `<p class="small dim" style="margin:8px 2px 0">Click a box to give that player the next free place in your ${esc(t.form)}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; click it again to take it back. ${t.xi.filter(Boolean).length}/11 picked, ${t.bench.length}/${BENCH} substitutes. Names in red: injured; pink: banned.</p>
     <div class="tools" style="margin-top:6px"><button class="btn sm" id="clearxi">Clear selection</button><button class="btn sm" id="autoxi">Assistant picks the side</button></div>`;
   o.tools = `<select class="dd" id="sqv" aria-label="View">${[['pos', 'View: Positions'], ['gen', 'View: General'], ['attr', 'View: Attributes'], ['stats', 'View: Stats'], ['con', 'View: Contract']].map(([k, n]) => `<option value="${k}" ${view_ === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <select class="dd" id="sqs" aria-label="Sort by">${[['pos', 'Sort By: Position'], ['name', 'Sort By: Name'], ['age', 'Sort By: Age'], ['cond', 'Sort By: Condition'], ['gls', 'Sort By: Goals'], ['rt', 'Sort By: Rating'], ['val', 'Sort By: Value']].map(([k, n]) => `<option value="${k}" ${SORT.k === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
@@ -1839,7 +1841,7 @@ function playerCard(p, q, con, born){
   const real = '';   // the game starts with the current season: last season's real numbers are not shown
   // under the tabs, as in CM 01/02: born, age, nationality (career caps are not in the data, so none are shown)
   const nat = p.nat ? `${flag(p.nat)}${esc(DEMONYM[p.nat] || p.nat)}.` : '';
-  return `<div class="born cmborn">${born}. ${nat}</div>
+  return `<div class="born cmborn">${born}. ${nat}${onLoan(p) ? `<div class="loanl">On loan at <b>${esc(p.lo)}</b> until June ${D.season + 1}</div>` : ''}</div>
     <div class="cmattr">${col(0)}${col(1)}${col(2)}</div>
     <div class="cmlow"><div class="tw"><table class="cmst"><thead><tr><th></th><th class="c">Apps</th><th class="c">Gls</th><th class="c">Asts</th><th class="c">MoM</th><th class="c">Yel</th><th class="c">Av R</th></tr></thead><tbody>
       <tr><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td class="c">${q.apps || '-'}</td><td class="c">${q.apps ? q.g : '-'}</td><td class="c">${q.apps ? q.a : '-'}</td><td class="c">${q.apps ? q.mom : '-'}</td><td class="c">${q.apps ? q.yc : '-'}</td><td class="c"><span class="avr">${q.apps ? avgRt(q) : '----'}</span></td></tr>${real}</tbody></table>
@@ -2004,7 +2006,7 @@ function setupFlow(state, files){
     return { title: state === 'quick' ? 'Quick Start Game' : `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select Team', back: state === 'quick' ? 'menu' : 'nat',
       body: `${state === 'quick' ? '<p class="c dim small" style="margin-top:0">Pick a club and go straight to the first match day: the assistant has picked the side.</p>' : ''}<div class="two">${clubs.map(c2 => `<button class="nat" data-club="${c2.id}"><b>${esc(c2.name)}</b><span>ENG <em>PRM</em></span></button>`).join('')}</div>` }; }
   if (state === 'preview'){ const sq = squadOf(c.id).slice().sort((a, b) => ({ GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[a.prim]] - { GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[b.prim]]) || ovrNow(b) - ovrNow(a)), half = Math.ceil(sq.length / 2);
-    const row = p => `<div class="sqr" style="cursor:default"><span></span><span class="nm ${ovrNow(p) < 66 && p.age <= 21 ? 'c-res' : ''}">${esc(cmName(p.n))}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
+    const row = p => `<div class="sqr" style="cursor:default"><span></span><span class="nm">${esc(cmName(p.n))}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
     const rank = expRank(c.id);
     return { title: esc(c.name), k1: (c.kit || [])[0], k2: (c.kit || [])[1], sub: `${AIMS[aimFor(rank)].name} · ${(c.cap || 0).toLocaleString('en-GB')} seats`, back: 'team', act: '<button class="btn y" id="take">Take Control</button>',
       body: `<div class="ptitle">Position(s)</div><div class="sq"><div>${sq.slice(0, half).map(row).join('')}</div><div>${sq.slice(half).map(row).join('')}</div></div>` }; }
