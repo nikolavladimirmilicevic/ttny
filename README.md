@@ -279,3 +279,7 @@ The careers come from the API's transfer lists, which the pipeline already fetch
 - Selling: other clubs bid for your players during the windows (in News); accept or reject on his Transfer screen within a week.
 - The other clubs do business among themselves: a player who would be a regular for the buyer and is not one for the seller. All moves show under Transfers by month and are kept in the save (`moves`, `nos`), the data's clubs untouched underneath.
 - Transfer budgets scaled to the Transfermarkt-sized values (about £12M to £110M).
+
+### Manager: contracts, more seasons
+- Contract tab: a player of yours with two years or less left can be offered a new deal (two, three or four more years) at his asking wage; an unhappy player, or a regular who has outgrown the club, may turn it down. "Bid" in the search's Inf column marks a player you are bidding for. Player stats tables carry flags and crests; the cup tab is named for the FA Cup.
+- The game goes on after the season if you keep your job: Start the Next Season moves every player's numbers into his History, puts a year on everyone, lets your players whose contracts ended on 30 June leave on a free (the other clubs renew theirs), draws a new schedule (generated, since the real fixture list covers only this season; the FA Cup a year on), sets the board's expectation from last season's table, and tops up the transfer budget. The same 20 clubs stay: there is no Championship in the data, so no relegation yet.
