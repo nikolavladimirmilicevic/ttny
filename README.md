@@ -443,3 +443,5 @@ Crests on a light plate (13.11.2026): in the club list and in a club's or player
 Missing crests (13.11.2026): Bolton, Charlton, Lincoln, Portsmouth and Wrexham came from Transfermarkt pages with ids of our own, so their crest addresses pointed nowhere (or at another team). Their crests now use their API-Football team ids (68, 1335, 1379, 1355, 1837, from the cached API data).
 
 Crests without plates (13.11.2026): instead of a light plate, a crest keeps its own shape on the club colour and gets a faint light edge that follows it, enough to set a red crest apart from a red background.
+
+Crests as in the draft game (13.11.2026): Manager now loads crests from the site's own copies (crests/<team id>.png, 2,196 of them, the five TM-only clubs included), with the API's as a fallback. In the club list a crest sits straight on the card with a soft shadow, as in the draft game (the kit-colour square shows only when there is no crest); in the coloured banners it keeps a faint light edge so a red crest stays visible on red.
