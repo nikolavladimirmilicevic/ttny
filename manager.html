@@ -501,7 +501,9 @@ const ROLE = { GK: 'GK', CB: 'CB', LB: 'FB', RB: 'FB', DMF: 'DM', CMF: 'CM', LMF
 const KEYS_OF = { GK: ['ga', 'gr', 'gc', 'gh', 'gl'], CB: ['da', 'bw', 'he', 'pc', 'ju'], FB: ['da', 'bw', 'sp', 'st', 'lp'], DM: ['da', 'bw', 'lp', 'pc', 'st'], CM: ['lp', 'lf', 'bc', 'st', 'tp'],
   WM: ['lp', 'lf', 'dr', 'sp', 'st'], AM: ['lp', 'bc', 'tp', 'oa', 'dr'], W: ['dr', 'sp', 'ac', 'oa', 'bc'], ST: ['oa', 'fi', 'bc', 'he', 'kp'] };
 const GK_KEYS = ['ga', 'gc', 'gl', 'gr', 'gh'];
-const crestURL = id => `https://media.api-sports.io/football/teams/${id}.png`;
+// clubs that came from Transfermarkt pages carry ids of our own; their crests use the API-Football team id
+const CREST_ID = { 991594: 68, 991674: 1335, 991161: 1379, 991263: 1355, 990967: 1837 };   // Bolton, Charlton, Lincoln, Portsmouth, Wrexham
+const crestURL = id => `https://media.api-sports.io/football/teams/${CREST_ID[id] || id}.png`;
 const crest = (cid, cls = 'cr') => `<img class="${cls}" src="${crestURL(cid)}" alt="" loading="lazy" onerror="this.remove()">`;
 const fullName = cid => { const c = club(cid); return c.full || c.name; };
 // flags as in the Draft (index.html): emoji flags, England / Scotland / Wales by their tag sequences, Northern Ireland drawn
