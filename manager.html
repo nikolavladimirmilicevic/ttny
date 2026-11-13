@@ -569,7 +569,7 @@ const formLabel = (t, on) => (t && t.shape && t.shape.length === 11) || (on && o
 const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape.map(([c, x]) => [c, x, LINE_Y[lineOf(c)]]) : FORMS[t && t.form] || FORMS[FORM_ORDER[0]];
 // the position a spot on the pitch stands for (0 at the top, their goal; 100 at the bottom, ours)
 const posAt = (x, y) => { const ln = LINE_Y.reduce((b, ly, k) => Math.abs(ly - y) < Math.abs(LINE_Y[b] - y) ? k : b, 0), w = x < 20 ? 'L' : x > 80 ? 'R' : '';
-  return ln === 0 ? 'GK' : ln === 1 ? (w ? w + 'B' : 'CB') : ln === 2 ? 'DMF' : ln === 3 ? (w ? w + 'MF' : 'CMF') : ln === 4 ? 'AMF' : (w ? w + 'WF' : 'CF'); };
+  return ln === 0 ? 'GK' : ln === 1 ? (w ? w + 'B' : 'CB') : ln === 2 ? (w ? w + 'MF' : 'DMF') : ln === 3 ? (w ? w + 'MF' : 'CMF') : ln === 4 ? (w ? w + 'MF' : 'AMF') : (w ? w + 'WF' : 'CF'); };
 // how many may share a position: one on each flank spot, three at most in a central one
 const posCap = c => /^(L|R)(B|MF|WF)$/.test(c) || c === 'GK' ? 1 : 3;
 const posFull = (codes, i, c) => codes.filter((x, k) => k !== i && x === c).length >= posCap(c);

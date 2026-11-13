@@ -395,3 +395,5 @@ Six lines (13.11.2026): the pitch has six evenly spaced lines and everyone in a 
 No overall anywhere (13.11.2026): the squad list on the tactics board shows the season's average match rating (Av R) beside form; the club overview's key players start with the most games instead of the best player; the training development table drops its Overall column; the board no longer shows a strength figure; and a player's ability in every position is given in words (Natural, Accomplished, Competent, Unconvincing, Awkward) instead of numbers. Also fixed: the training "This week" panel had picked up the trophy cabinet's style.
 
 Roomier board (13.11.2026): the six lines run from 90% to 10% of the pitch, 16% apart, and a token is shorter: the position tag sits on the edge of the shirt circle and the live rating beside it, so lines no longer crowd each other on small screens. Saved custom shapes follow the new heights.
+
+Flank spots in the DMF and AMF lines count as LMF or RMF (13.11.2026): those two lines are central only, so a player dropped out wide there becomes a wide midfielder and the tidy puts him in the midfield line.
