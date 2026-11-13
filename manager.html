@@ -596,7 +596,7 @@ for (const [f, rows] of Object.entries(OLD_FORM_DEF)){ if (FORMS[f]) continue; c
   const td = tidyLines(lay.map((z, k) => ({ k, code: z[0], x: z[1], y: z[2] }))); if (!td.form) AI_FORMS[f] = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])]; }
 const ALL_ORDER = [...FORM_ORDER, ...Object.keys(AI_FORMS).sort()];
 const formSlots = f => FORMS[f] || AI_FORMS[f];
-const formLabel = (t, on) => (t && t.shape && t.shape.length === 11) || (on && on.some(x => x && x.xy)) ? 'Custom' : t && t.form;
+const formLabel = (t, on) => t && t.name && t.shape ? t.name : (t && t.shape && t.shape.length === 11) || (on && on.some(x => x && x.xy)) ? 'Custom' : t && t.form;
 const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape : formSlots(t && t.form) || FORMS[FORM_ORDER[0]];
 // the position a spot on the pitch stands for (0 at the top, their goal; 100 at the bottom, ours)
 const posAt = (x, y) => { const ln = LINE_Y.reduce((b, ly, k) => Math.abs(ly - y) < Math.abs(LINE_Y[b] - y) ? k : b, 0), w = x < 20 ? 'L' : x > 80 ? 'R' : '';
@@ -840,8 +840,9 @@ const PI = [
    Ability), the same all day. So his side is a good one, but rarely the very best: picking it yourself is worth it */
 function judge(){ const a = (S.staff || []).find(x => x.role === 'ass'), ju = a ? a.ju : 8, spread = 3 + (20 - ju) * .4, day = S.date;
   return (p, pos) => fitIn(p, pos) + (rng(`aj-${p.id}-${pos}-${day}`)() * 2 - 1) * spread; }
-function bestXI(cid, form, rest, jq){
-  const slots = cid === me() && S.tac[cid] && form === S.tac[cid].form ? slotsOf(S.tac[cid]) : formSlots(form), pool = squadOf(cid).filter(p => avail(p.id)), fit = jq || fitIn;
+function bestXI(cid, form, rest, jq, sl){
+  const own = S.tac[cid] && form === S.tac[cid].form && (cid === me() || S.tac[cid].shape);
+  const slots = sl || (own ? slotsOf(S.tac[cid]) : formSlots(form)) || FORMS[FORM_ORDER[0]], pool = squadOf(cid).filter(p => avail(p.id)), fit = jq || fitIn;
   const q = (p, pos) => fit(p, pos) * (rest ? (0.72 + 0.28 * ps(p.id).cond / 100) : 1);
   const { xi, v } = pickXI(slots, pool, q), used = new Set(xi.filter(Boolean));
   const bench = pool.filter(p => !used.has(p.id)).sort((a, b) => fit(b, b.prim) - fit(a, a.prim));
@@ -855,19 +856,48 @@ function setPieces(cid, xi){
   const cap = L.slice().sort((a, b) => (b.age + ovrNow(b) / 4) - (a.age + ovrNow(a) / 4))[0];
   return { cap: cap && cap.id, pen: best('pk'), fk: best('pk'), cor: best('cu') };
 }
+/* other clubs' coaches are held to no list: each builds whatever shape suits his squad best. He starts from the best
+   known shape and keeps changing one position at a time while that makes the side better, within what a coach would field:
+   three to five at the back with at least two centre-backs, at least one forward, three at most in a central position and
+   one in a flank position, flanks in pairs (a left back with a right back, and so on) */
+const COACH_CODES = ['LB', 'CB', 'RB', 'DMF', 'LMF', 'CMF', 'RMF', 'AMF', 'LWF', 'CF', 'RWF'];
+function shapeOk(codes){ const n = c => codes.filter(x => x === c).length;
+  if (COACH_CODES.some(c => n(c) > posCap(c))) return false;
+  const back = n('LB') + n('CB') + n('RB'), fwd = n('LWF') + n('CF') + n('RWF');
+  return back >= 3 && back <= 5 && n('CB') >= 2 && fwd >= 1 && 10 - back - fwd >= 2 && n('LB') === n('RB') && n('LMF') === n('RMF') && n('LWF') === n('RWF'); }
+const shapeName = sl => { const ys = [...new Set(sl.slice(1).map(z => z[2]))].sort((a, b) => b - a); return ys.map(y => sl.filter(z => z[2] === y && z[0] !== 'GK').length).join('-'); };
+function coachShape(cid, rest){
+  const pool = squadOf(cid).filter(p => avail(p.id)), q = (p, pos) => fitIn(p, pos) * (rest ? (0.72 + 0.28 * ps(p.id).cond / 100) : 1);
+  const val = codes => pickXI([['GK', 50, 90], ...codes.map(c => [c, 50, 50])], pool, q).v;
+  let codes = formSlots(bestForm(cid, rest)).slice(1).map(z => z[0]), cur = val(codes);
+  for (let it = 0; it < 8; it++){ let best = null, bv = cur + .5;
+    const tried = new Set(), tryC = cand => { const k = cand.slice().sort().join(' '); if (tried.has(k) || !shapeOk(cand)) return; tried.add(k); const v = val(cand); if (v > bv){ bv = v; best = cand; } };
+    const kinds = [...new Set(codes)], CEN = ['CB', 'DMF', 'CMF', 'AMF', 'CF'], PAIRS = [['LB', 'RB'], ['LMF', 'RMF'], ['LWF', 'RWF']];
+    // one position changed (central for central), or two at once: a pair of flank men in, or out
+    for (const old of kinds){ const i = codes.indexOf(old); for (const c of CEN){ if (c === old) continue; const cand = codes.slice(); cand[i] = c; tryC(cand); } }
+    for (const [l, r] of PAIRS){
+      if (codes.includes(l)){ const i = codes.indexOf(l), j = codes.indexOf(r); for (const a of CEN) for (const b of CEN){ const cand = codes.slice(); cand[i] = a; cand[j] = b; tryC(cand); }
+        for (const [l2, r2] of PAIRS){ if (codes.includes(l2)) continue; const cand = codes.slice(); cand[i] = l2; cand[j] = r2; tryC(cand); } }
+      else for (const a of kinds) for (const b of kinds){ const i = codes.indexOf(a), j = a === b ? codes.indexOf(b, i + 1) : codes.indexOf(b); if (j < 0 || i === j || flankOf(a) !== 1 || flankOf(b) !== 1) continue; const cand = codes.slice(); cand[i] = l; cand[j] = r; tryC(cand); } }
+    if (!best) break; codes = best; cur = bv; }
+  const td = tidyLines(codes.map((c, k) => ({ k, code: c, x: flankOf(c) * 37 + 13, y: 50 })));
+  if (td.form) return { form: td.form, shape: null, name: null };
+  const shape = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])];
+  return { form: 'Custom', shape, name: shapeName(shape) };
+}
 function autoTactic(cid, jq){
-  const best = bestForm(cid, false, jq), { xi, bench } = bestXI(cid, best, false, jq);
+  const cs = cid === me() ? { form: bestForm(cid, false, jq), shape: null, name: null } : coachShape(cid), best = cs.form, { xi, bench } = bestXI(cid, best, false, jq, cs.shape || undefined);
   const q = club(cid).q || 75, top = Math.max(...D.clubs.map(c => c.q)), r0 = rng(`t-${cid}`);
-  return { form: best, xi, bench, men: q >= top - 3 ? 3 : q < top - 9 ? 1 : 2, pass: [0, 1, 2, 0][Math.floor(r0() * 4)], tack: 1, press: q >= top - 5, offside: r0() < .3, counter: q < top - 6, mbb: q < top - 10, set: setPieces(cid, xi), pi: {} };
+  return { form: best, shape: cs.shape, name: cs.name, xi, bench, men: q >= top - 3 ? 3 : q < top - 9 ? 1 : 2, pass: [0, 1, 2, 0][Math.floor(r0() * 4)], tack: 1, press: q >= top - 5, offside: r0() < .3, counter: q < top - 6, mbb: q < top - 10, set: setPieces(cid, xi), pi: {} };
 }
 // before a match: anyone unavailable leaves the eleven; for every club but yours, rotation as well
 function readyTactic(cid){
   if (!S.tac[cid]) S.tac[cid] = autoTactic(cid);   // a Championship club in a cup tie
   const t = S.tac[cid];
-  if (cid !== me()){ t.shape = null; if (!formSlots(t.form)) t.form = bestForm(cid);
-    let f = bestXI(cid, t.form, true);
-    // someone would have to play out of position (injuries, bans): the shape that fits who is left
-    if (f.xi.some((id, i) => !id || !canPlay(P.get(id), formSlots(t.form)[i][0]))){ t.form = bestForm(cid, true); f = bestXI(cid, t.form, true); }
+  if (cid !== me()){ if (!slotsOf(t) || (!t.shape && !formSlots(t.form))) Object.assign(t, coachShape(cid));
+    let sl = slotsOf(t), f = bestXI(cid, t.form, true, null, sl);
+    // someone would have to play out of position (injuries, bans): the coach rebuilds the shape around who is left
+    if (f.xi.some((id, i) => !id || !canPlay(P.get(id), sl[i][0]))){ Object.assign(t, coachShape(cid, true)); sl = slotsOf(t); f = bestXI(cid, t.form, true, null, sl); }
     t.xi = f.xi; t.bench = f.bench; t.set = setPieces(cid, t.xi); return t; }
   const slots = slotsOf(t);
   // a regular who missed games through injury or a ban gets his place back from his stand-in once he is fit, unless you
@@ -1878,7 +1908,7 @@ function adopt(s){
   // slot order: the presets list their rows as defined. A save from the six-line days had them sorted by line instead
   // (wide midfielders with the CMF line): players follow their slot's code back. Custom shapes are re-laid out.
   if (S.lines !== 8){ for (const [cid, t] of Object.entries(S.tac)){
-      if (+cid !== S.club){ if (!formSlots(t.form)){ t.shape = null; t.form = bestForm(+cid); Object.assign(t, bestXI(+cid, t.form)); } continue; }   // other clubs simply pick again
+      if (+cid !== S.club){ if (!formSlots(t.form) && !(t.shape && t.shape.length === 11)){ Object.assign(t, coachShape(+cid)); Object.assign(t, bestXI(+cid, t.form, false, null, slotsOf(t))); } continue; }   // other clubs simply pick again
       if (t.shape && t.shape.length === 11){ if (S.lines === 7) continue;   // a shape from before: laid out again on today's rows
         const items = t.shape.map((z, k) => ({ k, code: z[0] === 'SS' ? 'CF' : z[0], x: z[1], y: z[2] })), gk = items.find(x => x.code === 'GK') || items[0], td = tidyLines(items.filter(x => x !== gk));
         t.xi = [t.xi[gk.k], ...td.order.map(it => t.xi[it.k])]; if (td.form){ t.form = td.form; t.shape = null; } else t.shape = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])]; continue; }
@@ -2129,8 +2159,8 @@ function nextFixture(cid){
 function previewSide(cid, M){
   if (M){ const side = M.h === cid ? M.H : M.A; return { form: formLabel(side.t, side.on), places: livePlaces(M, side).map(x => ({ ...x, rt: null })) }; }
   if (cid === me()){ const B = boardWeek(); return { form: formLabel(B.t), places: B.places }; }
-  const f = (S.tac[cid] && formSlots(S.tac[cid].form) ? S.tac[cid].form : bestForm(cid, true)), sl = formSlots(f), { xi } = bestXI(cid, f, true);
-  return { form: f, places: sl.map(([code, x, y], i) => { const id = xi[i]; return { i, code, x, y, id, p: id ? P.get(id) : null, e: id ? ps(id).cond : 0 }; }) };
+  const tt0 = S.tac[cid] && (S.tac[cid].shape || formSlots(S.tac[cid].form)) ? S.tac[cid] : coachShape(cid, true), f = tt0.form, sl = slotsOf(tt0), { xi } = bestXI(cid, f, true, null, sl);
+  return { form: formLabel(tt0) || f, places: sl.map(([code, x, y], i) => { const id = xi[i]; return { i, code, x, y, id, p: id ? P.get(id) : null, e: id ? ps(id).cond : 0 }; }) };
 }
 function previewHTML(h, a, o){
   const st = standings(), mineH = h === me(), mine = mineH || a === me(), opp = mineH ? a : h;
