@@ -343,6 +343,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .menu button:first-child{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
 .menu button:hover:not(:disabled){border-color:var(--gold)}
 .menu button:disabled{color:#4F6280;cursor:default}
+.talkm button,.talkm button:first-child{background:var(--panel-2);color:inherit;border-color:var(--line);font:600 13.5px/1.25 var(--body,inherit);letter-spacing:0;text-transform:none;padding:11px 8px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0;font-size:13.5px}
 .kv dt{color:var(--muted)}.kv dd{margin:0}
 .meter{height:12px;border-radius:6px;background:var(--panel-3);overflow:hidden}.meter i{display:block;height:100%}
@@ -1451,11 +1452,22 @@ function trainReg(){
   return f.reg;
 }
 const coachLevel = gk => { const st = (S.staff || []).filter(x => x.role === (gk ? 'gk' : 'coach') || x.role === 'ass'); if (!st.length) return 8; return st.reduce((t, x) => t + (gk ? x.cg : x.co), 0) / st.length * (st.length >= (gk ? 1 : 3) ? 1 : .85); };
+// how far a young player can go: each player has his own rate of growth (hidden; the same all game), from slow to
+// a rare gem who shoots up; and the young grow faster when they play
+const potOf = p => { const rr = rng(`pot-${p.id}`); const a = rr(), b = rr(); return +(.4 + 1.2 * a + (b < .06 ? .55 : 0)).toFixed(2); };
+const minsF = (p, q) => p.age > 23 ? 1 : .8 + .45 * Math.min(1, q.apps / Math.max(1, S.round) / .6);
+// the assistant's word on a young player of yours: where he could get to, judged with his eye (a good judge is closer)
+function prospectWord(p){
+  if (p.age > 21) return null;
+  const a = (S.staff || []).find(x => x.role === 'ass'), ju = a ? a.ju || 10 : 10, noise = (rng(`pw-${p.id}-${S.season}`)() - .5) * (24 - ju) * .5;
+  const proj = ovrNow(p) + (24 - p.age) * 1.7 * potOf(p) + noise, lg = club(me()).q;
+  return proj >= lg + 8 ? 'Could become one of the best players in the league.' : proj >= lg + 2 ? 'Has it in him to be a first-team regular here.' : proj >= lg - 5 ? 'Should make a useful squad player.' : proj >= lg - 12 ? 'Might make it at a lower level.' : 'Unlikely to make the grade.';
+}
 function trainWeek(wk){
   const keys = Object.keys(ATTR_NAME), reg = trainReg();
   for (const p of D.players){ const q = ps(p.id), rr = rng(`${S.seed}-${p.id}-${wk}`), age = p.age, mine = p.club === me(), gk = p.prim === 'GK';
     if (q.away && S.date <= q.away) continue;   // with his country
-    const grow = age <= 19 ? .32 : age <= 21 ? .22 : age <= 24 ? .1 : age <= 27 ? .03 : age <= 29 ? 0 : age <= 31 ? -.06 : -.14;
+    const grow = age <= 19 ? .6 : age <= 21 ? .4 : age <= 24 ? .14 : age <= 27 ? .03 : age <= 29 ? 0 : age <= 31 ? -.06 : -.14;
     const R = gk ? reg.gk : reg.out, parts = Object.keys(R).filter(k => k !== 'gk' || gk), tot = parts.reduce((t, k) => t + R[k], 0);
     const load = mine ? tot / Math.max(1, parts.length) : 2;   // 0 to 3
     const coach = mine ? .85 + coachLevel(gk) * .015 : 1;          // a 10/20 staff: 1.0; 20/20: 1.15
@@ -1465,7 +1477,7 @@ function trainWeek(wk){
       else k = keys[Math.floor(rr() * keys.length)];
       if (gk !== GK_KEYS.includes(k) && rr() < .7) continue;
       const lvl = mine ? (Object.entries(TR_PARTS).find(([pk, [, ks]]) => ks.includes(k) && R[pk] != null) || [null])[0] : null;
-      let v = (grow + (lvl ? R[lvl] * .015 : 0)) * (mine ? (.6 + .3 * load) * coach * (1 + ((S.fac || {}).train ? .15 : 0) + ((S.fac || {}).youth && age <= 21 ? .2 : 0)) : 1) * (0.5 + rr());
+      let v = (grow + (lvl ? R[lvl] * .015 : 0)) * (grow > 0 ? potOf(p) * minsF(p, q) : 1) * (mine ? (.6 + .3 * load) * coach * (1 + ((S.fac || {}).train ? .15 : 0) + ((S.fac || {}).youth && age <= 21 ? .2 : 0)) : 1) * (0.5 + rr());
       if (grow < 0 && ['sp', 'ac', 'st'].includes(k)) v *= 1.8 * (mine && R.phys >= 2 ? .8 : 1);   // physical work slows the decline
       if (!q.injD) q.d[k] = Math.round(((q.d[k] || 0) + v * .6) * 100) / 100;   // two decimals: the save stays small
     }
@@ -1594,7 +1606,7 @@ function summary(M){
     st: { poss: [pct, 100 - pct], sh: [M.H.sh, M.A.sh], sot: [M.H.sot, M.A.sot], cor: [M.H.corners, M.A.corners], fou: [M.H.fouls, M.A.fouls], off: [M.H.off, M.A.off], yc: [M.H.yc, M.A.yc], rc: [M.H.rc, M.A.rc] } };
 }
 function afterMatchday(res, kind, stage){
-  if (kind === 'league'){ aiSackings(); unrest(); }
+  if (kind === 'league'){ aiSackings(); unrest(); dressingRoom(); }
   const mine = res.find(r => r.h === me() || r.a === me());
   if (mine){ S.seen = S.seen || []; const opp = mine.h === me() ? mine.a : mine.h; if (!S.seen.includes(opp)) S.seen.push(opp); }
   if (mine){
@@ -1704,11 +1716,11 @@ function retireAndIntake(){
   let nid = Math.min(-1000000, ...S.gen.map(x => x.id)) - 1;
   const mineNew = [];
   for (const c of D.allClubs || D.clubs){
-    const rr = rng(`yi-${c.id}-${S.season}-${S.seed}`), n = LG.has(c.id) ? 2 + (rr() < .4 ? 1 : 0) : 1 + (rr() < .5 ? 1 : 0);
+    const rr = rng(`yi-${c.id}-${S.season}-${S.seed}`), n = (LG.has(c.id) ? 2 + (rr() < .4 ? 1 : 0) : 1 + (rr() < .5 ? 1 : 0)) + (c.id === me() && (S.fac || {}).youth ? 1 : 0);
     for (let k = 0; k < n; k++){
       const prim = POSS[Math.floor(rr() * POSS.length)], tmpls = D.all.filter(p => p.prim === prim && p.a), t = tmpls[Math.floor(rr() * tmpls.length)];
       if (!t) continue;
-      const age = 16 + (rr() < .5 ? 1 : 0), ovr = Math.round(50 + rr() * 10 + (c.q - 75) * .4 + (rr() < .08 ? 8 : 0)), drop = t.ovr - ovr;
+      const age = 16 + (rr() < .5 ? 1 : 0), ovr = Math.round(50 + rr() * 10 + (c.q - 75) * .4 + (rr() < .08 ? 8 : 0) + (c.id === me() && (S.fac || {}).youth ? 3 : 0)), drop = t.ovr - ovr;
       const a = {}; for (const [key, v] of Object.entries(t.a)) a[key] = clamp(Math.round(v - drop * (GK_KEYS.includes(key) === (prim === 'GK') ? 1 : .6) + (rr() - .5) * 6), 40, 99);
       const r = {}; for (const [q, v] of Object.entries(t.r || {})) r[q] = clamp(Math.round(v - drop), 30, 99);
       const natPool = rr() < .7 ? 'England' : ['France', 'Spain', 'Netherlands', 'Ireland', 'Scotland', 'Wales'][Math.floor(rr() * 6)], NM = YOUTH_NAMES[natPool];
@@ -1728,10 +1740,12 @@ function retireAndIntake(){
       if (S.gen.some(x => x.id === p.id)) S.gen = S.gen.filter(x => x.id !== p.id); else S.ret.push(p.id);
       for (const t of Object.values(S.tac)){ t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); } } }
   rebuildPlayers();
-  if (mineNew.length) news('club', 'Youth intake', `Your academy has brought through ${mineNew.length} youngsters: ${mineNew.map(p => `<b>${esc(p.n)}</b> (${cmPos(p.pos)}, ${p.age})`).join(', ')}. They are in the reserves; give them time.`);
+  if (mineNew.length){ const W = ['Could become one of the best players in the league.', 'Has it in him to be a first-team regular here.'], best = mineNew.find(p => W.includes(prospectWord(p)));
+    news('club', 'Youth intake', `Your academy has brought through ${mineNew.length} youngsters: ${mineNew.map(p => `<b>${esc(p.n)}</b> (${cmPos(p.pos)}, ${p.age})`).join(', ')}. They are in the reserves; they grow fastest when they play.${best ? ` Your assistant has his eye on ${esc(best.n)}: "${prospectWord(best)}"` : ' Your assistant sees no star among them, but you never know.'}`); }
 }
 // the next season: numbers into each player's history, a year on everyone, contracts that end, a new schedule
 function newSeason(){
+  S.prom = (S.prom || []).filter(x => x.k === 'pay');   // promises of football are for the season they were made in
   // up and down: the league's bottom three swap places with the Championship's top two and its play-off winner
   if (S.ch && S.ch.up && (S.down || []).length === 3){ const dn = S.down;
     S.lg = D.clubs.map(c => c.id).filter(id => !dn.includes(id)).concat(S.ch.up); setLeagues(S.lg);
@@ -2145,6 +2159,7 @@ function playerFlags(p){
   if (q.sus) out.push(`<span class="tag sus" title="Banned for ${q.sus}">Sus</span>`); else if (q.yc === 4 || q.yc === 9) out.push('<span class="tag" title="One booking from a ban">Yel</span>');
   if (q.cond < 65) out.push('<span class="tag tir" title="Very tired">Tir</span>');
   if (q.mor < 35) out.push('<span class="tag" title="Unhappy">Unh</span>');
+  if (p.club === me() && q.req !== S.season && concerns(p).length) out.push('<span class="tag" title="Wants a word with you (his Talk screen)">Wrd</span>');
   if (q.req === S.season) out.push('<span class="tag" title="Transfer request">Req</span>');
   if (q.away && S.date <= q.away) out.push('<span class="tag" title="With his national team">Int</span>');
   if (onLoan(p)) out.push(`<span class="tag" title="On loan until the summer">Loan</span><span class="lo">${esc(p.lo)}</span>`);
@@ -2729,9 +2744,22 @@ function scrPlayer(){
   if (tab === 'profile') body = playerCard(p, q, con, born);
   if (tab === 'pos') body = `<div class="ptitle">Ability in every position</div><div class="tw"><table><thead><tr>${posList.map(x => `<th class="c">${cmPos([x])}</th>`).join('')}</tr></thead><tbody><tr>${posList.map(x => `<td class="c" style="font-weight:700;color:${({ Natural: 'var(--win)', Accomplished: '#8fd6a8', Competent: 'var(--gold)', Unconvincing: '#f2a65a', Awkward: 'var(--loss)' })[posWord(p, x)]};${p.pos.includes(x) ? 'outline:1px solid var(--yel)' : ''}">${posWord(p, x)}</td>`).join('')}</tr></tbody></table></div>`;
   if (tab === 'inj') body = `<div class="ptitle">Injuries &amp; Bans</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Fitness</dt><dd>${q.injD ? `<span style="color:var(--hot)">Injured, out about ${Math.ceil(q.injD / 7)} week(s)</span>` : q.light ? 'Back from injury, not yet sharp' : 'Fit'}</dd><dt>Condition</dt><dd>${Math.round(q.cond)}%</dd><dt>Bookings</dt><dd>${q.yc} this season</dd><dt>Banned</dt><dd>${q.sus ? `${q.sus} match(es)` : 'No'}</dd><dt>Proneness</dt><dd>${p.inj ? ['Rarely injured', 'Average', 'Injury prone'][p.inj - 1] : 'Not known yet'}</dd></dl>`;
-  if (tab === 'con'){ const mineP = p.club === me(), left = con.y - S.season, dem = Math.round(Math.max(con.w * 1.15, p.val * 1500) / 500) * 500, ren = (S.renew || {})[p.id];
-    body = `<div class="ptitle">Contract</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Club</dt><dd>${crest(p.club)}${esc(fullName(p.club))}</dd><dt>Wage</dt><dd>${wage(con.w)}</dd><dt>Expires</dt><dd>30.6.${String(con.y).slice(2)}${left <= 1 ? ' <span class="tag">Ends this season</span>' : ''}</dd><dt>Value</dt><dd>${known(p) || mineP ? valueOf(p) : 'about ' + cash(roundFee(p.val * 1e6))}</dd><dt>Squad number</dt><dd>${p.no || '-'}</dd></dl>
-      ${mineP && left <= 2 && !(S.loans || {})[p.id] ? (ren === S.season ? '<p class="c dim">He has signed a new contract this season.</p>' : `<div class="ptitle">New Contract</div><p class="c">He would sign on for <b class="yel">${wage(dem)}</b>.</p><div class="tools" style="justify-content:center">${[2, 3, 4].map(y => `<button class="btn sm y" data-renew="${y}" data-w="${dem}">Until 30.6.${String(con.y + y - left).slice(2)}</button>`).join('')}</div>`) : ''}`; }
+  if (tab === 'con'){ const mineP = p.club === me(), left = con.y - S.season, ren = (S.renew || {})[p.id];
+    let neg = '';
+    if (mineP && left <= 2 && !(S.loans || {})[p.id] && !onLoan(p)){
+      const out = ren === S.season ? null : wantsOut(p);
+      if (ren === S.season) neg = `<p class="c dim">${((S.neg || {})[p.id] || {}).tries >= 3 ? 'His agent broke off the talks. Try again next season.' : left > 1 ? 'He has signed a new contract this season.' : 'He will not talk about a new contract this season.'}</p>`;
+      else if (out) neg = `<div class="ptitle">New Contract</div><p class="c dim">${out}</p>`;
+      else { const n = negAsk(p), ow = V.ow ?? n.ask, oy = V.oy ?? n.y, orl = V.orl ?? n.role;
+        neg = `<div class="ptitle">New Contract</div><p class="c">His agent asks for <b class="yel">${wage(n.ask)}</b> until 30.6.${String(S.season + n.y).slice(2)}, as a <b>${roleName(n.role).toLowerCase()}</b>.</p>
+        <div class="tools negt" style="justify-content:center"><button class="btn sm" data-ow="-1">−</button><b class="yel" id="oww" style="min-width:110px;text-align:center">${wage(ow)}</b><button class="btn sm" data-ow="1">+</button>
+          <select class="dd" id="oy">${[2, 3, 4, 5].map(y => `<option value="${y}" ${y === oy ? 'selected' : ''}>Until 30.6.${String(S.season + y).slice(2)}</option>`).join('')}</select>
+          <select class="dd" id="orl">${ROLES.map(([k, nm]) => `<option value="${k}" ${k === orl ? 'selected' : ''}>${nm}</option>`).join('')}</select>
+          <button class="btn sm y" id="ogo">Offer</button></div>
+        ${V.nsay ? `<p class="c"><b>${esc(V.nsay)}</b></p>` : ''}<p class="small dim c">A longer or shorter deal than he wants, or a smaller role, costs more; a bigger role costs less, but he will expect the football that goes with it. ${3 - n.tries} offer${3 - n.tries > 1 ? 's' : ''} left before his agent walks away.</p>`; }
+    }
+    body = `<div class="ptitle">Contract</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Club</dt><dd>${crest(p.club)}${esc(fullName(p.club))}</dd><dt>Wage</dt><dd>${wage(con.w)}</dd><dt>Expires</dt><dd>30.6.${String(con.y).slice(2)}${left <= 1 ? ' <span class="tag">Ends this season</span>' : ''}</dd>${mineP && roleOf(p) ? `<dt>Role</dt><dd>${roleName(roleOf(p))}</dd>` : ''}<dt>Value</dt><dd>${known(p) || mineP ? valueOf(p) : 'about ' + cash(roundFee(p.val * 1e6))}</dd><dt>Squad number</dt><dd>${p.no || '-'}</dd></dl>${neg}`; }
+  if (tab === 'talk') body = talkTab(p);
   const hon = (S.awards || []).filter(a => a.id === p.id);
   if (tab === 'hist') body = `${careerMoves(p)}${hon.length ? `<div class="ptitle">Honours</div><ul class="hon">${hon.map(a => `<li>${esc(a.k)}, ${a.s}/${String((a.s + 1) % 100).padStart(2, '0')}${a.why ? ` <span class="dim">(${a.why})</span>` : ''}</li>`).join('')}</ul>` : ''}<div class="ptitle">History</div><div class="tw"><table><thead><tr><th>Season</th><th>Club</th><th class="r">Apps</th><th class="r">Gls</th><th class="r">Asts</th><th class="r">Av R</th></tr></thead><tbody>${(q.hs || []).map(h => `<tr><td>${h.s}/${String((h.s + 1) % 100).padStart(2, '0')}</td><td>${h.c && C.has(h.c) ? esc(club(h.c).name) : '-'}</td><td class="r">${h.apps}</td><td class="r">${h.g}</td><td class="r">${h.a}</td><td class="r">${h.rt ?? '-'}</td></tr>`).join('')}
     <tr class="me"><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td>${esc(club(p.club).name)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${avgRt(q)}</td></tr></tbody></table></div>`;
@@ -2741,19 +2769,18 @@ function scrPlayer(){
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
   frame(ofClub(p.club, { nav: playerNav(p), short: esc(p.n), title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(<a class="bclk" data-lc="${p.club}" href="#" title="Open ${esc(fullName(p.club))}">${esc(fullName(p.club))}</a>)</span>`,
     act: mine ? `<button class="btn sm" id="promo">${firstTeam(me()).has(p.id) ? 'Move to Reserves' : 'Promote to First Team'}</button><button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
-    top: [['profile', 'Profile'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['hist', 'History']], topOn: tab,
-    onTab: k => { V = { ...V, tab: k }; view(); }, body,
+    top: [['profile', 'Profile'], ...(mine && !onLoan(p) ? [['talk', 'Talk']] : []), ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['hist', 'History']], topOn: tab,
+    onTab: k => { V = { ...V, tab: k, say: null, nsay: null, ow: null, oy: null, orl: null }; view(); }, body,
     next: at >= 0 && at < list.length - 1 ? () => { V = { ...V, id: list[at + 1] }; view(); } : null }));
   const pk = $('#pick'); if (pk) pk.addEventListener('click', () => { toggleSel(p.id); view(); });
   const pm = $('#promo'); if (pm) pm.addEventListener('click', () => { S.promo = S.promo || {}; const up = !firstTeam(me()).has(p.id), t = S.tac[me()];
     if (!up){ t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); }
     S.promo[p.id] = up ? 1 : 0; save(); toast(`${cmName(p.n)} ${up ? 'joins the first team' : 'goes to the reserves'}.`); view(); });
   if (tab === 'tr') wireTransfer(p);
-  document.querySelectorAll('[data-renew]').forEach(b => b.addEventListener('click', () => { const y = +b.dataset.renew, w = +b.dataset.w, c = S.con[p.id];
-    // happy where he is, or wanting out: an unhappy player, or a regular for a club below his level, may say no
-    const no = ps(p.id).mor < 40 || (squadRank(p) < 6 && club(me()).q < ovrNow(p) - 8 && rng(`r-${p.id}-${S.season}`)() < .5);
-    if (no){ (S.renew = S.renew || {})[p.id] = S.season; news('club', `${p.n} will not sign`, `<b>${esc(p.n)}</b> has turned down a new contract.`); toast(`${cmName(p.n)} turns it down.`); save(); view(); return; }
-    S.con[p.id] = { y: S.season + y, w }; (S.renew = S.renew || {})[p.id] = S.season; news('club', `${p.n} signs a new contract`, `<b>${esc(p.n)}</b> has signed until 30.6.${String(S.season + y).slice(2)} on ${wage(w)}.`); toast('New contract signed.'); save(); view(); }));
+  document.querySelectorAll('[data-talk]').forEach(b => b.addEventListener('click', () => { const r = talkTo(p, b.dataset.talk); V = { ...V, say: r.say }; save(); view(); }));
+  const negRead = () => ({ ow: V.ow ?? negAsk(p).ask, oy: +$('#oy').value, orl: $('#orl').value });
+  document.querySelectorAll('[data-ow]').forEach(b => b.addEventListener('click', () => { const o = negRead(), st = Math.max(500, Math.round(o.ow * .05 / 500) * 500); V = { ...V, ...o, ow: Math.max(500, o.ow + st * +b.dataset.ow), nsay: null }; view(); }));
+  const og = $('#ogo'); if (og) og.addEventListener('click', () => { const o = negRead(), r = offerTo(p, o.ow, o.oy, o.orl); V = { ...V, ...o, nsay: r.say }; if (r.ok) toast('New contract signed.'); save(); view(); });
   document.querySelectorAll('.cmlow [data-pl]').forEach(b => b.addEventListener('click', () => go({ s: 'player', id: +b.dataset.pl })));
   const sl = $('#slb'); if (sl) sl.addEventListener('click', () => { S.short = S.short || []; if (S.short.some(x => x.id === p.id)) S.short = S.short.filter(x => x.id !== p.id); else S.short.push({ id: p.id, d: S.date }); save(); view(); });
 }
@@ -2860,7 +2887,7 @@ function scrOptions(){
   frame({ title: 'Options', top: [['o', 'Options']], topOn: 'o', body: `<div class="ptitle">Save Game</div>
     <div class="tools"><input type="text" id="sname" maxlength="40" value="${esc(def)}" style="flex:1;min-width:200px"><button class="btn y" id="sgo">Save</button></div>
     <p class="small dim">The game in play saves itself as you go. A named save is a copy you can come back to: ${L.length ? L.length + ' on this device.' : 'none yet.'}</p>
-    <div class="menu" style="max-width:560px"><button id="o-restore">Restore Saved Game</button><button id="o-del">Delete Saved Game</button><button id="o-new">Start New Game</button><button id="o-setup">Setup Game</button><button id="o-exp">Export This Game to a File</button></div>
+    <div class="menu" style="max-width:560px"><button id="o-restore">Restore Saved Game</button><button id="o-del">Delete Saved Game</button><button id="o-new">Start New Game</button><button id="o-setup">Setup Game</button><button id="o-exp">Export This Game to a File</button><button id="o-imp">Import a Game from a File</button></div><input type="file" id="o-impin" accept=".json,application/json" hidden>
     <div class="ptitle" style="margin-top:14px">Holiday</div>
     <div class="tools"><select class="dd" id="hdur">${[['7', 'One week'], ['14', 'Two weeks'], ['30', 'One month'], ['91', 'Three months'], ['end', 'Until the end of the season']].map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
       <select class="dd" id="hpick"><option value="mine">Use my tactics and side</option><option value="ass">Let my assistant pick the side</option></select>
@@ -2872,7 +2899,8 @@ function scrOptions(){
   $('#sgo').addEventListener('click', () => { if (saveAs($('#sname').value)) toast('Game saved.'); view(); });
   const open = k => { SETUP_OPEN = true; SETUP = k; FILE = ''; view(); scrollTo(0, 0); };
   $('#o-restore').addEventListener('click', () => open('restore')); $('#o-del').addEventListener('click', () => open('del'));
-  $('#o-new').addEventListener('click', () => open('league')); $('#o-exp').addEventListener('click', () => { save(); exportSlot(S.slot); }); $('#o-setup').addEventListener('click', () => open('menu'));
+  $('#o-new').addEventListener('click', () => open('league')); $('#o-exp').addEventListener('click', () => { save(); exportSlot(S.slot); });
+  $('#o-imp').addEventListener('click', () => $('#o-impin').click()); $('#o-impin').addEventListener('change', e => { const f = e.target.files[0]; if (f) importFile(f, n => { save(); toast(`Imported as "${n}". Open it from Restore Saved Game.`); view(); }); }); $('#o-setup').addEventListener('click', () => open('menu'));
 }
 
 /* ---- a question to answer or a message to read, the classic way: a title, a line, and No and Yes (or Okay) ---- */
@@ -3277,6 +3305,100 @@ function unrest(){
     if (q.req === S.season && q.mor >= 60){ q.req = null; news('club', `${p.n} is settled`, `<b>${esc(p.n)}</b> has withdrawn his transfer request.`); continue; }
     if (q.req === S.season || squadRank(p) >= 14 || q.apps >= S.round * .3 || q.mor >= 40 || q.injD) continue;
     q.req = S.season; news('club', `${p.n} wants to leave`, `<b>${esc(p.n)}</b> has handed in a transfer request: he wants first-team football. Other clubs will hear of it.`); }
+}
+/* ---- the dressing room: what is on a player's mind, talks with him, promises, and the role his contract gives him ----
+   Concerns: too little football (for a good player, or for less than his contract's role), a wage below his standing,
+   a club not ambitious enough for its best man. Each one wears his morale down a little every league game until it is
+   dealt with. A talk can lift him or sting him; a promise lifts him, and a broken one costs dear, and makes the next
+   promise harder to believe. */
+const ROLES = [['key', 'Key player', .7], ['first', 'First-team regular', .5], ['rot', 'Rotation', .3], ['young', 'Young prospect', 0], ['back', 'Backup', 0]];
+const ROLE_LV = { key: 0, first: 1, rot: 2, young: 3, back: 3 };
+const roleName = k => (ROLES.find(r => r[0] === k) || [, '-'])[1];
+const roleExp = p => { const r = squadRank(p); return p.age <= 20 && r >= 11 ? 'young' : r < 4 ? 'key' : r < 11 ? 'first' : r < 17 ? 'rot' : 'back'; };
+const roleOf = p => (S.role || {})[p.id] || null;
+const demandW = p => { const c = S.con[p.id] || { w: 0 }; return Math.round(Math.max(c.w * 1.15, p.val * 1500) / 500) * 500; };
+const recentRt = q => { const L = (q.rt || []).slice(-5); return L.length >= 2 ? L.reduce((a, b) => a + b, 0) / L.length : null; };
+const promOf = p => (S.prom || []).filter(x => x.id === p.id);
+function concerns(p){
+  if (p.club !== me() || (S.loans || {})[p.id] || onLoan(p)) return [];
+  const q = ps(p.id), R = S.round, out = [], role = roleOf(p), c = S.con[p.id];
+  const need = role ? ROLES.find(r => r[0] === role)[2] : squadRank(p) < 16 && !inRes(p) ? .35 : 0;
+  if (R >= 6 && need && !q.injD && q.apps < R * need && !promOf(p).some(x => x.k === 'time'))
+    out.push({ k: 'time', t: role && need > .3 ? `His contract made him a ${roleName(role).toLowerCase()}, and he is not playing like one.` : 'He wants more first-team football.' });
+  if (c && R >= 4 && q.apps >= R * .5 && demandW(p) > c.w * 1.4 && (S.renew || {})[p.id] !== S.season && !promOf(p).some(x => x.k === 'pay'))
+    out.push({ k: 'pay', t: 'He feels his wage no longer matches his standing in the side.' });
+  if (R >= 19 && squadRank(p) < 3 && ovrNow(p) > club(me()).q + 6 && standings().findIndex(r => r.id === me()) >= 10)
+    out.push({ k: 'amb', t: 'He wonders whether the club is ambitious enough for him.' });
+  if (q.req === S.season) out.push({ k: 'req', t: 'He has asked to leave.' });
+  return out;
+}
+// after each league game: concerns wear morale down, promises are kept or broken
+function dressingRoom(){
+  S.cnews = S.cnews || {}; S.prom = S.prom || [];
+  for (const p of squadOf(me())){ const q = ps(p.id), cs = concerns(p);
+    for (const c of cs){ if (c.k === 'req') continue; q.mor = clamp(q.mor - (c.k === 'amb' ? 1 : 2), 15, 100);
+      const key = `${S.season}-${p.id}-${c.k}`; if (S.cnews[key]) continue; S.cnews[key] = 1;
+      news('club', `${p.n} wants a word`, `${esc(p.n)}: ${c.t} Have a talk with him (his Talk screen).`); } }
+  for (const pr of S.prom.slice()){ const p = P.get(pr.id); if (!p || p.club !== me()){ S.prom = S.prom.filter(x => x !== pr); continue; }
+    const q = ps(p.id);
+    const kept = pr.k === 'time' ? q.apps - pr.a0 >= 3 : (S.renew || {})[p.id] === S.season && S.con[p.id].w > pr.w0;
+    const late = pr.k === 'time' ? S.round >= pr.r + 6 : S.date > pr.by;
+    if (kept){ q.mor = clamp(q.mor + 8, 15, 100); S.prom = S.prom.filter(x => x !== pr); news('club', `${p.n} is happy`, `${esc(p.n)} says you kept your word${pr.k === 'time' ? ': he is playing again' : ''}.`); }
+    else if (late){ q.mor = clamp(q.mor - 20, 15, 100); S.trust = (S.trust || 0) + 1; S.prom = S.prom.filter(x => x !== pr);
+      if (q.req !== S.season && !(pr.k === 'time' && squadRank(p) >= 18)) q.req = S.season;
+      news('club', `${p.n} feels let down`, `${esc(p.n)} says you broke your promise ${pr.k === 'time' ? 'of first-team football' : 'of a new contract'}.${q.req === S.season ? ' He has handed in a transfer request.' : ''} The rest of the squad noticed too.`);
+      for (const o of squadOf(me())) if (o.id !== p.id){ const oq = ps(o.id); oq.mor = clamp(oq.mor - 2, 15, 100); } } }
+}
+const TALKS = [['praise', 'Praise his form'], ['crit', 'Tell him to do better'], ['calm', 'Tell him he is part of the plans'], ['time', 'Promise him more first-team football'], ['pay', 'Promise him a new contract soon']];
+const talkWait = p => { const d = (S.talk || {})[p.id]; return d ? Math.max(0, 14 - daysBetween(d, S.date)) : 0; };
+function talkTo(p, k){
+  const q = ps(p.id), mm = manMgmt(), rr = rng(`tk-${p.id}-${S.date}-${k}`)(), fr = recentRt(q), cs = concerns(p).map(c => c.k), trust = S.trust || 0;
+  let dm = 0, say = '';
+  if (k === 'praise'){ if (fr == null){ dm = 1; say = 'He thanks you, though he knows he has hardly played.'; }
+    else if (fr >= 7){ dm = 6 + mm * .3; say = 'He is delighted that you have noticed.'; }
+    else if (fr >= 6.5){ dm = 3; say = 'He is pleased, and wants to kick on.'; }
+    else { dm = -3; say = 'He looks puzzled: he knows he has not been playing well.'; } }
+  if (k === 'crit'){ if (fr == null || fr >= 6.9){ dm = -10; say = 'He is angry: he feels he has done nothing to deserve that.'; }
+    else if (rr < .4 + mm * .02){ dm = 6; say = 'He takes it on the chin and promises to work harder.'; }
+    else { dm = -7; say = 'He takes it badly and storms out.'; } }
+  if (k === 'calm'){ dm = q.mor < 55 ? 3 + mm * .25 : 1; say = q.mor < 55 ? 'He is glad to hear it.' : 'He nods: he never doubted it.'; if (cs.includes('time') || cs.includes('pay')){ dm = 1; say = 'He listens, but words alone do not change what is on his mind.'; } }
+  if (k === 'time'){ if (q.apps >= S.round * .6 && S.round >= 4){ dm = 1; say = 'He thanks you, but he is playing already.'; }
+    else if (trust >= 2 && rr < .5){ dm = -2; say = 'He has heard promises like that before.'; }
+    else { dm = 12; say = 'He is happy with that. He expects to play in the next few games.'; (S.prom = S.prom || []).push({ id: p.id, k: 'time', r: S.round, a0: q.apps }); } }
+  if (k === 'pay'){ const c = S.con[p.id];
+    if (!cs.includes('pay') && c.y - S.season > 2){ dm = 0; say = 'He did not ask for one, but he will hold you to it.'; }
+    else if (trust >= 2 && rr < .5){ dm = -2; say = 'He will believe it when he sees it.'; }
+    else { dm = 10; say = `He is pleased. He expects an offer by ${fmtDate(day(S.date, 30))}.`; }
+    if (dm >= 0) (S.prom = S.prom || []).push({ id: p.id, k: 'pay', by: day(S.date, 30), w0: c.w }); }
+  q.mor = clamp(Math.round(q.mor + dm), 15, 100); (S.talk = S.talk || {})[p.id] = S.date;
+  if (q.req === S.season && q.mor >= 60 && k !== 'crit'){ q.req = null; say += ' He has withdrawn his transfer request.'; }
+  return { say, dm };
+}
+function talkTab(p){
+  const q = ps(p.id), cs = concerns(p), w = talkWait(p), pr = promOf(p), role = roleOf(p);
+  return `<div class="ptitle">Morale</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Morale</dt><dd><b>${morWord(q.mor)}</b></dd><dt>Role</dt><dd>${role ? roleName(role) + ' <span class="dim small">(agreed in his contract)</span>' : '<span class="dim">Not set</span>'}</dd><dt>Form</dt><dd>${recentRt(q) != null ? recentRt(q).toFixed(1) + ' <span class="dim small">(last five)</span>' : '<span class="dim">Has hardly played</span>'}</dd>${prospectWord(p) ? `<dt>Assistant's view</dt><dd>${prospectWord(p)}</dd>` : ''}</dl>
+    <div class="ptitle">On his mind</div>${cs.length || pr.length ? `<ul class="hon">${cs.map(c => `<li>${esc(c.t)}</li>`).join('')}${pr.map(x => `<li class="yel">You promised him ${x.k === 'time' ? 'first-team football' : `a new contract by ${fmtDate(x.by)}`}.</li>`).join('')}</ul>` : '<p class="c dim">Nothing. He is getting on with his football.</p>'}
+    <div class="ptitle">Have a word</div>${V.say ? `<p class="c"><b>${esc(V.say)}</b></p>` : ''}${w ? `<p class="c dim">You spoke to him recently. Give it ${w} more day${w > 1 ? 's' : ''}.</p>` : `<div class="menu talkm" style="max-width:420px;margin:0 auto">${TALKS.filter(([k]) => !pr.some(x => x.k === k)).map(([k, n]) => `<button data-talk="${k}">${n}</button>`).join('')}</div>`}
+    <p class="small dim c">${S.trust ? `You have broken ${S.trust} promise${S.trust > 1 ? 's' : ''}; the squad remembers. ` : ''}A good man-manager on your staff (your assistant) gets more out of these talks.</p>`;
+}
+// a new contract: his agent asks for a wage, a length and a role; you offer, he answers. Three bad offers and the talks are off
+function negAsk(p){ S.neg = S.neg || {}; let n = S.neg[p.id];
+  if (!n || n.s !== S.season){ const age = p.age; n = S.neg[p.id] = { s: S.season, tries: 0, ask: demandW(p), y: age < 24 ? 5 : age < 29 ? 4 : age < 32 ? 3 : 2, role: roleExp(p) }; }
+  return n; }
+function negNeed(p, n, y, role){ const q = ps(p.id); return n.ask * (1 - (ROLE_LV[n.role] - ROLE_LV[role]) * .06 + Math.abs(y - n.y) * .04 - (q.mor - 60) / 400); }
+function wantsOut(p){ const q = ps(p.id);
+  if (q.mor < 40) return 'He is unhappy and will not talk about a new contract.';
+  if (squadRank(p) < 6 && club(me()).q < ovrNow(p) - 8 && rng(`r-${p.id}-${S.season}`)() < .5) return 'He wants to play for a bigger club, and will not sign again.';
+  return null; }
+function offerTo(p, w, y, role){
+  const n = negAsk(p), need = negNeed(p, n, y, role), q = ps(p.id);
+  if (w >= need - 1){ S.con[p.id] = { y: S.season + y, w }; (S.renew = S.renew || {})[p.id] = S.season; (S.role = S.role || {})[p.id] = role; delete S.neg[p.id];
+    q.mor = clamp(q.mor + 5, 15, 100);
+    news('club', `${p.n} signs a new contract`, `${esc(p.n)} has signed until 30.6.${String(S.season + y).slice(2)} on ${wage(w)}, as a ${roleName(role).toLowerCase()}.`); return { ok: true, say: 'He has signed.' }; }
+  n.tries++;
+  if (n.tries >= 3){ (S.renew = S.renew || {})[p.id] = S.season; q.mor = clamp(q.mor - 5, 15, 100); news('club', `Talks with ${p.n} off`, `${esc(p.n)}'s agent has broken off the talks about a new contract.`); return { ok: false, say: 'His agent has broken off the talks.' }; }
+  const want = Math.ceil(need / 500) * 500;
+  return { ok: false, say: w >= need * .9 ? `Close. On those terms he wants ${wage(want)}.` : `His agent calls that an insult. On those terms he wants ${wage(want)}.` };
 }
 function aiSackings(){
   S.vac = S.vac || {}; S.coachOv = S.coachOv || {};
