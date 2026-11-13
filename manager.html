@@ -243,7 +243,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok.sel .dot{outline:3px solid var(--gold);outline-offset:2px}.tok.over .dot,.tbrow.over,.tbzone.over{outline:2px dashed var(--gold);outline-offset:2px}
 .tok.dragging,.tbrow.dragging{opacity:.35}
 .lk{cursor:pointer;text-decoration:underline dotted rgba(127,200,255,.45);text-underline-offset:3px}.lk:hover{color:var(--sky);text-decoration-color:var(--sky)}
-.tbghost b{margin-left:4px;padding:1px 5px;border-radius:4px;background:#111;color:var(--gold)}
+.tbghost b{margin-left:4px;padding:1px 5px;border-radius:4px;background:#111;color:var(--gold)}.tbghost b.no{background:var(--loss);color:#fff}
 .tbghost{position:fixed;z-index:999;transform:translate(-50%,-130%);pointer-events:none;background:var(--gold);color:#111;font:700 12px/1 var(--body);padding:6px 9px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
 .tbleg{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:8px}.tbleg .lg{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid;margin-right:4px;vertical-align:-1px}.tbleg .lg.ok{border-color:var(--warn)}.tbleg .lg.bad{border-color:var(--loss)}
 .tbside{min-width:0}.tbtabs{display:flex;gap:4px;margin-bottom:8px;border-bottom:1px solid var(--line)}
@@ -570,6 +570,10 @@ const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape : FORMS[t &
 // the position a spot on the pitch stands for (0 at the top, their goal; 100 at the bottom, ours)
 const posAt = (x, y) => y >= 84 ? 'GK' : y >= 68 ? (x < 20 ? 'LB' : x > 80 ? 'RB' : 'CB') : y >= 54 ? (x < 20 ? 'LB' : x > 80 ? 'RB' : 'DMF') : y >= 40 ? (x < 20 ? 'LMF' : x > 80 ? 'RMF' : 'CMF')
   : y >= 36 ? (x < 20 ? 'LMF' : x > 80 ? 'RMF' : 'AMF') : y >= 28 ? (x < 20 ? 'LWF' : x > 80 ? 'RWF' : 'AMF') : (x < 22 ? 'LWF' : x > 78 ? 'RWF' : y >= 22 ? 'SS' : 'CF');
+// how many may share a position: one on each flank spot, three at most in a central one
+const posCap = c => /^(L|R)(B|MF|WF)$/.test(c) || c === 'GK' ? 1 : 3;
+const posFull = (codes, i, c) => codes.filter((x, k) => k !== i && x === c).length >= posCap(c);
+const capMsg = c => posCap(c) === 1 ? `There is already a ${c}.` : `No more than three at ${c}.`;
 /* placing players, by the Draft game's rules: a player plays only in a position he is registered in; as many as
    possible in their main position, then in a strong other one (half or more of his main position's starts), then
    in their less played ones, and only then the better player. Solved exactly (Hungarian method). A position he is
@@ -2305,6 +2309,7 @@ function boardWeek(){
       t.form = f; t.xi = xi; t.shape = null; return true; },
     moveTo(i, x, y){ if (slots[i][0] === 'GK') return toast('The goalkeeper stays in goal.');
       y = Math.min(82, Math.max(6, y)); x = Math.min(95, Math.max(5, x)); const code = posAt(x, y);
+      if (posFull(slots.map(z => z[0]), i, code)) return toast(capMsg(code));
       const sh = slots.map(s => s.slice()); sh[i] = [code, Math.round(x), Math.round(y)];
       const p = t.xi[i] && P.get(t.xi[i]); if (p && !canPlay(p, code)) toast(`${cmName(p.n)} is out of position at ${code}.`);
       // straighten the lines; a shape that is one of the presets takes its name
@@ -2336,6 +2341,7 @@ function boardLive(){
     toBench(){ return toast('Bring someone on instead: drag a substitute onto him.'); }, toRest(){ return false; },
     moveTo(i, x, y){ const p = us.on[i]; if (!p) return; if (p.pos === 'GK') return toast('The goalkeeper stays in goal.');
       y = Math.min(82, Math.max(6, y)); x = Math.min(95, Math.max(5, x)); const code = posAt(x, y), was = p.pos;
+      if (posFull(us.on.map(o => o.pos), i, code)) return toast(capMsg(code));
       const pl = livePlaces(M, us); p.pos = code;
       const td = tidyLines(us.on.map((o, k) => ({ k, code: k === i ? code : o.pos, x: k === i ? x : pl[k].x, y: k === i ? y : pl[k].y })).filter(it => us.on[it.k].pos !== 'GK' || it.k === i));
       if (td.form && us.on.filter(o => !o.off).length === 11){ td.order.forEach(it => { us.on[it.k].pos = it.code; delete us.on[it.k].xy; }); t.form = td.form; t.shape = null; }
@@ -2433,7 +2439,7 @@ function boardWire(B){
       if (ghost){ ev.preventDefault(); ghost.style.left = ev.clientX + 'px'; ghost.style.top = ev.clientY + 'px';
         const tg = document.elementFromPoint(ev.clientX, ev.clientY), d = tg && tg.closest('[data-drop]'); if (over && over !== d) over.classList.remove('over'); over = d; if (d && d !== el && d.dataset.drop !== 'pitch') d.classList.add('over');
         // over open grass: the position this spot stands for, as you move
-        if (d && d.dataset.drop === 'pitch' && el.dataset.drag.startsWith('s:')){ const [x, y] = rel(ev), code = (B.places[+el.dataset.drag.slice(2)] || {}).code === 'GK' ? 'GK' : posAt(x, Math.min(82, y)); ghost.innerHTML = `${esc(ghost.dataset.n)} <b>${code}</b>`; }
+        if (d && d.dataset.drop === 'pitch' && el.dataset.drag.startsWith('s:')){ const [x, y] = rel(ev), si = +el.dataset.drag.slice(2), code = (B.places[si] || {}).code === 'GK' ? 'GK' : posAt(x, Math.min(82, y)), full = code !== 'GK' && posFull(B.places.map(z => z.code), si, code); ghost.innerHTML = `${esc(ghost.dataset.n)} <b class="${full ? 'no' : ''}">${code}${full ? ' · full' : ''}</b>`; }
         else if (d && d.dataset.drop.startsWith('s:')) ghost.innerHTML = `${esc(ghost.dataset.n)} <b>${(B.places[+d.dataset.drop.slice(2)] || {}).code || ''}</b>`; else ghost.textContent = ghost.dataset.n; } };
     const up = ev => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
       if (over) over.classList.remove('over');
