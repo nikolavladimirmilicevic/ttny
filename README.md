@@ -433,3 +433,5 @@ No silent fill before a match (13.11.2026): a place you leave empty in the eleve
 Prev and next, and masking by attribute (13.11.2026): a player's banner has small ‹ › buttons to step through his club's squad (in squad order, staying on the same tab), and a club's banner the same for the clubs of its group (the league, or the other clubs), alphabetically. With attribute masking on, a player you do not know yet shows about two in five of his attributes exactly (the same ones all game) and the rest as ?, instead of every attribute as a range of ten; the radar is drawn from what is known, the search sorts unknown values last, and the comparison underlines only known values.
 
 The club name in a player's banner is a link to the club's overview (13.11.2026).
+
+Tidier profile (13.11.2026): the profile page is laid out as attributes in three columns across the page, a strip with the season's numbers, three cards of the same height (his details, the position map, the radar) and the similar players on one line, without the gaps of before. The menu shows a player by his name alone, and a long name wraps instead of being cut.
