@@ -98,6 +98,9 @@ input[type=text]{background:var(--panel-2);border:1px solid var(--line);border-r
 select.pick{background:var(--panel-3);border:1px solid var(--line);border-radius:7px;color:var(--muted);font:600 12px/1 var(--body);padding:5px 4px;min-width:62px;max-width:96px}
 select.pick.on{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}select.pick.sub{background:color-mix(in srgb,var(--sky) 30%,var(--panel-3));color:var(--text);border-color:var(--sky)}
 select.pick option,select.pick optgroup{background:var(--panel);color:var(--text)}
+.trmon td{font:600 12px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--gold);padding-top:14px!important;border-bottom:1px solid var(--line)}
+.finch{display:flex;align-items:flex-end;gap:6px;margin-top:6px}.finch>div{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}.finch i{display:block;width:100%;border-radius:4px 4px 0 0}.finch .fv{font-size:11.5px;font-weight:600}.finch .fd{font-size:10.5px;min-height:13px}
+.confh{display:flex;justify-content:space-between;max-width:520px;margin:6px auto 0;font-size:13px;color:var(--muted)}
 .tgrp{display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 8px;border-radius:10px;border:1px solid var(--line)}.tgrp.clr{background:rgba(232,96,76,.08);border-color:rgba(232,96,76,.35)}.tgrp.ask{background:rgba(92,192,138,.08);border-color:rgba(92,192,138,.35)}
 .tglbl{font:600 10.5px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:2px}.tgrp.clr .btn{color:#f3b2a6}
 .askw{position:relative}.askm{position:absolute;right:0;top:calc(100% + 6px);z-index:60;width:320px;max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
@@ -258,7 +261,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok.empty .dot{background:rgba(0,0,0,.35);color:#fff;border-style:dashed;border-color:rgba(255,255,255,.7)}
 .tok.sel .dot{outline:3px solid var(--gold);outline-offset:2px}.tok.over .dot,.tbrow.over,.tbzone.over{outline:2px dashed var(--gold);outline-offset:2px}
 .tok.dragging,.tbrow.dragging{opacity:.35}
-.lk{cursor:pointer;text-decoration:underline dotted rgba(127,200,255,.45);text-underline-offset:3px}.lk:hover{color:var(--sky);text-decoration-color:var(--sky)}
+.lk{cursor:pointer;text-decoration:none}.lk:hover{color:var(--sky,#8fd0ff)}.lk:hover{color:var(--sky);text-decoration-color:var(--sky)}
 .tbghost b{margin-left:6px;padding:2px 6px;border-radius:4px;background:var(--gold);color:#111}.tbghost b.f1{background:#5CC08A;color:#0B1626}.tbghost b.f2{background:#F2C14E;color:#0B1626}.tbghost b.f3{background:#E8604C;color:#fff}.tbghost b.f4{background:#0E2A1B;color:#dfe6ef;outline:1px solid rgba(255,255,255,.35)}.tbghost b.no{background:var(--loss);color:#fff;outline:2px solid #fff}
 .tbghost{position:fixed;z-index:999;transform:translate(-50%,-130%);pointer-events:none;background:#0B1626;color:#fff;border:1px solid rgba(255,255,255,.25);font:700 12px/1 var(--body);padding:6px 9px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
 .tbleg .lgp{display:inline-block;width:16px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;background:#5CC08A}.tbleg .lgp.f2{background:#F2C14E}.tbleg .lgp.f3{background:#E8604C}.tbleg .lgp.f4{background:#0E2A1B;outline:1px solid rgba(255,255,255,.35)}
@@ -1501,7 +1504,9 @@ function nextStop(target){
   return target;
 }
 function monthly(){
-  if (S.date.slice(8) !== '01') return;
+  // once a month, the first time the calendar is in a new month (a match on the 1st no longer makes it skip the month)
+  const mon = S.date.slice(0, 7); if (S.mon === undefined) S.mon = (S.fin.wk.length ? S.fin.wk[S.fin.wk.length - 1].m : S.rounds[0].date.slice(0, 7));
+  if (S.mon >= mon) return; S.mon = mon;
   for (const q of Object.values(S.pl)){ if (!q.d) continue; const snap = {}; for (const k of new Set([...Object.keys(q.d), ...Object.keys(q.r || {})])){ const v = Math.round(((q.d[k] || 0) + ((q.r && q.r[k]) || 0)) * 100) / 100; if (v) snap[k] = v; }
     q.dp = q.dn || {}; q.dn = snap; }
   ensureStaff(); const wages = (squadOf(me()).reduce((t, p) => t + S.con[p.id].w, 0) + S.staff.reduce((t, x) => t + x.w, 0)) * 4.3;
@@ -1858,7 +1863,7 @@ function menuTree(o, unread){
     { id: 'mgr', cls: 'mgr', label: `${esc(S.manager)}${unread ? `<span class="badge">${unread}</span>` : ''}`, v: { s: 'news' }, kids: [
       { id: 'news', label: 'News', v: { s: 'news', f: 'all' }, kids: [['all', 'All'], ['club', 'Club &amp; Board'], ['comp', 'Competitions'], ['inj', 'Injuries &amp; Bans']].map(([f, n]) => ({ id: 'n.' + f, label: n, v: { s: 'news', f } })) },
       { id: 'career', label: 'Career', v: { s: 'manager', tab: 'hist' }, kids: [
-        { id: 'k.hist', label: 'History', v: { s: 'manager', tab: 'hist' } }, { id: 'k.con', label: 'Contract &amp; Media', v: { s: 'manager', tab: 'con' } },
+        { id: 'k.hist', label: 'History', v: { s: 'manager', tab: 'hist' } }, { id: 'k.con', label: 'Contract', v: { s: 'manager', tab: 'con' } },
         { id: 'k.jobs', label: 'Jobs', v: { s: 'managers', tab: 'jobs' } }, { id: 'k.rep', label: 'Manager Rankings', v: { s: 'managers', tab: 'rep' } },
         { id: 'k.hall', label: 'Hall of Fame', act: () => { SETUP_OPEN = true; SETUP = 'hall'; view(); } }] }] },
     { id: 'my', cls: 'myclub', label: esc(club(mine).name), v: cv(mine, 'ov'), kids: clubKids(mine) },
@@ -2092,7 +2097,7 @@ function viewSetup(){
 }
 function settingsBody(){
   const row = (k, n, L) => `<div class="srow"><span>${n}</span><span class="opts" data-o="${k}">${L.map(([v, t]) => `<button data-v="${v}" class="${String(OPT[k]) === String(v) ? 'on' : ''}">${t}</button>`).join('')}</span></div>`;
-  return `<div class="sbox"><div class="small dim" style="margin-bottom:8px">Version ${esc(String((document.querySelector('meta[name=build]') || {}).content || '2.0'))}</div>
+  return `<div class="sbox">
     ${row('lang', 'Language', [['en', 'English']])}${row('cur', 'Currency', [['GBP', 'Pound £'], ['EUR', 'Euro €'], ['USD', 'Dollar $']])}${row('wages', 'Wages', [['w', 'Weekly'], ['m', 'Monthly'], ['y', 'Yearly']])}
     ${row('spd', 'Commentary Speed', SPEEDS.map(([, n], i) => [i, n]))}${row('flash', 'Flashing Goals', [['on', 'On'], ['off', 'Off']])}${row('bg', 'Other Matches', [['normal', 'Live'], ['off', 'Results only']])}</div>`;
 }
@@ -2379,11 +2384,13 @@ function clubFixtures(cid, o){
 }
 function clubInfo(cid, o){
   const c = club(cid), sq = squadOf(cid), mine = cid === me(), wk = sq.reduce((t, p) => t + S.con[p.id].w, 0);
-  const row = standings().find(r => r.id === cid), pos = standings().indexOf(row) + 1;
+  const pos = standings().findIndex(r => r.id === cid) + 1;
   let fin = '';
   if (mine){ const f = S.fin, max = Math.max(...f.wk.map(y => Math.abs(y.bal)), 1);
     fin = `<div><div class="ptitle">Finances</div><dl class="kv"><dt>Balance</dt><dd><b>${cash(f.bal)}</b></dd><dt>Transfer budget</dt><dd>${cash(f.budget)}</dd><dt>Wage bill</dt><dd>${wage(wk)}</dd><dt>Gate receipts</dt><dd>${cash(f.gate)}</dd><dt>TV and prize money</dt><dd>${cash(f.tv)}</dd><dt>Wages paid</dt><dd>${cash(f.wages)}</dd></dl>
-      ${f.wk.length ? `<div style="display:flex;align-items:flex-end;gap:4px;height:90px;margin-top:10px">${f.wk.map(x => `<div style="flex:1;text-align:center" title="${cash(x.bal)}"><div style="height:${Math.round(70 * Math.abs(x.bal) / max)}px;background:${x.bal >= 0 ? 'var(--ok)' : 'var(--hot)'}"></div><div class="small dim">${new Date(x.m + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'short' })}</div></div>`).join('')}</div>` : ''}</div>`; }
+      ${f.wk.length ? (() => { const vals = f.wk.map(x => x.bal), lo = Math.min(...vals), hi = Math.max(...vals), span = Math.max(1, hi - lo), base = lo - span * .6;   // bars from a floor below the lowest month, so the changes show
+        return `<div class="small dim" style="margin-top:12px">Balance at the start of each month</div><div class="finch">${f.wk.map((x, k) => { const prev = k ? f.wk[k - 1].bal : null, dlt = prev == null ? '' : x.bal - prev;
+          return `<div title="${cash(x.bal)}"><span class="fv">${cash(x.bal)}</span>${dlt !== '' ? `<span class="fd ${dlt >= 0 ? 'up' : 'dn'}">${dlt >= 0 ? '+' : '−'}${cash(Math.abs(dlt))}</span>` : '<span class="fd"></span>'}<i style="height:${Math.round(18 + 62 * (x.bal - base) / (hi - base || 1))}px;background:${x.bal >= 0 ? 'var(--ok)' : 'var(--hot)'}"></i><span class="small dim">${new Date(x.m + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'short' })}</span></div>`; }).join('')}</div>`; })() : ''}</div>`; }
   o.body = `<div class="cols2"><div><div class="ptitle">General Info</div><dl class="kv"><dt>Stadium</dt><dd>${esc(c.venue || '')}</dd><dt>Capacity</dt><dd>${(c.cap || 0).toLocaleString('en-GB')}${c.att ? ` <span class="small dim">(${c.att[1]}% full last season)</span>` : ''}</dd>${!mine && c.coach ? `<dt>Manager</dt><dd>${esc(c.coach)}</dd>` : ''}${c.last === 'promoted' || (c.last && c.last.pos) ? `<dt>Last season</dt><dd>${c.last === 'promoted' ? 'Promoted' : `${ordinal(c.last.pos)}, ${c.last.pts} pts`}</dd>` : ''}${c.kitm ? `<dt>Kit</dt><dd>${esc(c.kitm)}${c.sponsor ? ', ' + esc(c.sponsor) : ''}</dd>` : ''}${c.city ? `<dt>City</dt><dd>${esc(c.city)}</dd>` : ''}${LG.has(cid) ? `<dt>League</dt><dd>${esc(D.league)}, ${S.round ? ordinal(pos) : '-'}</dd>` : ''}<dt>Squad</dt><dd>${sq.length} players, average age ${(sq.reduce((t, p) => t + p.age, 0) / Math.max(1, sq.length)).toFixed(1)}</dd><dt>Squad value</dt><dd>${cash(sq.reduce((t, p) => t + p.val, 0) * 1e6)}</dd>${mine ? `<dt>Board expect</dt><dd>${AIMS[S.aim].name}</dd>` : `<dt>Usual shape</dt><dd>${esc((S.tac[cid] || autoTactic(cid)).form)}</dd>`}</dl></div>${fin}</div>`;
   frame(o);
 }
@@ -2958,12 +2965,13 @@ function clubBoard(cid, o){
   const sub = V.sub || 'conf', month = S.date.slice(0, 7), asked = (S.req || {}).m === month, fac = S.fac || {};
   const words = c >= 80 ? `The ${esc(club(me()).name)} directors are delighted with the way things are going, and look forward to a long and successful era under your management.` : c >= 62 ? `The ${esc(club(me()).name)} directors are pleased with your work so far.` : c >= 45 ? 'The board are satisfied, for now.' : c >= 28 ? 'The board are concerned by recent results.' : 'The board are very unhappy. Things must improve quickly.';
   let body;
-  if (sub === 'conf') body = `<div class="meter" style="max-width:520px;margin:6px auto 14px"><i style="width:${c}%;background:${col}"></i></div><p style="font-size:17px;line-height:1.5">${S.round ? words : `The ${esc(club(me()).name)} directors are looking forward to a long and successful era under your management.`}</p>${S.ultimatum ? '<p style="color:var(--hot);font-weight:700">The board have issued an ultimatum. Results must improve.</p>' : ''}
+  const cw = c >= 80 ? 'Delighted' : c >= 62 ? 'Pleased' : c >= 45 ? 'Satisfied' : c >= 28 ? 'Concerned' : 'Very unhappy';
+  if (sub === 'conf') body = `<div class="confh"><span>Board confidence</span><b style="color:${col}">${cw} · ${Math.round(c)}%</b></div><div class="meter" style="max-width:520px;margin:4px auto 14px"><i style="width:${c}%;background:${col}"></i></div><p style="font-size:17px;line-height:1.5">${S.round ? words : `The ${esc(club(me()).name)} directors are looking forward to a long and successful era under your management.`}</p>${S.ultimatum ? '<p style="color:var(--hot);font-weight:700">The board have issued an ultimatum. Results must improve.</p>' : ''}
     <dl class="kv" style="margin-top:12px"><dt>Expectation</dt><dd><b>${aim.name}</b>: ${aim.text}</dd><dt>Position</dt><dd>${S.round ? ordinal(pos) : 'the season has not started'}</dd><dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
   else body = `<p>Ask the board for something. They decide on your standing with them and on the money: ${cash(S.fin.bal)} in the bank. One request a month.</p>
     <div class="lg">${REQS.map(r => `<div><b>${r.n}</b><span>${cash(r.cost)}</span><span class="dim small">${r.txt}</span><span>${fac[r.k] ? '<span class="yel">Done</span>' : `<button class="btn sm" data-req="${r.k}" ${asked ? 'disabled' : ''}>Ask</button>`}</span></div>`).join('')}</div>
     ${asked ? `<p class="small dim">You have asked the board this month: ${esc(S.req.r)}</p>` : ''}`;
-  o.title = esc(club(me()).name); o.tools = `<span class="seg"><button data-bs="conf" class="${sub === 'conf' ? 'on' : ''}">Board Confidence</button><button data-bs="req" class="${sub === 'req' ? 'on' : ''}">Board Request</button><button disabled>FA Request</button></span>`;
+  o.title = esc(club(me()).name); o.tools = `<span class="seg"><button data-bs="conf" class="${sub === 'conf' ? 'on' : ''}">Board Confidence</button><button data-bs="req" class="${sub === 'req' ? 'on' : ''}">Board Request</button></span>`;
   o.body = body; frame(o);
   document.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { V = { ...V, sub: b.dataset.bs }; view(); }));
   document.querySelectorAll('[data-req]').forEach(b => b.addEventListener('click', () => { const r = REQS.find(x => x.k === b.dataset.req);
@@ -3291,8 +3299,8 @@ function scrManagers(){
   const body = tab === 'rep' ? `<div class="ptitle">Reputation in England</div><table><tbody>${M.map((m, i) => `<tr class="${m.mine ? 'me' : ''}"><td><span class="pill">${ordinal(i + 1)}</span></td><td><b style="font-size:15px">${esc(m.name)}</b></td><td class="yel">${esc(club(m.cid).name)}</td><td class="r"><span class="pill" style="background:#3A1E66">${m.rep}</span></td></tr>`).join('')}</tbody></table>${D.clubs.some(c => c.coach) ? '' : '<p class="small dim">The other managers\' names come in with the next data update.</p>'}`
     : (() => { const L = M.filter(m => /Insecure/.test(m.sec)), vac = Object.keys(S.vac || {}).map(Number).filter(cid => cid !== me() && LG.has(cid) && !(S.down || []).includes(cid));
       const vacHTML = `<div class="ptitle">Vacancies</div>${vac.length ? `<table><tbody>${vac.map(cid => `<tr><td>${crest(cid)}<b>${esc(fullName(cid))}</b></td><td class="dim">${S.round ? ordinal(standings().findIndex(r => r.id === cid) + 1) + ' in the league' : ''}</td><td class="r"><button class="btn sm ${S.sacked ? 'y' : ''}" data-apply="${cid}">Apply</button></td></tr>`).join('')}</tbody></table>` : `<p class="empty">No club is looking for a manager just now.${S.sacked ? ' Keep an eye on the clubs below: their jobs may open.' : ''}</p>`}`;
-      return `${vacHTML}<div class="ptitle">Job Information · England</div>${L.length ? `<table><tbody>${L.map(m => `<tr class="${m.mine ? 'me' : ''}"><td><b>${esc(cmName(m.name))}</b></td><td class="sky">${esc(club(m.cid).name)}</td><td class="yel">England</td><td style="color:var(--warn)">PRM</td><td class="r"><span class="pill" style="background:#3A1E66">${m.sec}</span></td></tr>`).join('')}</tbody></table>` : '<p class="empty">No manager is under pressure just now.</p>'}<p class="small dim">Managers whose clubs sit well below where their squads should finish. Their jobs may soon be open.</p>`; })();
-  frame({ title: 'Manager Rankings', top: [['rep', 'Reputation'], ['jobs', 'Job Information']], topOn: tab, onTab: k => { V = { s: 'managers', tab: k }; view(); }, body });
+      return `${vacHTML}<div class="ptitle">Managers under pressure</div>${L.length ? `<table><thead><tr><th>Manager</th><th>Club</th><th>Position</th><th class="r">Job security</th></tr></thead><tbody>${L.map(m => `<tr class="${m.mine ? 'me' : ''}"><td><b>${esc(m.name)}</b></td><td class="sky">${esc(club(m.cid).name)}</td><td class="dim">${S.round ? ordinal(standings().findIndex(r => r.id === m.cid) + 1) : '-'}</td><td class="r"><span class="pill" style="background:#3A1E66">${m.sec}</span></td></tr>`).join('')}</tbody></table>` : '<p class="empty">No manager is under pressure just now.</p>'}<p class="small dim">Managers whose clubs sit well below where their squads should finish. Their jobs may soon be open.</p>`; })();
+  frame({ title: tab === 'jobs' ? 'Jobs' : 'Manager Rankings', top: [['rep', 'Reputation'], ['jobs', 'Jobs']], topOn: tab, onTab: k => { V = { s: 'managers', tab: k }; view(); }, body });
   document.querySelectorAll('[data-apply]').forEach(b => b.addEventListener('click', () => { const cid = +b.dataset.apply;
     if (!jobOK(cid)){ (S.applied = S.applied || {})[cid] = S.date; news('board', `${club(cid).name} say no`, `${esc(club(cid).name)} have thanked you for your interest but want a manager with a bigger name.`); toast(`${club(cid).name} turn you down.`); save(); view(); return; }
     takeJob(cid); save(); go({ s: 'club', cid, tab: 'squad' }); }));
@@ -3374,13 +3382,21 @@ function scrRecords(){
   document.querySelectorAll('[data-pl]').forEach(b => b.addEventListener('click', () => go({ s: 'player', id: +b.dataset.pl })));
 }
 function scrTransfers(){
-  const months = []; for (let d = S.rounds[0].date.slice(0, 7), i = 0; i < 12; i++){ months.push(d); const [y, m] = d.split('-').map(Number); d = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; }
-  const cur = V.m || S.date.slice(0, 7), i = Math.max(0, months.indexOf(cur));
-  const L = (S.transfers || []).filter(x => x.d.slice(0, 7) === months[i]);
-  frame({ title: 'Transfers', sub: new Date(months[i] + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }), top: [['t', 'This Season']], topOn: 't',
-    tools: `<span class="seg"><button data-mo="${i - 1}" ${i ? '' : 'disabled'}>‹ Earlier</button><button data-mo="${i + 1}" ${i < months.length - 1 ? '' : 'disabled'}>Later ›</button></span>`,
-    body: L.length ? `<table><tbody>${L.map(x => `<tr><td>${fmtDate(x.d)}</td><td><b>${esc(x.n)}</b></td><td>${esc(x.from)}</td><td>→</td><td>${esc(x.to)}</td><td class="r">${x.fee}</td></tr>`).join('')}</tbody></table>` : `<p class="empty" style="font-size:16px">No transfers have taken place.</p><p class="small dim c">${windowOpen() ? 'The transfer window is open.' : windowNext() ? 'The transfer window opens on ' + fmtDate(windowNext()[0]) + '.' : ''}</p>` });
-  document.querySelectorAll('[data-mo]').forEach(b => b.addEventListener('click', () => { V = { ...V, m: months[+b.dataset.mo] }; view(); }));
+  const f = V.tf2 || 'all', nm = club(me()).name, all = (S.transfers || []).slice().sort((a, b) => a.d < b.d ? 1 : -1);
+  const feeN = x => { const m = String(x.fee || '').match(/([\d.]+)\s*(M|K)/i); return m ? +m[1] * (m[2].toUpperCase() === 'M' ? 1e6 : 1e3) : 0; };
+  const L = all.filter(x => f === 'all' || (f === 'mine' ? x.to === nm || x.from === nm : f === 'big' ? feeN(x) >= 20e6 : f === 'loan' ? /loan/i.test(x.fee || '') : true));
+  const ins = all.filter(x => x.to === nm), outs = all.filter(x => x.from === nm), spent = ins.reduce((t, x) => t + feeN(x), 0), got = outs.reduce((t, x) => t + feeN(x), 0);
+  const win = windowOpen() ? '<span class="tag ok">Window open</span>' : windowNext() ? `<span class="tag">Window opens ${fmtDate(windowNext()[0])}</span>` : '<span class="tag">Window closed</span>';
+  const month = d => new Date(d.slice(0, 7) + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  let rows = '', lastM = '';
+  for (const x of L){ const m = month(x.d); if (m !== lastM){ rows += `<tr class="trmon"><td colspan="4">${m}</td></tr>`; lastM = m; }
+    const p = P.get(x.id), mineRow = x.to === nm || x.from === nm;
+    rows += `<tr class="${mineRow ? 'me' : ''}"><td><span class="pill">${shortDate(x.d)}</span></td><td>${p ? `<b class="lk" data-lp="${p.id}">${esc(x.n)}</b> <span class="small dim">${cmPos(p.pos)}</span>` : `<b>${esc(x.n)}</b>`}</td><td class="small">${esc(x.from)} <span class="dim">→</span> <b>${esc(x.to)}</b></td><td class="r yel">${esc(x.fee || '')}</td></tr>`; }
+  frame({ title: 'Transfers', sub: `${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}`, top: [['t', 'This Season']], topOn: 't',
+    tools: `<span class="seg" id="trf">${[['all', 'All'], ['mine', esc(nm)], ['big', '£20M and up'], ['loan', 'Loans']].map(([k, n]) => `<button data-v="${k}" class="${f === k ? 'on' : ''}">${n}</button>`).join('')}</span><span style="flex:1"></span>${win}`,
+    body: `<div class="sqsum"><span><b>${all.length}</b> moves this season</span><span>${esc(nm)}: <b>${ins.length}</b> in, <b>${outs.length}</b> out</span><span>spent <b>${cash(spent)}</b>, received <b>${cash(got)}</b></span></div>
+      ${L.length ? `<div class="tw"><table><tbody>${rows}</tbody></table></div>` : `<p class="empty">No transfers ${f === 'all' ? 'yet this season' : 'of this kind yet'}.</p>`}` });
+  document.querySelectorAll('#trf button').forEach(b => b.addEventListener('click', () => { V = { ...V, tf2: b.dataset.v }; view(); }));
 }
 function scrManager(){
   const tab = V.tab || 'hist', all = allResults().filter(r => r.h === me() || r.a === me());
@@ -3388,9 +3404,9 @@ function scrManager(){
   const gf = all.reduce((t, r) => t + (r.h === me() ? r.s[0] : r.s[1]), 0), ga = all.reduce((t, r) => t + (r.h === me() ? r.s[1] : r.s[0]), 0);
   const H = (S.hist || [{ d: S.rounds[0].date, c: me(), t: `Hired as ${club(me()).name} manager` }]).slice().reverse();
   let body = '';
-  if (tab === 'hist') body = `<div class="ptitle">Achievements</div><table><tbody>${H.map(x => `<tr><td><span class="pill">${shortDate(x.d)}</span></td><td><b>${esc(club(x.c).name)}</b></td><td class="yel">${esc(x.t)}</td></tr>`).join('')}</tbody></table>
+  if (tab === 'hist') body = `<div class="ptitle">Career</div><table><tbody>${H.map(x => `<tr><td><span class="pill">${shortDate(x.d)}</span></td><td><b>${esc(club(x.c).name)}</b></td><td class="yel">${esc(x.t)}</td></tr>`).join('')}</tbody></table>
     <div class="ptitle" style="margin-top:14px">This season</div><dl class="kv"><dt>Matches</dt><dd>${all.length}: won ${w}, drawn ${d}, lost ${l}</dd><dt>Goals</dt><dd>${gf} for, ${ga} against</dd><dt>Win rate</dt><dd>${all.length ? Math.round(100 * w / all.length) : 0}%</dd></dl>`;
-  if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv"><dt>Club</dt><dd>${esc(club(me()).name)}</dd><dt>Wage</dt><dd>${wage(Math.round(club(me()).q * 900 / 5) * 5)}</dd><dt>Expires</dt><dd>30.6.${String(S.season + 2).slice(2)}</dd><dt>Nationality</dt><dd>${esc(S.nat || '-')}</dd><dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
+  if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv"><dt>Club</dt><dd>${esc(club(me()).name)}</dd><dt>Wage</dt><dd>${wage(Math.round(club(me()).q * 900 / 5) * 5)}</dd><dt>Expires</dt><dd>30.6.${String(S.season + 2).slice(2)}</dd>${S.nat ? `<dt>Nationality</dt><dd>${esc(S.nat)}</dd>` : ''}<dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
   frame(ofClub(me(), { title: `${esc(S.manager)} (${esc(club(me()).name)})`, top: [['inj', 'Injuries &amp; Bans', true], ['con', 'Contract'], ['tr', 'Transfer', true], ['hist', 'History']], topOn: tab, onTab: k => { if (k === 'hall'){ SETUP_OPEN = true; SETUP = 'hall'; view(); return; } if (k === 'stats' || k === 'jobs'){ go({ s: 'managers', tab: k === 'jobs' ? 'jobs' : 'rep' }); return; } V = { s: 'manager', tab: k }; view(); }, body,
     bottom: [['jobs', 'Jobs'], ['stats', 'Manager Rankings'], ['hall', 'Hall of Fame']] }));
 }
