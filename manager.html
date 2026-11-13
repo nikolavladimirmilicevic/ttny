@@ -160,7 +160,9 @@ tr.me td{background:rgba(79,209,139,.10)}
 .arow{display:flex;justify-content:space-between;gap:8px;padding:3px 2px;border-bottom:1px solid rgba(41,64,96,.5)}
 .av{font-weight:700;min-width:24px;text-align:right}
 .v9{color:#5CE39A}.v8{color:#A8E063}.v7{color:#F2D33D}.v6{color:var(--text)}.v5{color:#F2A65A}.v4{color:#E57A62}
-.up{color:var(--win);font-size:10px}.aup,.adn{font-size:8.5px;opacity:.7;margin-right:3px;vertical-align:1px}.aup{color:var(--win)}.adn{color:var(--loss)}.dn{color:var(--loss);font-size:10px}
+.up{color:var(--win);font-size:10px}.bnav{position:absolute;left:10px;top:50%;transform:translateY(-50%);display:flex;gap:4px;z-index:2}.bnav button{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.45);background:rgba(0,0,0,.25);color:#fff;font:700 16px/1 var(--body);cursor:pointer;display:grid;place-items:center;padding:0}.bnav button:hover{background:rgba(0,0,0,.45)}
+.msk{color:var(--muted)!important;font-weight:600;opacity:.8}
+.aup,.adn{font-size:8.5px;opacity:.7;margin-right:3px;vertical-align:1px}.aup{color:var(--win)}.adn{color:var(--loss)}.dn{color:var(--loss);font-size:10px}
 .born{color:var(--gold);font:600 16px/1.3 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0 0 12px}
 .strip{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
 .strip div{background:var(--panel-2);border-radius:10px;text-align:center;padding:6px 0;color:var(--muted);font-size:12px}
@@ -1892,7 +1894,7 @@ function frame(o){
       ${unread && V.s !== 'news' ? '<button class="sb newsflag" data-side="news">You Have News</button>' : ''}
     </aside>
     <div class="main">
-      <div class="banner ${o.crest ? 'wc' : ''}" style="--k1:${o.k1 || '#2A44D0'};--k2:${o.k2 || '#fff'}"><span class="bcr">${o.crest ? crest(o.crest, 'bigcr') : ''}</span><h1>${o.title}${o.sub ? `<span class="sub">${o.sub}</span>` : ''}${o.info ? `<span class="binfo">${o.info}</span>` : ''}</h1><span class="act">${o.act || ''}</span></div>
+      <div class="banner ${o.crest ? 'wc' : ''}" style="--k1:${o.k1 || '#2A44D0'};--k2:${o.k2 || '#fff'}"><span class="bcr">${o.crest ? crest(o.crest, 'bigcr') : ''}</span>${o.nav ? `<span class="bnav"><button id="bprev" aria-label="Previous ${o.nav.what}" title="Previous ${o.nav.what}">‹</button><button id="bnext" aria-label="Next ${o.nav.what}" title="Next ${o.nav.what}">›</button></span>` : ''}<h1>${o.title}${o.sub ? `<span class="sub">${o.sub}</span>` : ''}${o.info ? `<span class="binfo">${o.info}</span>` : ''}</h1><span class="act">${o.act || ''}</span></div>
       ${o.tools ? `<div class="tools">${o.tools}</div>` : ''}
       <section class="pane">${o.body}</section>
       <div class="bn"><button id="back" ${HIST.length ? '' : 'disabled'}>Back</button><button id="next" ${o.next ? '' : 'disabled'}>Next</button></div>
@@ -1908,6 +1910,7 @@ function frame(o){
   document.querySelectorAll('[data-side]').forEach(b => b.addEventListener('click', () => go({ s: b.dataset.side })));
   wireMenu(o);
   document.querySelectorAll('#ttop [data-t],#tbot [data-t]').forEach(b => b.addEventListener('click', () => o.onTab && o.onTab(b.dataset.t)));
+  if (o.nav){ $('#bprev').addEventListener('click', () => go(o.nav.prev)); $('#bnext').addEventListener('click', () => go(o.nav.next)); }
 }
 const ofClub = (cid, more) => { const [k1, k2] = kitOf(cid); return Object.assign({ k1, k2, crest: cid }, more); };
 function toastOK(t){ toast(t); }
@@ -2099,7 +2102,7 @@ function scrClub(){
   if (sec && !S.tac[cid]) S.tac[cid] = autoTactic(cid);
   const top = sec ? [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']] : [['ov', 'Overview'], ['squad', 'Squad'], ['transfers', 'Transfers'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', mine ? 'Finances &amp; Info' : 'General Info']];
   const bottom = sec ? [] : mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['league', esc(D.league)], ['last', 'Last Match']];
-  const o = ofClub(cid, { title: esc(fullName(cid)), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'ov' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
+  const o = ofClub(cid, { nav: clubNav(cid), title: esc(fullName(cid)), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'ov' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
   (({ ov: clubOverview, hist: clubHistory, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard })[tab] || clubSquad)(cid, o);
 }
 function playerFlags(p){
@@ -2147,7 +2150,7 @@ function clubSquad(cid, o){
   if (view_ === 'gen'){ head = `${mine ? th('pick', 'Picked') : ''}${th('name', 'Name')}${th('pos', 'Pos')}${th('age', 'Age', 'r')}${th('cond', 'Condition')}${th('mor', 'Morale')}${th('form', 'Form', '', 'Ratings in the last five games')}${th('apps', 'Apps', 'r')}${th('gls', 'Gls', 'r')}${th('ast', 'Ast', 'r')}${th('val', 'Value', 'r')}${th('con', 'Contract', 'r')}`;
     row = p => { const q = ps(p.id), c = S.con[p.id]; return `${mine ? `<td>${pick(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${cmPos(p.pos)}</b></td><td class="r">${p.age}</td><td>${condC(q.cond)}</td><td class="small">${morC(q.mor)}</td><td>${formC(q)}</td><td class="r">${q.apps}${q.sub ? `<span class="dim small"> (${q.sub})</span>` : ''}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${valueOf(p)}</td><td class="r ${c && c.y <= S.season + 1 ? 'warn' : ''}">${c ? c.y : '-'}</td>`; }; }
   else if (view_ === 'attr'){ head = `${mine ? th('pick', 'Picked') : ''}${th('name', 'Name')}${th('pos', 'Pos')}${AT.map(k => th('a:' + k, esc((ATTR_NAME[k] || k).split(' ').map(w => w[0]).join('').slice(0, 3)), 'r', ATTR_NAME[k])).join('')}`;
-    row = p => `${mine ? `<td>${pick(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${p.prim}</b></td>${AT.map(k => `<td class="r av ${vcls(A(p, k))}">${showA(p, A(p, k))}</td>`).join('')}`; }
+    row = p => `${mine ? `<td>${pick(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${p.prim}</b></td>${AT.map(k => `<td class="r av ${vcls(A(p, k))}">${showA(p, A(p, k), k)}</td>`).join('')}`; }
   else if (view_ === 'stats'){ head = `${mine ? th('pick', 'Picked') : ''}${th('name', 'Name')}${th('pos', 'Pos')}${th('apps', 'Apps', 'r')}${th('sub', 'Sub', 'r')}${th('gls', 'Gls', 'r')}${th('ast', 'Ast', 'r')}${th('mom', 'MoM', 'r')}${th('yc', 'Yel', 'r')}<th class="r">Red</th>${th('rt', 'Av R', 'r')}`;
     row = p => { const q = ps(p.id); return `${mine ? `<td>${pick(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${p.prim}</b></td><td class="r">${q.apps}</td><td class="r">${q.sub}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${q.mom}</td><td class="r">${q.yc}</td><td class="r">${q.rc || 0}</td><td class="r"><b style="color:${rc(+avgRt(q) || 0)}">${avgRt(q)}</b></td>`; }; }
   else if (view_ === 'con'){ head = `${mine ? th('pick', 'Picked') : ''}${th('name', 'Name')}${th('pos', 'Pos')}${th('age', 'Age', 'r')}${th('val', 'Value', 'r')}${th('wage', 'Wage', 'r')}${th('con', 'Expires', 'r')}<th>Status</th>`;
@@ -2638,7 +2641,7 @@ const HEX = p => p.prim === 'GK'
 function hexagon(p, kn){
   const R = 78, cx = 110, cy = 100, pt = (i, r) => [cx + r * Math.sin(i * Math.PI / 3), cy - r * Math.cos(i * Math.PI / 3)];
   const ring = f => Array.from({ length: 6 }, (_, i) => pt(i, R * f).join(',')).join(' '), H = HEX(p);
-  const v = H.map(([, ks]) => ks.reduce((t, k) => t + A(p, k), 0) / ks.length), sh = kn ? v : v.map(x => Math.floor(x / 10) * 10 + 5);
+  const v = H.map(([, ks]) => { const L = ks.filter(k => seenA(p, k)); return L.length ? L.reduce((t, k) => t + A(p, k), 0) / L.length : 30; }), sh = v;
   return `<svg viewBox="0 0 220 200" class="radar">${[1, .75, .5, .25].map(f => `<polygon points="${ring(f)}" fill="none" stroke="rgba(255,255,255,.14)"/>`).join('')}
     ${Array.from({ length: 6 }, (_, i) => `<line x1="${cx}" y1="${cy}" x2="${pt(i, R)[0]}" y2="${pt(i, R)[1]}" stroke="rgba(255,255,255,.14)"/>`).join('')}
     <polygon points="${sh.map((x, i) => pt(i, R * Math.max(.06, (x - 30) / 69)).join(',')).join(' ')}" fill="rgba(76,214,140,${kn ? .3 : .14})" stroke="#4CD68C" stroke-width="2" ${kn ? '' : 'stroke-dasharray="4 3"'}/>
@@ -2650,7 +2653,7 @@ function playerCard(p, q, con, born){
   const kn = known(p);
   // every single attribute, alphabetical, in three columns like CM 01/02; his other details close the last column
   const rows = Object.keys(ATTR_NAME).map(k => { const v = A(p, k), d = q.d[k] || 0;
-    return [TT(ATTR_NAME[k]), `${kn ? arrow(recentD(p, k)) + ' ' : ''}<span class="${vcls(v)}">${showA(p, v)}</span>`]; });
+    return [TT(ATTR_NAME[k]), `${kn ? arrow(recentD(p, k)) + ' ' : ''}<span class="${vcls(v)}">${showA(p, v, k)}</span>`]; });
   if (p.inj) rows.push(['Injury Resistance', `<span class="${vcls([90, 75, 55][p.inj - 1])}">${4 - p.inj}</span>`]);
   rows.sort((x, y) => x[0].localeCompare(y[0]));
   const tail = [['Height', p.ht ? p.ht + ' cm' : '-'], ['Weight', p.wt ? p.wt + ' kg' : '-'], ...(p.ft ? [['Preferred Foot', { L: 'Left', R: 'Right', B: 'Either' }[p.ft]]] : []), ['Playing Style', esc(p.style || '-')], ['Morale', morWord(q.mor)], ['Condition', Math.round(q.cond) + '%']].map(([n, v]) => [n, `<span class="org">${v}</span>`]);
@@ -2672,12 +2675,20 @@ function playerCard(p, q, con, born){
       <div class="small dim" style="margin-top:8px">Similar: ${sim.map(x => `<a class="sky" data-pl="${x.id}">${flag(x.nat)}${esc(x.n)}</a> <span class="dim">(${esc(fullName(x.club))})</span>`).join(', ')}</div></div>
       <div class="pside"><div class="hexbox">${hexagon(p, kn)}</div><div class="ppitch">${pitch}</div></div></div>`;
 }
+// the next or previous player of the same club (in squad order), or club of the same group (the league, or the others)
+const POS_ORDER = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'SS', 'CF'];
+const squadOrder = cid => squadOf(cid).slice().sort((a, b) => ['GK', 'DEF', 'MID', 'FWD'].indexOf(GROUP[a.prim]) - ['GK', 'DEF', 'MID', 'FWD'].indexOf(GROUP[b.prim]) || POS_ORDER.indexOf(a.prim) - POS_ORDER.indexOf(b.prim) || (a.no || 99) - (b.no || 99));
+const stepIn = (L, cur, d) => L[(L.indexOf(cur) + d + L.length) % L.length];
+function playerNav(p){ const L = squadOrder(p.club).map(x => x.id); if (L.length < 2 || !L.includes(p.id)) return null;
+  return { what: 'player', prev: { s: 'player', id: stepIn(L, p.id, -1), tab: V.tab }, next: { s: 'player', id: stepIn(L, p.id, 1), tab: V.tab } }; }
+function clubNav(cid){ const L = (LG.has(cid) ? D.clubs : hasCh() ? D.second.clubs : []).slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => c.id); if (L.length < 2 || !L.includes(cid)) return null;
+  return { what: 'club', prev: { s: 'club', cid: stepIn(L, cid, -1), tab: V.tab }, next: { s: 'club', cid: stepIn(L, cid, 1), tab: V.tab } }; }
 function scrPlayer(){
   const p = P.get(V.id); if (!p){ V = { s: 'news' }; view(); return; }
   const q = ps(p.id), con = S.con[p.id], tab = V.tab || 'profile', b = p.bd || null;
   const born = (() => { const y = new Date(S.date + 'T12:00:00Z').getUTCFullYear(); return b ? `Born ${shortDate(b)} (Age ${p.age})` : `Age ${p.age}`; })();
   const keys = Object.keys(ATTR_NAME).filter(k => p.prim === 'GK' || !GK_KEYS.includes(k)).sort((a, b) => ATTR_NAME[a].localeCompare(ATTR_NAME[b]));
-  const third = Math.ceil(keys.length / 3), col = L => L.map(k => { const v = A(p, k), d = q.d[k] || 0; return `<div class="arow"><span>${esc(ATTR_NAME[k])}</span><span>${known(p) ? arrow(recentD(p, k)) : ''} <span class="av ${vcls(v)}">${showA(p, v)}</span></span></div>`; }).join('');
+  const third = Math.ceil(keys.length / 3), col = L => L.map(k => { const v = A(p, k), d = q.d[k] || 0; return `<div class="arow"><span>${esc(ATTR_NAME[k])}</span><span>${known(p) ? arrow(recentD(p, k)) : ''} <span class="av ${vcls(v)}">${showA(p, v, k)}</span></span></div>`; }).join('');
   const posList = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'CF'];
   let body;
   if (tab === 'profile') body = playerCard(p, q, con, born);
@@ -2693,7 +2704,7 @@ function scrPlayer(){
   if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
-  frame(ofClub(p.club, { title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(${esc(fullName(p.club))})</span>`,
+  frame(ofClub(p.club, { nav: playerNav(p), title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(${esc(fullName(p.club))})</span>`,
     act: mine ? `<button class="btn sm" id="promo">${firstTeam(me()).has(p.id) ? 'Move to Reserves' : 'Promote to First Team'}</button><button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
     top: [['profile', 'Profile'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['hist', 'History']], topOn: tab,
     onTab: k => { V = { ...V, tab: k }; view(); }, body,
@@ -2854,7 +2865,7 @@ function setupFlow(state, files){
     body: `<div class="tools" style="margin-bottom:10px"><span class="dim small">Use Real Players:</span><span class="opts"><button class="on">Yes</button><button disabled>No</button></span><span class="dim small" style="margin-left:14px">Attribute Masking:</span><span class="opts" id="mask"><button data-v="1" class="${NEWG.mask ? 'on' : ''}">Yes</button><button data-v="0" class="${NEWG.mask ? '' : 'on'}">No</button></span></div>
       <div class="lg"><div class="on"><b>England</b><span class="sel">Selected</span><span class="dim">Background</span><span class="dim small">${esc(D.league)}</span></div>
       ${['Spain', 'Italy', 'Germany', 'France', 'Portugal', 'Netherlands', 'Serbia'].map(n => `<div><b>${n}</b><span class="dim">Selected</span><span class="dim">Background</span><span class="dim small">later</span></div>`).join('')}</div>
-      <p class="small dim">Attribute masking: the attributes of players at other clubs show as a range until you know them (you have played against their club, or they have been on your short list for a week).</p>` };
+      <p class="small dim">Attribute masking: only some attributes of players at other clubs are known (the rest show as ?) until you know them (you have played against their club, or they have been on your short list for a week).</p>` };
   if (state === 'name') return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Enter Name', back: 'league', next: () => { NEWG.first = ($('#fn').value || '').trim(); NEWG.last = ($('#ln').value || '').trim(); if (!NEWG.first){ toast('Enter your first name.'); return; } try { localStorage.setItem('ttny.manager.name', `${NEWG.first} ${NEWG.last}`.trim()); } catch (e) {} to('nat'); },
     body: `<div class="files" style="margin-top:20px"><label class="frow fin"><span style="width:140px">First Name :</span><input type="text" id="fn" maxlength="20" value="${esc(NEWG.first || (localStorage.getItem('ttny.manager.name') || '').split(' ')[0] || '')}"></label><label class="frow fin"><span style="width:140px">Second Name :</span><input type="text" id="ln" maxlength="24" value="${esc(NEWG.last || (localStorage.getItem('ttny.manager.name') || '').split(' ').slice(1).join(' '))}"></label></div>` };
   if (state === 'nat'){ const flt = NEWG.region || 'all', L = [...new Set(D.players.map(p => p.nat).filter(Boolean)), 'Serbia'].filter((n, i, a) => a.indexOf(n) === i).sort().filter(n => flt === 'all' || REGION[n] === flt);
@@ -2912,7 +2923,9 @@ function firstTeam(cid){ const t = S.tac[cid], L = squadOf(cid), keep = new Set(
 
 /* ---- attribute masking ---- */
 const known = p => !S.mask || p.club === me() || (S.seen || []).includes(p.club) || (S.short || []).some(x => x.id === p.id && daysBetween(x.d, S.date) >= 7);
-const showA = (p, v) => known(p) ? `${v}` : `${Math.floor(v / 10) * 10}-${Math.floor(v / 10) * 10 + 9}`;
+// a player you do not know yet: some of his attributes are known (about two in five, the same ones all game), the rest hidden
+const seenA = (p, k) => known(p) || (k != null && rng(`mk-${p.id}-${k}`)() < .4);
+const showA = (p, v, k) => seenA(p, k) ? `${v}` : '<span class="msk" title="Not known yet">?</span>';
 
 /* ---- the board: confidence, and requests ---- */
 const REQS = [
@@ -3162,7 +3175,7 @@ function scrFind(){
   const sh = new Set((S.short || []).map(x => x.id));
   let L = tab === 'short' ? D.pool.filter(p => sh.has(p.id)) : D.pool.filter(p => (F.lg !== 'pl' || LG.has(p.club)) && (F.lg !== 'ch' || !LG.has(p.club)) && (!qv || fold(p.n).includes(fold(qv))) && (!F.g || GROUP[p.prim] === F.g) && (!F.age || p.age <= +F.age) && (!F.amin || p.age >= +F.amin) && (!F.club || p.club === +F.club) && (!F.pos || p.pos.includes(F.pos)));
   // sort by any attribute, as in CM's search (a masked player counts by the bottom of his range)
-  const sk = V.sort && V.sort.startsWith('a:') ? V.sort.slice(2) : null, av = p => { const v = A(p, sk); return known(p) ? v : Math.floor(v / 10) * 10; };
+  const sk = V.sort && V.sort.startsWith('a:') ? V.sort.slice(2) : null, av = p => seenA(p, sk) ? A(p, sk) : -1;
   L = L.slice().sort((a, b) => sk ? av(b) - av(a) || b.val - a.val : V.sort === 'val' ? b.val - a.val : V.sort === 'age' ? a.age - b.age : surname(a.n).localeCompare(surname(b.n)));
   const pages = Math.max(1, Math.ceil(L.length / per)), pgc = Math.min(pg, pages - 1), rows = L.slice(pgc * per, pgc * per + per);
   const inf = p => { const q = ps(p.id), bid = (S.bids || []).some(b => b.id === p.id && ['wait', 'counter', 'yes'].includes(b.st)); return bid ? '<span class="tag" style="background:#1E6B43;color:#fff">Bid</span>' : q.injD ? '<span class="tag inj">Inj</span>' : q.sus ? '<span class="tag sus">Sus</span>' : S.con[p.id] && S.con[p.id].y <= S.season + 1 ? '<span class="tag">Ctr</span>' : sh.has(p.id) ? '<span class="tag">SL</span>' : ''; };
@@ -3197,13 +3210,13 @@ function scrFind(){
 function scrCompare(){
   const a = P.get(V.a), b = P.get(V.b); if (!a || !b){ V = { s: 'find' }; view(); return; }
   const keys = Object.keys(ATTR_NAME).filter(k => a.prim === 'GK' || b.prim === 'GK' || !GK_KEYS.includes(k)).sort((x, y) => ATTR_NAME[x].localeCompare(ATTR_NAME[y]));
-  const cell = (p, v, w) => `<td class="r av ${vcls(v)}" style="${known(p) && v > w ? 'text-decoration:underline' : ''}">${showA(p, v)}</td>`;
+  const cell = (p, v, w, k) => `<td class="r av ${vcls(v)}" style="${seenA(p, k) && v > w ? 'text-decoration:underline' : ''}">${showA(p, v, k)}</td>`;
   frame({ title: 'Compare Players', top: [['c', 'Attributes']], topOn: 'c',
     body: `<div class="tw"><table><thead><tr><th class="r">${esc(a.n)}<br><span class="dim">${esc(club(a.club).name)}</span></th><th class="c"></th><th>${esc(b.n)}<br><span class="dim">${esc(club(b.club).name)}</span></th></tr></thead><tbody>
       <tr><td class="r yel"><b>${cmPos(a.pos)}</b></td><td class="c dim">Position</td><td class="yel"><b>${cmPos(b.pos)}</b></td></tr>
       <tr><td class="r">${a.age}</td><td class="c dim">Age</td><td>${b.age}</td></tr>
       <tr><td class="r">${valueOf(a)}</td><td class="c dim">Value</td><td>${valueOf(b)}</td></tr>
-      ${keys.map(k => { const x = A(a, k), y = A(b, k); return `<tr>${cell(a, x, y)}<td class="c dim">${esc(ATTR_NAME[k])}</td><td class="av ${vcls(y)}" style="text-align:left;${known(b) && y > x ? 'text-decoration:underline' : ''}">${showA(b, y)}</td></tr>`; }).join('')}</tbody></table></div>` });
+      ${keys.map(k => { const x = A(a, k), y = A(b, k); return `<tr>${cell(a, x, y, k)}<td class="c dim">${esc(ATTR_NAME[k])}</td><td class="av ${vcls(y)}" style="text-align:left;${seenA(b, k) && y > x ? 'text-decoration:underline' : ''}">${showA(b, y, k)}</td></tr>`; }).join('')}</tbody></table></div>` });
 }
 
 /* ---- managers: reputation, jobs; transfers; the manager's own profile ---- */
