@@ -533,16 +533,19 @@ const FORM_DEF = {
 };
 // lines from the back, each left to right, laid out on the pitch: the same rule for the presets and for a shape the manager tidies
 function layoutRows(rows){
-  const out = [], L = rows.length, XS = { 1: [50], 2: [36, 64], 3: [22, 50, 78], 4: [13, 37, 63, 87], 5: [10, 30, 50, 70, 90] };
-  const YN = { DMF: 4, AMF: -3, LMF: -2, RMF: -2 }, CX = { 1: [50], 2: [37, 63], 3: [28, 50, 72], 4: [22, 41, 59, 78], 5: [10, 30, 50, 70, 90] };
-  const even = n => Array.from({ length: n }, (_, k) => Math.round(10 + 80 * (k + .5) / n));
+  const out = [], L = rows.length, YN = { DMF: 4, AMF: -3, LMF: -2, RMF: -2 }, r1 = v => Math.round(v * 10) / 10;
+  const GAP = { 2: 26, 3: 22, 4: 19, 5: 20 };
   rows.forEach((codes, i) => {
-    const wide = c => /^L(B|MF|WF)$/.test(c) ? 'L' : /^R(B|MF|WF)$/.test(c) ? 'R' : '';
-    const central = codes.filter(c => !wide(c)), cx = i === 0 && central.length === codes.length ? (codes.length === 3 ? [27, 50, 73] : XS[codes.length] || even(codes.length)) : CX[central.length] || even(central.length);
-    let ci = 0;
-    const xs = codes.map(c => wide(c) === 'L' ? (i === 0 && codes.length === 5 ? 10 : 13) : wide(c) === 'R' ? (i === 0 && codes.length === 5 ? 90 : 87) : cx[ci++]);
+    // the same gap between every two neighbours in a line: from flank to flank when both flanks are filled, from the one
+    // flank inward when only one is, and centred around the middle when the line has no flank player
+    const n = codes.length, hasL = /^L(B|MF|WF)$/.test(codes[0]), hasR = /^R(B|MF|WF)$/.test(codes[n - 1]), lo = i === 0 && n === 5 ? 10 : 13;
+    let xs;
+    if (hasL && hasR) xs = codes.map((_, k) => n === 1 ? 50 : lo + k * (100 - 2 * lo) / (n - 1));
+    else if (hasL) xs = codes.map((_, k) => lo + k * (100 - 2 * lo) / n);
+    else if (hasR) xs = codes.map((_, k) => 100 - lo - (n - 1 - k) * (100 - 2 * lo) / n);
+    else { const g = i === 0 && n === 3 ? 23 : i === 0 && n === 4 ? 74 / 3 : GAP[n] || 80 / Math.max(1, n - 1); xs = codes.map((_, k) => 50 + (k - (n - 1) / 2) * g); }
     const y = 76 - i * (58 / Math.max(1, L - 1));
-    codes.forEach((c, j) => out.push([c, xs[j], Math.round(y + (YN[c] || 0))]));
+    codes.forEach((c, k) => out.push([c, r1(xs[k]), Math.round(y + (YN[c] || 0))]));
   });
   return out;
 }
