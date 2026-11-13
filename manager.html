@@ -858,13 +858,14 @@ function setPieces(cid, xi){
 }
 /* other clubs' coaches are held to no list: each builds whatever shape suits his squad best. He starts from the best
    known shape and keeps changing one position at a time while that makes the side better, within what a coach would field:
-   three to five at the back with at least two centre-backs, at least one forward, three at most in a central position and
+   three to five at the back (at least two centre-backs), three to five in midfield, one to three up front, three at most in a central position and
    one in a flank position, flanks in pairs (a left back with a right back, and so on) */
 const COACH_CODES = ['LB', 'CB', 'RB', 'DMF', 'LMF', 'CMF', 'RMF', 'AMF', 'LWF', 'CF', 'RWF'];
 function shapeOk(codes){ const n = c => codes.filter(x => x === c).length;
   if (COACH_CODES.some(c => n(c) > posCap(c))) return false;
   const back = n('LB') + n('CB') + n('RB'), fwd = n('LWF') + n('CF') + n('RWF');
-  return back >= 3 && back <= 5 && n('CB') >= 2 && fwd >= 1 && 10 - back - fwd >= 2 && n('LB') === n('RB') && n('LMF') === n('RMF') && n('LWF') === n('RWF'); }
+  const mid = 10 - back - fwd;
+  return back >= 3 && back <= 5 && mid >= 3 && mid <= 5 && fwd >= 1 && fwd <= 3 && n('CB') >= 2 && n('LB') === n('RB') && n('LMF') === n('RMF') && n('LWF') === n('RWF'); }
 const shapeName = sl => { const ys = [...new Set(sl.slice(1).map(z => z[2]))].sort((a, b) => b - a); return ys.map(y => sl.filter(z => z[2] === y && z[0] !== 'GK').length).join('-'); };
 function coachShape(cid, rest){
   const pool = squadOf(cid).filter(p => avail(p.id)), q = (p, pos) => fitIn(p, pos) * (rest ? (0.72 + 0.28 * ps(p.id).cond / 100) : 1);
