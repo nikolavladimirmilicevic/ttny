@@ -948,7 +948,7 @@ function fillRest(cid = me()){
   const order = sl.map((s, i) => i).sort((a, b) => (sl[a][0] === 'GK' ? -1 : 0) - (sl[b][0] === 'GK' ? -1 : 0));
   for (const i of order){ if (t.xi[i]) continue; const code = sl[i][0];
     const c = pool().filter(p => fitTier(p, code) >= 0 && (code === 'GK') === (p.prim === 'GK')).sort((a, b) => fit(b, code) - fit(a, code))[0] || pool().filter(p => (code === 'GK') === (p.prim === 'GK')).sort((a, b) => fit(b, code) - fit(a, code))[0];
-    if (c){ t.xi[i] = c.id; used.add(c.id); } }
+    if (c){ t.xi[i] = c.id; used.add(c.id); if (t.out && t.out[i]){ t.stand = t.stand || {}; t.stand[i] = c.id; } } }
   if (!t.bench.some(id => P.get(id).prim === 'GK')){ const g = pool().filter(p => p.prim === 'GK').sort((a, b) => fit(b, b.prim) - fit(a, a.prim))[0]; if (g && t.bench.length < BENCH){ t.bench.push(g.id); used.add(g.id); } }
   while (t.bench.length < BENCH){ const groups = t.bench.map(id => GROUP[P.get(id).prim]), need = ['DEF', 'MID', 'FWD'].find(g => !groups.includes(g));
     const c = pool().filter(p => p.prim !== 'GK' && (!need || GROUP[p.prim] === need)).sort((a, b) => fit(b, b.prim) - fit(a, a.prim))[0] || pool().filter(p => p.prim !== 'GK').sort((a, b) => fit(b, b.prim) - fit(a, a.prim))[0];
@@ -1353,8 +1353,11 @@ const LC = 'League Cup', LC_NAMES = ['Second Round', 'Third Round', 'Fourth Roun
 function lcSetup(){
   if (!hasCh()){ S.lc = null; return; }
   const y = S.season, want = [`${y}-08-26`, `${y}-09-23`, `${y}-10-28`, `${y}-12-16`, `${y + 1}-01-20`, `${y + 1}-03-14`];
-  const busy = d => S.rounds.some(r => r.date === d) || (S.cupDates || []).includes(d) || (S.shield && S.shield.date === d);
-  const dates = want.map(d => { if (!busy(d)) return d; for (const k of [1, -1, 2, -2, 3, -3]){ const e = day(d, k); if (!busy(e)) return e; } return d; });
+  // never inside an international window (the internationals are away): such a round moves to just after it
+  const W = intlWindows(y), inWin = d => W.some(([a, b]) => d >= a && d <= b);
+  const busy = d => inWin(d) || S.rounds.some(r => r.date === d) || (S.cupDates || []).includes(d) || (S.shield && S.shield.date === d);
+  const dates = want.map(d => { if (!busy(d)) return d; for (const k of [1, -1, 2, -2, 3, -3]){ const e = day(d, k); if (!busy(e)) return e; }
+    const w = W.find(([a, b]) => d >= a && d <= b); if (w) for (let k = 1; k < 21; k++){ const e = day(w[1], k); if (!busy(e)) return e; } return d; });
   S.lc = { stage: 0, alive: D.second.clubs.map(c => c.id), wait: D.clubs.map(c => c.id), dates, log: [] };
 }
 function lcDraw(){
@@ -1468,7 +1471,7 @@ function onContinue(){
   // too few fit men for eleven: the least hurt play through it rather than the game sticking here
   const patch = () => { fillRest(); const t = S.tac[me()];
     for (let i = 0; i < 11; i++) if (!t.xi[i]){ const p = squadOf(me()).filter(x => !t.xi.includes(x.id) && !onLoan(x) && !ps(x.id).sus && (FORMS[t.form] || [])[i] && (slotsOf(t)[i][0] === 'GK') === (x.prim === 'GK')).sort((a, b) => (ps(a.id).injD || 0) - (ps(b.id).injD || 0))[0];
-      if (p){ t.xi[i] = p.id; t.bench = t.bench.filter(x => x !== p.id); toast(`${cmName(p.n)} plays through it: there is no one else.`, 4000); } }
+      if (p){ t.xi[i] = p.id; t.bench = t.bench.filter(x => x !== p.id); if (t.out && t.out[i]){ t.stand = t.stand || {}; t.stand[i] = p.id; } toast(`${cmName(p.n)} plays through it: there is no one else.`, 4000); } }
     save(); onContinue(); };
   if (missing){ choice('Not enough players', `Your side has ${missing} empty place${missing > 1 ? 's' : ''}. You cannot start a match without eleven.`, [['Assistant fills the rest', patch, 'go'], ['Go to tactics', () => go({ s: 'club', cid: me(), tab: 'tactics' })]]); return; }
   if (shortB > 0 && S.benchOk !== S.date){ choice('The bench is not full', `Only ${b0} of ${BENCH} substitutes are named.`, [['Assistant fills the bench', () => { fillRest(); save(); onContinue(); }, 'go'], ['Play anyway', () => { S.benchOk = S.date; onContinue(); }], ['Go to tactics', () => go({ s: 'club', cid: me(), tab: 'tactics' })]]); return; }
