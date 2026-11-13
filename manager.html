@@ -104,6 +104,8 @@ select.pick option,select.pick optgroup{background:var(--panel);color:var(--text
 .dot.rtd{background:var(--rc)!important;color:#0b1626!important;font-weight:700}
 @media(max-width:900px){.mov{grid-template-columns:1fr 1fr}.mov-m{grid-column:1/-1;order:3}}
 @media(max-width:560px){.mov{grid-template-columns:1fr}.mov .pitch.mini{max-width:290px;margin:0 auto}}
+.troph{margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}.trc{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.ovc .troph{margin:4px 0 2px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}.trn{font:700 24px/1 var(--display);color:var(--gold);min-width:28px;text-align:center}
 .ovclub{display:flex;align-items:center;gap:16px;background:linear-gradient(100deg,color-mix(in srgb,var(--k1) 30%,var(--panel-2)),var(--panel-2) 70%);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .kit{width:64px;height:60px;flex:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))}.kit.sm{width:40px;height:38px}
 .ovci{flex:1;min-width:0}.ovcn{font:600 22px/1.1 var(--display);letter-spacing:.03em;text-transform:uppercase}
@@ -1666,8 +1668,8 @@ const vEq = v => v && Object.keys(v).every(k => (V[k] != null ? V[k] : k === 'ci
 function menuTree(o, unread){
   const mine = me(), cv = (cid, tab) => ({ s: 'club', cid, tab });
   const clubKids = cid => (cid === mine
-    ? [['ov', 'Overview'], ['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['info', 'Finances &amp; Info'], ['tactics', 'Tactics'], ['training', 'Training'], ['last', 'Last Match'], ['board', 'Board']]
-    : [['ov', 'Overview'], ['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['info', 'General Info'], ['last', 'Last Match']]).map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'squad' ? { ...cv(cid, t), team: 'first' } : cv(cid, t) })).flatMap(x => x.id.endsWith('.squad') ? [x, { id: `c${cid}.res`, label: 'Reserves', v: { ...cv(cid, 'squad'), team: 'res' } }] : [x]);
+    ? [['ov', 'Overview'], ['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'Finances &amp; Info'], ['tactics', 'Tactics'], ['training', 'Training'], ['last', 'Last Match'], ['board', 'Board']]
+    : [['ov', 'Overview'], ['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'General Info'], ['last', 'Last Match']]).map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'squad' ? { ...cv(cid, t), team: 'first' } : cv(cid, t) })).flatMap(x => x.id.endsWith('.squad') ? [x, { id: `c${cid}.res`, label: 'Reserves', v: { ...cv(cid, 'squad'), team: 'res' } }] : [x]);
   const T = [
     { id: 'mgr', cls: 'mgr', label: `${esc(S.manager)}${unread ? `<span class="badge">${unread}</span>` : ''}`, v: { s: 'news' }, kids: [
       { id: 'news', label: 'News', v: { s: 'news', f: 'all' }, kids: [['all', 'All'], ['club', 'Club &amp; Board'], ['comp', 'Competitions'], ['inj', 'Injuries and Bans']].map(([f, n]) => ({ id: 'n.' + f, label: n, v: { s: 'news', f } })) },
@@ -1916,12 +1918,12 @@ function scrNews(){
 
 /* ---- a club: squad, next match, fixtures, general info; yours also tactics, training, last match, the league, the board ---- */
 function scrClub(){
-  const cid = V.cid || me(), mine = cid === me(), c = club(cid), sec = !LG.has(cid), tab = sec && !['ov', 'squad', 'info'].includes(V.tab) ? 'ov' : V.tab || 'ov';
+  const cid = V.cid || me(), mine = cid === me(), c = club(cid), sec = !LG.has(cid), tab = sec && !['ov', 'squad', 'hist', 'info'].includes(V.tab) ? 'ov' : V.tab || 'ov';
   if (sec && !S.tac[cid]) S.tac[cid] = autoTactic(cid);
-  const top = sec ? [['ov', 'Overview'], ['squad', 'Squad'], ['info', 'General Info']] : [['ov', 'Overview'], ['squad', 'Squad'], ['transfers', 'Transfers'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['info', mine ? 'Finances &amp; Info' : 'General Info']];
+  const top = sec ? [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']] : [['ov', 'Overview'], ['squad', 'Squad'], ['transfers', 'Transfers'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', mine ? 'Finances &amp; Info' : 'General Info']];
   const bottom = sec ? [['ch', 'Championship']] : mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['league', esc(D.league)], ['last', 'Last Match']];
   const o = ofClub(cid, { title: esc(fullName(cid)), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'ov' }); return; } if (t === 'ch'){ go({ s: 'comp', tab: 'ch' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
-  (({ ov: clubOverview, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard })[tab] || clubSquad)(cid, o);
+  (({ ov: clubOverview, hist: clubHistory, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard })[tab] || clubSquad)(cid, o);
 }
 function playerFlags(p){
   const q = ps(p.id), out = [];
@@ -2081,6 +2083,40 @@ function previewWire(again){
 }
 // the club at a glance: kit, ground, form, the next game, where they stand, who matters, who came and went
 const shirt = (a, b, cls = 'kit') => `<svg class="${cls}" viewBox="0 0 60 56" aria-hidden="true"><path d="M20 2 L8 6 L1 18 L10 23 L13 18 L13 54 L47 54 L47 18 L50 23 L59 18 L52 6 L40 2 C38 7 34 9 30 9 C26 9 22 7 20 2 Z" fill="${a}" stroke="${b}" stroke-width="2.4" stroke-linejoin="round"/><path d="M22 3 C24 7 27 8 30 8 C33 8 36 7 38 3" fill="none" stroke="${b}" stroke-width="2.4"/></svg>`;
+// what a club has won: the real 2025/26 season, then every season played in this game (and this one's finished cups)
+function clubTrophies(cid){ const T = [], add = (k, y, real) => T.push({ k, s: y, real });
+  if (D.last_season && D.last_season.champion === cid) add(D.league, D.season - 1, 1);
+  if (D.league_facts){ if (lfClub(D.league_facts.cup_winner) === cid) add(CUP, D.season - 1, 1); for (const [c, t] of D.league_facts.europe || []) if (lfClub(c) === cid) add(t, D.season - 1, 1); }
+  for (const x of S.past || []){ if (x.champ === cid) add(D.league, x.s); if (x.cup === cid) add(CUP, x.s); if (x.shield === cid) add(SHIELD, x.s); if (x.lc === cid) add(LC, x.s); if (x.cht && x.cht[0] && x.cht[0][0] === cid) add('Championship', x.s); }
+  if (!(S.past || []).some(x => x.s === S.season)){ if (S.shield && S.shield.done && S.shield.res && S.shield.res.w === cid) add(SHIELD, S.season); if (S.lc && S.lc.stage >= 6 && S.lc.alive[0] === cid) add(LC, S.season); if (S.cup.stage >= CN() && S.cup.alive[0] === cid) add(CUP, S.season); }
+  return T.sort((a, b) => b.s - a.s); }
+// every move in and out: the real ones Transfermarkt lists for this squad (and last year's players who left), then the game's own
+function clubMoves(cid){ const nm = club(cid).name, ids = new Set((S.transfers || []).map(t => t.id)), since = `${D.season - 1}-06-01`, fee = p => typeof p.tf === 'number' ? cash(p.tf * 1e6 / EUR) : p.tf === 'loan' ? 'Loan' : p.tf === 'free' ? 'Free' : /U\d\d|Academy|Reserves|B$/.test(p.fr || '') ? 'Youth' : '';
+  const L = [];
+  for (const p of D.pool){ if (!p.jn) continue; const c0 = p._c0 ?? p.club;
+    if (c0 === cid) L.push({ d: p.jn, p, io: 'in', other: p.fr ? tmName(p.fr) : '', fee: fee(p), real: 1 });
+    else if (p.jn >= since && p.fr && lfClub(p.fr) === cid) L.push({ d: p.jn, p, io: 'out', other: club(c0).name, fee: fee(p), real: 1 }); }
+  for (const t of S.transfers || []){ if (t.to === nm) L.push({ d: t.d, p: P.get(t.id), n: t.n, io: 'in', other: t.from, fee: t.fee }); if (t.from === nm) L.push({ d: t.d, p: P.get(t.id), n: t.n, io: 'out', other: t.to, fee: t.fee }); }
+  return L.sort((a, b) => a.d < b.d ? 1 : -1); }
+const trophyCabinet = T => { const by = {}; for (const t of T) (by[t.k] = by[t.k] || []).push(t.s); const sn = y => `${String(y % 100).padStart(2, '0')}/${String((y + 1) % 100).padStart(2, '0')}`;
+  return Object.keys(by).length ? `<div class="troph">${Object.entries(by).map(([k, L]) => `<div class="trc"><div class="trn">${L.length}</div><div><b>${esc(k)}</b><div class="small dim">${L.map(sn).join(', ')}</div></div></div>`).join('')}</div>` : '<p class="dim">No trophies yet. The cabinet counts from 2025/26.</p>'; };
+function clubHistory(cid, o){
+  const c = club(cid), T = clubTrophies(cid), f = V.hf || 'all', M = clubMoves(cid).filter(x => f === 'all' || x.io === f), sn = y => `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
+  const seasons = [];
+  if (D.last_season){ const r = D.last_season.table.find(x => x[0] === c.name || x[0] === c.full); if (r) seasons.push({ s: D.season - 1, lg: D.league, pos: r[1], pts: r[2], real: 1, l: c.last }); }
+  for (const x of S.past || []){ const i = x.table.findIndex(r => r[0] === cid), j = (x.cht || []).findIndex(r => r[0] === cid);
+    if (i >= 0) seasons.push({ s: x.s, lg: D.league, pos: i + 1, pts: x.table[i][1], n: x.table.length, cup: x.cup === cid, lc: x.lc === cid, down: (x.down || []).includes(cid) });
+    else if (j >= 0) seasons.push({ s: x.s, lg: 'Championship', pos: j + 1, pts: x.cht[j][1], cup: x.cup === cid, up: (x.up || []).includes(cid) }); }
+  seasons.sort((a, b) => b.s - a.s);
+  const seasonRows = seasons.map(x => `<tr><td>${sn(x.s)}</td><td>${esc(x.lg)}</td><td class="c"><b class="${x.pos === 1 ? 'yel' : ''}">${ordinal(x.pos)}</b></td><td class="c">${x.pts}</td><td class="small">${[x.pos === 1 ? 'Champions' : '', x.up ? 'Promoted' : '', x.down ? 'Relegated' : '', x.cup ? CUP + ' winners' : '', x.lc ? LC + ' winners' : '', x.real ? '<span class="dim">real season</span>' : ''].filter(Boolean).join(' · ')}</td></tr>`).join('');
+  const chips = `<span class="seg sqseg" id="hfil">${[['all', 'All'], ['in', 'Arrivals'], ['out', 'Departures']].map(([k, n]) => `<button data-v="${k}" class="${f === k ? 'on' : ''}">${n}</button>`).join('')}</span>`;
+  const rows = M.map(x => `<tr><td><span class="pill">${shortDate(x.d)}</span></td><td><span class="tag ${x.io === 'in' ? 'ok' : 'inj'}">${x.io === 'in' ? 'In' : 'Out'}</span></td><td>${x.p ? `<b class="lk" data-lp="${x.p.id}">${esc(cmName(x.p.n))}</b> <span class="small dim">${cmPos(x.p.pos)}</span>` : `<b>${esc(x.n || '')}</b>`}</td><td>${x.io === 'in' ? 'from' : 'to'} ${esc(x.other || '?')}</td><td class="r yel">${esc(x.fee || '')}</td><td class="small dim">${x.real ? 'Transfermarkt' : 'this game'}</td></tr>`).join('');
+  o.body = `<div class="ptitle">Trophy cabinet</div>${trophyCabinet(T)}
+    <div class="ptitle">Season by season</div>${seasonRows ? `<div class="tw"><table><thead><tr><th>Season</th><th>League</th><th class="c">Pos</th><th class="c">Pts</th><th></th></tr></thead><tbody>${seasonRows}</tbody></table></div>` : '<p class="dim">No finished seasons yet.</p>'}
+    <div class="ptitle" style="display:flex;align-items:center;gap:12px">Transfer history ${chips}</div><div class="tw"><table><tbody>${rows || '<tr><td class="dim">None</td></tr>'}</tbody></table></div><p class="small dim">Real moves are the current squad's from Transfermarkt plus last season's departures; the game adds every move it makes.</p>`;
+  frame(o);
+  document.querySelectorAll('#hfil button').forEach(b => b.addEventListener('click', () => { V = { ...V, hf: b.dataset.v }; view(); }));
+}
 function clubOverview(cid, o){
   const c = club(cid), sq = squadOf(cid), mine = cid === me(), lg = LG.has(cid), [k1, k2] = kitOf(cid);
   const res = (lg || !S.ch ? allResults().filter(r => r.h === cid || r.a === cid).sort((a, b) => a.date < b.date ? 1 : -1)
@@ -2108,7 +2144,7 @@ function clubOverview(cid, o){
   o.body = `${head}<div class="ovgrid">
     ${lg ? box('Next match', next) : ''}${box('Recent results', res.length ? `<table><tbody>${res.map(resRow).join('')}</tbody></table>` : '<p class="dim">No matches yet.</p>', lg ? '<button class="lnk" data-ctab2="fix">Fixtures</button>' : '')}
     ${place ? box('League position', place, '<button class="lnk" data-ctab2="league">Table</button>') : ''}${box('Key players', `<table><tbody>${kp}</tbody></table>`, '<button class="lnk" data-ctab2="squad">Squad</button>')}
-    ${box('Unavailable', out ? `<table><tbody>${out}</tbody></table>` : '<p class="dim">Everyone is fit.</p>')}${box('Arrivals', `<table><tbody>${tr(ins)}</tbody></table>`)}${box('Departures', `<table><tbody>${tr(outs)}</tbody></table>`)}
+    ${box('Honours', trophyCabinet(clubTrophies(cid)), '<button class="lnk" data-ctab2="hist">History</button>')}${box('Unavailable', out ? `<table><tbody>${out}</tbody></table>` : '<p class="dim">Everyone is fit.</p>')}${box('Arrivals', `<table><tbody>${tr(ins)}</tbody></table>`)}${box('Departures', `<table><tbody>${tr(outs)}</tbody></table>`)}
   </div>`;
   frame(o);
   document.querySelectorAll('[data-ctab2]').forEach(b => b.addEventListener('click', () => b.dataset.ctab2 === 'league' ? go({ s: 'comp', tab: 'ov' }) : go({ s: 'club', cid, tab: b.dataset.ctab2 })));
