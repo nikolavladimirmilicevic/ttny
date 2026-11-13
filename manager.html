@@ -1839,22 +1839,28 @@ const MDEF = { news: { f: 'all' }, club: { tab: 'ov', team: 'first' }, comp: { t
 const vEq = v => v && Object.keys(v).every(k => (V[k] != null ? V[k] : k === 'cid' && V.s === 'club' ? me() : (MDEF[V.s] || {})[k]) === v[k]);
 function menuTree(o, unread){
   const mine = me(), cv = (cid, tab) => ({ s: 'club', cid, tab });
+  // your club in the order of a week's work: the side, the plan, the games, then the business; other clubs as a scout sees them
   const clubKids = cid => (cid === mine
-    ? [['ov', 'Overview'], ['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'Finances &amp; Info'], ['tactics', 'Tactics'], ['training', 'Training'], ['last', 'Last Match'], ['board', 'Board']]
-    : [['ov', 'Overview'], ['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'General Info'], ['last', 'Last Match']]).map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'squad' ? { ...cv(cid, t), team: 'first' } : cv(cid, t) })).flatMap(x => x.id.endsWith('.squad') ? [x, { id: `c${cid}.res`, label: 'Reserves', v: { ...cv(cid, 'squad'), team: 'res' } }] : [x]);
+    ? [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['tactics', 'Tactics'], ['training', 'Training'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['tr', 'Transfers'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']]
+    : [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'General Info']])
+    .map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'tr' ? { s: 'transfers' } : t === 'squad' ? { ...cv(cid, 'squad'), team: 'first' } : t === 'res' ? { ...cv(cid, 'squad'), team: 'res' } : cv(cid, t) }));
+  const otherKids = cid => [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']].map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'squad' ? { ...cv(cid, t), team: 'first' } : cv(cid, t) }));
+  const byName = L => L.slice().sort((a, b) => a.name.localeCompare(b.name));
+  const cupLabel = esc(CUP === 'Cup' ? 'The Cup' : CUP);
   const T = [
     { id: 'mgr', cls: 'mgr', label: `${esc(S.manager)}${unread ? `<span class="badge">${unread}</span>` : ''}`, v: { s: 'news' }, kids: [
-      { id: 'news', label: 'News', v: { s: 'news', f: 'all' }, kids: [['all', 'All'], ['club', 'Club &amp; Board'], ['comp', 'Competitions'], ['inj', 'Injuries and Bans']].map(([f, n]) => ({ id: 'n.' + f, label: n, v: { s: 'news', f } })) },
+      { id: 'news', label: 'News', v: { s: 'news', f: 'all' }, kids: [['all', 'All'], ['club', 'Club &amp; Board'], ['comp', 'Competitions'], ['inj', 'Injuries &amp; Bans']].map(([f, n]) => ({ id: 'n.' + f, label: n, v: { s: 'news', f } })) },
       { id: 'career', label: 'Career', v: { s: 'manager', tab: 'hist' }, kids: [
         { id: 'k.hist', label: 'History', v: { s: 'manager', tab: 'hist' } }, { id: 'k.con', label: 'Contract &amp; Media', v: { s: 'manager', tab: 'con' } },
-        { id: 'k.rep', label: 'Manager Stats', v: { s: 'managers', tab: 'rep' } }, { id: 'k.jobs', label: 'Jobs', v: { s: 'managers', tab: 'jobs' } },
+        { id: 'k.jobs', label: 'Jobs', v: { s: 'managers', tab: 'jobs' } }, { id: 'k.rep', label: 'Manager Rankings', v: { s: 'managers', tab: 'rep' } },
         { id: 'k.hall', label: 'Hall of Fame', act: () => { SETUP_OPEN = true; SETUP = 'hall'; view(); } }] }] },
-    { id: 'my', cls: 'myclub', label: esc(club(mine).name), v: cv(mine, 'squad'), kids: [...clubKids(mine), { id: 'my.tr', label: 'Transfers', v: { s: 'transfers' } }] },
-    { id: 'comp', label: 'Competitions', v: { s: 'comp', tab: 'ov' }, kids: [['ov', 'Overview'], ['table', 'Table'], ['results', 'Results'], ['fixtures', 'Fixtures'], ['cup', esc(CUP === 'Cup' ? 'The Cup' : CUP)], ...(S.lc ? [['lc', LC]] : []), ['tstats', 'Team Stats'], ['pstats', 'Player Stats'], ['refs', 'Referee Stats'], ['awards', 'Awards']].map(([t, n]) => ({ id: 'cp.' + t, label: n, v: { s: 'comp', tab: t } })).concat((S.past || []).length ? [{ id: 'cp.rev', label: 'Season Review', v: { s: 'review' } }] : []).concat([{ id: 'cp.rec', label: 'Records', v: { s: 'records' }, kids: [{ id: 'rec.r', label: 'League', v: { s: 'records', tab: 'r' } }, { id: 'rec.tr', label: 'Transfers', v: { s: 'records', tab: 'tr' } }] }]) },
-    { id: 'clubs', label: 'Nations &amp; Clubs', v: { s: 'clubs' }, kids: [{ id: 'eng', label: 'England', v: { s: 'clubs' }, kids: D.clubs.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'squad'), kids: clubKids(c.id) })).concat(hasCh() ? [{ id: 'engch', label: 'Other clubs', v: { s: 'clubs', lg: 'ch' }, kids: D.second.clubs.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'squad'),
-      kids: [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']].map(([t, n]) => ({ id: `c${c.id}.${t}`, label: n, v: t === 'squad' ? { ...cv(c.id, t), team: 'first' } : cv(c.id, t) })) })) }] : []) }] },
-    { id: 'find', label: 'Find', v: { s: 'find', tab: 'search' }, kids: [['short', 'Short List'], ['search', 'Player Search'], ['staff', 'Staff Search'], ['sc1', 'Scout #1'], ['sc2', 'Scout #2']].map(([t, n]) => ({ id: 'f.' + t, label: n, v: { s: 'find', tab: t } })) },
-    { id: 'opt', label: 'Game Options', v: { s: 'options' } }];
+    { id: 'my', cls: 'myclub', label: esc(club(mine).name), v: cv(mine, 'ov'), kids: clubKids(mine) },
+    { id: 'comp', label: 'Competitions', v: { s: 'comp', tab: 'ov' }, kids: [['ov', 'Overview'], ['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results'], ['pstats', 'Player Stats'], ['tstats', 'Team Stats'], ['cup', cupLabel], ...(S.lc ? [['lc', LC]] : []), ['awards', 'Awards'], ['refs', 'Referees']].map(([t, n]) => ({ id: 'cp.' + t, label: n, v: { s: 'comp', tab: t } })) },
+    { id: 'clubs', label: 'Clubs', v: { s: 'clubs' }, kids: [
+      ...byName(D.clubs).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: clubKids(c.id) })),
+      ...(hasCh() ? [{ id: 'engch', label: 'Other Clubs', v: { s: 'clubs', lg: 'ch' }, kids: byName(D.second.clubs).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: otherKids(c.id) })) }] : [])] },
+    { id: 'find', label: 'Search', v: { s: 'find', tab: 'search' }, kids: [['search', 'Players'], ['short', 'Short List'], ['sc1', 'Scout 1'], ['sc2', 'Scout 2'], ['staff', 'Staff']].map(([t, n]) => ({ id: 'f.' + t, label: n, v: { s: 'find', tab: t } })) },
+    { id: 'opt', label: 'Options', v: { s: 'options' } }];
   // the deepest item that is this screen; a screen the tree does not hold (a player, a comparison) gets its own entry
   let hit = null;
   const walk = (L, up) => L.forEach(it => { it.up = up; if (vEq(it.v) && (!hit || (up[0] || it.id) === (hit.up[0] || hit.id) && up.length >= hit.up.length)) hit = it; if (it.kids) walk(it.kids, [...up, it.id]); });
@@ -2092,7 +2098,7 @@ function scrNews(){
   let i = V.i == null ? 0 : Math.min(V.i, L.length - 1); const cur = L[i];
   if (cur && cur.n){ cur.n = 0; save(); }
   const slot = n => n.c === 'match' || n.c === 'discipline' ? 'EVE' : n.c === 'injury' ? 'PM' : 'AM';
-  frame({ title: `${esc(S.manager)} News`, top: [['all', 'All'], ['club', 'Club & Board'], ['comp', 'Competitions'], ['inj', 'Injuries and Bans']], topOn: F,
+  frame({ title: `${esc(S.manager)} News`, top: [['all', 'All'], ['club', 'Club & Board'], ['comp', 'Competitions'], ['inj', 'Injuries & Bans']], topOn: F,
     onTab: t => { if (['media', 'trans', 'jobs', 'rec'].includes(t)){ go(t === 'media' ? { s: 'manager', tab: 'con' } : t === 'trans' ? { s: 'transfers' } : t === 'jobs' ? { s: 'managers', tab: 'jobs' } : { s: 'records' }); return; } V = { s: 'news', f: t, i: 0 }; view(); },
     bottom: [['media', 'Contracts and Media'], ['trans', 'Transfers'], ['jobs', 'Jobs'], ['rec', 'Records']],
     tools: `<span style="flex:1"></span><button class="btn sm" id="nextun" ${S.news.some(n => n.n) ? '' : 'disabled'}>Next Unread</button>`,
@@ -2779,7 +2785,7 @@ function scrComp(){
       body = `<div class="ptitle">${S.done ? 'Awards' : 'Awards: as things stand'}</div><div style="max-width:620px;margin:0 auto">${aw('Player of the Year', best, best && rt(best).toFixed(2))}${aw('Young Player of the Year', young, young && rt(young).toFixed(2))}${aw('Golden Boot', gb, gb && gb.q.g + ' goals')}${aw('Goalkeeper of the Year', pos('GK'))}${aw('Defender of the Year', pos('DEF'))}${aw('Midfielder of the Year', pos('MID'))}${aw('Forward of the Year', pos('FWD'))}</div>`; } }
   if (tab === 'refs'){ const R = {}; for (const r of allResults()){ if (!r.ref) continue; const x = R[r.ref] = R[r.ref] || { g: 0, yc: 0, rc: 0, pen: 0 }; x.g++; x.yc += (r.st.yc || [0, 0]).reduce((a, b) => a + b, 0); x.rc += (r.st.rc || [0, 0]).reduce((a, b) => a + b, 0); x.pen += (r.hs || []).filter(h => h.how === 'pen').length; }
     body = `<div class="ptitle">Referee Stats</div><div class="tw"><table><thead><tr><th>Referee</th><th class="r">Games</th><th class="r">Yellow</th><th class="r">Red</th><th class="r">Yellow a game</th><th class="r">Penalty goals</th></tr></thead><tbody>${Object.entries(R).sort((a, b) => b[1].yc / b[1].g - a[1].yc / a[1].g).map(([n, x]) => `<tr><td><b>${esc(n)}</b></td><td class="r">${x.g}</td><td class="r">${x.yc}</td><td class="r">${x.rc}</td><td class="r yel">${(x.yc / x.g).toFixed(2)}</td><td class="r">${x.pen}</td></tr>`).join('') || '<tr><td class="dim">No matches yet</td></tr>'}</tbody></table></div>`; }
-  frame({ title: esc(D.league), top: [['ov', 'Overview'], ['table', 'Table'], ['results', 'Results'], ['fixtures', 'Fixtures'], ['cup', esc(CUP === 'Cup' ? 'The Cup' : CUP)], ...(S.lc ? [['lc', LC]] : [])], bottom: [['tstats', 'Team Stats'], ['pstats', 'Player Stats'], ['refs', 'Referee Stats'], ['awards', 'Awards']], topOn: tab, bottomOn: tab,
+  frame({ title: esc(D.league), top: [['ov', 'Overview'], ['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results'], ['pstats', 'Player Stats'], ['tstats', 'Team Stats']], bottom: [['cup', esc(CUP === 'Cup' ? 'The Cup' : CUP)], ...(S.lc ? [['lc', LC]] : []), ['awards', 'Awards'], ['refs', 'Referees']], topOn: tab, bottomOn: tab,
     onTab: t => { V = { s: 'comp', tab: t }; view(); }, body });
   document.querySelectorAll('[data-tk]').forEach(b => b.addEventListener('click', () => { V = { ...V, tk: b.dataset.tk }; view(); }));
   document.querySelectorAll('[data-ctab]').forEach(b => b.addEventListener('click', () => { V = { s: 'comp', tab: b.dataset.ctab }; view(); }));
@@ -2792,8 +2798,8 @@ function scrComp(){
 /* ---- nations & clubs, find, the manager, game options ---- */
 function scrClubs(){
   const grid = L => `<div class="clubs">${L.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<button data-cv="${c.id}" style="--k1:${(c.kit || ['#888'])[0]}"><span class="sw"><img src="${crestURL(c.id)}" alt="" onerror="this.remove()"></span><span><b>${esc(c.name)}</b><small>${esc(c.city || c.venue || '')}</small></span></button>`).join('')}</div>`;
-  const pl = `<div class="ptitle">${esc(D.league)}</div>${grid(D.clubs)}`, ch = hasCh() ? `<div class="ptitle">Other clubs</div>${grid(D.second.clubs)}` : '';
-  frame({ title: 'Nations &amp; Clubs', top: [['eng', 'England']], topOn: 'eng', body: V.lg === 'ch' ? ch + pl : pl + ch });
+  const pl = `<div class="ptitle">${esc(D.league)}</div>${grid(D.clubs)}`, ch = hasCh() ? `<div class="ptitle">Other Clubs</div>${grid(D.second.clubs)}` : '';
+  frame({ title: 'Clubs', top: [['eng', 'All Clubs']], topOn: 'eng', body: V.lg === 'ch' ? ch + pl : pl + ch });
   document.querySelectorAll('[data-cv]').forEach(b => b.addEventListener('click', () => go({ s: 'club', cid: +b.dataset.cv, tab: 'ov' })));
 }
 /* holiday, as in CM 01/02: the calendar runs on, every game played without you; the side as you left it or picked by
@@ -2829,7 +2835,7 @@ function holidayBuy(){
 }
 function scrOptions(){
   const L = slotList(), def = `${club(me()).name} ${shortDate(S.date)}`;
-  frame({ title: 'Game Options', top: [['o', 'Options']], topOn: 'o', body: `<div class="ptitle">Save Game</div>
+  frame({ title: 'Options', top: [['o', 'Options']], topOn: 'o', body: `<div class="ptitle">Save Game</div>
     <div class="tools"><input type="text" id="sname" maxlength="40" value="${esc(def)}" style="flex:1;min-width:200px"><button class="btn y" id="sgo">Save</button></div>
     <p class="small dim">The game in play saves itself as you go. A named save is a copy you can come back to: ${L.length ? L.length + ' on this device.' : 'none yet.'}</p>
     <div class="menu" style="max-width:560px"><button id="o-restore">Restore Saved Game</button><button id="o-del">Delete Saved Game</button><button id="o-new">Start New Game</button><button id="o-setup">Setup Game</button><button id="o-exp">Export This Game to a File</button></div>
@@ -2965,7 +2971,7 @@ function clubBoard(cid, o){
 let PICK2 = [];
 /* scouts: two of them, each sent to watch a club; after two weeks his report comes in and that club's players are
    known (attribute masking) for the rest of the game */
-const SCOUT_DAYS = 14, SCOUT_NAMES = ['Scout #1', 'Scout #2'];
+const SCOUT_DAYS = 14, SCOUT_NAMES = ['Scout 1', 'Scout 2'];
 function scoutTick(){
   // a scout set to watch your next opponents: you know their players by the time you meet them
   if ((S.scouts || []).some(sc => sc && sc.next)){ const ev = events().find(e => e.k === 'cup' ? S.cup.alive.includes(me()) : e.r && e.r.m.some(m => m.h === me() || m.a === me()));
@@ -3146,7 +3152,7 @@ function scrStaff(tab){
     return `<tr><td>${x.nat ? flag(x.nat) : ''}<b>${esc(x.n)}</b>${x.int && act === 'hire' ? ' <span class="tag" style="background:#1E6B43;color:#fff">Interested</span>' : ''}</td><td class="dim">${STAFF_ROLES[x.role][0]}</td><td class="c">${x.age}</td>${cell(x.co, m === 'co')}${cell(x.cg, m === 'cg')}${cell(x.ju, m === 'ju')}${cell(x.mm, false)}${cell(x.ph, m === 'ph')}<td class="r">${wage(x.w)}</td>
       <td class="r">${act === 'hire' ? `<button class="btn sm" data-hire="${x.id}">Offer Contract</button>` : `<button class="btn sm" data-fire="${x.id}">Release</button>`}</td></tr>`; };
   const head = `<thead><tr><th>Name</th><th>Job</th><th class="c">Age</th><th class="c" title="Coaching (outfield)">Coa</th><th class="c" title="Coaching (goalkeepers)">GK</th><th class="c" title="Judging Ability">Jud</th><th class="c" title="Man Management">Man</th><th class="c" title="Physiotherapy">Phy</th><th class="r">Wage</th><th></th></tr></thead>`;
-  frame({ title: 'Player &amp; Staff Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: [['short', 'Short List'], ['search', 'Player Search'], ['staff', 'Staff Search'], ['sc1', 'Scout #1'], ['sc2', 'Scout #2']], topOn: 'staff',
+  frame({ title: 'Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: [['search', 'Players'], ['short', 'Short List'], ['sc1', 'Scout 1'], ['sc2', 'Scout 2'], ['staff', 'Staff']], topOn: 'staff',
     onTab: t => { V = { s: 'find', tab: t }; view(); },
     body: `<div class="ptitle">Your Staff</div><div class="tw"><table>${head}<tbody>${mine.map(x => row(x, 'fire')).join('')}</tbody></table></div><p class="small dim">Staff wages: ${wage(wageAll)}. Coaching speeds training (Training shows your level), Physiotherapy recovery from injury, Man Management keeps players happy; the assistant's Judging Ability picks your side while you are away.</p>
       <div class="ptitle">Available Staff</div><div class="tw"><table>${head}<tbody>${pool.filter(x => !mine.some(y => y.id === x.id)).sort((a, b) => b.int - a.int || a.role.localeCompare(b.role)).map(x => row(x, 'hire')).join('')}</tbody></table></div><p class="small dim">A new list of free staff each month.</p>` });
@@ -3165,7 +3171,7 @@ function scrScout(tab){
     : `<p>${SCOUT_NAMES[k]} is free. Send him to watch a club: in ${SCOUT_DAYS} days he reports back, and you know that club's players in full from then on. Or have him watch your next opponents, week by week.</p><div class="tools"><button class="btn sm y" id="scnext">Watch our next opponents</button></div>`;
   const seen = new Set(S.seen || []);
   const list = D.clubs.filter(c => c.id !== me()).slice().sort((a, b) => a.name.localeCompare(b.name));
-  frame({ title: 'Player &amp; Staff Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: [['short', 'Short List'], ['search', 'Player Search'], ['staff', 'Staff Search'], ['sc1', 'Scout #1'], ['sc2', 'Scout #2']], topOn: tab,
+  frame({ title: 'Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: [['search', 'Players'], ['short', 'Short List'], ['sc1', 'Scout 1'], ['sc2', 'Scout 2'], ['staff', 'Staff']], topOn: tab,
     onTab: t => { V = { s: 'find', tab: t }; view(); },
     body: `<div class="ptitle">${SCOUT_NAMES[k]}</div>${busy}${S.mask ? '' : '<p class="small dim">Attribute masking is off in this game, so every player is known already; scouts still send you their pick of a club.</p>'}
       <div class="ptitle">Clubs</div><div class="clubs">${list.map(c => `<button data-scout="${c.id}" ${sc.c || sc.next ? 'disabled' : ''} style="--k1:${(c.kit || ['#888'])[0]}"><span class="sw"><img src="${crestURL(c.id)}" alt="" onerror="this.remove()"></span><span><b>${esc(c.name)}</b><small class="${seen.has(c.id) ? 'up' : 'dim'}">${seen.has(c.id) ? 'Known' : (S.scouts.find(x => x && x.c === c.id) ? 'Being watched' : 'Not scouted')}</small></span></button>`).join('')}</div>` });
@@ -3189,12 +3195,12 @@ function scrFind(){
   const tools = tab === 'short' ? `<span class="dim small">Players on your short list: their attributes are known after a week.</span>` : `<input type="text" id="fq" placeholder="Name" value="${esc(qv)}" style="flex:1;min-width:140px">
     <select class="dd" id="fg"><option value="">All positions</option>${[['GK', 'Goalkeepers'], ['DEF', 'Defenders'], ['MID', 'Midfielders'], ['FWD', 'Forwards']].map(([k, n]) => `<option value="${k}" ${F.g === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <select class="dd" id="fa"><option value="">Any age</option>${[19, 21, 23, 25, 28, 31].map(a => `<option value="${a}" ${+F.age === a ? 'selected' : ''}>${a} or under</option>`).join('')}</select>
-    <select class="dd" id="fl"><option value="">All clubs</option><option value="pl" ${F.lg === 'pl' ? 'selected' : ''}>${esc(D.league)}</option>${hasCh() ? `<option value="ch" ${F.lg === 'ch' ? 'selected' : ''}>Other clubs</option>` : ''}</select>
-    <select class="dd" id="fc"><option value="">All clubs</option>${[[esc(D.league), D.clubs], ['Other clubs', hasCh() ? D.second.clubs : []]].filter(x => x[1].length).map(([g, L]) => `<optgroup label="${g}">${L.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<option value="${c.id}" ${+F.club === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>`).join('')}</select>
+    <select class="dd" id="fl"><option value="">All clubs</option><option value="pl" ${F.lg === 'pl' ? 'selected' : ''}>${esc(D.league)}</option>${hasCh() ? `<option value="ch" ${F.lg === 'ch' ? 'selected' : ''}>Other Clubs</option>` : ''}</select>
+    <select class="dd" id="fc"><option value="">All clubs</option>${[[esc(D.league), D.clubs], ['Other Clubs', hasCh() ? D.second.clubs : []]].filter(x => x[1].length).map(([g, L]) => `<optgroup label="${g}">${L.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<option value="${c.id}" ${+F.club === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>`).join('')}</select>
     <select class="dd" id="fam"><option value="">From any age</option>${[17, 19, 20, 23, 26, 30].map(a => `<option value="${a}" ${+F.amin === a ? 'selected' : ''}>${a} or over</option>`).join('')}</select>
     <select class="dd" id="fp"><option value="">Any position</option>${['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'CF'].map(x => `<option value="${x}" ${F.pos === x ? 'selected' : ''}>Plays ${x}</option>`).join('')}</select>
     <select class="dd" id="fs">${[['name', 'Sort: Name'], ['val', 'Sort: Value'], ['age', 'Sort: Age'], ...Object.keys(ATTR_NAME).sort((a, b) => ATTR_NAME[a].localeCompare(ATTR_NAME[b])).map(k => ['a:' + k, 'Sort: ' + TT(ATTR_NAME[k])])].map(([k, n]) => `<option value="${k}" ${(V.sort || 'name') === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
-  frame({ title: 'Player &amp; Staff Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: [['short', 'Short List'], ['search', 'Player Search'], ['staff', 'Staff Search'], ['sc1', 'Scout #1'], ['sc2', 'Scout #2']], topOn: tab,
+  frame({ title: 'Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: [['search', 'Players'], ['short', 'Short List'], ['sc1', 'Scout 1'], ['sc2', 'Scout 2'], ['staff', 'Staff']], topOn: tab,
     onTab: k => { PICK2 = []; V = { s: 'find', tab: k }; view(); }, tools,
     body: `<div class="pgbar"><span class="dim small">${tab === 'short' ? 'Your short list' : qv || Object.values(F).some(Boolean) ? 'Search results' : 'Every player in the league'}</span><span class="pg"><button data-pg="0" ${pgc ? '' : 'disabled'}>«</button><button data-pg="${pgc - 1}" ${pgc ? '' : 'disabled'}>‹</button><span>Pg ${pgc + 1}/${pages}</span><button data-pg="${pgc + 1}" ${pgc < pages - 1 ? '' : 'disabled'}>›</button><button data-pg="${pages - 1}" ${pgc < pages - 1 ? '' : 'disabled'}>»</button></span></div>
       <div class="tw"><table><thead><tr><th></th><th>Inf</th><th>Name</th><th>Club</th><th>Based</th><th>Position</th><th class="r">Age</th>${sk ? `<th class="r">${esc(TT(ATTR_NAME[sk]))}</th>` : ''}<th class="r">Value</th></tr></thead><tbody>${rows.map(p => `<tr class="click" data-pl="${p.id}"><td><button class="box ${PICK2.includes(p.id) ? 'on' : ''}" data-cmp="${p.id}">${PICK2.includes(p.id) ? PICK2.indexOf(p.id) + 1 : ''}</button></td><td>${inf(p)}</td><td>${flag(p.nat)}<b>${esc(cmName(p.n))}</b></td><td class="sky">${esc(club(p.club).name)}</td><td class="yel">${LG.has(p.club) ? esc(D.league) : ''}</td><td class="yel">${cmPos(p.pos)}</td><td class="r">${p.age}</td>${sk ? `<td class="r ${vcls(A(p, sk))}"><b>${showA(p, A(p, sk))}</b></td>` : ''}<td class="r"><span class="pill">${valueOf(p)}</span></td></tr>`).join('') || `<tr><td colspan="9" class="empty">${tab === 'short' ? 'Your short list is empty: pick players in Player Search and add them.' : 'No players found.'}</td></tr>`}</tbody></table></div>
@@ -3279,7 +3285,7 @@ function scrManagers(){
     : (() => { const L = M.filter(m => /Insecure/.test(m.sec)), vac = Object.keys(S.vac || {}).map(Number).filter(cid => cid !== me() && LG.has(cid) && !(S.down || []).includes(cid));
       const vacHTML = `<div class="ptitle">Vacancies</div>${vac.length ? `<table><tbody>${vac.map(cid => `<tr><td>${crest(cid)}<b>${esc(fullName(cid))}</b></td><td class="dim">${S.round ? ordinal(standings().findIndex(r => r.id === cid) + 1) + ' in the league' : ''}</td><td class="r"><button class="btn sm ${S.sacked ? 'y' : ''}" data-apply="${cid}">Apply</button></td></tr>`).join('')}</tbody></table>` : `<p class="empty">No club is looking for a manager just now.${S.sacked ? ' Keep an eye on the clubs below: their jobs may open.' : ''}</p>`}`;
       return `${vacHTML}<div class="ptitle">Job Information · England</div>${L.length ? `<table><tbody>${L.map(m => `<tr class="${m.mine ? 'me' : ''}"><td><b>${esc(cmName(m.name))}</b></td><td class="sky">${esc(club(m.cid).name)}</td><td class="yel">England</td><td style="color:var(--warn)">PRM</td><td class="r"><span class="pill" style="background:#3A1E66">${m.sec}</span></td></tr>`).join('')}</tbody></table>` : '<p class="empty">No manager is under pressure just now.</p>'}<p class="small dim">Managers whose clubs sit well below where their squads should finish. Their jobs may soon be open.</p>`; })();
-  frame({ title: 'Manager Stats', top: [['rep', 'Reputation'], ['jobs', 'Job Information']], topOn: tab, onTab: k => { V = { s: 'managers', tab: k }; view(); }, body });
+  frame({ title: 'Manager Rankings', top: [['rep', 'Reputation'], ['jobs', 'Job Information']], topOn: tab, onTab: k => { V = { s: 'managers', tab: k }; view(); }, body });
   document.querySelectorAll('[data-apply]').forEach(b => b.addEventListener('click', () => { const cid = +b.dataset.apply;
     if (!jobOK(cid)){ (S.applied = S.applied || {})[cid] = S.date; news('board', `${club(cid).name} say no`, `${esc(club(cid).name)} have thanked you for your interest but want a manager with a bigger name.`); toast(`${club(cid).name} turn you down.`); save(); view(); return; }
     takeJob(cid); save(); go({ s: 'club', cid, tab: 'squad' }); }));
@@ -3379,7 +3385,7 @@ function scrManager(){
     <div class="ptitle" style="margin-top:14px">This season</div><dl class="kv"><dt>Matches</dt><dd>${all.length}: won ${w}, drawn ${d}, lost ${l}</dd><dt>Goals</dt><dd>${gf} for, ${ga} against</dd><dt>Win rate</dt><dd>${all.length ? Math.round(100 * w / all.length) : 0}%</dd></dl>`;
   if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv"><dt>Club</dt><dd>${esc(club(me()).name)}</dd><dt>Wage</dt><dd>${wage(Math.round(club(me()).q * 900 / 5) * 5)}</dd><dt>Expires</dt><dd>30.6.${String(S.season + 2).slice(2)}</dd><dt>Nationality</dt><dd>${esc(S.nat || '-')}</dd><dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
   frame(ofClub(me(), { title: `${esc(S.manager)} (${esc(club(me()).name)})`, top: [['inj', 'Injuries &amp; Bans', true], ['con', 'Contract'], ['tr', 'Transfer', true], ['hist', 'History']], topOn: tab, onTab: k => { if (k === 'hall'){ SETUP_OPEN = true; SETUP = 'hall'; view(); return; } if (k === 'stats' || k === 'jobs'){ go({ s: 'managers', tab: k === 'jobs' ? 'jobs' : 'rep' }); return; } V = { s: 'manager', tab: k }; view(); }, body,
-    bottom: [['stats', 'Manager Stats'], ['jobs', 'Jobs'], ['hall', 'Hall of Fame']] }));
+    bottom: [['jobs', 'Jobs'], ['stats', 'Manager Rankings'], ['hall', 'Hall of Fame']] }));
 }
 
 /* =====================================================================================================================
