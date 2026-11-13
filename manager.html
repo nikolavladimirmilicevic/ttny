@@ -524,7 +524,15 @@ const money = v => (v < 0 ? '−' : '') + '£' + (Math.abs(v) >= 1e6 ? (Math.abs
    formations: slot positions on a pitch 100 wide and 100 deep (0 = their goal line), and the position each slot asks for
    ===================================================================================================================== */
 // the 14 PES 2021 preset formations, as in the Draft game (index.html): lines from the back, each left to right
+// the presets: three lines, no DMF or AMF (those come from moving players on the board yourself)
 const FORM_DEF = {
+  '3-4-3': ['CB CB CB', 'LMF CMF CMF RMF', 'LWF CF RWF'], '3-5-2': ['CB CB CB', 'LMF CMF CMF CMF RMF', 'CF CF'],
+  '4-3-3': ['LB CB CB RB', 'CMF CMF CMF', 'LWF CF RWF'], '4-4-2': ['LB CB CB RB', 'LMF CMF CMF RMF', 'CF CF'],
+  '4-5-1': ['LB CB CB RB', 'LMF CMF CMF CMF RMF', 'CF'], '5-3-2': ['LB CB CB CB RB', 'CMF CMF CMF', 'CF CF'],
+  '5-4-1': ['LB CB CB CB RB', 'LMF CMF CMF RMF', 'CF'],
+};
+// the presets of earlier versions, only to bring old saves across
+const OLD_FORM_DEF = {
   '4-2-3-1': ['LB CB CB RB', 'DMF DMF', 'LMF AMF RMF', 'CF'], '4-1-4-1': ['LB CB CB RB', 'DMF', 'LMF AMF AMF RMF', 'CF'],
   '4-3-2-1': ['LB CB CB RB', 'CMF CMF CMF', 'AMF AMF', 'CF'], '4-2-2-2': ['LB CB CB RB', 'CMF CMF', 'LMF RMF', 'CF CF'],
   '4-3-1-2': ['LB CB CB RB', 'CMF CMF CMF', 'AMF', 'CF CF'], '4-2-1-3': ['LB CB CB RB', 'DMF DMF', 'AMF', 'LWF CF RWF'],
@@ -773,7 +781,7 @@ function newGame(cid, manager){
   const rank = expRank(cid), aim = aimFor(rank);
   const refs = REF_FIRST.map((f, i) => ({ n: `${f} ${REF_LAST[(i * 7 + 3) % REF_LAST.length]}`, s: 5 + Math.floor(r0() * 12) }));
   const q = club(cid).q;
-  S = { v: 2, lines: 7, club: cid, manager: manager || 'The manager', season: D.season, seed, rounds, round: 0, cupDates, cup: { stage: 0, alive: cupEntrants(cn), log: [], n: cn },
+  S = { v: 2, lines: 8, club: cid, manager: manager || 'The manager', season: D.season, seed, rounds, round: 0, cupDates, cup: { stage: 0, alive: cupEntrants(cn), log: [], n: cn },
     date: day(rounds[0].date, -6), pl: {}, tac: {}, table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])),
     results: [], news: [], refs, aim, conf: 62, rep: 'Unproven', done: false, sacked: false,
     train: { sched: 'General', int: 1, last: day(rounds[0].date, -6) },
@@ -790,7 +798,7 @@ function newGame(cid, manager){
     for (const k of Object.keys(p.a || {})){ const off = Math.floor(rz() * 5) - 2, b = p.a[k]; if (off && b + off >= 40 && b + off <= 99) r[k] = off; }
     ps(p.id).r = r; }
   longInjured();
-  for (const id of ids) S.tac[id] = autoTactic(id);
+  for (const id of ids) S.tac[id] = autoTactic(id, id === cid ? judge() : null);
   const a = AIMS[aim];
   news('board', `Welcome to ${club(cid).name}`, `The chairman has appointed ${esc(S.manager)} as manager. The board's expectation for the season: <b>${a.name}</b>. ${a.text}`);
   news('club', 'Your first match', `The league starts on ${fmtDate(rounds[0].date, true)} with ${matchLine(rounds[0].m.find(m => m.h === cid || m.a === cid))}. The ${esc(CUP)} starts with the ${cupName(0).toLowerCase()} on ${fmtDate(cupDates[0])}.`);
@@ -1109,7 +1117,7 @@ function minute(M){
       const q = logit((u1.att * .55 + u1.cre * .45 - u2.def) / 40);
       // game state: a side three up eases off and keeps the ball, one two up late on sits a little deeper
       const lead = att.goals - def.goals, late = M.half === 2 && M.min >= 70, ease = lead >= 3 ? .62 : lead === 2 && late ? .88 : lead === 1 && late ? .86 : lead === -1 && late ? 1.15 : lead === 0 && M.half === 2 && M.min >= 75 ? .88 : 1;   // late on: one up protects it, one down goes for it, level settles
-      if (Math.random() < q * .91 * ease){
+      if (Math.random() < q * .94 * ease){
         const t = att.t, lsBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'ls', 1) - 1), 0) * .012, crBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'cross', 1) - 1), 0) * .02 + (t.pass === 3 ? .06 : 0);
         const k = Math.random();
         if (k < .017){ const f = who(def, 'foul', 'ag'); say(M, att, 'yel', `Penalty! ${nm(f)} brings his man down in the box.`); rateAdd(def, f, -.4); shot(M, att, def, u1, u2, 'pen', att.on.find(y => y.id === (t.set || {}).pen)); }
@@ -1623,7 +1631,7 @@ function newSeason(){
   S.bids = (S.bids || []).filter(b => b.st === 'done'); S.offers = [];
   S.aim = aimFor(expRank(me())); S.conf = Math.max(45, Math.min(75, S.conf));
   const q = club(me()).q; S.fin.budget = Math.round(S.fin.budget * .5 + Math.max(12, (q - 70) * 9) * 1e6);
-  for (const id of ids) S.tac[id] = id === me() ? Object.assign(S.tac[id], bestXI(id, S.tac[id].form)) : autoTactic(id);
+  for (const id of ids) S.tac[id] = id === me() ? Object.assign(S.tac[id], bestXI(id, S.tac[id].form, false, judge())) : autoTactic(id);
   const pv = S.past[S.past.length - 1], a = AIMS[S.aim];
   news('board', `The ${S.season}/${String((S.season + 1) % 100).padStart(2, '0')} season`, `${esc(club(pv.champ).name)} were last season's champions${pv.cup ? `, ${esc(club(pv.cup).name)} won the ${esc(CUP)}` : ''}. The board's expectation this season: <b>${a.name}</b>. Your transfer budget: ${cash(S.fin.budget)}. The league starts on ${fmtDate(rounds[0].date, true)}.`);
 }
@@ -1859,19 +1867,23 @@ function adopt(s){
   for (const q of Object.values(S.pl || {})) if (q.d) for (const k in q.d) q.d[k] = Math.round(q.d[k] * 100) / 100;
   for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x));
     // a shape from before the PES presets: the club's best preset, the same players placed by the rules
-    if (!FORMS[t.form]){ const ids = t.xi.filter(Boolean); t.form = bestForm(+id); const sl = FORMS[t.form]; t.xi = placeXI(sl, ids.map(x => P.get(x)));
+    if (!FORMS[t.form] && !OLD_FORM_DEF[t.form] && !(t.shape && t.shape.length === 11)){ const ids = t.xi.filter(Boolean); t.form = bestForm(+id); const sl = FORMS[t.form]; t.xi = placeXI(sl, ids.map(x => P.get(x)));
       if (t.xi.filter(Boolean).length < Math.min(11, ids.length)) Object.assign(t, bestXI(+id, t.form)); } }
   // the six-line layout reorders some presets' slots (wide midfielders now share the CMF line): players follow their slot's code
   // slot order: the presets list their rows as defined. A save from the six-line days had them sorted by line instead
   // (wide midfielders with the CMF line): players follow their slot's code back. Custom shapes are re-laid out.
-  if (S.lines !== 7){ const six = f => ['GK', ...FORM_DEF[f].join(' ').split(' ').map((c, k) => ({ c, k })).sort((a, b) => lineOf(a.c) - lineOf(b.c) || flankOf(a.c) - flankOf(b.c) || a.k - b.k).map(x => x.c)];
-    for (const t of Object.values(S.tac)){
-      if (t.shape && t.shape.length === 11){ const items = t.shape.map((z, k) => ({ k, code: z[0] === 'SS' ? 'CF' : z[0], x: z[1], y: z[2] })), gk = items.find(x => x.code === 'GK') || items[0], td = tidyLines(items.filter(x => x !== gk));
+  if (S.lines !== 8){ for (const [cid, t] of Object.entries(S.tac)){
+      if (+cid !== S.club){ if (!FORM_DEF[t.form]){ t.shape = null; t.form = bestForm(+cid); Object.assign(t, bestXI(+cid, t.form)); } continue; }   // other clubs simply pick again
+      if (t.shape && t.shape.length === 11){ if (S.lines === 7) continue;   // a shape from before: laid out again on today's rows
+        const items = t.shape.map((z, k) => ({ k, code: z[0] === 'SS' ? 'CF' : z[0], x: z[1], y: z[2] })), gk = items.find(x => x.code === 'GK') || items[0], td = tidyLines(items.filter(x => x !== gk));
         t.xi = [t.xi[gk.k], ...td.order.map(it => t.xi[it.k])]; if (td.form){ t.form = td.form; t.shape = null; } else t.shape = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])]; continue; }
-      if (S.lines !== 6 || !FORM_DEF[t.form]) continue;
-      const from = six(t.form), to = FORMS[t.form].map(z => z[0]), used = from.map(() => false);
-      t.xi = to.map(c => { const i = from.findIndex((x, k) => !used[k] && x === c); used[i] = true; return t.xi[i]; }); }
-    S.lines = 7; }
+      if (FORM_DEF[t.form] || !OLD_FORM_DEF[t.form]) continue;
+      // an old preset: its rows in the order this save has them (six-line saves sorted by line), then laid out as a shape
+      const rowsC = OLD_FORM_DEF[t.form].join(' ').split(' ').map((c, k) => ({ c, k })), ord = S.lines === 6 ? rowsC.slice().sort((a, b) => lineOf(a.c) - lineOf(b.c) || flankOf(a.c) - flankOf(b.c) || a.k - b.k) : rowsC;
+      const lay = layoutRows(OLD_FORM_DEF[t.form].map(r => r.split(' '))), at = rowsC.map(x => lay[x.k]);
+      const items = ord.map((x, n) => ({ k: n + 1, code: x.c, x: at[x.k][1], y: at[x.k][2] })), td = tidyLines(items);
+      t.xi = [t.xi[0], ...td.order.map(it => t.xi[it.k])]; if (td.form){ t.form = td.form; t.shape = null; } else t.shape = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])]; }
+    S.lines = 8; }
   if (!S.lg) S.lg = D.clubs.map(c => c.id);
   for (const p of D.pool) if (!S.con[p.id]) S.con[p.id] = contractFor(p);
   if (S.ch === undefined) chInit();
