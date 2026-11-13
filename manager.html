@@ -70,7 +70,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .banner h1{margin:0;text-align:center;font:600 30px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em;color:var(--k2,var(--text));padding:10px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .banner .sub{display:block;font:500 13px/1.3 var(--body);text-transform:none;letter-spacing:0;opacity:.9;margin-top:2px}
 .banner .act{margin:8px;align-self:start}
-@media(max-width:600px){.banner{grid-template-columns:1fr}.banner>span:first-child{display:none}.banner h1{font-size:22px;white-space:normal}.banner .act{justify-self:center;margin:0 8px 10px}.banner .act:empty{display:none}}
+@media(max-width:600px){.banner.hn{grid-template-columns:1fr}.banner.hn>.bcr{display:flex!important;justify-content:center;padding:8px 0 0}.banner.hn .bigcr{display:none}.banner.hn .bnav{margin:0}.banner{grid-template-columns:1fr}.banner>span:first-child{display:none}.banner h1{font-size:22px;white-space:normal}.banner .act{justify-self:center;margin:0 8px 10px}.banner .act:empty{display:none}}
 /* tabs, dropdowns, buttons */
 .tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;background:var(--panel);border-radius:999px;padding:4px}
 .tabs::-webkit-scrollbar{display:none}
@@ -160,8 +160,8 @@ tr.me td{background:rgba(79,209,139,.10)}
 .arow{display:flex;justify-content:space-between;gap:8px;padding:3px 2px;border-bottom:1px solid rgba(41,64,96,.5)}
 .av{font-weight:700;min-width:24px;text-align:right}
 .v9{color:#5CE39A}.v8{color:#A8E063}.v7{color:#F2D33D}.v6{color:var(--text)}.v5{color:#F2A65A}.v4{color:#E57A62}
-.up{color:var(--win);font-size:10px}.bclk{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor;cursor:pointer}.bclk:hover{border-bottom-style:solid}
-.bnav{position:absolute;left:10px;top:50%;transform:translateY(-50%);display:flex;gap:4px;z-index:2}.bnav button{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.45);background:rgba(0,0,0,.25);color:#fff;font:700 16px/1 var(--body);cursor:pointer;display:grid;place-items:center;padding:0}.bnav button:hover{background:rgba(0,0,0,.45)}
+.up{color:var(--win);font-size:10px}.bclk{color:inherit;text-decoration:none;cursor:pointer}.bclk:hover{opacity:.8}
+.bnav{display:flex;gap:4px;margin-right:10px;flex:none}.banner.hn{grid-template-columns:auto 1fr auto}.bnav button{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.45);background:rgba(0,0,0,.25);color:#fff;font:700 16px/1 var(--body);cursor:pointer;display:grid;place-items:center;padding:0}.bnav button:hover{background:rgba(0,0,0,.45)}
 .msk{color:var(--muted)!important;font-weight:600;opacity:.8}
 .aup,.adn{font-size:8.5px;opacity:.7;margin-right:3px;vertical-align:1px}.aup{color:var(--win)}.adn{color:var(--loss)}.dn{color:var(--loss);font-size:10px}
 .born{color:var(--gold);font:600 16px/1.3 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0 0 12px}
@@ -1895,7 +1895,7 @@ function frame(o){
       ${unread && V.s !== 'news' ? '<button class="sb newsflag" data-side="news">You Have News</button>' : ''}
     </aside>
     <div class="main">
-      <div class="banner ${o.crest ? 'wc' : ''}" style="--k1:${o.k1 || '#2A44D0'};--k2:${o.k2 || '#fff'}"><span class="bcr">${o.crest ? crest(o.crest, 'bigcr') : ''}</span>${o.nav ? `<span class="bnav"><button id="bprev" aria-label="Previous ${o.nav.what}" title="Previous ${o.nav.what}">‹</button><button id="bnext" aria-label="Next ${o.nav.what}" title="Next ${o.nav.what}">›</button></span>` : ''}<h1>${o.title}${o.sub ? `<span class="sub">${o.sub}</span>` : ''}${o.info ? `<span class="binfo">${o.info}</span>` : ''}</h1><span class="act">${o.act || ''}</span></div>
+      <div class="banner ${o.crest ? 'wc' : ''} ${o.nav ? 'hn' : ''}" style="--k1:${o.k1 || '#2A44D0'};--k2:${o.k2 || '#fff'}"><span class="bcr">${o.nav ? `<span class="bnav"><button id="bprev" aria-label="Previous ${o.nav.what}" title="Previous ${o.nav.what}">‹</button><button id="bnext" aria-label="Next ${o.nav.what}" title="Next ${o.nav.what}">›</button></span>` : ''}${o.crest ? crest(o.crest, 'bigcr') : ''}</span><h1>${o.title}${o.sub ? `<span class="sub">${o.sub}</span>` : ''}${o.info ? `<span class="binfo">${o.info}</span>` : ''}</h1><span class="act">${o.act || ''}</span></div>
       ${o.tools ? `<div class="tools">${o.tools}</div>` : ''}
       <section class="pane">${o.body}</section>
       <div class="bn"><button id="back" ${HIST.length ? '' : 'disabled'}>Back</button><button id="next" ${o.next ? '' : 'disabled'}>Next</button></div>
