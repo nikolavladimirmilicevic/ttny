@@ -441,3 +441,5 @@ Menu reviewed (13.11.2026): your club's entries follow a week's work (Overview, 
 Crests on a light plate (13.11.2026): in the club list and in a club's or player's banner a crest sits on a light plate with a ring in the club's colour, so a red crest no longer disappears on a red background.
 
 Missing crests (13.11.2026): Bolton, Charlton, Lincoln, Portsmouth and Wrexham came from Transfermarkt pages with ids of our own, so their crest addresses pointed nowhere (or at another team). Their crests now use their API-Football team ids (68, 1335, 1379, 1355, 1837, from the cached API data).
+
+Crests without plates (13.11.2026): instead of a light plate, a crest keeps its own shape on the club colour and gets a faint light edge that follows it, enough to set a red crest apart from a red background.
