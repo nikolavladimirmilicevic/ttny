@@ -537,12 +537,16 @@ const FORM_DEF = {
 // six lines from the goal up, evenly spaced, everyone in a line at the same height: GK, the back line, DMF, the midfield
 // line (LMF CMF RMF), AMF and the front line (LWF CF RWF)
 const LINE_Y = [90, 74, 58, 42, 26, 10];
+// heights on the board: the goal, the back line and the front line never move; the midfield lines that are in use
+// (DMF, the midfield line, AMF: one, two or three of them) share the space between the back and the front evenly
+function lineYs(codes){ const mids = [2, 3, 4].filter(ln => codes.some(c => lineOf(c) === ln)), y = { 0: LINE_Y[0], 1: LINE_Y[1], 5: LINE_Y[5] };
+  mids.forEach((ln, k) => { y[ln] = Math.round((LINE_Y[1] - (k + 1) * (LINE_Y[1] - LINE_Y[5]) / (mids.length + 1)) * 10) / 10; }); return y; }
 const lineOf = c => c === 'GK' ? 0 : /^(LB|CB|RB)$/.test(c) ? 1 : c === 'DMF' ? 2 : /^(LMF|CMF|RMF)$/.test(c) ? 3 : c === 'AMF' ? 4 : 5;
 // codes for the outfield, any order: laid out line by line, each line left to right with the same gap between neighbours
 // (flank to flank when both flanks are filled, from the filled flank inward when only one is, centred when neither is)
 function layoutRows(codesIn){
   const side = c => /^L(B|MF|WF)$/.test(c) ? 0 : /^R(B|MF|WF)$/.test(c) ? 2 : 1, r1 = v => Math.round(v * 10) / 10, GAP = { 2: 26, 3: 22, 4: 19, 5: 20 };
-  const out = [];
+  const out = [], LY = lineYs(codesIn);
   for (let ln = 1; ln <= 5; ln++){
     const codes = codesIn.filter(c => lineOf(c) === ln).sort((a, b) => side(a) - side(b)), n = codes.length; if (!n) continue;
     const hasL = side(codes[0]) === 0, hasR = side(codes[n - 1]) === 2, lo = ln === 1 && n === 5 ? 10 : 13;
@@ -551,7 +555,7 @@ function layoutRows(codesIn){
     else if (hasL) xs = codes.map((_, k) => lo + k * (100 - 2 * lo) / n);
     else if (hasR) xs = codes.map((_, k) => 100 - lo - (n - 1 - k) * (100 - 2 * lo) / n);
     else { const g = ln === 1 && n === 3 ? 23 : ln === 1 && n === 4 ? 74 / 3 : GAP[n] || 80 / Math.max(1, n - 1); xs = codes.map((_, k) => 50 + (k - (n - 1) / 2) * g); }
-    codes.forEach((c, k) => out.push([c, r1(xs[k]), LINE_Y[ln]]));
+    codes.forEach((c, k) => out.push([c, r1(xs[k]), LY[ln]]));
   }
   return out;
 }
@@ -568,7 +572,7 @@ function tidyLines(items){
 }
 const FORM_ORDER = Object.keys(FORMS).sort();
 const formLabel = (t, on) => (t && t.shape && t.shape.length === 11) || (on && on.some(x => x && x.xy)) ? 'Custom' : t && t.form;
-const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape.map(([c, x]) => [c, x, LINE_Y[lineOf(c)]]) : FORMS[t && t.form] || FORMS[FORM_ORDER[0]];
+const slotsOf = t => t && t.shape && t.shape.length === 11 ? ((Y) => t.shape.map(([c, x]) => [c, x, Y[lineOf(c)]]))(lineYs(t.shape.map(z => z[0]))) : FORMS[t && t.form] || FORMS[FORM_ORDER[0]];
 // the position a spot on the pitch stands for (0 at the top, their goal; 100 at the bottom, ours)
 const posAt = (x, y) => { const ln = LINE_Y.reduce((b, ly, k) => Math.abs(ly - y) < Math.abs(LINE_Y[b] - y) ? k : b, 0), w = x < 20 ? 'L' : x > 80 ? 'R' : '';
   return ln === 0 ? 'GK' : ln === 1 ? (w ? w + 'B' : 'CB') : ln === 2 ? (w ? w + 'MF' : 'DMF') : ln === 3 ? (w ? w + 'MF' : 'CMF') : ln === 4 ? (w ? w + 'MF' : 'AMF') : (w ? w + 'WF' : 'CF'); };
