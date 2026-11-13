@@ -1198,10 +1198,11 @@ function substitute(M, side, out, forced, inId){
   return true;
 }
 function aiManage(M, side){
-  if (side.cid === me() && M.live) return;
+  // your side is yours, unless you skip to full time: then your assistant makes the changes (substitutions only)
+  const yours = side.cid === me() && M.live; if (yours && !M.auto) return;
   const diff = side === M.H ? M.H.goals - M.A.goals : M.A.goals - M.H.goals;
   // the computer's managers change their approach late on: chase a game they are losing, protect a lead
-  if (M.half === 2 && (M.min === 70 || M.min === 80)){ if (diff < 0 && side.t.men < 4){ side.t.men++; say(M, side, 'minor', `${esc(club(side.cid).name)} push more men forward.`); } else if (diff > 0 && side.t.men > 1 && M.min === 80){ side.t.men--; say(M, side, 'minor', `${esc(club(side.cid).name)} sit back to protect their lead.`); } }
+  if (!yours && M.half === 2 && (M.min === 70 || M.min === 80)){ if (diff < 0 && side.t.men < 4){ side.t.men++; say(M, side, 'minor', `${esc(club(side.cid).name)} push more men forward.`); } else if (diff > 0 && side.t.men > 1 && M.min === 80){ side.t.men--; say(M, side, 'minor', `${esc(club(side.cid).name)} sit back to protect their lead.`); } }
   if (M.half < 2 || M.min < 58 || side.subs >= 5 || Math.random() > (M.min > 75 ? .35 : .12)) return;
   const tired = side.on.filter(x => x.pos !== 'GK' && !x.sub).sort((a, b) => a.e - b.e)[0];
   if (tired && (tired.e < 72 || diff < 0 && M.min > 65)) substitute(M, side, tired, false);
@@ -3488,7 +3489,7 @@ function viewMatch(){
   const on = (id, f) => { const el = $('#' + id); if (el) el.addEventListener('click', f); };
   on('play', () => { L.started = true; L.paused = false; L.atHT = false; run(); });
   on('pause', () => { L.paused = true; clearTimeout(TIMER); viewMatch(); });
-  on('skip', () => { clearTimeout(TIMER); L.started = true; L.paused = true; L.atHT = false; while (step(M)) L.others.forEach(o => step(o)); L.others.forEach(o => playOut(o)); viewMatch(); });
+  on('skip', () => { clearTimeout(TIMER); L.started = true; L.paused = true; L.atHT = false; M.auto = true; while (step(M)) L.others.forEach(o => step(o)); L.others.forEach(o => playOut(o)); viewMatch(); });
   on('done', () => { LIVE = null; if (L.shield) finishShield(M); else if (L.lc) finishLC(M, L.others); else if (L.cup) finishCup(M, L.others); else finishLeague(M, L.others); passDays(1); save(); HIST.push(V); V = { s: 'news', i: 0 }; view(); scrollTo(0, 0); });
   document.querySelectorAll('[data-spd]').forEach(b => b.addEventListener('click', () => { SPEED = +b.dataset.spd; OPT.spd = SPEED; saveOpt(); viewMatch(); }));
   document.querySelectorAll('[data-mt]').forEach(b => b.addEventListener('click', () => { MTAB = b.dataset.mt; if (MTAB === 'tactics' && L.started && !L.paused){ L.paused = true; clearTimeout(TIMER); } TB.sel = null; if (MTAB === 'tactics'){ TB.tab = 'squad'; TB.view = 'us'; } viewMatch(); }));
@@ -3521,7 +3522,7 @@ function mPanel(){
   const pct = Math.round(100 * M.H.poss / Math.max(1, M.H.poss + M.A.poss));
   if (MTAB === 'report') return `<div class="cols2"><div><div class="ptitle">Incidents</div><div class="inc">${M.inc.map(x => `<div class="h">${x.side === 'h' ? icon(x.k) + esc(x.t) : ''}</div><div class="m">${x.l}'</div><div>${x.side === 'a' ? icon(x.k) + esc(x.t) : ''}</div>`).join('') || '<div></div><div class="m">-</div><div></div>'}</div></div><div><div class="ptitle">Commentary</div><div class="feed">${M.feed.slice().reverse().map(f => `<p class="${f.c} ${f.side === 'them' ? 'them' : ''}"><span class="m">${f.m ? f.m + "'" : ''}</span>${f.t}</p>`).join('')}</div></div></div>`;
   if (MTAB === 'stats') return statBars({ poss: [pct, 100 - pct], pas: [Math.round(100 * M.H.pc / Math.max(1, M.H.pa)), Math.round(100 * M.A.pc / Math.max(1, M.A.pa))], sh: [M.H.sh, M.A.sh], sot: [M.H.sot, M.A.sot], cor: [M.H.corners, M.A.corners], fou: [M.H.fouls, M.A.fouls], off: [M.H.off, M.A.off], yc: [M.H.yc, M.A.yc], rc: [M.H.rc, M.A.rc] }, M.h, M.a);
-  if (MTAB === 'ratings'){ const col = s => { const ids = [...s.on.map(x => x.id), ...s.subbed.map(x => x[0])].filter((id, i, a) => a.indexOf(id) === i); return ids.map(id => { const v = M.over ? s.rate[id] : clamp(6.3 + (s.rate[id] || 0), 1, 10), x = s.on.find(y => y.id === id); return `<div class="arow"><span>${esc(cmName(P.get(id).n))} <span class="small yel">${x ? x.pos : 'off'}</span>${id === M.mom ? ' ★' : ''}</span><span class="av">${M.over ? v.toFixed(1) : Math.round(v)}</span></div>`; }).join(''); };
+  if (MTAB === 'ratings'){ const col = s => { const ids = [...s.on.map(x => x.id), ...s.subbed.map(x => x[0])].filter((id, i, a) => a.indexOf(id) === i); return ids.map(id => { const v = M.over ? s.rate[id] : clamp(6.3 + (s.rate[id] || 0), 1, 10), x = s.on.find(y => y.id === id); return `<div class="arow"><span>${esc(cmName(P.get(id).n))} <span class="small yel">${x ? x.pos : 'off'}</span>${id === M.mom ? ' ★' : ''}</span><span class="av">${v.toFixed(1)}</span></div>`; }).join(''); };
     return `<div class="cols2"><div><div class="ptitle">${esc(club(M.h).name)}</div>${col(M.H)}</div><div><div class="ptitle">${esc(club(M.a).name)}</div>${col(M.A)}</div></div>`; }
   if (MTAB === 'zones'){ const cur = (M.half - 1) * 100 + M.min, z = from => { const L2 = M.zones.filter(([m, h]) => (h - 1) * 100 + m > from); const c = [0, 0, 0]; L2.forEach(([, , k]) => c[k]++); const t = Math.max(1, L2.length); return c.map(v => Math.round(100 * v / t)); };
     const show = (t, v) => `<div class="ptitle">${t}</div><div class="zones"><div>${v[0]}%<small>${esc(club(M.h).name)} half</small></div><div>${v[1]}%<small>Midfield</small></div><div>${v[2]}%<small>${esc(club(M.a).name)} half</small></div></div>`;
