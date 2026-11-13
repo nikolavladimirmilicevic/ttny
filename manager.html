@@ -160,7 +160,8 @@ tr.me td{background:rgba(79,209,139,.10)}
 .arow{display:flex;justify-content:space-between;gap:8px;padding:3px 2px;border-bottom:1px solid rgba(41,64,96,.5)}
 .av{font-weight:700;min-width:24px;text-align:right}
 .v9{color:#5CE39A}.v8{color:#A8E063}.v7{color:#F2D33D}.v6{color:var(--text)}.v5{color:#F2A65A}.v4{color:#E57A62}
-.up{color:var(--win);font-size:10px}.bnav{position:absolute;left:10px;top:50%;transform:translateY(-50%);display:flex;gap:4px;z-index:2}.bnav button{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.45);background:rgba(0,0,0,.25);color:#fff;font:700 16px/1 var(--body);cursor:pointer;display:grid;place-items:center;padding:0}.bnav button:hover{background:rgba(0,0,0,.45)}
+.up{color:var(--win);font-size:10px}.bclk{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor;cursor:pointer}.bclk:hover{border-bottom-style:solid}
+.bnav{position:absolute;left:10px;top:50%;transform:translateY(-50%);display:flex;gap:4px;z-index:2}.bnav button{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.45);background:rgba(0,0,0,.25);color:#fff;font:700 16px/1 var(--body);cursor:pointer;display:grid;place-items:center;padding:0}.bnav button:hover{background:rgba(0,0,0,.45)}
 .msk{color:var(--muted)!important;font-weight:600;opacity:.8}
 .aup,.adn{font-size:8.5px;opacity:.7;margin-right:3px;vertical-align:1px}.aup{color:var(--win)}.adn{color:var(--loss)}.dn{color:var(--loss);font-size:10px}
 .born{color:var(--gold);font:600 16px/1.3 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0 0 12px}
@@ -2704,7 +2705,7 @@ function scrPlayer(){
   if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
-  frame(ofClub(p.club, { nav: playerNav(p), title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(${esc(fullName(p.club))})</span>`,
+  frame(ofClub(p.club, { nav: playerNav(p), title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(<a class="bclk" data-lc="${p.club}" href="#" title="Open ${esc(fullName(p.club))}">${esc(fullName(p.club))}</a>)</span>`,
     act: mine ? `<button class="btn sm" id="promo">${firstTeam(me()).has(p.id) ? 'Move to Reserves' : 'Promote to First Team'}</button><button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
     top: [['profile', 'Profile'], ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['hist', 'History']], topOn: tab,
     onTab: k => { V = { ...V, tab: k }; view(); }, body,
