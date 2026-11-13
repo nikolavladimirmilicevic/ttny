@@ -539,40 +539,52 @@ const FORM_DEF = {
 const LINE_Y = [90, 74, 58, 42, 26, 10];
 // heights on the board: the goal, the back line and the front line never move; the midfield lines that are in use
 // (DMF, the midfield line, AMF: one, two or three of them) share the space between the back and the front evenly
-function lineYs(codes){ const mids = [2, 3, 4].filter(ln => codes.some(c => lineOf(c) === ln)), y = { 0: LINE_Y[0], 1: LINE_Y[1], 5: LINE_Y[5] };
-  mids.forEach((ln, k) => { y[ln] = Math.round((LINE_Y[1] - (k + 1) * (LINE_Y[1] - LINE_Y[5]) / (mids.length + 1)) * 10) / 10; }); return y; }
 const lineOf = c => c === 'GK' ? 0 : /^(LB|CB|RB)$/.test(c) ? 1 : c === 'DMF' ? 2 : /^(LMF|CMF|RMF)$/.test(c) ? 3 : c === 'AMF' ? 4 : 5;
-// codes for the outfield, any order: laid out line by line, each line left to right with the same gap between neighbours
-// (flank to flank when both flanks are filled, from the filled flank inward when only one is, centred when neither is)
-function layoutRows(codesIn){
-  const side = c => /^L(B|MF|WF)$/.test(c) ? 0 : /^R(B|MF|WF)$/.test(c) ? 2 : 1, r1 = v => Math.round(v * 10) / 10, GAP = { 2: 26, 3: 22, 4: 19, 5: 20 };
-  const out = [], LY = lineYs(codesIn);
-  for (let ln = 1; ln <= 5; ln++){
-    const codes = codesIn.filter(c => lineOf(c) === ln).sort((a, b) => side(a) - side(b)), n = codes.length; if (!n) continue;
-    const hasL = side(codes[0]) === 0, hasR = side(codes[n - 1]) === 2, lo = ln === 1 && n === 5 ? 10 : 13;
+const flankOf = c => /^L(B|MF|WF)$/.test(c) ? 0 : /^R(B|MF|WF)$/.test(c) ? 2 : 1;
+/* rows from the back, as the presets define them (4-2-3-1: the back four, DMF DMF, LMF AMF RMF, CF). The goal, the back row
+   and the front row (the one with LWF, CF or RWF) always stand at the same heights; the rows in between share that space
+   evenly. Each row goes left to right with the same gap between neighbours (flank to flank when both flanks are filled,
+   from the filled flank inward when only one is, centred when neither is). */
+function layoutRows(rows){
+  const r1 = v => Math.round(v * 10) / 10, GAP = { 2: 26, 3: 22, 4: 19, 5: 20 }, out = [];
+  const front = rows.length > 1 && rows[rows.length - 1].some(c => lineOf(c) === 5) ? rows.length - 1 : -1, mids = rows.length - 1 - (front > 0 ? 1 : 0);
+  rows.forEach((row, i) => {
+    const codes = row.slice().sort((a, b) => flankOf(a) - flankOf(b)), n = codes.length, back = i === 0;
+    const y = back ? LINE_Y[1] : i === front ? LINE_Y[5] : r1(LINE_Y[1] - i * (LINE_Y[1] - LINE_Y[5]) / (mids + 1));
+    const hasL = flankOf(codes[0]) === 0, hasR = flankOf(codes[n - 1]) === 2, lo = back && n === 5 ? 10 : 13;
     let xs;
     if (hasL && hasR) xs = codes.map((_, k) => n === 1 ? 50 : lo + k * (100 - 2 * lo) / (n - 1));
     else if (hasL) xs = codes.map((_, k) => lo + k * (100 - 2 * lo) / n);
     else if (hasR) xs = codes.map((_, k) => 100 - lo - (n - 1 - k) * (100 - 2 * lo) / n);
-    else { const g = ln === 1 && n === 3 ? 23 : ln === 1 && n === 4 ? 74 / 3 : GAP[n] || 80 / Math.max(1, n - 1); xs = codes.map((_, k) => 50 + (k - (n - 1) / 2) * g); }
-    codes.forEach((c, k) => out.push([c, r1(xs[k]), LY[ln]]));
-  }
+    else { const g = back && n === 3 ? 23 : back && n === 4 ? 74 / 3 : GAP[n] || 80 / Math.max(1, n - 1); xs = codes.map((_, k) => 50 + (k - (n - 1) / 2) * g); }
+    codes.forEach((c, k) => out.push([c, r1(xs[k]), y]));
+  });
   return out;
 }
 const FORMS = {};
-for (const [f, rows] of Object.entries(FORM_DEF)) FORMS[f] = [['GK', 50, LINE_Y[0]], ...layoutRows(rows.join(' ').split(' '))];
-// a hand-placed side put back in order: each man keeps the position his spot gives him, the lines are straightened and spaced
-// like a preset; items are { k, code, x, y } for the outfield ten. Returns them in preset order, laid out, and the preset it matches
+for (const [f, rows] of Object.entries(FORM_DEF)) FORMS[f] = [['GK', 50, LINE_Y[0]], ...layoutRows(rows.map(r => r.split(' ')))];
+const codeKey = L => L.slice().sort().join(' ');
+/* a hand-placed side put back in order: each man keeps the position his spot gives him. If the ten positions are those of
+   a preset, it becomes that preset (with its rows); otherwise the rows are the back line, DMF, CMF, AMF and the front line,
+   wide midfielders joining the midfield row nearest to where they were dropped. items are { k, code, x, y }, outfield only */
 function tidyLines(items){
-  const side = c => /^L(B|MF|WF)$/.test(c) ? 0 : /^R(B|MF|WF)$/.test(c) ? 2 : 1;
-  const ord = items.slice().sort((a, b) => lineOf(a.code) - lineOf(b.code) || side(a.code) - side(b.code) || a.x - b.x);
-  const lay = layoutRows(ord.map(x => x.code)), sig = lay.map(z => z[0]).join(' ');
-  const form = Object.keys(FORMS).find(f => FORMS[f].slice(1).map(z => z[0]).join(' ') === sig) || null;
-  return { order: ord.map((it, n) => ({ ...it, code: lay[n][0], x: lay[n][1], y: lay[n][2] })), form };
+  const key = codeKey(items.map(x => x.code)), form = Object.keys(FORM_DEF).find(f => codeKey(FORM_DEF[f].join(' ').split(' ')) === key) || null;
+  let rows;
+  if (form){ const pool = items.slice().sort((a, b) => a.x - b.x);
+    rows = FORM_DEF[form].map(r => r.split(' ').map(c => { const i = pool.findIndex(x => x.code === c); return pool.splice(i, 1)[0]; })); }
+  else { const B = [[], [], [], [], []], band = c => ({ 1: 0, 2: 1, 5: 4 })[lineOf(c)] ?? (c === 'CMF' ? 2 : c === 'AMF' ? 3 : -1);
+    for (const it of items) if (band(it.code) >= 0) B[band(it.code)].push(it);
+    const midY = { 1: LINE_Y[2], 2: LINE_Y[3], 3: LINE_Y[4] };
+    for (const it of items.filter(x => band(x.code) < 0)){ const cand = [1, 2, 3].filter(b => B[b].some(x => band(x.code) === b));
+      (B[cand.length ? cand.sort((p, q) => Math.abs(midY[p] - it.y) - Math.abs(midY[q] - it.y))[0] : 2]).push(it); }
+    rows = B.filter(L => L.length); }
+  rows = rows.map(L => L.sort((a, b) => flankOf(a.code) - flankOf(b.code) || a.x - b.x));
+  const lay = layoutRows(rows.map(L => L.map(x => x.code))), flat = rows.flat();
+  return { order: flat.map((it, n) => ({ ...it, code: lay[n][0], x: lay[n][1], y: lay[n][2] })), form };
 }
 const FORM_ORDER = Object.keys(FORMS).sort();
 const formLabel = (t, on) => (t && t.shape && t.shape.length === 11) || (on && on.some(x => x && x.xy)) ? 'Custom' : t && t.form;
-const slotsOf = t => t && t.shape && t.shape.length === 11 ? ((Y) => t.shape.map(([c, x]) => [c, x, Y[lineOf(c)]]))(lineYs(t.shape.map(z => z[0]))) : FORMS[t && t.form] || FORMS[FORM_ORDER[0]];
+const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape : FORMS[t && t.form] || FORMS[FORM_ORDER[0]];
 // the position a spot on the pitch stands for (0 at the top, their goal; 100 at the bottom, ours)
 const posAt = (x, y) => { const ln = LINE_Y.reduce((b, ly, k) => Math.abs(ly - y) < Math.abs(LINE_Y[b] - y) ? k : b, 0), w = x < 20 ? 'L' : x > 80 ? 'R' : '';
   return ln === 0 ? 'GK' : ln === 1 ? (w ? w + 'B' : 'CB') : ln === 2 ? (w ? w + 'MF' : 'DMF') : ln === 3 ? (w ? w + 'MF' : 'CMF') : ln === 4 ? (w ? w + 'MF' : 'AMF') : (w ? w + 'WF' : 'CF'); };
@@ -761,7 +773,7 @@ function newGame(cid, manager){
   const rank = expRank(cid), aim = aimFor(rank);
   const refs = REF_FIRST.map((f, i) => ({ n: `${f} ${REF_LAST[(i * 7 + 3) % REF_LAST.length]}`, s: 5 + Math.floor(r0() * 12) }));
   const q = club(cid).q;
-  S = { v: 2, lines: 6, club: cid, manager: manager || 'The manager', season: D.season, seed, rounds, round: 0, cupDates, cup: { stage: 0, alive: cupEntrants(cn), log: [], n: cn },
+  S = { v: 2, lines: 7, club: cid, manager: manager || 'The manager', season: D.season, seed, rounds, round: 0, cupDates, cup: { stage: 0, alive: cupEntrants(cn), log: [], n: cn },
     date: day(rounds[0].date, -6), pl: {}, tac: {}, table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])),
     results: [], news: [], refs, aim, conf: 62, rep: 'Unproven', done: false, sacked: false,
     train: { sched: 'General', int: 1, last: day(rounds[0].date, -6) },
@@ -1850,12 +1862,16 @@ function adopt(s){
     if (!FORMS[t.form]){ const ids = t.xi.filter(Boolean); t.form = bestForm(+id); const sl = FORMS[t.form]; t.xi = placeXI(sl, ids.map(x => P.get(x)));
       if (t.xi.filter(Boolean).length < Math.min(11, ids.length)) Object.assign(t, bestXI(+id, t.form)); } }
   // the six-line layout reorders some presets' slots (wide midfielders now share the CMF line): players follow their slot's code
-  if (S.lines !== 6){ for (const t of Object.values(S.tac)){
-      const oldCodes = t.shape && t.shape.length === 11 ? t.shape.map(z => z[0] === 'SS' ? 'CF' : z[0]) : FORM_DEF[t.form] ? ['GK', ...FORM_DEF[t.form].join(' ').split(' ')] : null; if (!oldCodes) continue;
-      const items = oldCodes.map((code, k) => ({ k, code, x: t.shape ? t.shape[k][1] : 0, y: 0 })), gk = items.shift(), td = tidyLines(items);
-      t.xi = [t.xi[gk.k], ...td.order.map(it => t.xi[it.k])];
-      if (td.form || !t.shape){ t.form = td.form || t.form; t.shape = null; } else t.shape = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])]; }
-    S.lines = 6; }
+  // slot order: the presets list their rows as defined. A save from the six-line days had them sorted by line instead
+  // (wide midfielders with the CMF line): players follow their slot's code back. Custom shapes are re-laid out.
+  if (S.lines !== 7){ const six = f => ['GK', ...FORM_DEF[f].join(' ').split(' ').map((c, k) => ({ c, k })).sort((a, b) => lineOf(a.c) - lineOf(b.c) || flankOf(a.c) - flankOf(b.c) || a.k - b.k).map(x => x.c)];
+    for (const t of Object.values(S.tac)){
+      if (t.shape && t.shape.length === 11){ const items = t.shape.map((z, k) => ({ k, code: z[0] === 'SS' ? 'CF' : z[0], x: z[1], y: z[2] })), gk = items.find(x => x.code === 'GK') || items[0], td = tidyLines(items.filter(x => x !== gk));
+        t.xi = [t.xi[gk.k], ...td.order.map(it => t.xi[it.k])]; if (td.form){ t.form = td.form; t.shape = null; } else t.shape = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])]; continue; }
+      if (S.lines !== 6 || !FORM_DEF[t.form]) continue;
+      const from = six(t.form), to = FORMS[t.form].map(z => z[0]), used = from.map(() => false);
+      t.xi = to.map(c => { const i = from.findIndex((x, k) => !used[k] && x === c); used[i] = true; return t.xi[i]; }); }
+    S.lines = 7; }
   if (!S.lg) S.lg = D.clubs.map(c => c.id);
   for (const p of D.pool) if (!S.con[p.id]) S.con[p.id] = contractFor(p);
   if (S.ch === undefined) chInit();
