@@ -573,8 +573,8 @@ const FORMS = {};
 for (const [f, rows] of Object.entries(FORM_DEF)) FORMS[f] = [['GK', 50, LINE_Y[0]], ...layoutRows(rows.map(r => r.split(' ')))];
 const codeKey = L => L.slice().sort().join(' ');
 /* a hand-placed side put back in order: each man keeps the position his spot gives him. If the ten positions are those of
-   a preset, it becomes that preset (with its rows); otherwise the rows are the back line, DMF, CMF, AMF and the front line,
-   wide midfielders joining the midfield row nearest to where they were dropped. items are { k, code, x, y }, outfield only */
+   a preset, it becomes that preset (with its rows); otherwise the rows are the back line, DMF, CMF (with LMF and RMF), AMF and
+   the front line. items are { k, code, x, y }, outfield only */
 function tidyLines(items){
   const key = codeKey(items.map(x => x.code)), form = Object.keys(FORM_DEF).find(f => codeKey(FORM_DEF[f].join(' ').split(' ')) === key) || null;
   let rows;
@@ -582,17 +582,22 @@ function tidyLines(items){
     rows = FORM_DEF[form].map(r => r.split(' ').map(c => { const i = pool.findIndex(x => x.code === c); return pool.splice(i, 1)[0]; })); }
   else { const B = [[], [], [], [], []], band = c => ({ 1: 0, 2: 1, 5: 4 })[lineOf(c)] ?? (c === 'CMF' ? 2 : c === 'AMF' ? 3 : -1);
     for (const it of items) if (band(it.code) >= 0) B[band(it.code)].push(it);
-    const midY = { 1: LINE_Y[2], 2: LINE_Y[3], 3: LINE_Y[4] };
-    for (const it of items.filter(x => band(x.code) < 0)){ const cand = [1, 2, 3].filter(b => B[b].some(x => band(x.code) === b));
-      (B[cand.length ? cand.sort((p, q) => Math.abs(midY[p] - it.y) - Math.abs(midY[q] - it.y))[0] : 2]).push(it); }
+    for (const it of items.filter(x => band(x.code) < 0)) B[2].push(it);   // LMF and RMF always stand in the CMF row
     rows = B.filter(L => L.length); }
   rows = rows.map(L => L.sort((a, b) => flankOf(a.code) - flankOf(b.code) || a.x - b.x));
   const lay = layoutRows(rows.map(L => L.map(x => x.code))), flat = rows.flat();
   return { order: flat.map((it, n) => ({ ...it, code: lay[n][0], x: lay[n][1], y: lay[n][2] })), form };
 }
 const FORM_ORDER = Object.keys(FORMS).sort();
+// other clubs are not held to the menu: they may also pick shapes with DMF and AMF (the presets of earlier versions,
+// laid out by today's rules). Yours come from the menu or from moving players yourself
+const AI_FORMS = {};
+for (const [f, rows] of Object.entries(OLD_FORM_DEF)){ if (FORMS[f]) continue; const lay = layoutRows(rows.map(r => r.split(' ')));
+  const td = tidyLines(lay.map((z, k) => ({ k, code: z[0], x: z[1], y: z[2] }))); if (!td.form) AI_FORMS[f] = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])]; }
+const ALL_ORDER = [...FORM_ORDER, ...Object.keys(AI_FORMS).sort()];
+const formSlots = f => FORMS[f] || AI_FORMS[f];
 const formLabel = (t, on) => (t && t.shape && t.shape.length === 11) || (on && on.some(x => x && x.xy)) ? 'Custom' : t && t.form;
-const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape : FORMS[t && t.form] || FORMS[FORM_ORDER[0]];
+const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape : formSlots(t && t.form) || FORMS[FORM_ORDER[0]];
 // the position a spot on the pitch stands for (0 at the top, their goal; 100 at the bottom, ours)
 const posAt = (x, y) => { const ln = LINE_Y.reduce((b, ly, k) => Math.abs(ly - y) < Math.abs(LINE_Y[b] - y) ? k : b, 0), w = x < 20 ? 'L' : x > 80 ? 'R' : '';
   return ln === 0 ? 'GK' : ln === 1 ? (w ? w + 'B' : 'CB') : ln === 2 ? (w ? w + 'MF' : 'DMF') : ln === 3 ? (w ? w + 'MF' : 'CMF') : ln === 4 ? (w ? w + 'MF' : 'AMF') : (w ? w + 'WF' : 'CF'); };
@@ -836,7 +841,7 @@ const PI = [
 function judge(){ const a = (S.staff || []).find(x => x.role === 'ass'), ju = a ? a.ju : 8, spread = 3 + (20 - ju) * .4, day = S.date;
   return (p, pos) => fitIn(p, pos) + (rng(`aj-${p.id}-${pos}-${day}`)() * 2 - 1) * spread; }
 function bestXI(cid, form, rest, jq){
-  const slots = cid === me() && S.tac[cid] && form === S.tac[cid].form ? slotsOf(S.tac[cid]) : FORMS[form], pool = squadOf(cid).filter(p => avail(p.id)), fit = jq || fitIn;
+  const slots = cid === me() && S.tac[cid] && form === S.tac[cid].form ? slotsOf(S.tac[cid]) : formSlots(form), pool = squadOf(cid).filter(p => avail(p.id)), fit = jq || fitIn;
   const q = (p, pos) => fit(p, pos) * (rest ? (0.72 + 0.28 * ps(p.id).cond / 100) : 1);
   const { xi, v } = pickXI(slots, pool, q), used = new Set(xi.filter(Boolean));
   const bench = pool.filter(p => !used.has(p.id)).sort((a, b) => fit(b, b.prim) - fit(a, a.prim));
@@ -844,7 +849,7 @@ function bestXI(cid, form, rest, jq){
   return { xi, bench: [gk, ...rest2].filter(Boolean).slice(0, BENCH).map(p => p.id), score: v };
 }
 // the formation that suits a squad best, by the same rules
-function bestForm(cid, rest, jq){ let best = FORM_ORDER[0], bv = -Infinity; for (const f of FORM_ORDER){ const v = bestXI(cid, f, rest, jq).score; if (v > bv){ bv = v; best = f; } } return best; }
+function bestForm(cid, rest, jq){ let best = FORM_ORDER[0], bv = -Infinity; for (const f of (cid === me() ? FORM_ORDER : ALL_ORDER)){ const v = bestXI(cid, f, rest, jq).score; if (v > bv){ bv = v; best = f; } } return best; }
 function setPieces(cid, xi){
   const L = xi.filter(Boolean).map(id => P.get(id)), best = k => (L.filter(p => p.prim !== 'GK').sort((a, b) => A(b, k) - A(a, k))[0] || {}).id;
   const cap = L.slice().sort((a, b) => (b.age + ovrNow(b) / 4) - (a.age + ovrNow(a) / 4))[0];
@@ -859,10 +864,10 @@ function autoTactic(cid, jq){
 function readyTactic(cid){
   if (!S.tac[cid]) S.tac[cid] = autoTactic(cid);   // a Championship club in a cup tie
   const t = S.tac[cid];
-  if (cid !== me()){ if (!FORMS[t.form]) t.form = bestForm(cid);
+  if (cid !== me()){ t.shape = null; if (!formSlots(t.form)) t.form = bestForm(cid);
     let f = bestXI(cid, t.form, true);
     // someone would have to play out of position (injuries, bans): the shape that fits who is left
-    if (f.xi.some((id, i) => !id || !canPlay(P.get(id), FORMS[t.form][i][0]))){ t.form = bestForm(cid, true); f = bestXI(cid, t.form, true); }
+    if (f.xi.some((id, i) => !id || !canPlay(P.get(id), formSlots(t.form)[i][0]))){ t.form = bestForm(cid, true); f = bestXI(cid, t.form, true); }
     t.xi = f.xi; t.bench = f.bench; t.set = setPieces(cid, t.xi); return t; }
   const slots = slotsOf(t);
   // a regular who missed games through injury or a ban gets his place back from his stand-in once he is fit, unless you
@@ -1117,7 +1122,7 @@ function minute(M){
       const q = logit((u1.att * .55 + u1.cre * .45 - u2.def) / 40);
       // game state: a side three up eases off and keeps the ball, one two up late on sits a little deeper
       const lead = att.goals - def.goals, late = M.half === 2 && M.min >= 70, ease = lead >= 3 ? .62 : lead === 2 && late ? .88 : lead === 1 && late ? .86 : lead === -1 && late ? 1.15 : lead === 0 && M.half === 2 && M.min >= 75 ? .88 : 1;   // late on: one up protects it, one down goes for it, level settles
-      if (Math.random() < q * .94 * ease){
+      if (Math.random() < q * .925 * ease){
         const t = att.t, lsBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'ls', 1) - 1), 0) * .012, crBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'cross', 1) - 1), 0) * .02 + (t.pass === 3 ? .06 : 0);
         const k = Math.random();
         if (k < .017){ const f = who(def, 'foul', 'ag'); say(M, att, 'yel', `Penalty! ${nm(f)} brings his man down in the box.`); rateAdd(def, f, -.4); shot(M, att, def, u1, u2, 'pen', att.on.find(y => y.id === (t.set || {}).pen)); }
@@ -1867,13 +1872,13 @@ function adopt(s){
   for (const q of Object.values(S.pl || {})) if (q.d) for (const k in q.d) q.d[k] = Math.round(q.d[k] * 100) / 100;
   for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x));
     // a shape from before the PES presets: the club's best preset, the same players placed by the rules
-    if (!FORMS[t.form] && !OLD_FORM_DEF[t.form] && !(t.shape && t.shape.length === 11)){ const ids = t.xi.filter(Boolean); t.form = bestForm(+id); const sl = FORMS[t.form]; t.xi = placeXI(sl, ids.map(x => P.get(x)));
+    if (!formSlots(t.form) && !OLD_FORM_DEF[t.form] && !(t.shape && t.shape.length === 11)){ const ids = t.xi.filter(Boolean); t.form = bestForm(+id); const sl = FORMS[t.form]; t.xi = placeXI(sl, ids.map(x => P.get(x)));
       if (t.xi.filter(Boolean).length < Math.min(11, ids.length)) Object.assign(t, bestXI(+id, t.form)); } }
   // the six-line layout reorders some presets' slots (wide midfielders now share the CMF line): players follow their slot's code
   // slot order: the presets list their rows as defined. A save from the six-line days had them sorted by line instead
   // (wide midfielders with the CMF line): players follow their slot's code back. Custom shapes are re-laid out.
   if (S.lines !== 8){ for (const [cid, t] of Object.entries(S.tac)){
-      if (+cid !== S.club){ if (!FORM_DEF[t.form]){ t.shape = null; t.form = bestForm(+cid); Object.assign(t, bestXI(+cid, t.form)); } continue; }   // other clubs simply pick again
+      if (+cid !== S.club){ if (!formSlots(t.form)){ t.shape = null; t.form = bestForm(+cid); Object.assign(t, bestXI(+cid, t.form)); } continue; }   // other clubs simply pick again
       if (t.shape && t.shape.length === 11){ if (S.lines === 7) continue;   // a shape from before: laid out again on today's rows
         const items = t.shape.map((z, k) => ({ k, code: z[0] === 'SS' ? 'CF' : z[0], x: z[1], y: z[2] })), gk = items.find(x => x.code === 'GK') || items[0], td = tidyLines(items.filter(x => x !== gk));
         t.xi = [t.xi[gk.k], ...td.order.map(it => t.xi[it.k])]; if (td.form){ t.form = td.form; t.shape = null; } else t.shape = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])]; continue; }
@@ -2124,7 +2129,7 @@ function nextFixture(cid){
 function previewSide(cid, M){
   if (M){ const side = M.h === cid ? M.H : M.A; return { form: formLabel(side.t, side.on), places: livePlaces(M, side).map(x => ({ ...x, rt: null })) }; }
   if (cid === me()){ const B = boardWeek(); return { form: formLabel(B.t), places: B.places }; }
-  const f = (S.tac[cid] && FORMS[S.tac[cid].form] ? S.tac[cid].form : bestForm(cid, true)), sl = FORMS[f], { xi } = bestXI(cid, f, true);
+  const f = (S.tac[cid] && formSlots(S.tac[cid].form) ? S.tac[cid].form : bestForm(cid, true)), sl = formSlots(f), { xi } = bestXI(cid, f, true);
   return { form: f, places: sl.map(([code, x, y], i) => { const id = xi[i]; return { i, code, x, y, id, p: id ? P.get(id) : null, e: id ? ps(id).cond : 0 }; }) };
 }
 function previewHTML(h, a, o){
