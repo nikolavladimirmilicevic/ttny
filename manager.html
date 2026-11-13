@@ -98,6 +98,11 @@ input[type=text]{background:var(--panel-2);border:1px solid var(--line);border-r
 select.pick{background:var(--panel-3);border:1px solid var(--line);border-radius:7px;color:var(--muted);font:600 12px/1 var(--body);padding:5px 4px;min-width:62px;max-width:96px}
 select.pick.on{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}select.pick.sub{background:color-mix(in srgb,var(--sky) 30%,var(--panel-3));color:var(--text);border-color:var(--sky)}
 select.pick option,select.pick optgroup{background:var(--panel);color:var(--text)}
+.tgrp{display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 8px;border-radius:10px;border:1px solid var(--line)}.tgrp.clr{background:rgba(232,96,76,.08);border-color:rgba(232,96,76,.35)}.tgrp.ask{background:rgba(92,192,138,.08);border-color:rgba(92,192,138,.35)}
+.tglbl{font:600 10.5px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:2px}.tgrp.clr .btn{color:#f3b2a6}
+.askw{position:relative}.askm{position:absolute;right:0;top:calc(100% + 6px);z-index:60;width:320px;max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
+.askm button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:7px 9px;color:var(--text);cursor:pointer}.askm button:hover,.askm button:focus-visible{background:var(--panel-2)}.askm b{display:block;font-size:13px}.askm span{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+@media(max-width:700px){.tgrp{flex-wrap:wrap}.askm{right:auto;left:0;width:min(320px,90vw)}}
 .mov{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr) minmax(0,1fr);gap:12px;margin-top:12px;align-items:start}
 .mov>div{background:var(--panel-2);border-radius:12px;padding:8px 10px;min-width:0}.mov .pitch.mini{max-width:none}
 .mov .sbar{grid-template-columns:30px 1fr 30px;margin:4px 0}.mov-sc{width:100%;font-size:12.5px}.mov-sc td{padding:3px 2px}
@@ -596,7 +601,9 @@ for (const [f, rows] of Object.entries(OLD_FORM_DEF)){ if (FORMS[f]) continue; c
   const td = tidyLines(lay.map((z, k) => ({ k, code: z[0], x: z[1], y: z[2] }))); if (!td.form) AI_FORMS[f] = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])]; }
 const ALL_ORDER = [...FORM_ORDER, ...Object.keys(AI_FORMS).sort()];
 const formSlots = f => FORMS[f] || AI_FORMS[f];
-const formLabel = (t, on) => t && t.name && t.shape ? t.name : (t && t.shape && t.shape.length === 11) || (on && on.some(x => x && x.xy)) ? 'Custom' : t && t.form;
+const formLabel = (t, on) => { if (t && t.shape && t.shape.length === 11) return shapeName(t.shape);
+  if (on && on.some(x => x && x.xy) && LIVE){ const M = LIVE.M, side = M.H.t === t ? M.H : M.A.t === t ? M.A : null; if (side) return shapeName([['GK'], ...livePlaces(M, side).filter(p => p.code !== 'GK').map(p => [p.code, p.x, p.y])]); }
+  return t && t.form; };
 const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape : formSlots(t && t.form) || FORMS[FORM_ORDER[0]];
 // the position a spot on the pitch stands for (0 at the top, their goal; 100 at the bottom, ours)
 const posAt = (x, y) => { const ln = LINE_Y.reduce((b, ly, k) => Math.abs(ly - y) < Math.abs(LINE_Y[b] - y) ? k : b, 0), w = x < 20 ? 'L' : x > 80 ? 'R' : '';
@@ -866,11 +873,11 @@ function shapeOk(codes){ const n = c => codes.filter(x => x === c).length;
   const back = n('LB') + n('CB') + n('RB'), fwd = n('LWF') + n('CF') + n('RWF');
   const mid = 10 - back - fwd;
   return back >= 3 && back <= 5 && mid >= 3 && mid <= 5 && fwd >= 1 && fwd <= 3 && n('CB') >= 2 && n('LB') === n('RB') && n('LMF') === n('RMF') && n('LWF') === n('RWF'); }
-const shapeName = sl => { const ys = [...new Set(sl.slice(1).map(z => z[2]))].sort((a, b) => b - a); return ys.map(y => sl.filter(z => z[2] === y && z[0] !== 'GK').length).join('-'); };
-function coachShape(cid, rest){
-  const pool = squadOf(cid).filter(p => avail(p.id)), q = (p, pos) => fitIn(p, pos) * (rest ? (0.72 + 0.28 * ps(p.id).cond / 100) : 1);
+function shapeName(sl){ const out = sl.filter(z => z[0] !== 'GK'), ys = [...new Set(out.map(z => z[2]))].sort((a, b) => b - a); return ys.map(y => out.filter(z => z[2] === y).length).join('-'); }
+function coachShape(cid, rest, jq){
+  const pool = squadOf(cid).filter(p => avail(p.id)), fit = jq || fitIn, q = (p, pos) => fit(p, pos) * (rest ? (0.72 + 0.28 * ps(p.id).cond / 100) : 1);
   const val = codes => pickXI([['GK', 50, 90], ...codes.map(c => [c, 50, 50])], pool, q).v;
-  let codes = formSlots(bestForm(cid, rest)).slice(1).map(z => z[0]), cur = val(codes);
+  let codes = formSlots(bestForm(cid, rest, jq)).slice(1).map(z => z[0]), cur = val(codes);
   for (let it = 0; it < 8; it++){ let best = null, bv = cur + .5;
     const tried = new Set(), tryC = cand => { const k = cand.slice().sort().join(' '); if (tried.has(k) || !shapeOk(cand)) return; tried.add(k); const v = val(cand); if (v > bv){ bv = v; best = cand; } };
     const kinds = [...new Set(codes)], CEN = ['CB', 'DMF', 'CMF', 'AMF', 'CF'], PAIRS = [['LB', 'RB'], ['LMF', 'RMF'], ['LWF', 'RWF']];
@@ -938,6 +945,64 @@ function fillRest(cid = me()){
     const c = pool().filter(p => p.prim !== 'GK' && (!need || GROUP[p.prim] === need)).sort((a, b) => fit(b, b.prim) - fit(a, a.prim))[0] || pool().filter(p => p.prim !== 'GK').sort((a, b) => fit(b, b.prim) - fit(a, a.prim))[0];
     if (!c) break; t.bench.push(c.id); used.add(c.id); }
   const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => t.xi.includes(v))); t.set = Object.assign(setPieces(cid, t.xi), keep);
+}
+/* ask the assistant: each job on its own, done with his eye (good, not perfect). Returns a line saying what he did */
+const ASK = [
+  ['all', 'Everything', 'A shape around the squad, side, bench, set pieces, team and player instructions'],
+  ['side', 'Shape, side and bench', 'From the formations on the menu'],
+  ['shape', 'Build a shape for the squad', 'Any shape, DMF and AMF included, around his best men'],
+  ['form', 'Best formation for these players', 'Keeps your side, picks the menu formation that suits it'],
+  ['xi', 'Pick the eleven', 'For the shape you have'],
+  ['bench', 'Pick the substitutes', 'Keeps the eleven'],
+  ['rest', 'Fill the empty places', 'Your picks stay'],
+  ['tired', 'Rest tired players', 'Anyone below 85% condition makes way if there is a fair stand-in'],
+  ['set', 'Set pieces and captain', 'Captain, penalties, free kicks, corners'],
+  ['team', 'Team instructions', 'Mentality, passing, tackling and the tactics, for the next opponent'],
+  ['pi', 'Player instructions', 'Runs, shooting, crossing, closing down, for each man'],
+];
+function askAssistant(k){
+  const cid = me(), t = S.tac[cid], jq = judge(), nm = id => cmName(P.get(id).n), say = [];
+  const reSet = () => { t.set = setPieces(cid, t.xi); };
+  if (k === 'side'){ const a = autoTactic(cid, jq); Object.assign(t, { form: a.form, xi: a.xi, bench: a.bench, shape: null }); reSet(); say.push(`${a.form}, side and bench picked`); }
+  if (k === 'shape' || k === 'all'){ const cs = coachShape(cid, false, jq); Object.assign(t, { form: cs.form === 'Custom' ? t.form : cs.form, shape: cs.shape }); const f = bestXI(cid, t.form, false, jq, slotsOf(t)); t.xi = f.xi; t.bench = f.bench; reSet(); say.push(`a ${formLabel(t)} built around the squad`); }
+  if (k === 'form'){ const ids = t.xi.filter(Boolean), f = bestForm(cid, false, jq), sl = FORMS[f]; t.form = f; t.shape = null; t.xi = placeXI(sl, ids.map(id => P.get(id)), jq); reSet(); say.push(`${f} suits these players best`); }
+  if (k === 'xi'){ const f = bestXI(cid, t.form, false, jq, slotsOf(t)); t.xi = f.xi; t.bench = f.bench; reSet(); say.push('eleven and bench picked for your shape'); }
+  if (k === 'bench' || k === 'all'){ t.bench = []; fillRest(cid); say.push(k === 'all' ? 'substitutes named' : `substitutes: ${t.bench.map(nm).join(', ')}`); }
+  if (k === 'rest'){ fillRest(cid); say.push('empty places filled'); }
+  if (k === 'tired' || k === 'all'){ const sl = slotsOf(t), out = [];
+    t.xi.forEach((id, i) => { if (!id || ps(id).cond >= 85) return; const code = sl[i][0], cur = jq(P.get(id), code);
+      const alt = t.bench.map(x => P.get(x)).filter(p => p && avail(p.id) && ps(p.id).cond >= 92 && canPlay(p, code)).sort((a, b) => jq(b, code) - jq(a, code))[0];
+      if (alt && jq(alt, code) >= cur - 6){ t.xi[i] = alt.id; t.bench = t.bench.filter(x => x !== alt.id); t.bench.push(id); out.push(`${nm(alt.id)} for ${nm(id)}`); } });
+    if (out.length){ reSet(); say.push(`rested: ${out.join(', ')}`); } else if (k === 'tired') say.push('nobody needs a rest'); }
+  if (k === 'set' || k === 'all'){ reSet(); const st = t.set; say.push(`captain ${nm(st.cap)}, penalties ${nm(st.pen)}, free kicks ${nm(st.fk)}, corners ${nm(st.cor)}`); }
+  if (k === 'team' || k === 'all'){
+    const nf = nextFixture(cid), op = nf && nf.m ? (nf.m.h === cid ? nf.m.a : nf.m.h) : null, home = nf && nf.m && nf.m.h === cid;
+    const XI = t.xi.filter(Boolean).map(id => P.get(id)), av = (L, ks) => L.reduce((s0, p) => s0 + ks.reduce((u, key) => u + A(p, key), 0) / ks.length, 0) / Math.max(1, L.length);
+    const outf = XI.filter(p => p.prim !== 'GK'), defs = outf.filter(p => GROUP[p.prim] === 'DEF'), fwds = outf.filter(p => GROUP[p.prim] === 'FWD');
+    const diff = (club(cid).q || 75) - (op ? club(op).q || 75 : 75) + (home ? 2 : -1) + (Math.random() * 2 - 1);
+    t.men = diff >= 9 ? 4 : diff >= 3 ? 3 : diff <= -9 ? 0 : diff <= -4 ? 1 : 2;
+    const tech = av(outf, ['lp', 'bc', 'tp']), air = av(fwds, ['he', 'ju', 'pc']), pace = av(fwds, ['sp', 'ac']);
+    t.pass = tech >= 78 ? 2 : air >= 76 && tech < 72 ? 3 : pace >= 82 ? 1 : 0;
+    const agg = av(outf, ['ag', 'bw']); t.tack = agg >= 76 ? 2 : agg <= 60 ? 0 : 1;
+    t.press = av(outf, ['st']) >= 78 && diff > -6; t.offside = av(defs, ['sp', 'da']) >= 78; t.counter = diff <= -3 && pace >= 78; t.mbb = diff <= -8;
+    say.push(`${MENT[t.men].toLowerCase()}, ${PASS[t.pass].toLowerCase()} passing, ${TACK[t.tack].toLowerCase()} tackling${t.press ? ', pressing' : ''}${t.offside ? ', offside trap' : ''}${t.counter ? ', on the counter' : ''}${t.mbb ? ', men behind the ball' : ''}${op ? ` against ${club(op).name}` : ''}`); }
+  if (k === 'pi' || k === 'all'){ const sl = slotsOf(t); t.pi = t.pi || {}; let n = 0;
+    t.xi.forEach((id, i) => { if (!id) return; const p = P.get(id), code = sl[i][0], o = {}, a = key => A(p, key), g = GROUP[code] || GROUP[p.prim];
+      if (code === 'GK'){ t.pi[id] = {}; return; }
+      if (/^(LB|RB)$/.test(code)) o.runs = a('st') >= 80 && a('oa') >= 70 ? 2 : a('oa') < 60 ? 0 : 1;
+      if (code === 'CB') o.runs = 0;
+      if (/^(AMF|LWF|RWF|CF)$/.test(code)) o.runs = 2;
+      if (a('dr') >= 82 && a('sp') >= 78) o.rwb = 2; else if (a('dr') < 62) o.rwb = 0;
+      if (a('kp') >= 82 && a('fi') >= 74) o.ls = 2; else if (a('kp') < 66 || g === 'DEF') o.ls = 0;
+      if (a('lp') >= 82 && g !== 'DEF') o.tb = 2;
+      if (/^(LB|RB|LMF|RMF|LWF|RWF)$/.test(code)) o.cross = a('cu') >= 76 || a('lf') >= 78 ? 2 : a('cu') < 62 ? 0 : 1;
+      if (a('st') >= 82 && a('bw') >= 65) o.close = 2; else if (a('st') < 64) o.close = 0;
+      if (a('ag') >= 80 && a('bw') >= 75) o.tack = 2; else if (a('bw') < 55) o.tack = 0;
+      if (code === 'CF' && a('pc') >= 80) o.hold = 1;
+      if (/^(AMF|CF|LWF|RWF)$/.test(code) && a('oa') >= 85 && a('dr') >= 84) o.free = 1;
+      t.pi[id] = o; n++; });
+    say.push(`own instructions for ${n} players`); }
+  save(); return say;
 }
 const piOf = (t, id, k, dflt) => { const v = t.pi && t.pi[id] && t.pi[id][k]; return v == null ? dflt : v; };
 
@@ -2100,8 +2165,8 @@ function clubSquad(cid, o){
   const chips = (id, L2, cur) => `<span class="seg sqseg" id="${id}">${L2.map(([k, n]) => `<button data-v="${k}" class="${cur === k ? 'on' : ''}">${n}</button>`).join('')}</span>`;
   const n = k => all.filter({ all: () => true, gk: p => p.prim === 'GK', def: p => GROUP[p.prim] === 'DEF', mid: p => GROUP[p.prim] === 'MID', fwd: p => GROUP[p.prim] === 'FWD', avail: p => avail(p.id), out: p => !avail(p.id), first: p => t.xi.includes(p.id) || t.bench.includes(p.id), exp: p => S.con[p.id] && S.con[p.id].y <= S.season + 1 }[k]).length;
   o.tools = `<div class="sqbar">${chips('sqv', [['gen', 'General'], ['attr', 'Attributes'], ['stats', 'Stats'], ['con', 'Contracts'], ...(mine ? [['pos', 'Pick the side']] : [])], view_)}${chips('sqt', [['first', 'First Team'], ['res', 'Reserves'], ['all', 'Whole Squad']], team)}</div>
-    <div class="sqbar">${chips('sqf', [['all', 'All'], ['gk', 'GK'], ['def', 'DEF'], ['mid', 'MID'], ['fwd', 'FWD'], ['avail', 'Available'], ['out', 'Out'], ...(mine ? [['first', 'Picked']] : []), ['exp', 'Expiring']].map(([k, x]) => [k, `${x} <span class="dim">${n(k)}</span>`]), filt)}<span style="flex:1"></span>${mine ? '<button class="btn sm" id="autoxi" title="Empty places and bench spots only; your picks stay">Assistant fills the rest</button><button class="btn sm" id="clearb">Clear bench</button><button class="btn sm" id="clearsq">Clear all</button>' : ''}</div>`;
-  o.body = sum + body + (mine && view_ === 'pos' ? `<p class="small dim" style="margin:8px 2px 0">Tap a box to give that player the next free place in your ${esc(t.form)}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; tap it again to take it back.</p>` : '');
+    <div class="sqbar">${chips('sqf', [['all', 'All'], ['gk', 'GK'], ['def', 'DEF'], ['mid', 'MID'], ['fwd', 'FWD'], ['avail', 'Available'], ['out', 'Out'], ...(mine ? [['first', 'Picked']] : []), ['exp', 'Expiring']].map(([k, x]) => [k, `${x} <span class="dim">${n(k)}</span>`]), filt)}<span style="flex:1"></span>${mine ? '<span class="tgrp clr"><span class="tglbl">Clear</span><button class="btn sm" id="clearb">Bench</button><button class="btn sm" id="clearsq">Everything</button></span><span class="tgrp ask"><span class="tglbl">Assistant</span><button class="btn sm" id="autoxi" title="Empty places and bench spots only; your picks stay">Fill the rest</button></span>' : ''}</div>`;
+  o.body = sum + body + (mine && view_ === 'pos' ? `<p class="small dim" style="margin:8px 2px 0">Tap a box to give that player the next free place in your ${esc(formLabel(t))}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; tap it again to take it back.</p>` : '');
   frame(o);
   document.querySelectorAll('#sqv button').forEach(b => b.addEventListener('click', () => { V = { ...V, view: b.dataset.v }; view(); }));
   document.querySelectorAll('#sqt button').forEach(b => b.addEventListener('click', () => { V = { ...V, team: b.dataset.v }; view(); }));
@@ -2481,7 +2546,7 @@ function boardHTML(B){
   const setp = `<div class="instr">${spSel('cap', 'Captain')}${spSel('pen', 'Penalties')}${spSel('fk', 'Free Kicks')}${spSel('cor', 'Corners')}</div>`;
   const tabs = [['squad', B.live ? 'Substitutes' : 'Squad'], ['team', 'Team'], ['player', 'Player'], ['set', 'Set Pieces']];
   const custom = t.shape || (B.live && B.us.on.some(x => x.xy));
-  const forms = `<div class="tbforms" role="radiogroup" aria-label="Formation">${custom ? `<button class="tbf on" disabled>${formIcon(null, B.places)}<span>Custom</span></button>` : ''}${FORM_ORDER.map(f => `<button class="tbf ${f === t.form && !custom ? 'on' : ''}" data-form="${f}" role="radio" aria-checked="${f === t.form}">${formIcon(f)}<span>${f}</span></button>`).join('')}</div>`;
+  const forms = `<div class="tbforms" role="radiogroup" aria-label="Formation">${custom ? `<button class="tbf on" disabled title="Your own shape">${formIcon(null, B.places)}<span>${esc(formLabel(t, B.live ? B.us.on : null))}</span></button>` : ''}${FORM_ORDER.map(f => `<button class="tbf ${f === t.form && !custom ? 'on' : ''}" data-form="${f}" role="radio" aria-checked="${f === t.form}">${formIcon(f)}<span>${f}</span></button>`).join('')}</div>`;
   return `<div class="tboard">${B.live ? `<div class="tbview">${viewSw()}</div>` : ''}${forms}<div class="tbgrid">${pitch}<div class="tbside"><nav class="tbtabs">${tabs.map(([k, n]) => `<button data-tbt="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</nav>
     <div class="tbbody">${({ squad, team, player, set: setp })[tab] || squad}</div></div></div></div>`;
 }
@@ -2546,10 +2611,14 @@ function clubTactics(cid, o){
   if (V.sub && V.sub !== TB.vsub){ TB.tab = { overview: 'squad', team: 'team', player: 'player', set: 'set' }[V.sub] || 'squad'; TB.vsub = V.sub; }
   const B = boardWeek();
   o.title = `${esc(club(me()).name)} Tactics`;
-  o.tools = `<span class="small dim">Drag players onto each other, onto open grass or in from the list; or tap one, then the other. Double-tap a player to open his profile.</span><span style="flex:1"></span><button class="btn sm" id="fillr" title="Empty places and bench spots only; your picks stay">Fill the rest</button><button class="btn sm" id="clrb">Clear bench</button><button class="btn sm" id="clra">Clear all</button><button class="btn sm" id="auto" title="The assistant picks shape, side and bench">Assistant's choice</button>`;
+  o.tools = `<span class="small dim">Drag players onto each other, onto open grass or in from the list; or tap one, then the other. Double-tap a player to open his profile.</span><span style="flex:1"></span><span class="tgrp clr"><span class="tglbl">Clear</span><button class="btn sm" id="clrb">Bench</button><button class="btn sm" id="clra">Everything</button></span><span class="tgrp ask"><span class="tglbl">Assistant</span><button class="btn sm" id="fillr" title="Empty places and bench spots only; your picks stay">Fill the rest</button><button class="btn sm" id="auto" title="The assistant picks shape, side and bench">Pick the side</button><span class="askw"><button class="btn sm go" id="askb" aria-haspopup="true" aria-expanded="false">Ask him ▾</button><div class="askm" id="askm" role="menu" hidden>${ASK.map(([k, n, d]) => `<button role="menuitem" data-ask="${k}"><b>${n}</b><span>${d}</span></button>`).join('')}</div></span></span>`;
   o.body = boardHTML(B);
   frame(o);
   $('#auto').addEventListener('click', () => { const a = autoTactic(me(), judge()); Object.assign(B.t, { form: a.form, xi: a.xi, bench: a.bench, set: a.set, shape: null }); TB.sel = null; save(); view(); });
+  const askm = $('#askm'), askb = $('#askb');
+  askb.addEventListener('click', e => { e.stopPropagation(); askm.hidden = !askm.hidden; askb.setAttribute('aria-expanded', String(!askm.hidden)); });
+  document.addEventListener('click', function off(e){ if (!askm.isConnected){ document.removeEventListener('click', off); return; } if (!e.target.closest('.askw')) askm.hidden = true; });
+  askm.querySelectorAll('[data-ask]').forEach(b => b.addEventListener('click', () => { const said = askAssistant(b.dataset.ask); TB.sel = null; view(); toast('Assistant: ' + said.join('; ') + '.', 6000); }));
   $('#fillr').addEventListener('click', () => { fillRest(); TB.sel = null; save(); view(); });
   $('#clrb').addEventListener('click', () => { B.t.bench = []; save(); view(); });
   $('#clra').addEventListener('click', () => { B.t.xi = Array(11).fill(null); B.t.bench = []; TB.sel = null; save(); view(); });
