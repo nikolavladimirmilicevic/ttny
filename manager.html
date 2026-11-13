@@ -961,19 +961,22 @@ const ASK = [
 ];
 function askAssistant(k){
   const cid = me(), t = S.tac[cid], jq = judge(), nm = id => cmName(P.get(id).n), say = [];
-  const reSet = () => { t.set = setPieces(cid, t.xi); };
-  if (k === 'side'){ const a = autoTactic(cid, jq); Object.assign(t, { form: a.form, xi: a.xi, bench: a.bench, shape: null }); reSet(); say.push(`${a.form}, side and bench picked`); }
-  if (k === 'shape' || k === 'all'){ const cs = coachShape(cid, false, jq); Object.assign(t, { form: cs.form === 'Custom' ? t.form : cs.form, shape: cs.shape }); const f = bestXI(cid, t.form, false, jq, slotsOf(t)); t.xi = f.xi; t.bench = f.bench; reSet(); say.push(`a ${formLabel(t)} built around the squad`); }
+  // set pieces: only those who left the eleven are replaced; the rest of your choices stay
+  const reSet = () => { const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => t.xi.includes(v))); t.set = Object.assign(setPieces(cid, t.xi), keep); };
+  // a new eleven leaves the bench alone, except that a man moved up leaves it and a starter left out takes his seat
+  const newXI = xi => { const old = t.xi.slice(); t.xi = xi; t.bench = t.bench.filter(id => !xi.includes(id)); for (const id of old) if (id && !xi.includes(id) && t.bench.length < BENCH) t.bench.push(id); reSet(); };
+  if (k === 'side'){ const a = autoTactic(cid, jq); Object.assign(t, { form: a.form, xi: a.xi, bench: a.bench, shape: null }); t.set = setPieces(cid, t.xi); say.push(`${a.form}, side and bench picked`); }
+  if (k === 'shape' || k === 'all'){ const cs = coachShape(cid, false, jq); Object.assign(t, { form: cs.form === 'Custom' ? t.form : cs.form, shape: cs.shape }); const f = bestXI(cid, t.form, false, jq, slotsOf(t)); newXI(f.xi); say.push(`a ${formLabel(t)} built around the squad`); }
   if (k === 'form'){ const ids = t.xi.filter(Boolean), f = bestForm(cid, false, jq), sl = FORMS[f]; t.form = f; t.shape = null; t.xi = placeXI(sl, ids.map(id => P.get(id)), jq); reSet(); say.push(`${f} suits these players best`); }
-  if (k === 'xi'){ const f = bestXI(cid, t.form, false, jq, slotsOf(t)); t.xi = f.xi; t.bench = f.bench; reSet(); say.push('eleven and bench picked for your shape'); }
-  if (k === 'bench' || k === 'all'){ t.bench = []; fillRest(cid); say.push(k === 'all' ? 'substitutes named' : `substitutes: ${t.bench.map(nm).join(', ')}`); }
+  if (k === 'xi'){ const f = bestXI(cid, t.form, false, jq, slotsOf(t)); newXI(f.xi); say.push('eleven picked for your shape'); }
+  if (k === 'bench' || k === 'all'){ const xi = t.xi.slice(), set = t.set; t.bench = []; fillRest(cid); t.xi = xi; t.set = set; t.bench = t.bench.filter(id => !xi.includes(id)); say.push(k === 'all' ? 'substitutes named' : `substitutes: ${t.bench.map(nm).join(', ')}`); }
   if (k === 'rest'){ fillRest(cid); say.push('empty places filled'); }
   if (k === 'tired' || k === 'all'){ const sl = slotsOf(t), out = [];
     t.xi.forEach((id, i) => { if (!id || ps(id).cond >= 85) return; const code = sl[i][0], cur = jq(P.get(id), code);
       const alt = t.bench.map(x => P.get(x)).filter(p => p && avail(p.id) && ps(p.id).cond >= 92 && canPlay(p, code)).sort((a, b) => jq(b, code) - jq(a, code))[0];
       if (alt && jq(alt, code) >= cur - 6){ t.xi[i] = alt.id; t.bench = t.bench.filter(x => x !== alt.id); t.bench.push(id); out.push(`${nm(alt.id)} for ${nm(id)}`); } });
     if (out.length){ reSet(); say.push(`rested: ${out.join(', ')}`); } else if (k === 'tired') say.push('nobody needs a rest'); }
-  if (k === 'set' || k === 'all'){ reSet(); const st = t.set; say.push(`captain ${nm(st.cap)}, penalties ${nm(st.pen)}, free kicks ${nm(st.fk)}, corners ${nm(st.cor)}`); }
+  if (k === 'set' || k === 'all'){ t.set = setPieces(cid, t.xi); const st = t.set; say.push(`captain ${nm(st.cap)}, penalties ${nm(st.pen)}, free kicks ${nm(st.fk)}, corners ${nm(st.cor)}`); }
   if (k === 'team' || k === 'all'){
     const nf = nextFixture(cid), op = nf && nf.m ? (nf.m.h === cid ? nf.m.a : nf.m.h) : null, home = nf && nf.m && nf.m.h === cid;
     const XI = t.xi.filter(Boolean).map(id => P.get(id)), av = (L, ks) => L.reduce((s0, p) => s0 + ks.reduce((u, key) => u + A(p, key), 0) / ks.length, 0) / Math.max(1, L.length);
