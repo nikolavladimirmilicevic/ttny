@@ -256,7 +256,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tbzone{min-height:36px;border-radius:8px}
 .tbrow.hd{cursor:default;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);padding-top:2px;padding-bottom:4px}.tbrow.hd:hover{background:none}
 .tbrow .rt2{font-weight:700;text-align:right;font-variant-numeric:tabular-nums}.tbrow .fm2{text-align:right;font-size:12.5px}.tbrow .cnd{display:flex;align-items:center;gap:4px;justify-content:flex-end}.tbrow .cnd .sqc{width:40px;margin:0}
-.tok .pc{font:800 9.5px/1 var(--body);color:#111;background:var(--gold);border-radius:4px;padding:2px 4px;letter-spacing:.03em}
+.tok .tpc{font:800 9.5px/1 var(--body);color:#111;background:var(--gold);border-radius:4px;padding:2px 4px;letter-spacing:.03em}
 .tboard .instr{grid-template-columns:104px minmax(0,1fr)}.tboard .instr .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%;min-width:0}.tboard .instr .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px;text-align:center}
 @media(max-width:520px){.tboard .instr{grid-template-columns:1fr}}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
@@ -531,19 +531,38 @@ const FORM_DEF = {
   '3-2-2-3': ['CB CB CB', 'CMF CMF', 'LMF RMF', 'LWF CF RWF'], '5-2-2-1': ['LB CB CB CB RB', 'DMF DMF', 'LMF RMF', 'CF'],
   '5-2-1-2': ['LB CB CB CB RB', 'DMF DMF', 'AMF', 'CF CF'], '5-3-2': ['LB CB CB CB RB', 'CMF CMF CMF', 'CF CF'],
 };
-const FORMS = {};
-for (const [f, rows] of Object.entries(FORM_DEF)){
-  const out = [['GK', 50, 92]], L = rows.length, XS = { 1: [50], 2: [36, 64], 3: [22, 50, 78], 4: [13, 37, 63, 87], 5: [10, 30, 50, 70, 90] };
+// lines from the back, each left to right, laid out on the pitch: the same rule for the presets and for a shape the manager tidies
+function layoutRows(rows){
+  const out = [], L = rows.length, XS = { 1: [50], 2: [36, 64], 3: [22, 50, 78], 4: [13, 37, 63, 87], 5: [10, 30, 50, 70, 90] };
   const YN = { DMF: 4, AMF: -3, LMF: -2, RMF: -2 }, CX = { 1: [50], 2: [37, 63], 3: [28, 50, 72], 4: [22, 41, 59, 78], 5: [10, 30, 50, 70, 90] };
-  rows.forEach((row, i) => {
-    const codes = row.split(' '), wide = c => /^L(B|MF|WF)$/.test(c) ? 'L' : /^R(B|MF|WF)$/.test(c) ? 'R' : '';
-    const central = codes.filter(c => !wide(c)), cx = i === 0 && central.length === codes.length ? (codes.length === 3 ? [27, 50, 73] : XS[codes.length]) : CX[central.length] || [];
+  const even = n => Array.from({ length: n }, (_, k) => Math.round(10 + 80 * (k + .5) / n));
+  rows.forEach((codes, i) => {
+    const wide = c => /^L(B|MF|WF)$/.test(c) ? 'L' : /^R(B|MF|WF)$/.test(c) ? 'R' : '';
+    const central = codes.filter(c => !wide(c)), cx = i === 0 && central.length === codes.length ? (codes.length === 3 ? [27, 50, 73] : XS[codes.length] || even(codes.length)) : CX[central.length] || even(central.length);
     let ci = 0;
     const xs = codes.map(c => wide(c) === 'L' ? (i === 0 && codes.length === 5 ? 10 : 13) : wide(c) === 'R' ? (i === 0 && codes.length === 5 ? 90 : 87) : cx[ci++]);
     const y = 76 - i * (58 / Math.max(1, L - 1));
     codes.forEach((c, j) => out.push([c, xs[j], Math.round(y + (YN[c] || 0))]));
   });
-  FORMS[f] = out;
+  return out;
+}
+const FORMS = {};
+for (const [f, rows] of Object.entries(FORM_DEF)) FORMS[f] = [['GK', 50, 92], ...layoutRows(rows.map(r => r.split(' ')))];
+// a hand-placed side put back in order: each man keeps the position his spot gives him, the lines are straightened and spaced
+// like a preset; items are { k, code, x, y } for the outfield ten. Returns them in preset order, laid out, and the preset it matches
+function tidyLines(items){
+  const band = c => /^(LB|CB|RB)$/.test(c) ? 0 : c === 'DMF' ? 1 : c === 'CMF' ? 2 : c === 'AMF' ? 3 : /^(LMF|RMF)$/.test(c) ? -1 : 4;
+  const B = [[], [], [], [], []];
+  for (const it of items) if (band(it.code) >= 0) B[band(it.code)].push(it);
+  for (const it of items.filter(x => band(x.code) < 0)){   // wide midfielders join the midfield line nearest them
+    const cand = [1, 2, 3].filter(b => B[b].some(x => band(x.code) === b));
+    const b = cand.length ? cand.sort((p, q) => Math.abs(avgY(B[p]) - it.y) - Math.abs(avgY(B[q]) - it.y))[0] : 2; B[b].push(it); }
+  function avgY(L){ const c = L.filter(x => band(x.code) >= 0); return c.reduce((t, x) => t + x.y, 0) / Math.max(1, c.length); }
+  const side = c => /^L/.test(c) && c !== 'LB' || c === 'LB' ? 0 : /^R/.test(c) ? 2 : 1;
+  const rows = B.filter(L => L.length).map(L => L.sort((a, b) => side(a.code) - side(b.code) || a.x - b.x));
+  const lay = layoutRows(rows.map(L => L.map(x => x.code))), flat = rows.flat();
+  const sig = rows.map(L => L.map(x => x.code).join(' ')).join('|'), form = Object.keys(FORM_DEF).find(f => FORM_DEF[f].join('|') === sig) || null;
+  return { order: flat.map((it, n) => ({ ...it, code: lay[n][0], x: lay[n][1], y: lay[n][2] })), form };
 }
 const FORM_ORDER = Object.keys(FORMS).sort();
 const formLabel = (t, on) => (t && t.shape && t.shape.length === 11) || (on && on.some(x => x && x.xy)) ? 'Custom' : t && t.form;
@@ -2286,8 +2305,14 @@ function boardWeek(){
       t.form = f; t.xi = xi; t.shape = null; return true; },
     moveTo(i, x, y){ if (slots[i][0] === 'GK') return toast('The goalkeeper stays in goal.');
       y = Math.min(82, Math.max(6, y)); x = Math.min(95, Math.max(5, x)); const code = posAt(x, y);
-      t.shape = slots.map(s => s.slice()); t.shape[i] = [code, Math.round(x), Math.round(y)];
-      const p = t.xi[i] && P.get(t.xi[i]); if (p && !canPlay(p, code)) toast(`${cmName(p.n)} is out of position at ${code}.`); return true; },
+      const sh = slots.map(s => s.slice()); sh[i] = [code, Math.round(x), Math.round(y)];
+      const p = t.xi[i] && P.get(t.xi[i]); if (p && !canPlay(p, code)) toast(`${cmName(p.n)} is out of position at ${code}.`);
+      // straighten the lines; a shape that is one of the presets takes its name
+      const gk = sh.findIndex(s => s[0] === 'GK'), td = tidyLines(sh.map((s, k) => ({ k, code: s[0], x: s[1], y: s[2] })).filter(it => it.k !== gk));
+      t.xi = [t.xi[gk], ...td.order.map(it => t.xi[it.k])];
+      if (td.form){ t.form = td.form; t.shape = null; } else t.shape = [['GK', 50, 92], ...td.order.map(it => [it.code, it.x, it.y])];
+      if (t.set) for (const [k2, v] of Object.entries(t.set)) if (!t.xi.includes(v)) delete t.set[k2];
+      return true; },
     done(){ save(); view(); } };
 }
 function livePlaces(M, side){
@@ -2310,7 +2335,11 @@ function boardLive(){
       [a.pos, b.pos] = [b.pos, a.pos]; [a.xy, b.xy] = [b.xy, a.xy]; say(M, us, 'minor', `${nm(a)} and ${nm(b)} swap places.`); return true; },
     toBench(){ return toast('Bring someone on instead: drag a substitute onto him.'); }, toRest(){ return false; },
     moveTo(i, x, y){ const p = us.on[i]; if (!p) return; if (p.pos === 'GK') return toast('The goalkeeper stays in goal.');
-      y = Math.min(82, Math.max(6, y)); x = Math.min(95, Math.max(5, x)); const code = posAt(x, y), was = p.pos; p.pos = code; p.xy = [Math.round(x), Math.round(y)];
+      y = Math.min(82, Math.max(6, y)); x = Math.min(95, Math.max(5, x)); const code = posAt(x, y), was = p.pos;
+      const pl = livePlaces(M, us); p.pos = code;
+      const td = tidyLines(us.on.map((o, k) => ({ k, code: k === i ? code : o.pos, x: k === i ? x : pl[k].x, y: k === i ? y : pl[k].y })).filter(it => us.on[it.k].pos !== 'GK' || it.k === i));
+      if (td.form && us.on.filter(o => !o.off).length === 11){ td.order.forEach(it => { us.on[it.k].pos = it.code; delete us.on[it.k].xy; }); t.form = td.form; t.shape = null; }
+      else td.order.forEach(it => { us.on[it.k].pos = it.code; us.on[it.k].xy = [it.x, it.y]; });
       if (code !== was) say(M, us, 'minor', `${nm(p)} moves to ${code}.`); if (!canPlay(p.p, code)) toast(`${cmName(p.p.n)} is out of position at ${code}.`); return true; },
     form(f){ const sl = FORMS[f], on = us.on.filter(x => !x.off), xi = placeXI(sl.slice(0, Math.max(1, on.length)), on.map(x => x.p));
       // the eleven (or ten) into the new shape, each where he plays; a man who fits nowhere keeps his position
@@ -2324,7 +2353,7 @@ function boardHTML(B){
   const fitCls = (p, code) => { if (!p) return 'empty'; const k = fitTier(p, code); return k < 0 ? 'bad' : k >= 2 ? 'ok' : ''; };
   const bar = e => `<i class="cb" style="--w:${Math.round(e)}%;--c:${e >= 80 ? 'var(--win)' : e >= 62 ? 'var(--gold)' : 'var(--loss)'}"></i>`;
   const token = pl => `<button class="tok ${fitCls(pl.p, pl.code)} ${sel === 's:' + pl.i ? 'sel' : ''}" data-drag="s:${pl.i}" data-drop="s:${pl.i}" style="left:${pl.x}%;top:${pl.y}%" title="${pl.p ? esc(pl.p.n) + ' · ' + pl.code : pl.code}">
-    <span class="dot">${pl.p ? (pl.p.no || '•') : '+'}${pl.p && pl.id === cap ? '<em>C</em>' : ''}${pl.p && t.pi && t.pi[pl.id] && Object.keys(t.pi[pl.id]).length ? '<i class="pim" title="Own instructions">i</i>' : ''}</span><span class="nm">${pl.p ? esc(surname(pl.p.n)) : ''}</span><span class="pc">${pl.code}</span>${pl.p ? bar(pl.e) : ''}${pl.rt != null ? `<span class="rt" style="--c:${pl.rt >= 7.5 ? 'var(--win)' : pl.rt >= 6.5 ? 'var(--gold)' : pl.rt >= 5.8 ? 'var(--text)' : 'var(--loss)'}">${pl.rt.toFixed(1)}${pl.g ? ' ' + '⚽'.repeat(Math.min(3, pl.g)) : ''}${pl.yc ? ' 🟨' : ''}</span>` : ''}</button>`;
+    <span class="dot">${pl.p ? (pl.p.no || '•') : '+'}${pl.p && pl.id === cap ? '<em>C</em>' : ''}${pl.p && t.pi && t.pi[pl.id] && Object.keys(t.pi[pl.id]).length ? '<i class="pim" title="Own instructions">i</i>' : ''}</span><span class="nm">${pl.p ? esc(surname(pl.p.n)) : ''}</span><span class="tpc">${pl.code}</span>${pl.p ? bar(pl.e) : ''}${pl.rt != null ? `<span class="rt" style="--c:${pl.rt >= 7.5 ? 'var(--win)' : pl.rt >= 6.5 ? 'var(--gold)' : pl.rt >= 5.8 ? 'var(--text)' : 'var(--loss)'}">${pl.rt.toFixed(1)}${pl.g ? ' ' + '⚽'.repeat(Math.min(3, pl.g)) : ''}${pl.yc ? ' 🟨' : ''}</span>` : ''}</button>`;
   if (B.live && TB.view === 'them'){ const th = B.them, tt = th.t, op = livePlaces(B.M, th);
     const tok = pl => `<div class="tok ro" style="left:${100 - pl.x}%;top:${100 - pl.y}%"><span class="dot">${pl.p.no || '•'}</span><span class="nm">${esc(surname(pl.p.n))}</span>${bar(pl.e)}<span class="rt" style="--c:${pl.rt >= 7.5 ? 'var(--win)' : pl.rt >= 6.5 ? 'var(--gold)' : pl.rt >= 5.8 ? 'var(--text)' : 'var(--loss)'}">${pl.rt.toFixed(1)}${pl.g ? ' ⚽' : ''}${pl.yc ? ' 🟨' : ''}</span></div>`;
     return `<div class="tboard"><div class="tbview">${viewSw()}</div><div class="tbgrid"><div class="tbpitch" style="--k1:${kitOf(th.cid)[0]};--k2:${kitOf(th.cid)[1]}"><div class="pitch"><div class="bx t"></div><div class="bx"></div>${op.map(tok).join('')}</div><div class="tbleg small dim"><span>${esc(club(th.cid).name)}, attacking downwards</span><span>bar: energy</span></div></div>
