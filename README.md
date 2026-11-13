@@ -401,3 +401,5 @@ Flank spots in the DMF and AMF lines count as LMF or RMF (13.11.2026): those two
 Profile from the pitch (13.11.2026): a double tap on a player on the tactics board opens his profile, and the board's Player tab has a Profile button for the selected man. During a match both wait until the final whistle.
 
 Token colours (13.11.2026): a token's circle is always in the club's colours (background, border and number), and the position tag under it is coloured as on the player's position map: green for his main position, yellow for a regular one, red for an occasional one, dark when it is not his position. The board legend explains the four.
+
+The assistant's eye (13.11.2026): when your assistant picks for you (Assistant's choice, Assistant fills the rest, and on holiday) he rates each man for each place as he is, give or take a few points: about three for a top judge, up to about eight for a poor one, and the same all day. His side is a good one but rarely the very best (in tests about half a point to a point and a bit lower a man, with one to five players or even the shape different), so picking it yourself is worth it. Other clubs still pick their best.

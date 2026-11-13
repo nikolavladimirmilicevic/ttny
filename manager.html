@@ -801,23 +801,27 @@ const PI = [
   ['tb', 'Through balls', ['Rarely', 'Mixed', 'Often']], ['cross', 'Cross ball', ['Rarely', 'Mixed', 'Often']], ['close', 'Closing down', ['Rarely', 'Mixed', 'Often']],
   ['tack', 'Tackling', ['Easy', 'Normal', 'Hard']], ['mark', 'Marking', ['Zonal', 'Man']], ['hold', 'Hold up ball', ['No', 'Yes']], ['free', 'Free role', ['No', 'Yes']],
 ];
-function bestXI(cid, form, rest){
-  const slots = FORMS[form], pool = squadOf(cid).filter(p => avail(p.id));
-  const q = (p, pos) => fitIn(p, pos) * (rest ? (0.72 + 0.28 * ps(p.id).cond / 100) : 1);
+/* your assistant's eye: he rates a man for a place as it is, give or take a few points (fewer the better his Judging
+   Ability), the same all day. So his side is a good one, but rarely the very best: picking it yourself is worth it */
+function judge(){ const a = (S.staff || []).find(x => x.role === 'ass'), ju = a ? a.ju : 8, spread = 3 + (20 - ju) * .4, day = S.date;
+  return (p, pos) => fitIn(p, pos) + (rng(`aj-${p.id}-${pos}-${day}`)() * 2 - 1) * spread; }
+function bestXI(cid, form, rest, jq){
+  const slots = cid === me() && S.tac[cid] && form === S.tac[cid].form ? slotsOf(S.tac[cid]) : FORMS[form], pool = squadOf(cid).filter(p => avail(p.id)), fit = jq || fitIn;
+  const q = (p, pos) => fit(p, pos) * (rest ? (0.72 + 0.28 * ps(p.id).cond / 100) : 1);
   const { xi, v } = pickXI(slots, pool, q), used = new Set(xi.filter(Boolean));
-  const bench = pool.filter(p => !used.has(p.id)).sort((a, b) => ovrNow(b) - ovrNow(a));
+  const bench = pool.filter(p => !used.has(p.id)).sort((a, b) => fit(b, b.prim) - fit(a, a.prim));
   const gk = bench.find(p => p.prim === 'GK'), rest2 = bench.filter(p => p !== gk);
   return { xi, bench: [gk, ...rest2].filter(Boolean).slice(0, BENCH).map(p => p.id), score: v };
 }
 // the formation that suits a squad best, by the same rules
-function bestForm(cid, rest){ let best = FORM_ORDER[0], bv = -Infinity; for (const f of FORM_ORDER){ const v = bestXI(cid, f, rest).score; if (v > bv){ bv = v; best = f; } } return best; }
+function bestForm(cid, rest, jq){ let best = FORM_ORDER[0], bv = -Infinity; for (const f of FORM_ORDER){ const v = bestXI(cid, f, rest, jq).score; if (v > bv){ bv = v; best = f; } } return best; }
 function setPieces(cid, xi){
   const L = xi.filter(Boolean).map(id => P.get(id)), best = k => (L.filter(p => p.prim !== 'GK').sort((a, b) => A(b, k) - A(a, k))[0] || {}).id;
   const cap = L.slice().sort((a, b) => (b.age + ovrNow(b) / 4) - (a.age + ovrNow(a) / 4))[0];
   return { cap: cap && cap.id, pen: best('pk'), fk: best('pk'), cor: best('cu') };
 }
-function autoTactic(cid){
-  const best = bestForm(cid), { xi, bench } = bestXI(cid, best);
+function autoTactic(cid, jq){
+  const best = bestForm(cid, false, jq), { xi, bench } = bestXI(cid, best, false, jq);
   const q = club(cid).q || 75, top = Math.max(...D.clubs.map(c => c.q)), r0 = rng(`t-${cid}`);
   return { form: best, xi, bench, men: q >= top - 3 ? 3 : q < top - 9 ? 1 : 2, pass: [0, 1, 2, 0][Math.floor(r0() * 4)], tack: 1, press: q >= top - 5, offside: r0() < .3, counter: q < top - 6, mbb: q < top - 10, set: setPieces(cid, xi), pi: {} };
 }
@@ -856,16 +860,16 @@ function choice(title, text, btns){   // a small dialog of our own (no browser p
   w.addEventListener('click', e => { const b = e.target.closest('button'); if (e.target === w || (b && b.dataset.i === 'x')){ close(); return; } if (b){ close(); btns[+b.dataset.i][1](); } });
 }
 function fillRest(cid = me()){
-  const t = S.tac[cid], sl = slotsOf(t), ft = firstTeam(cid);
+  const t = S.tac[cid], sl = slotsOf(t), ft = firstTeam(cid), fit = cid === me() ? judge() : fitIn;
   t.xi = t.xi.map(id => id && avail(id) ? id : null); t.bench = t.bench.filter(id => avail(id) && !t.xi.includes(id));
   const used = new Set([...t.xi.filter(Boolean), ...t.bench]), pool = () => squadOf(cid).filter(p => avail(p.id) && !used.has(p.id) && (ft.has(p.id) || squadOf(cid).filter(q => avail(q.id)).length < 20));
   const order = sl.map((s, i) => i).sort((a, b) => (sl[a][0] === 'GK' ? -1 : 0) - (sl[b][0] === 'GK' ? -1 : 0));
   for (const i of order){ if (t.xi[i]) continue; const code = sl[i][0];
-    const c = pool().filter(p => fitTier(p, code) >= 0 && (code === 'GK') === (p.prim === 'GK')).sort((a, b) => fitIn(b, code) - fitIn(a, code))[0] || pool().filter(p => (code === 'GK') === (p.prim === 'GK')).sort((a, b) => fitIn(b, code) - fitIn(a, code))[0];
+    const c = pool().filter(p => fitTier(p, code) >= 0 && (code === 'GK') === (p.prim === 'GK')).sort((a, b) => fit(b, code) - fit(a, code))[0] || pool().filter(p => (code === 'GK') === (p.prim === 'GK')).sort((a, b) => fit(b, code) - fit(a, code))[0];
     if (c){ t.xi[i] = c.id; used.add(c.id); } }
-  if (!t.bench.some(id => P.get(id).prim === 'GK')){ const g = pool().filter(p => p.prim === 'GK').sort((a, b) => ovrNow(b) - ovrNow(a))[0]; if (g && t.bench.length < BENCH){ t.bench.push(g.id); used.add(g.id); } }
+  if (!t.bench.some(id => P.get(id).prim === 'GK')){ const g = pool().filter(p => p.prim === 'GK').sort((a, b) => fit(b, b.prim) - fit(a, a.prim))[0]; if (g && t.bench.length < BENCH){ t.bench.push(g.id); used.add(g.id); } }
   while (t.bench.length < BENCH){ const groups = t.bench.map(id => GROUP[P.get(id).prim]), need = ['DEF', 'MID', 'FWD'].find(g => !groups.includes(g));
-    const c = pool().filter(p => p.prim !== 'GK' && (!need || GROUP[p.prim] === need)).sort((a, b) => ovrNow(b) - ovrNow(a))[0] || pool().filter(p => p.prim !== 'GK').sort((a, b) => ovrNow(b) - ovrNow(a))[0];
+    const c = pool().filter(p => p.prim !== 'GK' && (!need || GROUP[p.prim] === need)).sort((a, b) => fit(b, b.prim) - fit(a, a.prim))[0] || pool().filter(p => p.prim !== 'GK').sort((a, b) => fit(b, b.prim) - fit(a, a.prim))[0];
     if (!c) break; t.bench.push(c.id); used.add(c.id); }
   const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => t.xi.includes(v))); t.set = Object.assign(setPieces(cid, t.xi), keep);
 }
@@ -2472,7 +2476,7 @@ function clubTactics(cid, o){
   o.tools = `<span class="small dim">Drag players onto each other, onto open grass or in from the list; or tap one, then the other. Double-tap a player to open his profile.</span><span style="flex:1"></span><button class="btn sm" id="fillr" title="Empty places and bench spots only; your picks stay">Fill the rest</button><button class="btn sm" id="clrb">Clear bench</button><button class="btn sm" id="clra">Clear all</button><button class="btn sm" id="auto" title="The assistant picks shape, side and bench">Assistant's choice</button>`;
   o.body = boardHTML(B);
   frame(o);
-  $('#auto').addEventListener('click', () => { const a = autoTactic(me()); Object.assign(B.t, { form: a.form, xi: a.xi, bench: a.bench, set: a.set, shape: null }); TB.sel = null; save(); view(); });
+  $('#auto').addEventListener('click', () => { const a = autoTactic(me(), judge()); Object.assign(B.t, { form: a.form, xi: a.xi, bench: a.bench, set: a.set, shape: null }); TB.sel = null; save(); view(); });
   $('#fillr').addEventListener('click', () => { fillRest(); TB.sel = null; save(); view(); });
   $('#clrb').addEventListener('click', () => { B.t.bench = []; save(); view(); });
   $('#clra').addEventListener('click', () => { B.t.xi = Array(11).fill(null); B.t.bench = []; TB.sel = null; save(); view(); });
@@ -2650,8 +2654,7 @@ function autoStep(){
   if (ev.date > S.date){ passDays(daysBetween(S.date, nextStop(ev.date))); monthly(); holidayBuy(); return true; }
   const t = S.tac[me()];
   if (S.hol.pick === 'ass'){ const a = (S.staff || []).find(x => x.role === 'ass'), ju = a ? a.ju : 8;
-    Object.assign(t, bestXI(me(), t.form, true));
-    if (Math.random() < (20 - ju) * .02){ const i = 1 + Math.floor(Math.random() * 10), alt = t.bench.find(id => id && canPlay(P.get(id), slotsOf(t)[i][0])); if (alt){ const was = t.xi[i]; t.xi[i] = alt; t.bench = t.bench.filter(x => x !== alt); if (was) t.bench.push(was); } } }
+    Object.assign(t, bestXI(me(), t.form, true, judge())); }
   readyTactic(me()); if (t.xi.some(x => !x)) Object.assign(t, bestXI(me(), t.form, true));
   if (ev.k === 'shield'){ finishShield(null); return true; }
   if (ev.k === 'lc'){ S.lc.cur = lcDraw(); finishLC(null); return true; }
