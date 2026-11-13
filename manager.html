@@ -1102,7 +1102,10 @@ function who(side, kind, attr, not){
   return L[0];
 }
 const nm = x => esc(surname(x.p.n));
-const T = L => pick(L);
+// commentary: a line is not used again while it is still fresh (its form, whatever the names), so a match does not repeat itself
+const T_RECENT = [];
+const T = L => { const keyOf = i => L.length + ':' + i + ':' + L[0].length; const fresh = L.map((_, i) => i).filter(i => !T_RECENT.includes(keyOf(i)));
+  const i = (fresh.length ? fresh : L.map((_, k) => k))[Math.floor(Math.random() * (fresh.length || L.length))]; T_RECENT.push(keyOf(i)); if (T_RECENT.length > 40) T_RECENT.shift(); return L[i]; };
 function newMatch(h, a, opts = {}){
   const cond = opts.cond || matchConditions(h, a, opts.date || S.date);
   const M = { h, a, min: 0, add1: 1 + Math.floor(Math.random() * 3), add2: 2 + Math.floor(Math.random() * 4), half: 1, feed: [], over: false, live: !!opts.live, cup: opts.cup || null, mom: null, hs: [], zones: [], inc: [], ...cond };
@@ -1121,11 +1124,13 @@ function goal(M, S1, S2, x, how, assist){
   M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'goal', t: `${surname(x.p.n)}${how === 'pen' ? ' (pen)' : ''}` });
   const sc = `${M.H.goals}-${M.A.goals}`;
   const lines = {
-    open: [`GOAL! ${nm(x)} finishes it${assist ? ` after ${nm(assist)}'s pass` : ''}. ${sc}.`, `GOAL! ${nm(x)} drills it low into the corner${assist ? `, ${nm(assist)} the provider` : ''}. ${sc}.`, `GOAL! ${nm(x)} keeps his head and slots it home${assist ? ` from ${nm(assist)}'s cut-back` : ''}. ${sc}.`, `GOAL! ${nm(x)} lifts it over the keeper. ${sc}.`],
-    head: [`GOAL! ${nm(x)} meets it with his head${assist ? `, ${nm(assist)} with the cross` : ''}. ${sc}.`, `GOAL! A powerful header from ${nm(x)}${assist ? ` off ${nm(assist)}'s delivery` : ''}. ${sc}.`],
-    fk: [`GOAL! ${nm(x)} curls the free kick over the wall and in. ${sc}.`], pen: [`GOAL! ${nm(x)} sends the keeper the wrong way. ${sc}.`],
-    far: [`GOAL! ${nm(x)} lets fly from distance and it flies in! ${sc}.`], counter: [`GOAL! A swift break, and ${nm(x)} finishes it off${assist ? ` after ${nm(assist)} led the charge` : ''}. ${sc}.`],
-    offside: [`GOAL! The offside trap is beaten and ${nm(x)} is through on his own. He scores. ${sc}.`],
+    open: [`GOAL! ${nm(x)} finishes it${assist ? ` after ${nm(assist)}'s pass` : ''}. ${sc}.`, `GOAL! ${nm(x)} drills it low into the corner${assist ? `, ${nm(assist)} the provider` : ''}. ${sc}.`, `GOAL! ${nm(x)} keeps his head and slots it home${assist ? ` from ${nm(assist)}'s cut-back` : ''}. ${sc}.`, `GOAL! ${nm(x)} lifts it over the keeper. ${sc}.`, `GOAL! ${nm(x)} turns in the box and fires home${assist ? `, set up by ${nm(assist)}` : ''}. ${sc}.`, `GOAL! A scramble in the six-yard box and ${nm(x)} pokes it in. ${sc}.`, `GOAL! ${nm(x)} side-foots it past the keeper${assist ? ` after a lovely ball from ${nm(assist)}` : ''}. ${sc}.`],
+    head: [`GOAL! ${nm(x)} meets it with his head${assist ? `, ${nm(assist)} with the cross` : ''}. ${sc}.`, `GOAL! A powerful header from ${nm(x)}${assist ? ` off ${nm(assist)}'s delivery` : ''}. ${sc}.`, `GOAL! ${nm(x)} glances it into the far corner${assist ? ` from ${nm(assist)}'s cross` : ''}. ${sc}.`, `GOAL! ${nm(x)} rises highest and nods it in. ${sc}.`],
+    fk: [`GOAL! ${nm(x)} curls the free kick over the wall and in. ${sc}.`, `GOAL! What a free kick from ${nm(x)}, the keeper does not move. ${sc}.`, `GOAL! ${nm(x)} whips it round the wall and into the top corner. ${sc}.`],
+    pen: [`GOAL! ${nm(x)} sends the keeper the wrong way. ${sc}.`, `GOAL! ${nm(x)} smashes the penalty into the roof of the net. ${sc}.`, `GOAL! Cool as you like, ${nm(x)} rolls the penalty in. ${sc}.`],
+    far: [`GOAL! ${nm(x)} lets fly from distance and it flies in! ${sc}.`, `GOAL! A thunderbolt from ${nm(x)}, thirty yards out! ${sc}.`, `GOAL! ${nm(x)} tries his luck from range, and it dips under the bar. ${sc}.`],
+    counter: [`GOAL! A swift break, and ${nm(x)} finishes it off${assist ? ` after ${nm(assist)} led the charge` : ''}. ${sc}.`, `GOAL! End to end in seconds, ${nm(x)} buries it${assist ? `, ${nm(assist)} with the pass` : ''}. ${sc}.`, `GOAL! Caught on the break: ${nm(x)} runs clear and scores. ${sc}.`],
+    offside: [`GOAL! The offside trap is beaten and ${nm(x)} is through on his own. He scores. ${sc}.`, `GOAL! The line steps up, ${nm(x)} stays on and rounds the keeper. ${sc}.`, `GOAL! ${nm(x)} times it perfectly and finishes one on one. ${sc}.`],
   };
   say(M, S1, 'goal', T(lines[how] || lines.open));
 }
@@ -1143,30 +1148,30 @@ function shot(M, S1, S2, u1, u2, kind, forced){
   if (Math.random() < q){ S1.sot++; goal(M, S1, S2, x, kind, assist); return; }
   if (Math.random() < (onT - q) / (1 - q)){ S1.sot++; if (gk){ rateAdd(S2, gk, .22); evAdd(S2, gk, 'sv'); }
     const k = gk ? nm(gk) : 'the keeper';
-    say(M, S1, kind === 'pen' ? 'yel' : '', T(kind === 'head' ? [`${nm(x)} gets his head to it, but ${k} is equal to it.`, `${nm(x)}'s header is straight at ${k}.`] : kind === 'pen' ? [`SAVED! ${k} guesses right and keeps out ${nm(x)}'s penalty!`] : [`${nm(x)} shoots, ${k} saves.`, `Good save! ${k} turns ${nm(x)}'s shot round the post.`, `${nm(x)} tests ${k}, who holds on.`, `A fine stop from ${k} to deny ${nm(x)}.`]));
+    say(M, S1, kind === 'pen' ? 'yel' : '', T(kind === 'head' ? [`${nm(x)} gets his head to it, but ${k} is equal to it.`, `${nm(x)}'s header is straight at ${k}.`, `${nm(x)} heads it goalwards, ${k} gathers.`, `A firm header from ${nm(x)}, tipped over by ${k}.`, `${k} claws away ${nm(x)}'s header.`] : kind === 'pen' ? [`SAVED! ${k} guesses right and keeps out ${nm(x)}'s penalty!`, `SAVED! ${nm(x)}'s penalty is too close to ${k}, who blocks it.`] : [`${nm(x)} shoots, ${k} saves.`, `Good save! ${k} turns ${nm(x)}'s shot round the post.`, `${nm(x)} tests ${k}, who holds on.`, `A fine stop from ${k} to deny ${nm(x)}.`, `${k} gets down well to keep out ${nm(x)}.`, `${nm(x)} hits it hard, but ${k} beats it away.`, `Straight at ${k}: ${nm(x)} should have done better.`, `${k} spreads himself and blocks from ${nm(x)}.`, `A low drive from ${nm(x)}, comfortable for ${k}.`, `What a save! ${k} flies to his right to stop ${nm(x)}.`]));
     if (kind !== 'pen' && Math.random() < .3){ S1.corners++; corner(M, S1, S2, u1, u2); }
     return; }
   rateAdd(S1, x, -.05);
-  say(M, S1, 'minor', T(kind === 'head' ? [`${nm(x)} heads it over.`, `${nm(x)} rises for it, but the header goes wide.`] : kind === 'pen' ? [`MISSED! ${nm(x)} puts the penalty wide!`] : kind === 'far' ? [`${nm(x)} tries his luck from long range. Well over.`, `A speculative effort from ${nm(x)} drifts wide.`] : kind === 'fk' ? [`${nm(x)}'s free kick hits the wall.`, `${nm(x)} curls the free kick just over.`] : [`${nm(x)} shoots wide.`, `${nm(x)} drags his shot past the post.`, `${nm(x)} blazes over from a good position.`, `Blocked! ${nm(x)}'s shot hits a defender.`]));
+  say(M, S1, 'minor', T(kind === 'head' ? [`${nm(x)} heads it over.`, `${nm(x)} rises for it, but the header goes wide.`, `${nm(x)} gets under it and the header loops over.`, `${nm(x)} cannot keep the header down.`, `A free header for ${nm(x)}, and he puts it wide.`] : kind === 'pen' ? [`MISSED! ${nm(x)} puts the penalty wide!`, `MISSED! ${nm(x)} blazes the penalty over the bar!`, `MISSED! ${nm(x)} hits the post from the spot!`] : kind === 'far' ? [`${nm(x)} tries his luck from long range. Well over.`, `A speculative effort from ${nm(x)} drifts wide.`, `${nm(x)} shoots from distance, into the crowd.`, `${nm(x)} lets fly from thirty yards; not far wide.`, `Ambitious from ${nm(x)}, and it goes high and wide.`] : kind === 'fk' ? [`${nm(x)}'s free kick hits the wall.`, `${nm(x)} curls the free kick just over.`, `${nm(x)} goes for goal from the free kick; wide.`, `${nm(x)}'s free kick is deflected behind.`] : [`${nm(x)} shoots wide.`, `${nm(x)} drags his shot past the post.`, `${nm(x)} blazes over from a good position.`, `Blocked! ${nm(x)}'s shot hits a defender.`, `${nm(x)} snatches at it and the chance is gone.`, `${nm(x)} hits the side netting.`, `Off the post! ${nm(x)} so nearly scores.`, `${nm(x)} curls it just past the far post.`, `${nm(x)} slices it wide when he had time.`, `A last-ditch block denies ${nm(x)}.`, `Over the bar from ${nm(x)}.`]));
 }
 function corner(M, S1, S2, u1, u2){
   const taker = S1.on.find(x => x.id === (S1.t.set || {}).cor) || who(S1, 'pass', 'cu');
-  if (Math.random() < .22){ say(M, S1, 'minor', `Corner, ${nm(taker)} swings it in…`); shot(M, S1, S2, u1, u2, 'head'); }
-  else if (M.live && Math.random() < .25) say(M, S1, 'minor', `${nm(taker)}'s corner is cleared.`);
+  if (Math.random() < .22){ say(M, S1, 'minor', T([`Corner, ${nm(taker)} swings it in…`, `${nm(taker)} whips in the corner…`, `${nm(taker)} to take the corner, bodies in the box…`, `An inswinging corner from ${nm(taker)}…`])); shot(M, S1, S2, u1, u2, 'head'); }
+  else if (M.live && Math.random() < .25) say(M, S1, 'minor', T([`${nm(taker)}'s corner is cleared.`, `${nm(taker)}'s corner is headed away.`, `The keeper comes and punches ${nm(taker)}'s corner clear.`, `${nm(taker)} overhits the corner and it goes out.`, `${nm(taker)}'s corner is short and comes to nothing.`]));
 }
 function foul(M, S1, S2){
   const x = who(S1, 'foul', 'ag'), v = who(S2, 'dribble', 'dr'), strict = (M.ref ? M.ref.s : 10) / 10.5;
   S1.fouls++;
   const ag = A(x.p, 'ag'), r = Math.random(), hard = piOf(S1.t, x.id, 'tack', S1.t.tack);
-  if (r < (.0015 + .001 * (ag - 60) / 20) * strict * [.6, 1, 1.6][hard]){ S1.rc++; evAdd(S1, x, 'rc'); S1.ev[x.id].straight = 1; rateAdd(S1, x, -1.5); say(M, S1, 'red', `RED CARD! ${nm(x)} is sent off for a reckless challenge on ${nm(v)}.`); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', t: surname(x.p.n) }); off(S1, x); return; }
+  if (r < (.0015 + .001 * (ag - 60) / 20) * strict * [.6, 1, 1.6][hard]){ S1.rc++; evAdd(S1, x, 'rc'); S1.ev[x.id].straight = 1; rateAdd(S1, x, -1.5); say(M, S1, 'red', T([`RED CARD! ${nm(x)} is sent off for a reckless challenge on ${nm(v)}.`, `RED CARD! ${nm(x)} goes in two-footed on ${nm(v)} and is off.`, `RED CARD! ${nm(x)} denies ${nm(v)} a clear chance and is sent off.`])); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', t: surname(x.p.n) }); off(S1, x); return; }
   if (r < (.12 + .05 * (ag - 60) / 20) * strict * [.7, 1, 1.4][hard]){
     const already = (S1.ev[x.id] || {}).yc;
     S1.yc++; evAdd(S1, x, 'yc'); rateAdd(S1, x, -.25);
     if (already){ S1.rc++; evAdd(S1, x, 'rc'); say(M, S1, 'red', `Second yellow card for ${nm(x)}, and ${esc(club(S1.cid).name)} are down to ${S1.on.length - 1}.`); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', t: surname(x.p.n) + ' (2nd yellow)' }); off(S1, x); return; }
-    say(M, S1, 'yel', `${M.ref ? esc(M.ref.n.split(' ')[1]) : 'The referee'} books ${nm(x)} for a late tackle on ${nm(v)}.`); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'yel', t: surname(x.p.n) });
-  } else if (M.live && Math.random() < .2) say(M, S1, 'minor', `Free kick: ${nm(x)} brings down ${nm(v)}.`);
+    { const rf = M.ref ? esc(M.ref.n.split(' ')[1]) : 'The referee'; say(M, S1, 'yel', T([`${rf} books ${nm(x)} for a late tackle on ${nm(v)}.`, `Yellow card for ${nm(x)}, who caught ${nm(v)} late.`, `${nm(x)} goes into the book for a cynical foul on ${nm(v)}.`, `${rf} has seen enough: ${nm(x)} is booked for pulling back ${nm(v)}.`, `${nm(x)} is cautioned after a reckless lunge at ${nm(v)}.`, `A yellow for ${nm(x)}, stopping ${nm(v)} on the break.`, `${nm(x)} complains, but ${rf} shows him the yellow card.`])); } M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'yel', t: surname(x.p.n) });
+  } else if (M.live && Math.random() < .2) say(M, S1, 'minor', T([`Free kick: ${nm(x)} brings down ${nm(v)}.`, `${nm(x)} trips ${nm(v)}; free kick.`, `${nm(v)} goes down under ${nm(x)}'s challenge.`, `${nm(x)} is penalised for a push on ${nm(v)}.`, `Foul by ${nm(x)}, ${nm(v)} wins the free kick.`, `${nm(x)} clatters into ${nm(v)}. Free kick.`]));
   if (hard === 2 && Math.random() < .012) injure(M, S2, v);
-  if (Math.random() < .09){ const u2 = units(S2, M), u1 = units(S1, M); const k = S2.on.find(y => y.id === (S2.t.set || {}).fk) || who(S2, 'pass', 'pk'); say(M, S2, '', `Free kick in a dangerous position. ${nm(k)} stands over it…`); shot(M, S2, S1, u2, u1, 'fk', k); }
+  if (Math.random() < .09){ const u2 = units(S2, M), u1 = units(S1, M); const k = S2.on.find(y => y.id === (S2.t.set || {}).fk) || who(S2, 'pass', 'pk'); say(M, S2, '', T([`Free kick in a dangerous position. ${nm(k)} stands over it…`, `A free kick just outside the box. ${nm(k)} lines it up…`, `${nm(k)} places the ball, the wall lines up…`, `Free kick on the edge of the area; ${nm(k)} fancies this…`])); shot(M, S2, S1, u2, u1, 'fk', k); }
 }
 function off(side, x){ side.on = side.on.filter(y => y !== x); x.off = true; }
 function injure(M, side, who_){
@@ -1228,8 +1233,8 @@ function minute(M){
       // the offside trap: it kills attacks against a line that reads it well, and lets a forward in when it fails
       const line = def.on.filter(y => ['CB', 'FB'].includes(ROLE[y.pos])), read = line.length ? line.reduce((t, y) => t + A(y.p, 'da'), 0) / line.length : 60;
       const fw = who(att, 'shot', 'oa');
-      if (Math.random() < .62 + (read - A(fw.p, 'oa')) / 60){ att.off++; if (M.live && Math.random() < .5) say(M, att, 'minor', `${nm(fw)} is caught offside. The trap works.`); zone = 1; }
-      else { say(M, att, '', `${nm(fw)} times his run and beats the offside trap!`); shot(M, att, def, u1, u2, 'offside', fw); }
+      if (Math.random() < .62 + (read - A(fw.p, 'oa')) / 60){ att.off++; if (M.live && Math.random() < .5) say(M, att, 'minor', T([`${nm(fw)} is caught offside. The trap works.`, `The line steps up and ${nm(fw)} is offside.`, `Flag up: ${nm(fw)} went too early.`, `${nm(fw)} is played offside by a well-drilled back line.`])); zone = 1; }
+      else { say(M, att, '', T([`${nm(fw)} times his run and beats the offside trap!`, `${nm(fw)} stays onside and is through!`, `The trap fails and ${nm(fw)} is clean through!`, `${nm(fw)} beats the line, and it is one on one!`])); shot(M, att, def, u1, u2, 'offside', fw); }
     } else {
       const q = logit((u1.att * .55 + u1.cre * .45 - u2.def) / 40);
       // game state: a side three up eases off and keeps the ball, one two up late on sits a little deeper
@@ -1237,21 +1242,21 @@ function minute(M){
       if (Math.random() < q * .925 * ease){
         const t = att.t, lsBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'ls', 1) - 1), 0) * .012, crBias = att.on.reduce((s, y) => s + (piOf(t, y.id, 'cross', 1) - 1), 0) * .02 + (t.pass === 3 ? .06 : 0);
         const k = Math.random();
-        if (k < .017){ const f = who(def, 'foul', 'ag'); say(M, att, 'yel', `Penalty! ${nm(f)} brings his man down in the box.`); rateAdd(def, f, -.4); shot(M, att, def, u1, u2, 'pen', att.on.find(y => y.id === (t.set || {}).pen)); }
+        if (k < .017){ const f = who(def, 'foul', 'ag'); say(M, att, 'yel', T([`Penalty! ${nm(f)} brings his man down in the box.`, `Penalty! ${nm(f)} clips his man and the referee points to the spot.`, `Penalty! A clumsy challenge from ${nm(f)} in the area.`])); rateAdd(def, f, -.4); shot(M, att, def, u1, u2, 'pen', att.on.find(y => y.id === (t.set || {}).pen)); }
         else if (k < .15 + lsBias) shot(M, att, def, u1, u2, 'far');
         else if (k < .27 + lsBias + crBias) shot(M, att, def, u1, u2, 'head');
-        else if (M.live && Math.random() < .12){ const d = who(att, 'dribble', 'dr'); say(M, att, 'minor', `${nm(d)} skips past one, then another…`); shot(M, att, def, u1, u2, 'open'); }
+        else if (M.live && Math.random() < .12){ const d = who(att, 'dribble', 'dr'); say(M, att, 'minor', T([`${nm(d)} skips past one, then another…`, `${nm(d)} jinks inside his man…`, `${nm(d)} drives at the defence…`, `Lovely feet from ${nm(d)} to make space…`, `${nm(d)} goes past his marker on the outside…`, `${nm(d)} picks it up and runs at them…`])); shot(M, att, def, u1, u2, 'open'); }
         else shot(M, att, def, u1, u2, 'open');
       } else if (Math.random() < .24){ att.corners++; corner(M, att, def, u1, u2); }
-      else if (Math.random() < .07){ att.off++; if (M.live && Math.random() < .4){ const fw = who(att, 'shot', 'oa'); say(M, att, 'minor', `The flag is up: ${nm(fw)} strayed offside.`); } zone = 1; }
+      else if (Math.random() < .07){ att.off++; if (M.live && Math.random() < .4){ const fw = who(att, 'shot', 'oa'); say(M, att, 'minor', T([`The flag is up: ${nm(fw)} strayed offside.`, `${nm(fw)} is a yard offside.`, `Offside against ${nm(fw)}.`])); } zone = 1; }
       else if (def.t.counter && Math.random() < .08){
         // the ball won, and away they go
         const fw = def.on.filter(y => ['ST', 'W'].includes(ROLE[y.pos])), pace = fw.length ? fw.reduce((t, y) => t + (A(y.p, 'sp') + A(y.p, 'ac')) / 2, 0) / fw.length : 60;
-        if (Math.random() < .25 + (pace - 70) / 80){ zone = def === H ? 2 : 0; if (M.live) say(M, def, 'minor', `${esc(club(def.cid).name)} win it back and break quickly…`); shot(M, def, att, def === H ? uh : ua, def === H ? ua : uh, 'counter'); }
+        if (Math.random() < .25 + (pace - 70) / 80){ zone = def === H ? 2 : 0; if (M.live) say(M, def, 'minor', T([`${esc(club(def.cid).name)} win it back and break quickly…`, `${esc(club(def.cid).name)} on the counter, numbers forward…`, `Turnover! ${esc(club(def.cid).name)} race away…`, `${esc(club(def.cid).name)} spring forward at pace…`])); shot(M, def, att, def === H ? uh : ua, def === H ? ua : uh, 'counter'); }
       }
       else if (M.live && Math.random() < .12){
         const t2 = who(def, 'tackle', 'bw'), p2 = who(att, 'pass', 'lp'); rateAdd(def, t2, .04);
-        say(M, att, 'minor', T([`${nm(p2)} looks for an opening, but ${nm(t2)} reads it.`, `Good challenge from ${nm(t2)} to stop ${nm(p2)}.`, `${nm(p2)} tries to thread it through, ${nm(t2)} intercepts.`, `${esc(club(att.cid).name)} keep it, ${nm(p2)} probing.`]));
+        say(M, att, 'minor', T([`${nm(p2)} looks for an opening, but ${nm(t2)} reads it.`, `Good challenge from ${nm(t2)} to stop ${nm(p2)}.`, `${nm(p2)} tries to thread it through, ${nm(t2)} intercepts.`, `${esc(club(att.cid).name)} keep it, ${nm(p2)} probing.`, `${nm(t2)} steps in and nicks it off ${nm(p2)}.`, `${nm(p2)} plays it square; ${esc(club(att.cid).name)} are patient.`, `${nm(t2)} slides in to win it from ${nm(p2)}.`, `${nm(p2)} switches play, but ${nm(t2)} is there.`, `${esc(club(att.cid).name)} move it from side to side, looking for a gap.`]));
       }
     }
   } else if (r < .72) foul(M, def, att);
