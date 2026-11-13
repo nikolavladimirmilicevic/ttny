@@ -397,3 +397,5 @@ No overall anywhere (13.11.2026): the squad list on the tactics board shows the 
 Roomier board (13.11.2026): the six lines run from 90% to 10% of the pitch, 16% apart, and a token is shorter: the position tag sits on the edge of the shirt circle and the live rating beside it, so lines no longer crowd each other on small screens. Saved custom shapes follow the new heights.
 
 Flank spots in the DMF and AMF lines count as LMF or RMF (13.11.2026): those two lines are central only, so a player dropped out wide there becomes a wide midfielder and the tidy puts him in the midfield line.
+
+Profile from the pitch (13.11.2026): a double tap on a player on the tactics board opens his profile, and the board's Player tab has a Profile button for the selected man. During a match both wait until the final whistle.

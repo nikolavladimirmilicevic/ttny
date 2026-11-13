@@ -2392,7 +2392,7 @@ function boardHTML(B){
   const team = `${B.live ? `<div class="tbshout">${[['push', 'Push forward'], ['hold', 'Hold what we have'], ['calm', 'Calm down'], ['press', 'Get stuck in']].map(([k, n]) => `<button class="btn sm" data-shout="${k}">${n}</button>`).join('')}</div>` : ''}
     <div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('counter', 'Counter Attack')}${tog('mbb', 'Men Behind Ball')}</span></div><p class="small" style="margin-top:10px">${tacticHint(t)}</p>`;
   const pid = sel && sel.startsWith('s:') ? (B.places[+sel.slice(2)] || {}).id : sel && sel.startsWith('p:') ? +sel.slice(2) : null, pp = pid && P.get(pid);
-  const player = pp ? `<div class="ptitle">${esc(pp.n)} <span class="small dim">${cmPos(pp.pos)}</span></div><div class="instr">${PI.map(([k, n, opts]) => { const v = t.pi && t.pi[pid] && t.pi[pid][k];
+  const player = pp ? `<div class="ptitle" style="display:flex;align-items:center;gap:8px"><span>${esc(pp.n)} <span class="small dim">${cmPos(pp.pos)}</span></span>${B.live ? '' : `<button class="btn sm" data-prof="${pp.id}" style="margin-left:auto">Profile</button>`}</div><div class="instr">${PI.map(([k, n, opts]) => { const v = t.pi && t.pi[pid] && t.pi[pid][k];
       return `<span class="yel"><b>${n}</b></span><span class="seg" data-pi="${pid}|${k}"><button data-v="" class="${v == null ? 'on' : ''}">Team</button>${opts.map((x, i) => `<button data-v="${i}" class="${v === i ? 'on' : ''}">${x}</button>`).join('')}</span>`; }).join('')}</div>`
     : '<p class="empty">Tap a player on the pitch to give him his own instructions.</p>';
   const xiP = B.places.filter(x => x.p).map(x => x.p);
@@ -2432,7 +2432,11 @@ function boardWire(B){
     else if (kb === 'rest'){ const id = ka === 's' ? (B.places[+va] || {}).id : +va; ok = id && B.toRest(id); }
     TB.sel = null; if (ok) done(); else done();
   };
-  const tap = k => { if (!TB.sel){ TB.sel = k; if (k.startsWith('s:') && TB.tab === 'set') TB.tab = 'player'; return done(); }
+  const tap = k => {
+    // a double tap on a man on the pitch opens his profile (after the match, if one is on)
+    const dbl = k === TB.lastK && Date.now() - (TB.lastT || 0) < 450; TB.lastK = k; TB.lastT = Date.now();
+    if (dbl && k.startsWith('s:')){ const pl = B.places[+k.slice(2)]; if (pl && pl.p){ TB.lastK = null; if (B.live) return toast('After the match.'); TB.sel = null; return go({ s: 'player', id: pl.p.id }); } }
+    if (!TB.sel){ TB.sel = k; if (k.startsWith('s:') && TB.tab === 'set') TB.tab = 'player'; return done(); }
     if (TB.sel === k){ TB.sel = null; return done(); }
     if (TB.tab === 'player' && k.startsWith('s:') && TB.sel.startsWith('s:')){ TB.sel = k; return done(); }   // on the Player tab a tap picks whose instructions
     if (TB.sel.startsWith('p:') && k.startsWith('p:')){ TB.sel = k; return done(); }
@@ -2461,7 +2465,7 @@ function clubTactics(cid, o){
   if (V.sub && V.sub !== TB.vsub){ TB.tab = { overview: 'squad', team: 'team', player: 'player', set: 'set' }[V.sub] || 'squad'; TB.vsub = V.sub; }
   const B = boardWeek();
   o.title = `${esc(club(me()).name)} Tactics`;
-  o.tools = `<span class="small dim">Drag players onto each other, onto open grass or in from the list; or tap one, then the other.</span><span style="flex:1"></span><button class="btn sm" id="fillr" title="Empty places and bench spots only; your picks stay">Fill the rest</button><button class="btn sm" id="clrb">Clear bench</button><button class="btn sm" id="clra">Clear all</button><button class="btn sm" id="auto" title="The assistant picks shape, side and bench">Assistant's choice</button>`;
+  o.tools = `<span class="small dim">Drag players onto each other, onto open grass or in from the list; or tap one, then the other. Double-tap a player to open his profile.</span><span style="flex:1"></span><button class="btn sm" id="fillr" title="Empty places and bench spots only; your picks stay">Fill the rest</button><button class="btn sm" id="clrb">Clear bench</button><button class="btn sm" id="clra">Clear all</button><button class="btn sm" id="auto" title="The assistant picks shape, side and bench">Assistant's choice</button>`;
   o.body = boardHTML(B);
   frame(o);
   $('#auto').addEventListener('click', () => { const a = autoTactic(me()); Object.assign(B.t, { form: a.form, xi: a.xi, bench: a.bench, set: a.set, shape: null }); TB.sel = null; save(); view(); });
