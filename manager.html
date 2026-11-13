@@ -1044,7 +1044,9 @@ function substitute(M, side, out, forced, inId){
   let pos = out.pos; const cands = side.bench.map(id => P.get(id)).filter(p => p && avail(p.id)), tier = (p, c) => { const k = fitTier(p, c); return k < 0 ? 99 : k; };
   const p = inId ? P.get(inId) : cands.sort((a, b) => tier(a, pos) - tier(b, pos) || fitIn(b, pos) - fitIn(a, pos))[0];
   if (!p) return false;
-  if (!canPlay(p, pos)){   // he does not play there: a team-mate who does moves over, and he takes that one's place
+  const own = inId && !forced && side.cid === me();
+  if (own && !canPlay(p, pos)) toast(`${cmName(p.n)} is out of position at ${pos}.`);
+  if (!own && !canPlay(p, pos)){   // he does not play there: a team-mate who does moves over, and he takes that one's place
     const mate = side.on.find(y => y !== out && !y.off && canPlay(y.p, pos) && canPlay(p, y.pos));
     if (mate){ const was = mate.pos; mate.pos = pos; pos = was; }
     else if (!forced && inId && side.cid === me()){ toast(`${cmName(p.n)} does not play ${pos}, and nobody on the pitch can make room for him.`); return false; }
@@ -2050,10 +2052,9 @@ function pickAs(id, val){
   const t = S.tac[me()], p = P.get(id), sl = slotsOf(t), i0 = t.xi.indexOf(id), b0 = t.bench.indexOf(id);
   if (val && !avail(id)) return toast(`${cmName(p.n)} is not available.`);
   const [k, v] = val ? val.split(':') : ['', ''], j = +v;
-  if (k === 'i' && (sl[j][0] === 'GK') !== (p.prim === 'GK')) return toast(sl[j][0] === 'GK' ? 'Only a goalkeeper in goal.' : 'A goalkeeper stays in goal.');
   if (i0 >= 0) t.xi[i0] = null; if (b0 >= 0) t.bench.splice(b0, 1, null);
   const back = occ => { if (!occ) return; const op = P.get(occ);
-    if (i0 >= 0 && (sl[i0][0] === 'GK') === (op.prim === 'GK')) t.xi[i0] = occ;
+    if (i0 >= 0) t.xi[i0] = occ;
     else if (b0 >= 0) t.bench[b0] = occ;
     else if (t.bench.filter(Boolean).length < BENCH) t.bench.push(occ); };
   if (k === 'i'){ const occ = t.xi[j]; t.xi[j] = id; back(occ !== id ? occ : null); if (!canPlay(p, sl[j][0])) toast(`${cmName(p.n)} is out of position at ${sl[j][0]}.`); }
@@ -2069,7 +2070,7 @@ function toggleSel(id){
   if (t.bench.includes(id)){ t.bench = t.bench.filter(x => x !== id); save(); return; }
   if (!avail(id)){ toast('He is not available.'); return; }
   if (TARGET != null){
-    if (typeof TARGET === 'number'){ const code = slotsOf(t)[TARGET][0]; if (!canPlay(P.get(id), code)){ toast(`${cmName(P.get(id).n)} does not play ${code}.`); return; } const old = t.xi[TARGET]; t.xi[TARGET] = id; if (old && t.bench.length < BENCH) t.bench.push(old); }
+    if (typeof TARGET === 'number'){ const code = slotsOf(t)[TARGET][0]; if (!canPlay(P.get(id), code)) toast(`${cmName(P.get(id).n)} is out of position at ${code}.`); const old = t.xi[TARGET]; t.xi[TARGET] = id; if (old && t.bench.length < BENCH) t.bench.push(old); }
     else { const j = +TARGET.slice(1); if (j < t.bench.length) t.bench[j] = id; else if (t.bench.length < BENCH) t.bench.push(id); }
     TARGET = null; save(); return; }
   // the first free place in the side that he plays, his main position first; otherwise the bench
@@ -2315,12 +2316,10 @@ function boardWeek(){
     places: slots.map(([code, x, y], i) => { const id = t.xi[i]; return { i, code, x, y, id, p: id ? P.get(id) : null, e: id ? ps(id).cond : 0 }; }),
     bench: t.bench.slice(), rest: squadOf(me()).filter(p => !t.xi.includes(p.id) && !t.bench.includes(p.id)).sort((a, b) => ovrNow(b) - ovrNow(a)).map(p => p.id),
     put(id, i){ const p = P.get(id); if (!avail(id)) return toast(`${cmName(p.n)} is not available.`);
-      if ((slots[i][0] === 'GK') !== (p.prim === 'GK')) return toast(slots[i][0] === 'GK' ? 'Only a goalkeeper in goal.' : 'A goalkeeper stays in goal.');
       if (!canPlay(p, slots[i][0])) toast(`${cmName(p.n)} is out of position at ${slots[i][0]}.`);
       const old = t.xi[i], was = t.xi.indexOf(id); if (was >= 0) t.xi[was] = old || null; t.xi[i] = id; t.bench = t.bench.filter(x => x !== id);
       if (old && was < 0 && !t.bench.includes(old) && t.bench.length < BENCH) t.bench.push(old); return true; },
     swap(i, j){ const a = t.xi[i] && P.get(t.xi[i]), b = t.xi[j] && P.get(t.xi[j]);
-      if ((slots[i][0] === 'GK') !== (slots[j][0] === 'GK')) return toast('A goalkeeper stays in goal.');
       if (a && !canPlay(a, slots[j][0])) toast(`${cmName(a.n)} is out of position at ${slots[j][0]}.`);
       if (b && !canPlay(b, slots[i][0])) toast(`${cmName(b.n)} is out of position at ${slots[i][0]}.`);
       [t.xi[i], t.xi[j]] = [t.xi[j], t.xi[i]]; return true; },
@@ -2330,7 +2329,7 @@ function boardWeek(){
     form(f){ const ids = t.xi.filter(Boolean), sl = FORMS[f], xi = placeXI(sl, ids.map(id => P.get(id))).map((id, i) => id && canPlay(P.get(id), sl[i][0]) ? id : null);
       for (const id of ids) if (!xi.includes(id) && !t.bench.includes(id) && t.bench.length < BENCH) t.bench.push(id);
       t.form = f; t.xi = xi; t.shape = null; return true; },
-    moveTo(i, x, y){ if (slots[i][0] === 'GK') return toast('The goalkeeper stays in goal.');
+    moveTo(i, x, y){ if (slots[i][0] === 'GK') return toast('The goal stays where it is: to put someone else there, drop him onto the keeper.');
       y = Math.min(82, Math.max(6, y)); x = Math.min(95, Math.max(5, x)); const code = posAt(x, y);
       if (posFull(slots.map(z => z[0]), i, code)) return toast(capMsg(code));
       const sh = slots.map(s => s.slice()); sh[i] = [code, Math.round(x), Math.round(y)];
@@ -2359,10 +2358,10 @@ function boardLive(){
       const out = us.on[i]; if (!out) return; if (!avail(id)) return toast(`${cmName(P.get(id).n)} is not available.`);
       return substitute(M, us, out, false, id) || false; },
     swap(i, j){ const a = us.on[i], b = us.on[j]; if (!a || !b) return;
-      if (!canPlay(a.p, b.pos)) return toast(`${cmName(a.p.n)} does not play ${b.pos}.`); if (!canPlay(b.p, a.pos)) return toast(`${cmName(b.p.n)} does not play ${a.pos}.`);
+      if (!canPlay(a.p, b.pos)) toast(`${cmName(a.p.n)} is out of position at ${b.pos}.`); else if (!canPlay(b.p, a.pos)) toast(`${cmName(b.p.n)} is out of position at ${a.pos}.`);
       [a.pos, b.pos] = [b.pos, a.pos]; [a.xy, b.xy] = [b.xy, a.xy]; say(M, us, 'minor', `${nm(a)} and ${nm(b)} swap places.`); return true; },
     toBench(){ return toast('Bring someone on instead: drag a substitute onto him.'); }, toRest(){ return false; },
-    moveTo(i, x, y){ const p = us.on[i]; if (!p) return; if (p.pos === 'GK') return toast('The goalkeeper stays in goal.');
+    moveTo(i, x, y){ const p = us.on[i]; if (!p) return; if (p.pos === 'GK') return toast('The goal stays where it is: to put someone else there, drop him onto the keeper.');
       y = Math.min(82, Math.max(6, y)); x = Math.min(95, Math.max(5, x)); const code = posAt(x, y), was = p.pos;
       if (posFull(us.on.map(o => o.pos), i, code)) return toast(capMsg(code));
       const pl = livePlaces(M, us); p.pos = code;
