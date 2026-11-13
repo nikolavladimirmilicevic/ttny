@@ -554,16 +554,15 @@ const LINE_Y = [90, 74, 58, 42, 26, 10];
 // (DMF, the midfield line, AMF: one, two or three of them) share the space between the back and the front evenly
 const lineOf = c => c === 'GK' ? 0 : /^(LB|CB|RB)$/.test(c) ? 1 : c === 'DMF' ? 2 : /^(LMF|CMF|RMF)$/.test(c) ? 3 : c === 'AMF' ? 4 : 5;
 const flankOf = c => /^L(B|MF|WF)$/.test(c) ? 0 : /^R(B|MF|WF)$/.test(c) ? 2 : 1;
-/* rows from the back, as the presets define them (4-2-3-1: the back four, DMF DMF, LMF AMF RMF, CF). The goal, the back row
-   and the front row (the one with LWF, CF or RWF) always stand at the same heights; the rows in between share that space
-   evenly. Each row goes left to right with the same gap between neighbours (flank to flank when both flanks are filled,
+/* rows from the back, as the presets define them. All six lines (GK, back, DMF, midfield, AMF, front) stand at fixed
+   heights whether anyone plays in them or not. Each row goes left to right with the same gap between neighbours (flank to flank when both flanks are filled,
    from the filled flank inward when only one is, centred when neither is). */
 function layoutRows(rows){
   const r1 = v => Math.round(v * 10) / 10, GAP = { 2: 26, 3: 22, 4: 19, 5: 20 }, out = [];
   const front = rows.length > 1 && rows[rows.length - 1].some(c => lineOf(c) === 5) ? rows.length - 1 : -1, mids = rows.length - 1 - (front > 0 ? 1 : 0);
   rows.forEach((row, i) => {
     const codes = row.slice().sort((a, b) => flankOf(a) - flankOf(b)), n = codes.length, back = i === 0;
-    const y = back ? LINE_Y[1] : i === front ? LINE_Y[5] : r1(LINE_Y[1] - i * (LINE_Y[1] - LINE_Y[5]) / (mids + 1));
+    const y = LINE_Y[lineOf(codes[0])];   // every line has its own fixed height, in use or not
     const hasL = flankOf(codes[0]) === 0, hasR = flankOf(codes[n - 1]) === 2, lo = back && n === 5 ? 10 : 13;
     let xs;
     if (hasL && hasR) xs = codes.map((_, k) => n === 1 ? 50 : lo + k * (100 - 2 * lo) / (n - 1));
@@ -604,7 +603,7 @@ const formSlots = f => FORMS[f] || AI_FORMS[f];
 const formLabel = (t, on) => { if (t && t.shape && t.shape.length === 11) return shapeName(t.shape);
   if (on && on.some(x => x && x.xy) && LIVE){ const M = LIVE.M, side = M.H.t === t ? M.H : M.A.t === t ? M.A : null; if (side) return shapeName([['GK'], ...livePlaces(M, side).filter(p => p.code !== 'GK').map(p => [p.code, p.x, p.y])]); }
   return t && t.form; };
-const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape : formSlots(t && t.form) || FORMS[FORM_ORDER[0]];
+const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape.map(([c, x]) => [c, x, LINE_Y[lineOf(c)]]) : formSlots(t && t.form) || FORMS[FORM_ORDER[0]];
 // the position a spot on the pitch stands for (0 at the top, their goal; 100 at the bottom, ours)
 const posAt = (x, y) => { const ln = LINE_Y.reduce((b, ly, k) => Math.abs(ly - y) < Math.abs(LINE_Y[b] - y) ? k : b, 0), w = x < 20 ? 'L' : x > 80 ? 'R' : '';
   return ln === 0 ? 'GK' : ln === 1 ? (w ? w + 'B' : 'CB') : ln === 2 ? (w ? w + 'MF' : 'DMF') : ln === 3 ? (w ? w + 'MF' : 'CMF') : ln === 4 ? (w ? w + 'MF' : 'AMF') : (w ? w + 'WF' : 'CF'); };
