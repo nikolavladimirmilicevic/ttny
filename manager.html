@@ -256,11 +256,11 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tbzone{min-height:36px;border-radius:8px}
 .tbrow.hd{cursor:default;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);padding-top:2px;padding-bottom:4px}.tbrow.hd:hover{background:none}
 .tbrow .rt2{font-weight:700;text-align:right;font-variant-numeric:tabular-nums}.tbrow .fm2{text-align:right;font-size:12.5px}.tbrow .cnd{display:flex;align-items:center;gap:4px;justify-content:flex-end}.tbrow .cnd .sqc{width:40px;margin:0}
-.tok .tpc{font:800 9.5px/1 var(--body);color:#111;background:var(--gold);border-radius:4px;padding:2px 4px;letter-spacing:.03em}
+.tok .tpc{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);font:800 9px/1 var(--body);color:#111;background:var(--gold);border-radius:4px;padding:2px 4px;letter-spacing:.03em;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.5)}.tok .dot:has(.tpc)+.nm{margin-top:7px}
 .tboard .instr{grid-template-columns:104px minmax(0,1fr)}.tboard .instr .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%;min-width:0}.tboard .instr .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px;text-align:center}
 @media(max-width:520px){.tboard .instr{grid-template-columns:1fr}}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
-.tok .rt{font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
+.tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
 .tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 @media(max-width:520px){.tok{width:68px}.tok .nm{font-size:10.5px;max-width:68px}.tok .dot{width:30px;height:30px}.tbrow{grid-template-columns:34px minmax(0,1fr) 26px 30px 46px 22px}.tbrow .nm .small{display:none}.tbrow .cnd .sqc{display:none}}
@@ -534,7 +534,7 @@ const FORM_DEF = {
 // lines from the back, each left to right, laid out on the pitch: the same rule for the presets and for a shape the manager tidies
 // six lines from the goal up, evenly spaced, everyone in a line at the same height: GK, the back line, DMF, the midfield
 // line (LMF CMF RMF), AMF and the front line (LWF CF RWF)
-const LINE_Y = [92, 77.2, 62.4, 47.6, 32.8, 18];
+const LINE_Y = [90, 74, 58, 42, 26, 10];
 const lineOf = c => c === 'GK' ? 0 : /^(LB|CB|RB)$/.test(c) ? 1 : c === 'DMF' ? 2 : /^(LMF|CMF|RMF)$/.test(c) ? 3 : c === 'AMF' ? 4 : 5;
 // codes for the outfield, any order: laid out line by line, each line left to right with the same gap between neighbours
 // (flank to flank when both flanks are filled, from the filled flank inward when only one is, centred when neither is)
@@ -566,7 +566,7 @@ function tidyLines(items){
 }
 const FORM_ORDER = Object.keys(FORMS).sort();
 const formLabel = (t, on) => (t && t.shape && t.shape.length === 11) || (on && on.some(x => x && x.xy)) ? 'Custom' : t && t.form;
-const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape : FORMS[t && t.form] || FORMS[FORM_ORDER[0]];
+const slotsOf = t => t && t.shape && t.shape.length === 11 ? t.shape.map(([c, x]) => [c, x, LINE_Y[lineOf(c)]]) : FORMS[t && t.form] || FORMS[FORM_ORDER[0]];
 // the position a spot on the pitch stands for (0 at the top, their goal; 100 at the bottom, ours)
 const posAt = (x, y) => { const ln = LINE_Y.reduce((b, ly, k) => Math.abs(ly - y) < Math.abs(LINE_Y[b] - y) ? k : b, 0), w = x < 20 ? 'L' : x > 80 ? 'R' : '';
   return ln === 0 ? 'GK' : ln === 1 ? (w ? w + 'B' : 'CB') : ln === 2 ? 'DMF' : ln === 3 ? (w ? w + 'MF' : 'CMF') : ln === 4 ? 'AMF' : (w ? w + 'WF' : 'CF'); };
@@ -2324,7 +2324,7 @@ function boardWeek(){
       // straighten the lines; a shape that is one of the presets takes its name
       const gk = sh.findIndex(s => s[0] === 'GK'), td = tidyLines(sh.map((s, k) => ({ k, code: s[0], x: s[1], y: s[2] })).filter(it => it.k !== gk));
       t.xi = [t.xi[gk], ...td.order.map(it => t.xi[it.k])];
-      if (td.form){ t.form = td.form; t.shape = null; } else t.shape = [['GK', 50, 92], ...td.order.map(it => [it.code, it.x, it.y])];
+      if (td.form){ t.form = td.form; t.shape = null; } else t.shape = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])];
       if (t.set) for (const [k2, v] of Object.entries(t.set)) if (!t.xi.includes(v)) delete t.set[k2];
       return true; },
     done(){ save(); view(); } };
@@ -2368,7 +2368,7 @@ function boardHTML(B){
   const fitCls = (p, code) => { if (!p) return 'empty'; const k = fitTier(p, code); return k < 0 ? 'bad' : k >= 2 ? 'ok' : ''; };
   const bar = e => `<i class="cb" style="--w:${Math.round(e)}%;--c:${e >= 80 ? 'var(--win)' : e >= 62 ? 'var(--gold)' : 'var(--loss)'}"></i>`;
   const token = pl => `<button class="tok ${fitCls(pl.p, pl.code)} ${sel === 's:' + pl.i ? 'sel' : ''}" data-drag="s:${pl.i}" data-drop="s:${pl.i}" style="left:${pl.x}%;top:${pl.y}%" title="${pl.p ? esc(pl.p.n) + ' · ' + pl.code : pl.code}">
-    <span class="dot">${pl.p ? (pl.p.no || '•') : '+'}${pl.p && pl.id === cap ? '<em>C</em>' : ''}${pl.p && t.pi && t.pi[pl.id] && Object.keys(t.pi[pl.id]).length ? '<i class="pim" title="Own instructions">i</i>' : ''}</span><span class="nm">${pl.p ? esc(surname(pl.p.n)) : ''}</span><span class="tpc">${pl.code}</span>${pl.p ? bar(pl.e) : ''}${pl.rt != null ? `<span class="rt" style="--c:${pl.rt >= 7.5 ? 'var(--win)' : pl.rt >= 6.5 ? 'var(--gold)' : pl.rt >= 5.8 ? 'var(--text)' : 'var(--loss)'}">${pl.rt.toFixed(1)}${pl.g ? ' ' + '⚽'.repeat(Math.min(3, pl.g)) : ''}${pl.yc ? ' 🟨' : ''}</span>` : ''}</button>`;
+    <span class="dot">${pl.p ? (pl.p.no || '•') : '+'}${pl.p && pl.id === cap ? '<em>C</em>' : ''}${pl.p && t.pi && t.pi[pl.id] && Object.keys(t.pi[pl.id]).length ? '<i class="pim" title="Own instructions">i</i>' : ''}<span class="tpc">${pl.code}</span></span><span class="nm">${pl.p ? esc(surname(pl.p.n)) : ''}</span>${pl.p ? bar(pl.e) : ''}${pl.rt != null ? `<span class="rt" style="--c:${pl.rt >= 7.5 ? 'var(--win)' : pl.rt >= 6.5 ? 'var(--gold)' : pl.rt >= 5.8 ? 'var(--text)' : 'var(--loss)'}">${pl.rt.toFixed(1)}${pl.g ? ' ' + '⚽'.repeat(Math.min(3, pl.g)) : ''}${pl.yc ? ' 🟨' : ''}</span>` : ''}</button>`;
   if (B.live && TB.view === 'them'){ const th = B.them, tt = th.t, op = livePlaces(B.M, th);
     const tok = pl => `<div class="tok ro" style="left:${100 - pl.x}%;top:${100 - pl.y}%"><span class="dot">${pl.p.no || '•'}</span><span class="nm">${esc(surname(pl.p.n))}</span>${bar(pl.e)}<span class="rt" style="--c:${pl.rt >= 7.5 ? 'var(--win)' : pl.rt >= 6.5 ? 'var(--gold)' : pl.rt >= 5.8 ? 'var(--text)' : 'var(--loss)'}">${pl.rt.toFixed(1)}${pl.g ? ' ⚽' : ''}${pl.yc ? ' 🟨' : ''}</span></div>`;
     return `<div class="tboard"><div class="tbview">${viewSw()}</div><div class="tbgrid"><div class="tbpitch" style="--k1:${kitOf(th.cid)[0]};--k2:${kitOf(th.cid)[1]}"><div class="pitch"><div class="bx t"></div><div class="bx"></div>${op.map(tok).join('')}</div><div class="tbleg small dim"><span>${esc(club(th.cid).name)}, attacking downwards</span><span>bar: energy</span></div></div>
