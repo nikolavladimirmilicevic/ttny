@@ -69,7 +69,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
   background:linear-gradient(100deg,var(--k1,#1A2E4A) 0,color-mix(in srgb,var(--k1,#1A2E4A) 55%,var(--night)) 100%)}
 .banner h1{margin:0;text-align:center;font:600 30px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em;color:var(--k2,var(--text));padding:10px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .banner .sub{display:block;font:500 13px/1.3 var(--body);text-transform:none;letter-spacing:0;opacity:.9;margin-top:2px}
-.banner .act{margin:8px;align-self:start}
+.banner .act{margin:8px;align-self:center}
 @media(max-width:600px){.banner.hn{grid-template-columns:1fr}.banner.hn>.bcr{display:flex!important;justify-content:center;padding:8px 0 0}.banner.hn .bigcr{display:none}.banner.hn .bnav{margin:0}.banner{grid-template-columns:1fr}.banner>span:first-child{display:none}.banner h1{font-size:22px;white-space:normal}.banner .act{justify-self:center;margin:0 8px 10px}.banner .act:empty{display:none}}
 /* tabs, dropdowns, buttons */
 .tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;background:var(--panel);border-radius:999px;padding:4px}
@@ -343,6 +343,10 @@ tr.me td{background:rgba(79,209,139,.10)}
 .menu button:first-child{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
 .menu button:hover:not(:disabled){border-color:var(--gold)}
 .menu button:disabled{color:#4F6280;cursor:default}
+[data-tp]{cursor:pointer}[data-tp]:hover{filter:brightness(1.25)}
+.dghost{position:fixed;pointer-events:none;z-index:9999;background:var(--gold);color:var(--gold-ink);padding:5px 9px;border-radius:7px;font:600 12.5px/1 var(--body);transform:translate(-50%,-140%);box-shadow:0 4px 14px rgba(0,0,0,.4);white-space:nowrap}
+.dov{outline:2px solid var(--gold)!important;outline-offset:-1px}
+.strip2 button{touch-action:none}.sq .sqr{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .talkm button,.talkm button:first-child{background:var(--panel-2);color:inherit;border-color:var(--line);font:600 13.5px/1.25 var(--body,inherit);letter-spacing:0;text-transform:none;padding:11px 8px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0;font-size:13.5px}
 .kv dt{color:var(--muted)}.kv dd{margin:0}
@@ -1858,6 +1862,11 @@ function linkify(root){
         if (L.cl.has(m[2])) sp.dataset.lc = L.cl.get(m[2]); else sp.dataset.lp = L.pl.get(m[2]); sp.textContent = m[2]; fr.append(sp); last = st + m[2].length; }
       fr.append(txt.slice(last)); n.replaceWith(fr); } });
 }
+// the click that follows a drag in Pick the side must not also pick or drop someone
+document.addEventListener('click', e => { if (Date.now() - (window.__dragT || 0) < 350){ e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+// a tag beside a name (Ctr, Bid, Wrd, Inj...) opens that player's screen on the page it is about
+document.addEventListener('click', e => { const el = e.target.closest('[data-tp]'); if (!el || LIVE) return; e.stopImmediatePropagation(); e.preventDefault();
+  const [id, tab] = el.dataset.tp.split(':'); go({ s: 'player', id: +id, tab: tab === 'talk' && P.get(+id).club !== me() ? 'profile' : tab }); }, true);
 document.addEventListener('click', e => { const el = e.target.closest('[data-lp],[data-lc]'); if (!el || LIVE) return; e.stopPropagation(); e.preventDefault();
   if (el.dataset.lp) go({ s: 'player', id: +el.dataset.lp }); else go({ s: 'club', cid: +el.dataset.lc, tab: 'ov' }); }, true);
 function view(){
@@ -2155,15 +2164,15 @@ function scrClub(){
 }
 function playerFlags(p){
   const q = ps(p.id), out = [];
-  if (q.injD) out.push(`<span class="tag inj" title="Injured, about ${Math.ceil(q.injD / 7)} week(s)">Inj</span>`); else if (q.light) out.push('<span class="tag inj" title="Back from injury">Inj*</span>');
-  if (q.sus) out.push(`<span class="tag sus" title="Banned for ${q.sus}">Sus</span>`); else if (q.yc === 4 || q.yc === 9) out.push('<span class="tag" title="One booking from a ban">Yel</span>');
-  if (q.cond < 65) out.push('<span class="tag tir" title="Very tired">Tir</span>');
-  if (q.mor < 35) out.push('<span class="tag" title="Unhappy">Unh</span>');
-  if (p.club === me() && q.req !== S.season && concerns(p).length) out.push('<span class="tag" title="Wants a word with you (his Talk screen)">Wrd</span>');
-  if (q.req === S.season) out.push('<span class="tag" title="Transfer request">Req</span>');
-  if (q.away && S.date <= q.away) out.push('<span class="tag" title="With his national team">Int</span>');
-  if (onLoan(p)) out.push(`<span class="tag" title="On loan until the summer">Loan</span><span class="lo">${esc(p.lo)}</span>`);
-  if (S.con[p.id] && S.con[p.id].y <= S.season + 1) out.push('<span class="tag" title="Contract expires at the end of the season">Ctr</span>');
+  if (q.injD) out.push(`<span data-tp="${p.id}:inj" class="tag inj" title="Injured, about ${Math.ceil(q.injD / 7)} week(s)">Inj</span>`); else if (q.light) out.push(`<span data-tp="${p.id}:inj" class="tag inj" title="Back from injury">Inj*</span>`);
+  if (q.sus) out.push(`<span data-tp="${p.id}:inj" class="tag sus" title="Banned for ${q.sus}">Sus</span>`); else if (q.yc === 4 || q.yc === 9) out.push(`<span data-tp="${p.id}:inj" class="tag" title="One booking from a ban">Yel</span>`);
+  if (q.cond < 65) out.push(`<span data-tp="${p.id}:inj" class="tag tir" title="Very tired">Tir</span>`);
+  if (q.mor < 35) out.push(`<span data-tp="${p.id}:talk" class="tag" title="Unhappy">Unh</span>`);
+  if (p.club === me() && q.req !== S.season && concerns(p).length) out.push(`<span data-tp="${p.id}:talk" class="tag" title="Wants a word with you (his Talk screen)">Wrd</span>`);
+  if (q.req === S.season) out.push(`<span data-tp="${p.id}:tr" class="tag" title="Transfer request">Req</span>`);
+  if (q.away && S.date <= q.away) out.push(`<span data-tp="${p.id}:inj" class="tag" title="With his national team">Int</span>`);
+  if (onLoan(p)) out.push(`<span data-tp="${p.id}:con" class="tag" title="On loan until the summer">Loan</span><span class="lo">${esc(p.lo)}</span>`);
+  if (S.con[p.id] && S.con[p.id].y <= S.season + 1) out.push(`<span data-tp="${p.id}:con" class="tag" title="Contract expires at the end of the season">Ctr</span>`);
   return out.join('');
 }
 const nameCls = p => { const q = ps(p.id); return q.injD ? 'c-inj' : q.sus ? 'c-sus' : ''; };
@@ -2216,12 +2225,13 @@ function clubSquad(cid, o){
   const n = k => all.filter({ all: () => true, gk: p => p.prim === 'GK', def: p => GROUP[p.prim] === 'DEF', mid: p => GROUP[p.prim] === 'MID', fwd: p => GROUP[p.prim] === 'FWD', avail: p => avail(p.id), out: p => !avail(p.id), first: p => t.xi.includes(p.id) || t.bench.includes(p.id), exp: p => S.con[p.id] && S.con[p.id].y <= S.season + 1 }[k]).length;
   o.tools = `<div class="sqbar">${chips('sqv', [['gen', 'General'], ['attr', 'Attributes'], ['stats', 'Stats'], ['con', 'Contracts'], ...(mine ? [['pos', 'Pick the side']] : [])], view_)}${chips('sqt', [['first', 'First Team'], ['res', 'Reserves'], ['all', 'Whole Squad']], team)}</div>
     <div class="sqbar">${chips('sqf', [['all', 'All'], ['gk', 'GK'], ['def', 'DEF'], ['mid', 'MID'], ['fwd', 'FWD'], ['avail', 'Available'], ['out', 'Out'], ...(mine ? [['first', 'Picked']] : []), ['exp', 'Expiring']].map(([k, x]) => [k, `${x} <span class="dim">${n(k)}</span>`]), filt)}<span style="flex:1"></span>${mine ? '<span class="tgrp clr"><span class="tglbl">Clear</span><button class="btn sm" id="clearb">Bench</button><button class="btn sm" id="clearsq">Everything</button></span><span class="tgrp ask"><span class="tglbl">Assistant</span><button class="btn sm" id="autoxi" title="Empty places and bench spots only; your picks stay">Fill the rest</button></span>' : ''}</div>`;
-  o.body = sum + body + (mine && view_ === 'pos' ? `<p class="small dim" style="margin:8px 2px 0">Tap a box to give that player the next free place in your ${esc(formLabel(t))}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; tap it again to take it back.</p>` : '');
+  o.body = sum + body + (mine && view_ === 'pos' ? `<p class="small dim" style="margin:8px 2px 0">Tap a box to give that player the next free place in your ${esc(formLabel(t))}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; tap it again to take it back. Or drag a place from the strip onto a player, a player onto a place, or one place onto another to swap them (with a finger, hold the player a moment first).</p>` : '');
   frame(o);
   document.querySelectorAll('#sqv button').forEach(b => b.addEventListener('click', () => { V = { ...V, view: b.dataset.v }; view(); }));
   document.querySelectorAll('#sqt button').forEach(b => b.addEventListener('click', () => { V = { ...V, team: b.dataset.v }; view(); }));
   document.querySelectorAll('#sqf button').forEach(b => b.addEventListener('click', () => { V = { ...V, filt: b.dataset.v }; view(); }));
   document.querySelectorAll('[data-tg]').forEach(b => b.addEventListener('click', () => { const v = b.dataset.tg, k = v[0] === 'b' ? v : +v; TARGET = TARGET === k ? null : k; view(); }));
+  if (mine && view_ === 'pos') wireStripDrag();
   if ($('#clearsq')) $('#clearsq').addEventListener('click', () => { t.xi = Array(11).fill(null); t.bench = []; TARGET = null; save(); view(); });
   if ($('#autoxi')) $('#autoxi').addEventListener('click', () => { fillRest(); save(); view(); });
   if ($('#clearb')) $('#clearb').addEventListener('click', () => { t.bench = []; save(); view(); });
@@ -2247,6 +2257,53 @@ function pickAs(id, val){
   save();
 }
 function nextFree(){ const t = S.tac[me()], i = t.xi.indexOf(null); if (i >= 0) return slotsOf(t)[i][0]; return t.bench.length < BENCH ? 'S' + (t.bench.length + 1) : null; }
+// a player into a place (k: slot number, or 'b0'... for the bench). If he already has a place, the two swap; otherwise
+// whoever held the place goes to the bench if there is room
+function putAt(id, k){
+  const t = S.tac[me()], p = P.get(id); if (!p || !avail(id)){ toast('He is not available.'); return; }
+  const getAt = k => typeof k === 'number' ? t.xi[k] : t.bench[+k.slice(1)] || null;
+  const setAt = (k, v) => { if (typeof k === 'number'){ t.xi[k] = v; return; } const j = +k.slice(1); if (j < t.bench.length) t.bench[j] = v; else if (v != null) t.bench.push(v); };
+  const from = t.xi.includes(id) ? t.xi.indexOf(id) : t.bench.includes(id) ? 'b' + t.bench.indexOf(id) : null;
+  if (from === k) return;
+  const old = getAt(k);
+  if (from != null) setAt(from, old || null); else if (old && typeof k === 'number' && t.bench.filter(Boolean).length < BENCH) t.bench.push(old);
+  setAt(k, id); t.bench = t.bench.filter(Boolean).slice(0, BENCH);
+  if (typeof k === 'number' && !canPlay(p, slotsOf(t)[k][0])) toast(`${cmName(p.n)} is out of position at ${slotsOf(t)[k][0]}.`);
+  TARGET = null; save();
+}
+// drag in Pick the side: a place in the strip onto a player, a player onto a place, or one place onto another (a swap).
+// With a finger, hold a player for a moment before dragging him, so the list still scrolls
+function wireStripDrag(){
+  const t = S.tac[me()], keyOf = el => { const v = el.dataset.tg; return v[0] === 'b' ? v : +v; };
+  const occ = k => typeof k === 'number' ? t.xi[k] : t.bench[+k.slice(1)] || null;
+  let src = null, ghost = null, x0 = 0, y0 = 0, timer = null, ready = false, over = null, scr = null;
+  const stopTouch = e => { if (ghost) e.preventDefault(); };
+  const end = () => { clearTimeout(timer); clearInterval(scr); if (ghost) ghost.remove(); if (over) over.classList.remove('dov'); ghost = over = null; src = null; ready = false; document.removeEventListener('touchmove', stopTouch); };
+  const begin = () => { ghost = document.createElement('div'); ghost.className = 'dghost'; ghost.textContent = src.dataset.tg != null ? `${src.textContent}${occ(keyOf(src)) ? ': ' + cmName(P.get(occ(keyOf(src))).n) : ''}` : cmName(P.get(+src.dataset.pl).n); document.body.appendChild(ghost);
+    scr = setInterval(() => { if (!ghost) return; if (y0 < 70) scrollBy(0, -14); else if (y0 > innerHeight - 50) scrollBy(0, 14); }, 30); };
+  document.querySelectorAll('.strip2 [data-tg], .sq .sqr[data-pl]').forEach(el => el.addEventListener('pointerdown', e => {
+    if (e.button) return; end(); src = el; x0 = e.clientX; y0 = e.clientY;
+    const slot = el.dataset.tg != null;
+    if (e.pointerType === 'touch' && !slot){ document.addEventListener('touchmove', stopTouch, { passive: false }); timer = setTimeout(() => { if (src === el){ ready = true; begin(); ghost.style.left = x0 + 'px'; ghost.style.top = y0 + 'px'; if (navigator.vibrate) navigator.vibrate(15); } }, 320); }
+    else ready = true; }));
+  const onMove = e => { if (!src) return; const dx = e.clientX - x0, dy = e.clientY - y0;
+    if (!ghost){ if (!ready){ if (Math.hypot(dx, dy) > 8){ clearTimeout(timer); src = null; } return; } if (Math.hypot(dx, dy) < 8) return; begin(); }
+    x0 = e.clientX; y0 = e.clientY; ghost.style.left = x0 + 'px'; ghost.style.top = y0 + 'px';
+    const at = document.elementFromPoint(x0, y0), tg = at && (at.closest('.strip2 [data-tg]') || at.closest('.sq .sqr[data-pl]'));
+    if (over !== tg){ if (over) over.classList.remove('dov'); over = tg && tg !== src ? tg : null; if (over) over.classList.add('dov'); } };
+  const onUp = () => { if (!src) return; const a = src, b = over, dragged = !!ghost; end();
+    if (!dragged || !b) return;
+    const sa = a.dataset.tg != null, sb = b.dataset.tg != null;
+    if (sa && !sb) putAt(+b.dataset.pl, keyOf(a));
+    else if (!sa && sb) putAt(+a.dataset.pl, keyOf(b));
+    else if (sa && sb){ const ka = keyOf(a), kb = keyOf(b), pa = occ(ka), pb = occ(kb); if (pa) putAt(pa, kb); else if (pb) putAt(pb, ka); }
+    else return;
+    // the click that follows the drag must not also pick or drop someone
+    window.__dragT = Date.now(); setTimeout(() => view(), 0); };
+  if (window.__stripDrag) { removeEventListener('pointermove', window.__stripDrag[0]); removeEventListener('pointerup', window.__stripDrag[1]); removeEventListener('pointercancel', window.__stripDrag[2]); }
+  const onCancel = () => end();
+  window.__stripDrag = [onMove, onUp, onCancel]; addEventListener('pointermove', onMove); addEventListener('pointerup', onUp); addEventListener('pointercancel', onCancel);
+}
 function toggleSel(id){
   const t = S.tac[me()];
   if (t.xi.includes(id)){ t.xi[t.xi.indexOf(id)] = null; save(); return; }
@@ -3242,7 +3299,7 @@ function scrFind(){
   const sk = V.sort && V.sort.startsWith('a:') ? V.sort.slice(2) : null, av = p => seenA(p, sk) ? A(p, sk) : -1;
   L = L.slice().sort((a, b) => sk ? av(b) - av(a) || b.val - a.val : V.sort === 'val' ? b.val - a.val : V.sort === 'age' ? a.age - b.age : surname(a.n).localeCompare(surname(b.n)));
   const pages = Math.max(1, Math.ceil(L.length / per)), pgc = Math.min(pg, pages - 1), rows = L.slice(pgc * per, pgc * per + per);
-  const inf = p => { const q = ps(p.id), bid = (S.bids || []).some(b => b.id === p.id && ['wait', 'counter', 'yes'].includes(b.st)); return bid ? '<span class="tag" style="background:#1E6B43;color:#fff">Bid</span>' : q.injD ? '<span class="tag inj">Inj</span>' : q.sus ? '<span class="tag sus">Sus</span>' : S.con[p.id] && S.con[p.id].y <= S.season + 1 ? '<span class="tag">Ctr</span>' : sh.has(p.id) ? '<span class="tag">SL</span>' : ''; };
+  const inf = p => { const q = ps(p.id), bid = (S.bids || []).some(b => b.id === p.id && ['wait', 'counter', 'yes'].includes(b.st)); return bid ? `<span data-tp="${p.id}:tr" class="tag" style="background:#1E6B43;color:#fff">Bid</span>` : q.injD ? '<span class="tag inj">Inj</span>' : q.sus ? '<span class="tag sus">Sus</span>' : S.con[p.id] && S.con[p.id].y <= S.season + 1 ? '<span class="tag">Ctr</span>' : sh.has(p.id) ? '<span class="tag">SL</span>' : ''; };
   const tools = tab === 'short' ? `<span class="dim small">Players on your short list: their attributes are known after a week.</span>` : `<input type="text" id="fq" placeholder="Name" value="${esc(qv)}" style="flex:1;min-width:140px">
     <select class="dd" id="fg"><option value="">All roles</option>${[['GK', 'Goalkeepers'], ['DEF', 'Defenders'], ['MID', 'Midfielders'], ['FWD', 'Forwards']].map(([k, n]) => `<option value="${k}" ${F.g === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <select class="dd" id="fa"><option value="">Max age: any</option>${[19, 21, 23, 25, 28, 31].map(a => `<option value="${a}" ${+F.age === a ? 'selected' : ''}>Up to ${a}</option>`).join('')}</select>
