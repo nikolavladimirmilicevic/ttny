@@ -1,0 +1,4347 @@
+{
+ "about": "Ligue 1 and Ligue 2 from Transfermarkt pages Nikola supplied (club overview pages, 16.11.2026): clubs (stadium, seats, head coach), the 2026/27 fixture lists (dates; kick-off times where set), last season. Ligue 1 is playable in the manager game; Ligue 2 runs in the background.",
+ "updated": "2026-11-16",
+ "league": "Ligue 1",
+ "second": "Ligue 2",
+ "season": 2026,
+ "facts": {
+  "reigning": "Paris Saint-Germain",
+  "cup_winner": "RC Lens",
+  "shield_winner": "RC Lens",
+  "record_champion": "Paris Saint-Germain",
+  "record_titles": 14,
+  "promoted": [
+   "ESTAC Troyes",
+   "Le Mans FC"
+  ],
+  "relegated": [
+   "FC Nantes",
+   "FC Metz"
+  ],
+  "last_note": "2025/26 positions from the API results held (27 of 34 rounds); Nice beat Saint-Étienne in the play-off"
+ },
+ "cup": {
+  "name": "Coupe de France",
+  "rounds": [
+   [
+    "Round of 64",
+    "2026-12-19"
+   ],
+   [
+    "Round of 32",
+    "2027-01-13"
+   ],
+   [
+    "Round of 16",
+    "2027-02-03"
+   ],
+   [
+    "Quarter-finals",
+    "2027-03-03"
+   ],
+   [
+    "Semi-finals",
+    "2027-04-21"
+   ],
+   [
+    "Final",
+    "2027-05-12"
+   ]
+  ],
+  "note": "dates assumed (Ligue 1 clubs enter in the round of 64)"
+ },
+ "clubs": {
+  "AS Monaco": {
+   "tier": 1,
+   "id": 91,
+   "short": "Monaco",
+   "venue": "Stade Louis-II",
+   "cap": 18525,
+   "coach": "Filipe Luís",
+   "last": 7
+  },
+  "Stade Rennais FC": {
+   "tier": 1,
+   "id": 94,
+   "short": "Rennes",
+   "venue": "Roazhon Park",
+   "cap": 29778,
+   "coach": "Franck Haise",
+   "last": 4
+  },
+  "Le Havre AC": {
+   "tier": 1,
+   "id": 111,
+   "short": "Le Havre",
+   "venue": "Stade Océane",
+   "cap": 25178,
+   "coach": "Valérien Ismaël",
+   "last": 14
+  },
+  "FC Toulouse": {
+   "tier": 1,
+   "id": 96,
+   "short": "Toulouse",
+   "venue": "Stadium Municipal",
+   "cap": 33150,
+   "coach": "Jens Berthel Askou",
+   "last": 10
+  },
+  "Paris FC": {
+   "tier": 1,
+   "id": 114,
+   "short": "Paris FC",
+   "venue": "Stade Jean Bouin",
+   "cap": 19904,
+   "coach": "Liam Rosenior",
+   "last": 11
+  },
+  "Olympique Marseille": {
+   "tier": 1,
+   "id": 81,
+   "short": "Marseille",
+   "venue": "CEPAC Vélodrome",
+   "cap": 67394,
+   "coach": "Bruno Genesio",
+   "last": 6
+  },
+  "AJ Auxerre": {
+   "tier": 1,
+   "id": 108,
+   "short": "Auxerre",
+   "venue": "Stade de l'Abbé-Deschamps",
+   "cap": 18541,
+   "coach": "Will Still",
+   "last": 15
+  },
+  "Paris Saint-Germain": {
+   "tier": 1,
+   "id": 85,
+   "short": "Paris SG",
+   "venue": "Parc des Princes",
+   "cap": 48583,
+   "coach": "Luis Enrique",
+   "last": 1
+  },
+  "FC Lorient": {
+   "tier": 1,
+   "id": 97,
+   "short": "Lorient",
+   "venue": "Stade du Moustoir",
+   "cap": 16787,
+   "coach": "Alexandre Dujeux",
+   "last": 8
+  },
+  "Angers SCO": {
+   "tier": 1,
+   "id": 77,
+   "short": "Angers",
+   "venue": "Stade Raymond-Kopa",
+   "cap": 19350,
+   "coach": "Stéphane Gilli",
+   "last": 13
+  },
+  "OGC Nice": {
+   "tier": 1,
+   "id": 84,
+   "short": "Nice",
+   "venue": "Allianz Riviera",
+   "cap": 36178,
+   "coach": "Olivier Pantaloni",
+   "last": 16
+  },
+  "ESTAC Troyes": {
+   "tier": 1,
+   "id": 110,
+   "short": "Troyes",
+   "venue": "Stade de l'Aube",
+   "cap": 20460,
+   "coach": "Stéphane Dumont",
+   "last": "promoted"
+  },
+  "LOSC Lille": {
+   "tier": 1,
+   "id": 79,
+   "short": "Lille",
+   "venue": "Decathlon Arena-Stade Pierre-Mauroy",
+   "cap": 50186,
+   "coach": "Davide Ancelotti",
+   "last": 3
+  },
+  "Olympique Lyon": {
+   "tier": 1,
+   "id": 80,
+   "short": "Lyon",
+   "venue": "Groupama Stadium",
+   "cap": 59186,
+   "coach": "Carlos Vicens",
+   "last": 5
+  },
+  "RC Lens": {
+   "tier": 1,
+   "id": 116,
+   "short": "Lens",
+   "venue": "Stade Bollaert-Delelis",
+   "cap": 38223,
+   "coach": "Didier Digard",
+   "last": 2
+  },
+  "Stade Brestois 29": {
+   "tier": 1,
+   "id": 106,
+   "short": "Brest",
+   "venue": "Stade Francis-Le Blé",
+   "cap": 15220,
+   "coach": "Julien Lachuer",
+   "last": 12
+  },
+  "RC Strasbourg Alsace": {
+   "tier": 1,
+   "id": 95,
+   "short": "Strasbourg",
+   "venue": "Stade de la Meinau",
+   "cap": 32300,
+   "coach": "Hugo Oliveira",
+   "last": 9
+  },
+  "Le Mans FC": {
+   "tier": 1,
+   "id": 1298,
+   "short": "Le Mans",
+   "venue": "Stade Marie-Marvingt",
+   "cap": 25064,
+   "coach": "Patrick Videira",
+   "last": "promoted"
+  },
+  "US Boulogne": {
+   "tier": 2,
+   "id": 1299,
+   "short": "Boulogne",
+   "venue": "Stade de la Libération",
+   "cap": 15004,
+   "coach": null
+  },
+  "Grenoble Foot 38": {
+   "tier": 2,
+   "id": 101,
+   "short": "Grenoble",
+   "venue": "Stade des Alpes",
+   "cap": 20068,
+   "coach": "Olivier Frapolli"
+  },
+  "Montpellier HSC": {
+   "tier": 2,
+   "id": 82,
+   "short": "Montpellier",
+   "venue": "Stade de la Mosson",
+   "cap": 22000,
+   "coach": "Zoumana Camara"
+  },
+  "AS Saint-Étienne": {
+   "tier": 2,
+   "id": 1063,
+   "short": "Saint-Étienne",
+   "venue": "Stade Geoffroy-Guichard",
+   "cap": 41965,
+   "coach": "Ian Cathro"
+  },
+  "FC Nantes": {
+   "tier": 2,
+   "id": 83,
+   "short": "Nantes",
+   "venue": "Stade de la Beaujoire",
+   "cap": 35322,
+   "coach": "Grégory Poirier"
+  },
+  "Dijon FCO": {
+   "tier": 2,
+   "id": 89,
+   "short": "Dijon",
+   "venue": "Stade Gaston-Gérard",
+   "cap": 16098,
+   "coach": "Baptiste Ridira"
+  },
+  "FC Sochaux-Montbéliard": {
+   "tier": 2,
+   "id": 115,
+   "short": "Sochaux",
+   "venue": "Stade Auguste-Bonal",
+   "cap": 20005,
+   "coach": "Vincent Hognon"
+  },
+  "Stade Lavallois": {
+   "tier": 2,
+   "id": null,
+   "short": "Laval",
+   "venue": "Stade Francis Le Basser",
+   "cap": 11107,
+   "coach": "David Vignes"
+  },
+  "FC Annecy": {
+   "tier": 2,
+   "id": 3012,
+   "short": "Annecy",
+   "venue": "Parc des Sports d’Annecy",
+   "cap": 13634,
+   "coach": "Laurent Guyot"
+  },
+  "EA Guingamp": {
+   "tier": 2,
+   "id": 90,
+   "short": "Guingamp",
+   "venue": "Stade de Roudourou",
+   "cap": 18462,
+   "coach": "Sylvain Ripoll"
+  },
+  "FC Metz": {
+   "tier": 2,
+   "id": 112,
+   "short": "Metz",
+   "venue": "Stade Saint-Symphorien",
+   "cap": 28786,
+   "coach": "Grégory Proment"
+  },
+  "Rodez AF": {
+   "tier": 2,
+   "id": 1301,
+   "short": "Rodez",
+   "venue": "Stade Paul-Lignon",
+   "cap": 6761,
+   "coach": "Didier Santini"
+  },
+  "USL Dunkerque": {
+   "tier": 2,
+   "id": 1304,
+   "short": "Dunkerque",
+   "venue": "Stade Marcel-Tribut",
+   "cap": 4933,
+   "coach": "Pierre Webó"
+  },
+  "AS Nancy-Lorraine": {
+   "tier": 2,
+   "id": 102,
+   "short": "Nancy",
+   "venue": "Stade Marcel-Picot",
+   "cap": 20087,
+   "coach": "Oswald Tanchot"
+  },
+  "Red Star FC": {
+   "tier": 2,
+   "id": 104,
+   "short": "Red Star",
+   "venue": "Stade Bauer",
+   "cap": 7300,
+   "coach": "Damien Perrinelle"
+  },
+  "Clermont Foot 63": {
+   "tier": 2,
+   "id": 99,
+   "short": "Clermont",
+   "venue": "Stade Gabriel-Montpied",
+   "cap": 10800,
+   "coach": "David Guion"
+  },
+  "Stade Reims": {
+   "tier": 2,
+   "id": 93,
+   "short": "Reims",
+   "venue": "Stade Auguste-Delaune",
+   "cap": 20519,
+   "coach": "Nicolas Usaï"
+  },
+  "Pau FC": {
+   "tier": 2,
+   "id": 1297,
+   "short": "Pau",
+   "venue": "Nouste Camp",
+   "cap": 4144,
+   "coach": "Thierry Debès"
+  }
+ },
+ "fixtures": [
+  [
+   "2026-08-21",
+   1,
+   "Olympique Marseille",
+   "RC Strasbourg Alsace",
+   "20:45"
+  ],
+  [
+   "2026-08-22",
+   1,
+   "FC Toulouse",
+   "Olympique Lyon",
+   "20:45"
+  ],
+  [
+   "2026-08-22",
+   1,
+   "ESTAC Troyes",
+   "Paris FC",
+   "20:45"
+  ],
+  [
+   "2026-08-22",
+   1,
+   "RC Lens",
+   "AJ Auxerre",
+   "17:15"
+  ],
+  [
+   "2026-08-22",
+   1,
+   "OGC Nice",
+   "FC Lorient",
+   "20:45"
+  ],
+  [
+   "2026-08-22",
+   1,
+   "Le Mans FC",
+   "Stade Brestois 29",
+   "20:45"
+  ],
+  [
+   "2026-08-23",
+   1,
+   "Le Havre AC",
+   "AS Monaco",
+   "17:15"
+  ],
+  [
+   "2026-08-23",
+   1,
+   "Stade Rennais FC",
+   "Paris Saint-Germain",
+   "20:45"
+  ],
+  [
+   "2026-08-23",
+   1,
+   "Angers SCO",
+   "LOSC Lille",
+   "15:00"
+  ],
+  [
+   "2026-08-28",
+   2,
+   "LOSC Lille",
+   "Paris Saint-Germain",
+   "20:45"
+  ],
+  [
+   "2026-08-29",
+   2,
+   "Olympique Lyon",
+   "Le Havre AC",
+   "20:45"
+  ],
+  [
+   "2026-08-29",
+   2,
+   "Stade Brestois 29",
+   "FC Toulouse",
+   "20:45"
+  ],
+  [
+   "2026-08-29",
+   2,
+   "AJ Auxerre",
+   "Angers SCO",
+   "20:45"
+  ],
+  [
+   "2026-08-29",
+   2,
+   "FC Lorient",
+   "ESTAC Troyes",
+   "20:45"
+  ],
+  [
+   "2026-08-29",
+   2,
+   "RC Strasbourg Alsace",
+   "RC Lens",
+   "17:15"
+  ],
+  [
+   "2026-08-30",
+   2,
+   "AS Monaco",
+   "Olympique Marseille",
+   "20:45"
+  ],
+  [
+   "2026-08-30",
+   2,
+   "Stade Rennais FC",
+   "Le Mans FC",
+   "17:15"
+  ],
+  [
+   "2026-08-30",
+   2,
+   "Paris FC",
+   "OGC Nice",
+   "15:00"
+  ],
+  [
+   "2026-09-03",
+   3,
+   "FC Toulouse",
+   "LOSC Lille",
+   "20:45"
+  ],
+  [
+   "2026-09-04",
+   3,
+   "Paris Saint-Germain",
+   "AS Monaco",
+   "21:05"
+  ],
+  [
+   "2026-09-04",
+   3,
+   "Olympique Lyon",
+   "AJ Auxerre",
+   "19:00"
+  ],
+  [
+   "2026-09-05",
+   3,
+   "Le Havre AC",
+   "Stade Brestois 29",
+   "20:45"
+  ],
+  [
+   "2026-09-05",
+   3,
+   "RC Lens",
+   "FC Lorient",
+   "17:15"
+  ],
+  [
+   "2026-09-05",
+   3,
+   "OGC Nice",
+   "Le Mans FC",
+   "20:45"
+  ],
+  [
+   "2026-09-06",
+   3,
+   "Angers SCO",
+   "Stade Rennais FC",
+   "17:15"
+  ],
+  [
+   "2026-09-06",
+   3,
+   "Olympique Marseille",
+   "Paris FC",
+   "20:45"
+  ],
+  [
+   "2026-09-06",
+   3,
+   "ESTAC Troyes",
+   "RC Strasbourg Alsace",
+   "15:00"
+  ],
+  [
+   "2026-09-11",
+   4,
+   "Stade Rennais FC",
+   "Olympique Marseille",
+   "20:45"
+  ],
+  [
+   "2026-09-12",
+   4,
+   "RC Strasbourg Alsace",
+   "AS Monaco",
+   "17:15"
+  ],
+  [
+   "2026-09-12",
+   4,
+   "Le Havre AC",
+   "Angers SCO",
+   "20:45"
+  ],
+  [
+   "2026-09-12",
+   4,
+   "FC Lorient",
+   "FC Toulouse",
+   "20:45"
+  ],
+  [
+   "2026-09-12",
+   4,
+   "Paris FC",
+   "Olympique Lyon",
+   "20:45"
+  ],
+  [
+   "2026-09-12",
+   4,
+   "AJ Auxerre",
+   "OGC Nice",
+   "20:45"
+  ],
+  [
+   "2026-09-13",
+   4,
+   "Stade Brestois 29",
+   "Paris Saint-Germain",
+   "20:45"
+  ],
+  [
+   "2026-09-13",
+   4,
+   "LOSC Lille",
+   "ESTAC Troyes",
+   "15:00"
+  ],
+  [
+   "2026-09-13",
+   4,
+   "Le Mans FC",
+   "RC Lens",
+   "17:15"
+  ],
+  [
+   "2026-09-18",
+   5,
+   "AS Monaco",
+   "RC Lens",
+   "20:45"
+  ],
+  [
+   "2026-09-19",
+   5,
+   "Olympique Lyon",
+   "Stade Rennais FC",
+   "20:45"
+  ],
+  [
+   "2026-09-19",
+   5,
+   "FC Toulouse",
+   "Le Havre AC",
+   "20:45"
+  ],
+  [
+   "2026-09-19",
+   5,
+   "Paris FC",
+   "RC Strasbourg Alsace",
+   "17:15"
+  ],
+  [
+   "2026-09-19",
+   5,
+   "Le Mans FC",
+   "FC Lorient",
+   "20:45"
+  ],
+  [
+   "2026-09-19",
+   5,
+   "Angers SCO",
+   "ESTAC Troyes",
+   "20:45"
+  ],
+  [
+   "2026-09-20",
+   5,
+   "Olympique Marseille",
+   "Paris Saint-Germain",
+   "20:45"
+  ],
+  [
+   "2026-09-20",
+   5,
+   "AJ Auxerre",
+   "Stade Brestois 29",
+   "15:00"
+  ],
+  [
+   "2026-09-20",
+   5,
+   "OGC Nice",
+   "LOSC Lille",
+   "17:15"
+  ],
+  [
+   "2026-10-09",
+   6,
+   "RC Lens",
+   "Olympique Lyon",
+   "20:45"
+  ],
+  [
+   "2026-10-10",
+   6,
+   "AS Monaco",
+   "FC Toulouse",
+   "20:45"
+  ],
+  [
+   "2026-10-10",
+   6,
+   "LOSC Lille",
+   "Le Havre AC",
+   "17:15"
+  ],
+  [
+   "2026-10-10",
+   6,
+   "FC Lorient",
+   "Paris FC",
+   "20:45"
+  ],
+  [
+   "2026-10-10",
+   6,
+   "Paris Saint-Germain",
+   "Le Mans FC",
+   "20:45"
+  ],
+  [
+   "2026-10-10",
+   6,
+   "Stade Brestois 29",
+   "Angers SCO",
+   "20:45"
+  ],
+  [
+   "2026-10-11",
+   6,
+   "Stade Rennais FC",
+   "AJ Auxerre",
+   "17:15"
+  ],
+  [
+   "2026-10-11",
+   6,
+   "ESTAC Troyes",
+   "Olympique Marseille",
+   "20:45"
+  ],
+  [
+   "2026-10-11",
+   6,
+   "OGC Nice",
+   "RC Strasbourg Alsace",
+   "15:00"
+  ],
+  [
+   "2026-10-16",
+   7,
+   "Le Mans FC",
+   "FC Toulouse",
+   "20:45"
+  ],
+  [
+   "2026-10-17",
+   7,
+   "RC Strasbourg Alsace",
+   "Paris Saint-Germain",
+   "17:15"
+  ],
+  [
+   "2026-10-17",
+   7,
+   "ESTAC Troyes",
+   "RC Lens",
+   "20:45"
+  ],
+  [
+   "2026-10-17",
+   7,
+   "LOSC Lille",
+   "Stade Brestois 29",
+   "20:45"
+  ],
+  [
+   "2026-10-18",
+   7,
+   "FC Lorient",
+   "AS Monaco",
+   "17:15"
+  ],
+  [
+   "2026-10-18",
+   7,
+   "Paris FC",
+   "Stade Rennais FC",
+   "17:15"
+  ],
+  [
+   "2026-10-18",
+   7,
+   "Le Havre AC",
+   "AJ Auxerre",
+   "17:15"
+  ],
+  [
+   "2026-10-18",
+   7,
+   "Angers SCO",
+   "Olympique Marseille",
+   "15:00"
+  ],
+  [
+   "2026-10-18",
+   7,
+   "Olympique Lyon",
+   "OGC Nice",
+   "20:45"
+  ],
+  [
+   "2026-10-23",
+   8,
+   "Stade Brestois 29",
+   "OGC Nice",
+   "20:45"
+  ],
+  [
+   "2026-10-24",
+   8,
+   "RC Lens",
+   "Paris FC",
+   "20:45"
+  ],
+  [
+   "2026-10-25",
+   8,
+   "AS Monaco",
+   "LOSC Lille",
+   "15:00"
+  ],
+  [
+   "2026-10-25",
+   8,
+   "Stade Rennais FC",
+   "RC Strasbourg Alsace",
+   "17:15"
+  ],
+  [
+   "2026-10-25",
+   8,
+   "Olympique Marseille",
+   "Le Havre AC",
+   "17:15"
+  ],
+  [
+   "2026-10-25",
+   8,
+   "FC Toulouse",
+   "ESTAC Troyes",
+   "17:15"
+  ],
+  [
+   "2026-10-25",
+   8,
+   "AJ Auxerre",
+   "Le Mans FC",
+   "17:15"
+  ],
+  [
+   "2026-10-25",
+   8,
+   "Angers SCO",
+   "FC Lorient",
+   "17:15"
+  ],
+  [
+   "2026-10-26",
+   8,
+   "Paris Saint-Germain",
+   "Olympique Lyon",
+   "20:30"
+  ],
+  [
+   "2026-10-30",
+   9,
+   "OGC Nice",
+   "Stade Rennais FC",
+   "19:00"
+  ],
+  [
+   "2026-10-30",
+   9,
+   "Le Havre AC",
+   "Paris Saint-Germain",
+   "19:00"
+  ],
+  [
+   "2026-10-30",
+   9,
+   "LOSC Lille",
+   "RC Lens",
+   "21:05"
+  ],
+  [
+   "2026-10-31",
+   9,
+   "ESTAC Troyes",
+   "Le Mans FC",
+   "20:45"
+  ],
+  [
+   "2026-11-01",
+   9,
+   "Paris FC",
+   "AS Monaco",
+   "17:15"
+  ],
+  [
+   "2026-11-01",
+   9,
+   "Olympique Marseille",
+   "FC Toulouse",
+   "20:45"
+  ],
+  [
+   "2026-11-01",
+   9,
+   "RC Strasbourg Alsace",
+   "AJ Auxerre",
+   "15:00"
+  ],
+  [
+   "2026-11-01",
+   9,
+   "Olympique Lyon",
+   "Angers SCO",
+   "17:15"
+  ],
+  [
+   "2026-11-02",
+   9,
+   "FC Lorient",
+   "Stade Brestois 29",
+   "20:45"
+  ],
+  [
+   "2026-11-06",
+   10,
+   "FC Toulouse",
+   "RC Strasbourg Alsace",
+   "20:45"
+  ],
+  [
+   "2026-11-07",
+   10,
+   "AJ Auxerre",
+   "Paris FC",
+   "19:00"
+  ],
+  [
+   "2026-11-07",
+   10,
+   "Paris Saint-Germain",
+   "ESTAC Troyes",
+   "21:05"
+  ],
+  [
+   "2026-11-08",
+   10,
+   "Le Mans FC",
+   "AS Monaco",
+   "17:15"
+  ],
+  [
+   "2026-11-08",
+   10,
+   "Stade Rennais FC",
+   "LOSC Lille",
+   "15:00"
+  ],
+  [
+   "2026-11-08",
+   10,
+   "Le Havre AC",
+   "FC Lorient",
+   "17:15"
+  ],
+  [
+   "2026-11-08",
+   10,
+   "RC Lens",
+   "Olympique Marseille",
+   "20:45"
+  ],
+  [
+   "2026-11-08",
+   10,
+   "Angers SCO",
+   "OGC Nice",
+   "17:15"
+  ],
+  [
+   "2026-11-08",
+   10,
+   "Stade Brestois 29",
+   "Olympique Lyon",
+   "17:15"
+  ],
+  [
+   "2026-11-20",
+   11,
+   "ESTAC Troyes",
+   "Le Havre AC",
+   "20:45"
+  ],
+  [
+   "2026-11-21",
+   11,
+   "AS Monaco",
+   "AJ Auxerre",
+   "20:45"
+  ],
+  [
+   "2026-11-21",
+   11,
+   "RC Lens",
+   "FC Toulouse",
+   "20:45"
+  ],
+  [
+   "2026-11-21",
+   11,
+   "OGC Nice",
+   "Paris Saint-Germain",
+   "17:15"
+  ],
+  [
+   "2026-11-21",
+   11,
+   "LOSC Lille",
+   "Olympique Lyon",
+   "20:45"
+  ],
+  [
+   "2026-11-21",
+   11,
+   "RC Strasbourg Alsace",
+   "Stade Brestois 29",
+   "20:45"
+  ],
+  [
+   "2026-11-22",
+   11,
+   "FC Lorient",
+   "Stade Rennais FC",
+   "17:15"
+  ],
+  [
+   "2026-11-22",
+   11,
+   "Paris FC",
+   "Angers SCO",
+   "15:00"
+  ],
+  [
+   "2026-11-22",
+   11,
+   "Olympique Marseille",
+   "Le Mans FC",
+   "20:45"
+  ],
+  [
+   "2026-11-27",
+   12,
+   "Stade Brestois 29",
+   "Paris FC",
+   "20:45"
+  ],
+  [
+   "2026-11-28",
+   12,
+   "Le Havre AC",
+   "RC Strasbourg Alsace",
+   "20:45"
+  ],
+  [
+   "2026-11-28",
+   12,
+   "Paris Saint-Germain",
+   "FC Lorient",
+   "20:45"
+  ],
+  [
+   "2026-11-28",
+   12,
+   "Angers SCO",
+   "RC Lens",
+   "17:15"
+  ],
+  [
+   "2026-11-28",
+   12,
+   "OGC Nice",
+   "ESTAC Troyes",
+   "20:45"
+  ],
+  [
+   "2026-11-28",
+   12,
+   "Le Mans FC",
+   "LOSC Lille",
+   "20:45"
+  ],
+  [
+   "2026-11-29",
+   12,
+   "Olympique Lyon",
+   "AS Monaco",
+   "20:45"
+  ],
+  [
+   "2026-11-29",
+   12,
+   "FC Toulouse",
+   "Stade Rennais FC",
+   "17:15"
+  ],
+  [
+   "2026-11-29",
+   12,
+   "AJ Auxerre",
+   "Olympique Marseille",
+   "15:00"
+  ],
+  [
+   "2026-12-04",
+   13,
+   "FC Toulouse",
+   "Paris Saint-Germain",
+   "20:45"
+  ],
+  [
+   "2026-12-05",
+   13,
+   "AS Monaco",
+   "Angers SCO",
+   "20:45"
+  ],
+  [
+   "2026-12-05",
+   13,
+   "RC Lens",
+   "Le Havre AC",
+   "20:45"
+  ],
+  [
+   "2026-12-05",
+   13,
+   "Paris FC",
+   "Le Mans FC",
+   "20:45"
+  ],
+  [
+   "2026-12-05",
+   13,
+   "LOSC Lille",
+   "AJ Auxerre",
+   "17:15"
+  ],
+  [
+   "2026-12-05",
+   13,
+   "RC Strasbourg Alsace",
+   "FC Lorient",
+   "20:45"
+  ],
+  [
+   "2026-12-06",
+   13,
+   "Stade Rennais FC",
+   "Stade Brestois 29",
+   "17:15"
+  ],
+  [
+   "2026-12-06",
+   13,
+   "Olympique Marseille",
+   "OGC Nice",
+   "20:45"
+  ],
+  [
+   "2026-12-06",
+   13,
+   "ESTAC Troyes",
+   "Olympique Lyon",
+   "15:00"
+  ],
+  [
+   "2026-12-11",
+   14,
+   "AJ Auxerre",
+   "FC Toulouse",
+   "20:45"
+  ],
+  [
+   "2026-12-12",
+   14,
+   "Le Havre AC",
+   "Le Mans FC",
+   "20:45"
+  ],
+  [
+   "2026-12-12",
+   14,
+   "Paris Saint-Germain",
+   "Paris FC",
+   "17:15"
+  ],
+  [
+   "2026-12-12",
+   14,
+   "Angers SCO",
+   "RC Strasbourg Alsace",
+   "20:45"
+  ],
+  [
+   "2026-12-12",
+   14,
+   "OGC Nice",
+   "RC Lens",
+   "20:45"
+  ],
+  [
+   "2026-12-12",
+   14,
+   "Stade Brestois 29",
+   "ESTAC Troyes",
+   "20:45"
+  ],
+  [
+   "2026-12-13",
+   14,
+   "Stade Rennais FC",
+   "AS Monaco",
+   "17:15"
+  ],
+  [
+   "2026-12-13",
+   14,
+   "Olympique Lyon",
+   "Olympique Marseille",
+   "20:45"
+  ],
+  [
+   "2026-12-13",
+   14,
+   "FC Lorient",
+   "LOSC Lille",
+   "15:00"
+  ],
+  [
+   "2027-01-02",
+   15,
+   "AS Monaco",
+   "OGC Nice",
+   "21:00"
+  ],
+  [
+   "2027-01-02",
+   15,
+   "ESTAC Troyes",
+   "Stade Rennais FC",
+   "21:00"
+  ],
+  [
+   "2027-01-02",
+   15,
+   "Paris FC",
+   "Le Havre AC",
+   "21:00"
+  ],
+  [
+   "2027-01-02",
+   15,
+   "FC Toulouse",
+   "Angers SCO",
+   "21:00"
+  ],
+  [
+   "2027-01-02",
+   15,
+   "Stade Brestois 29",
+   "Olympique Marseille",
+   "17:00"
+  ],
+  [
+   "2027-01-02",
+   15,
+   "FC Lorient",
+   "AJ Auxerre",
+   "21:00"
+  ],
+  [
+   "2027-01-03",
+   15,
+   "RC Lens",
+   "Paris Saint-Germain",
+   "20:45"
+  ],
+  [
+   "2027-01-03",
+   15,
+   "LOSC Lille",
+   "RC Strasbourg Alsace",
+   "17:15"
+  ],
+  [
+   "2027-01-03",
+   15,
+   "Le Mans FC",
+   "Olympique Lyon",
+   "15:00"
+  ],
+  [
+   "2027-01-15",
+   16,
+   "Olympique Marseille",
+   "LOSC Lille",
+   "20:45"
+  ],
+  [
+   "2027-01-16",
+   16,
+   "Stade Rennais FC",
+   "RC Lens",
+   "20:45"
+  ],
+  [
+   "2027-01-16",
+   16,
+   "OGC Nice",
+   "Le Havre AC",
+   "20:45"
+  ],
+  [
+   "2027-01-16",
+   16,
+   "AJ Auxerre",
+   "ESTAC Troyes",
+   "20:45"
+  ],
+  [
+   "2027-01-16",
+   16,
+   "Angers SCO",
+   "Paris Saint-Germain",
+   "17:15"
+  ],
+  [
+   "2027-01-16",
+   16,
+   "RC Strasbourg Alsace",
+   "Le Mans FC",
+   "20:45"
+  ],
+  [
+   "2027-01-17",
+   16,
+   "AS Monaco",
+   "Stade Brestois 29",
+   "17:15"
+  ],
+  [
+   "2027-01-17",
+   16,
+   "Paris FC",
+   "FC Toulouse",
+   "15:00"
+  ],
+  [
+   "2027-01-17",
+   16,
+   "Olympique Lyon",
+   "FC Lorient",
+   "20:45"
+  ],
+  [
+   "2027-01-22",
+   17,
+   "ESTAC Troyes",
+   "AS Monaco",
+   "20:45"
+  ],
+  [
+   "2027-01-23",
+   17,
+   "FC Toulouse",
+   "OGC Nice",
+   "20:45"
+  ],
+  [
+   "2027-01-23",
+   17,
+   "LOSC Lille",
+   "Paris FC",
+   "17:15"
+  ],
+  [
+   "2027-01-23",
+   17,
+   "Paris Saint-Germain",
+   "AJ Auxerre",
+   "20:45"
+  ],
+  [
+   "2027-01-23",
+   17,
+   "Le Mans FC",
+   "Angers SCO",
+   "20:45"
+  ],
+  [
+   "2027-01-23",
+   17,
+   "RC Lens",
+   "Stade Brestois 29",
+   "20:45"
+  ],
+  [
+   "2027-01-24",
+   17,
+   "Le Havre AC",
+   "Stade Rennais FC",
+   "15:00"
+  ],
+  [
+   "2027-01-24",
+   17,
+   "FC Lorient",
+   "Olympique Marseille",
+   "17:15"
+  ],
+  [
+   "2027-01-24",
+   17,
+   "RC Strasbourg Alsace",
+   "Olympique Lyon",
+   "20:45"
+  ],
+  [
+   "2027-01-29",
+   18,
+   "Stade Brestois 29",
+   "RC Strasbourg Alsace",
+   "20:45"
+  ],
+  [
+   "2027-01-30",
+   18,
+   "AS Monaco",
+   "Paris Saint-Germain",
+   "17:15"
+  ],
+  [
+   "2027-01-30",
+   18,
+   "Angers SCO",
+   "Le Havre AC",
+   "20:45"
+  ],
+  [
+   "2027-01-30",
+   18,
+   "FC Toulouse",
+   "RC Lens",
+   "20:45"
+  ],
+  [
+   "2027-01-30",
+   18,
+   "Paris FC",
+   "AJ Auxerre",
+   "20:45"
+  ],
+  [
+   "2027-01-30",
+   18,
+   "Le Mans FC",
+   "OGC Nice",
+   "20:45"
+  ],
+  [
+   "2027-01-31",
+   18,
+   "Stade Rennais FC",
+   "FC Lorient",
+   "15:00"
+  ],
+  [
+   "2027-01-31",
+   18,
+   "Olympique Marseille",
+   "ESTAC Troyes",
+   "17:15"
+  ],
+  [
+   "2027-01-31",
+   18,
+   "Olympique Lyon",
+   "LOSC Lille",
+   "20:45"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "AJ Auxerre",
+   "AS Monaco"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "Stade Rennais FC",
+   "Olympique Lyon"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "Le Havre AC",
+   "FC Toulouse"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "RC Strasbourg Alsace",
+   "Paris FC"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "FC Lorient",
+   "Le Mans FC"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "RC Lens",
+   "Angers SCO"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "OGC Nice",
+   "Stade Brestois 29"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "ESTAC Troyes",
+   "LOSC Lille"
+  ],
+  [
+   "2027-02-07",
+   19,
+   "Paris Saint-Germain",
+   "Olympique Marseille",
+   "20:45"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "FC Toulouse",
+   "AS Monaco"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "Stade Brestois 29",
+   "Stade Rennais FC"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "FC Lorient",
+   "Le Havre AC"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "Paris FC",
+   "ESTAC Troyes"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "Olympique Marseille",
+   "Angers SCO"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "AJ Auxerre",
+   "RC Strasbourg Alsace"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "Le Mans FC",
+   "Paris Saint-Germain"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "LOSC Lille",
+   "OGC Nice"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "Olympique Lyon",
+   "RC Lens"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "AS Monaco",
+   "Le Mans FC"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "Stade Rennais FC",
+   "FC Toulouse"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "Le Havre AC",
+   "Olympique Lyon"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "Angers SCO",
+   "Paris FC"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "RC Strasbourg Alsace",
+   "Olympique Marseille"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "OGC Nice",
+   "AJ Auxerre"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "Paris Saint-Germain",
+   "Stade Brestois 29"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "LOSC Lille",
+   "FC Lorient"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "RC Lens",
+   "ESTAC Troyes"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "Stade Brestois 29",
+   "AS Monaco"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "Olympique Marseille",
+   "Stade Rennais FC"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "RC Strasbourg Alsace",
+   "Le Havre AC"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "Olympique Lyon",
+   "FC Toulouse"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "Le Mans FC",
+   "Paris FC"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "AJ Auxerre",
+   "LOSC Lille"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "FC Lorient",
+   "Angers SCO"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "ESTAC Troyes",
+   "OGC Nice"
+  ],
+  [
+   "2027-02-28",
+   22,
+   "Paris Saint-Germain",
+   "RC Lens",
+   "20:45"
+  ],
+  [
+   "2027-03-06",
+   23,
+   "AS Monaco",
+   "Olympique Lyon"
+  ],
+  [
+   "2027-03-06",
+   23,
+   "Paris Saint-Germain",
+   "Stade Rennais FC"
+  ],
+  [
+   "2027-03-06",
+   23,
+   "Le Havre AC",
+   "OGC Nice"
+  ],
+  [
+   "2027-03-06",
+   23,
+   "FC Toulouse",
+   "Le Mans FC"
+  ],
+  [
+   "2027-03-06",
+   23,
+   "Paris FC",
+   "Stade Brestois 29"
+  ],
+  [
+   "2027-03-06",
+   23,
+   "LOSC Lille",
+   "Olympique Marseille"
+  ],
+  [
+   "2027-03-06",
+   23,
+   "Angers SCO",
+   "AJ Auxerre"
+  ],
+  [
+   "2027-03-06",
+   23,
+   "ESTAC Troyes",
+   "FC Lorient"
+  ],
+  [
+   "2027-03-06",
+   23,
+   "RC Lens",
+   "RC Strasbourg Alsace"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "Olympique Marseille",
+   "AS Monaco"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "Le Mans FC",
+   "Stade Rennais FC"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "Le Havre AC",
+   "RC Lens"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "OGC Nice",
+   "FC Toulouse"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "Paris FC",
+   "FC Lorient"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "AJ Auxerre",
+   "Paris Saint-Germain"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "RC Strasbourg Alsace",
+   "Angers SCO"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "Olympique Lyon",
+   "ESTAC Troyes"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "Stade Brestois 29",
+   "LOSC Lille"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "AS Monaco",
+   "Le Havre AC"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "Stade Rennais FC",
+   "Paris FC"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "FC Toulouse",
+   "Stade Brestois 29"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "ESTAC Troyes",
+   "AJ Auxerre"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "Paris Saint-Germain",
+   "RC Strasbourg Alsace"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "FC Lorient",
+   "OGC Nice"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "Angers SCO",
+   "Le Mans FC"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "RC Lens",
+   "LOSC Lille"
+  ],
+  [
+   "2027-03-21",
+   25,
+   "Olympique Marseille",
+   "Olympique Lyon",
+   "20:45"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "Angers SCO",
+   "AS Monaco"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "LOSC Lille",
+   "Stade Rennais FC"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "Le Havre AC",
+   "ESTAC Troyes"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "RC Strasbourg Alsace",
+   "FC Toulouse"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "Paris FC",
+   "Paris Saint-Germain"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "Le Mans FC",
+   "Olympique Marseille"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "AJ Auxerre",
+   "RC Lens"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "Stade Brestois 29",
+   "FC Lorient"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "OGC Nice",
+   "Olympique Lyon"
+  ],
+  [
+   "2027-04-10",
+   27,
+   "AS Monaco",
+   "Stade Rennais FC"
+  ],
+  [
+   "2027-04-10",
+   27,
+   "Paris Saint-Germain",
+   "Le Havre AC"
+  ],
+  [
+   "2027-04-10",
+   27,
+   "LOSC Lille",
+   "FC Toulouse"
+  ],
+  [
+   "2027-04-10",
+   27,
+   "OGC Nice",
+   "Paris FC"
+  ],
+  [
+   "2027-04-10",
+   27,
+   "Olympique Marseille",
+   "Stade Brestois 29"
+  ],
+  [
+   "2027-04-10",
+   27,
+   "Le Mans FC",
+   "AJ Auxerre"
+  ],
+  [
+   "2027-04-10",
+   27,
+   "FC Lorient",
+   "RC Lens"
+  ],
+  [
+   "2027-04-10",
+   27,
+   "ESTAC Troyes",
+   "Angers SCO"
+  ],
+  [
+   "2027-04-10",
+   27,
+   "Olympique Lyon",
+   "RC Strasbourg Alsace"
+  ],
+  [
+   "2027-04-17",
+   28,
+   "AS Monaco",
+   "RC Strasbourg Alsace"
+  ],
+  [
+   "2027-04-17",
+   28,
+   "Stade Rennais FC",
+   "ESTAC Troyes"
+  ],
+  [
+   "2027-04-17",
+   28,
+   "Le Havre AC",
+   "Olympique Marseille"
+  ],
+  [
+   "2027-04-17",
+   28,
+   "FC Toulouse",
+   "Paris FC"
+  ],
+  [
+   "2027-04-17",
+   28,
+   "AJ Auxerre",
+   "FC Lorient"
+  ],
+  [
+   "2027-04-17",
+   28,
+   "Paris Saint-Germain",
+   "LOSC Lille"
+  ],
+  [
+   "2027-04-17",
+   28,
+   "Angers SCO",
+   "Olympique Lyon"
+  ],
+  [
+   "2027-04-17",
+   28,
+   "RC Lens",
+   "OGC Nice"
+  ],
+  [
+   "2027-04-17",
+   28,
+   "Stade Brestois 29",
+   "Le Mans FC"
+  ],
+  [
+   "2027-04-24",
+   29,
+   "LOSC Lille",
+   "AS Monaco"
+  ],
+  [
+   "2027-04-24",
+   29,
+   "RC Strasbourg Alsace",
+   "Stade Rennais FC"
+  ],
+  [
+   "2027-04-24",
+   29,
+   "Le Mans FC",
+   "Le Havre AC"
+  ],
+  [
+   "2027-04-24",
+   29,
+   "ESTAC Troyes",
+   "FC Toulouse"
+  ],
+  [
+   "2027-04-24",
+   29,
+   "Paris FC",
+   "RC Lens"
+  ],
+  [
+   "2027-04-24",
+   29,
+   "Olympique Marseille",
+   "AJ Auxerre"
+  ],
+  [
+   "2027-04-24",
+   29,
+   "FC Lorient",
+   "Paris Saint-Germain"
+  ],
+  [
+   "2027-04-24",
+   29,
+   "OGC Nice",
+   "Angers SCO"
+  ],
+  [
+   "2027-04-24",
+   29,
+   "Olympique Lyon",
+   "Stade Brestois 29"
+  ],
+  [
+   "2027-05-01",
+   30,
+   "AS Monaco",
+   "FC Lorient"
+  ],
+  [
+   "2027-05-01",
+   30,
+   "Stade Rennais FC",
+   "OGC Nice"
+  ],
+  [
+   "2027-05-01",
+   30,
+   "Le Havre AC",
+   "Paris FC"
+  ],
+  [
+   "2027-05-01",
+   30,
+   "FC Toulouse",
+   "Olympique Marseille"
+  ],
+  [
+   "2027-05-01",
+   30,
+   "AJ Auxerre",
+   "Olympique Lyon"
+  ],
+  [
+   "2027-05-01",
+   30,
+   "Paris Saint-Germain",
+   "Angers SCO"
+  ],
+  [
+   "2027-05-01",
+   30,
+   "ESTAC Troyes",
+   "Stade Brestois 29"
+  ],
+  [
+   "2027-05-01",
+   30,
+   "RC Strasbourg Alsace",
+   "LOSC Lille"
+  ],
+  [
+   "2027-05-01",
+   30,
+   "RC Lens",
+   "Le Mans FC"
+  ],
+  [
+   "2027-05-08",
+   31,
+   "RC Lens",
+   "AS Monaco"
+  ],
+  [
+   "2027-05-08",
+   31,
+   "Stade Rennais FC",
+   "Le Havre AC"
+  ],
+  [
+   "2027-05-08",
+   31,
+   "Angers SCO",
+   "FC Toulouse"
+  ],
+  [
+   "2027-05-08",
+   31,
+   "Paris FC",
+   "LOSC Lille"
+  ],
+  [
+   "2027-05-08",
+   31,
+   "OGC Nice",
+   "Olympique Marseille"
+  ],
+  [
+   "2027-05-08",
+   31,
+   "Stade Brestois 29",
+   "AJ Auxerre"
+  ],
+  [
+   "2027-05-08",
+   31,
+   "FC Lorient",
+   "RC Strasbourg Alsace"
+  ],
+  [
+   "2027-05-08",
+   31,
+   "Le Mans FC",
+   "ESTAC Troyes"
+  ],
+  [
+   "2027-05-09",
+   31,
+   "Olympique Lyon",
+   "Paris Saint-Germain",
+   "20:45"
+  ],
+  [
+   "2027-05-16",
+   32,
+   "AS Monaco",
+   "Paris FC"
+  ],
+  [
+   "2027-05-16",
+   32,
+   "Stade Brestois 29",
+   "Le Havre AC"
+  ],
+  [
+   "2027-05-16",
+   32,
+   "FC Toulouse",
+   "FC Lorient"
+  ],
+  [
+   "2027-05-16",
+   32,
+   "AJ Auxerre",
+   "Stade Rennais FC"
+  ],
+  [
+   "2027-05-16",
+   32,
+   "LOSC Lille",
+   "Angers SCO"
+  ],
+  [
+   "2027-05-16",
+   32,
+   "Paris Saint-Germain",
+   "OGC Nice"
+  ],
+  [
+   "2027-05-16",
+   32,
+   "RC Strasbourg Alsace",
+   "ESTAC Troyes"
+  ],
+  [
+   "2027-05-16",
+   32,
+   "Olympique Lyon",
+   "Le Mans FC"
+  ],
+  [
+   "2027-05-16",
+   32,
+   "Olympique Marseille",
+   "RC Lens"
+  ],
+  [
+   "2027-05-22",
+   33,
+   "Le Havre AC",
+   "LOSC Lille"
+  ],
+  [
+   "2027-05-22",
+   33,
+   "FC Toulouse",
+   "AJ Auxerre"
+  ],
+  [
+   "2027-05-22",
+   33,
+   "Paris FC",
+   "Olympique Marseille"
+  ],
+  [
+   "2027-05-22",
+   33,
+   "FC Lorient",
+   "Olympique Lyon"
+  ],
+  [
+   "2027-05-22",
+   33,
+   "Angers SCO",
+   "Stade Brestois 29"
+  ],
+  [
+   "2027-05-22",
+   33,
+   "OGC Nice",
+   "AS Monaco"
+  ],
+  [
+   "2027-05-22",
+   33,
+   "ESTAC Troyes",
+   "Paris Saint-Germain"
+  ],
+  [
+   "2027-05-22",
+   33,
+   "Le Mans FC",
+   "RC Strasbourg Alsace"
+  ],
+  [
+   "2027-05-22",
+   33,
+   "RC Lens",
+   "Stade Rennais FC"
+  ],
+  [
+   "2027-05-29",
+   34,
+   "AJ Auxerre",
+   "Le Havre AC"
+  ],
+  [
+   "2027-05-29",
+   34,
+   "Paris Saint-Germain",
+   "FC Toulouse"
+  ],
+  [
+   "2027-05-29",
+   34,
+   "Olympique Lyon",
+   "Paris FC"
+  ],
+  [
+   "2027-05-29",
+   34,
+   "Olympique Marseille",
+   "FC Lorient"
+  ],
+  [
+   "2027-05-29",
+   34,
+   "Stade Rennais FC",
+   "Angers SCO"
+  ],
+  [
+   "2027-05-29",
+   34,
+   "RC Strasbourg Alsace",
+   "OGC Nice"
+  ],
+  [
+   "2027-05-29",
+   34,
+   "AS Monaco",
+   "ESTAC Troyes"
+  ],
+  [
+   "2027-05-29",
+   34,
+   "Stade Brestois 29",
+   "RC Lens"
+  ],
+  [
+   "2027-05-29",
+   34,
+   "LOSC Lille",
+   "Le Mans FC"
+  ]
+ ],
+ "fixtures2": [
+  [
+   "2026-08-08",
+   1,
+   "US Boulogne",
+   "AS Nancy-Lorraine",
+   "20:45"
+  ],
+  [
+   "2026-08-08",
+   1,
+   "USL Dunkerque",
+   "Grenoble Foot 38",
+   "20:45"
+  ],
+  [
+   "2026-08-08",
+   1,
+   "Montpellier HSC",
+   "Dijon FCO",
+   "20:45"
+  ],
+  [
+   "2026-08-08",
+   1,
+   "FC Sochaux-Montbéliard",
+   "AS Saint-Étienne",
+   "20:45"
+  ],
+  [
+   "2026-08-08",
+   1,
+   "FC Nantes",
+   "Red Star FC",
+   "20:45"
+  ],
+  [
+   "2026-08-08",
+   1,
+   "Rodez AF",
+   "Stade Lavallois",
+   "20:45"
+  ],
+  [
+   "2026-08-08",
+   1,
+   "Pau FC",
+   "FC Annecy",
+   "20:45"
+  ],
+  [
+   "2026-08-08",
+   1,
+   "FC Metz",
+   "EA Guingamp",
+   "20:45"
+  ],
+  [
+   "2026-08-08",
+   1,
+   "Clermont Foot 63",
+   "Stade Reims",
+   "20:45"
+  ],
+  [
+   "2026-08-14",
+   2,
+   "EA Guingamp",
+   "US Boulogne",
+   "20:45"
+  ],
+  [
+   "2026-08-14",
+   2,
+   "Grenoble Foot 38",
+   "FC Metz",
+   "20:45"
+  ],
+  [
+   "2026-08-14",
+   2,
+   "AS Nancy-Lorraine",
+   "Montpellier HSC",
+   "20:45"
+  ],
+  [
+   "2026-08-14",
+   2,
+   "AS Saint-Étienne",
+   "Clermont Foot 63",
+   "20:45"
+  ],
+  [
+   "2026-08-14",
+   2,
+   "Stade Lavallois",
+   "FC Nantes",
+   "20:45"
+  ],
+  [
+   "2026-08-14",
+   2,
+   "Dijon FCO",
+   "Pau FC",
+   "20:45"
+  ],
+  [
+   "2026-08-14",
+   2,
+   "FC Annecy",
+   "Rodez AF",
+   "20:45"
+  ],
+  [
+   "2026-08-14",
+   2,
+   "Stade Reims",
+   "USL Dunkerque",
+   "20:45"
+  ],
+  [
+   "2026-08-14",
+   2,
+   "Red Star FC",
+   "FC Sochaux-Montbéliard",
+   "20:45"
+  ],
+  [
+   "2026-08-21",
+   3,
+   "US Boulogne",
+   "Red Star FC",
+   "20:00"
+  ],
+  [
+   "2026-08-21",
+   3,
+   "USL Dunkerque",
+   "Montpellier HSC",
+   "20:00"
+  ],
+  [
+   "2026-08-21",
+   3,
+   "Clermont Foot 63",
+   "Dijon FCO",
+   "20:00"
+  ],
+  [
+   "2026-08-21",
+   3,
+   "FC Sochaux-Montbéliard",
+   "EA Guingamp",
+   "20:00"
+  ],
+  [
+   "2026-08-21",
+   3,
+   "Pau FC",
+   "AS Nancy-Lorraine",
+   "20:00"
+  ],
+  [
+   "2026-08-22",
+   3,
+   "AS Saint-Étienne",
+   "Grenoble Foot 38",
+   "20:00"
+  ],
+  [
+   "2026-08-22",
+   3,
+   "FC Nantes",
+   "Rodez AF",
+   "14:00"
+  ],
+  [
+   "2026-08-22",
+   3,
+   "FC Metz",
+   "Stade Lavallois",
+   "14:00"
+  ],
+  [
+   "2026-08-24",
+   3,
+   "Stade Reims",
+   "FC Annecy",
+   "20:45"
+  ],
+  [
+   "2026-08-28",
+   4,
+   "Montpellier HSC",
+   "US Boulogne",
+   "20:00"
+  ],
+  [
+   "2026-08-28",
+   4,
+   "Stade Lavallois",
+   "Grenoble Foot 38",
+   "20:00"
+  ],
+  [
+   "2026-08-28",
+   4,
+   "Rodez AF",
+   "Pau FC",
+   "20:00"
+  ],
+  [
+   "2026-08-28",
+   4,
+   "AS Nancy-Lorraine",
+   "USL Dunkerque",
+   "20:00"
+  ],
+  [
+   "2026-08-28",
+   4,
+   "Clermont Foot 63",
+   "FC Sochaux-Montbéliard",
+   "20:00"
+  ],
+  [
+   "2026-08-29",
+   4,
+   "EA Guingamp",
+   "FC Nantes",
+   "20:00"
+  ],
+  [
+   "2026-08-29",
+   4,
+   "FC Annecy",
+   "FC Metz",
+   "14:00"
+  ],
+  [
+   "2026-08-29",
+   4,
+   "Red Star FC",
+   "Stade Reims",
+   "14:00"
+  ],
+  [
+   "2026-08-31",
+   4,
+   "Dijon FCO",
+   "AS Saint-Étienne",
+   "20:45"
+  ],
+  [
+   "2026-09-04",
+   5,
+   "US Boulogne",
+   "Dijon FCO",
+   "20:00"
+  ],
+  [
+   "2026-09-04",
+   5,
+   "Grenoble Foot 38",
+   "FC Annecy",
+   "20:00"
+  ],
+  [
+   "2026-09-04",
+   5,
+   "Stade Lavallois",
+   "Red Star FC",
+   "20:00"
+  ],
+  [
+   "2026-09-04",
+   5,
+   "USL Dunkerque",
+   "Clermont Foot 63",
+   "20:00"
+  ],
+  [
+   "2026-09-04",
+   5,
+   "Pau FC",
+   "FC Sochaux-Montbéliard",
+   "20:00"
+  ],
+  [
+   "2026-09-05",
+   5,
+   "AS Saint-Étienne",
+   "Montpellier HSC",
+   "20:00"
+  ],
+  [
+   "2026-09-05",
+   5,
+   "Stade Reims",
+   "EA Guingamp",
+   "14:00"
+  ],
+  [
+   "2026-09-05",
+   5,
+   "FC Metz",
+   "Rodez AF",
+   "14:00"
+  ],
+  [
+   "2026-09-07",
+   5,
+   "FC Nantes",
+   "AS Nancy-Lorraine",
+   "20:45"
+  ],
+  [
+   "2026-09-11",
+   6,
+   "Clermont Foot 63",
+   "US Boulogne",
+   "20:00"
+  ],
+  [
+   "2026-09-11",
+   6,
+   "Rodez AF",
+   "Grenoble Foot 38",
+   "20:00"
+  ],
+  [
+   "2026-09-11",
+   6,
+   "Montpellier HSC",
+   "Pau FC",
+   "20:00"
+  ],
+  [
+   "2026-09-11",
+   6,
+   "Dijon FCO",
+   "Stade Lavallois",
+   "20:00"
+  ],
+  [
+   "2026-09-11",
+   6,
+   "AS Nancy-Lorraine",
+   "Stade Reims",
+   "20:00"
+  ],
+  [
+   "2026-09-12",
+   6,
+   "USL Dunkerque",
+   "AS Saint-Étienne",
+   "20:00"
+  ],
+  [
+   "2026-09-12",
+   6,
+   "FC Sochaux-Montbéliard",
+   "FC Nantes",
+   "14:00"
+  ],
+  [
+   "2026-09-12",
+   6,
+   "EA Guingamp",
+   "FC Annecy",
+   "14:00"
+  ],
+  [
+   "2026-09-14",
+   6,
+   "Red Star FC",
+   "FC Metz",
+   "20:45"
+  ],
+  [
+   "2026-09-18",
+   7,
+   "Grenoble Foot 38",
+   "Clermont Foot 63",
+   "20:00"
+  ],
+  [
+   "2026-09-18",
+   7,
+   "Stade Reims",
+   "Montpellier HSC",
+   "20:00"
+  ],
+  [
+   "2026-09-18",
+   7,
+   "FC Annecy",
+   "Dijon FCO",
+   "20:00"
+  ],
+  [
+   "2026-09-18",
+   7,
+   "Stade Lavallois",
+   "FC Sochaux-Montbéliard",
+   "20:00"
+  ],
+  [
+   "2026-09-18",
+   7,
+   "Rodez AF",
+   "AS Nancy-Lorraine",
+   "20:00"
+  ],
+  [
+   "2026-09-18",
+   7,
+   "Pau FC",
+   "USL Dunkerque",
+   "20:00"
+  ],
+  [
+   "2026-09-19",
+   7,
+   "US Boulogne",
+   "FC Nantes",
+   "14:00"
+  ],
+  [
+   "2026-09-19",
+   7,
+   "FC Metz",
+   "AS Saint-Étienne",
+   "20:00"
+  ],
+  [
+   "2026-09-19",
+   7,
+   "EA Guingamp",
+   "Red Star FC",
+   "14:00"
+  ],
+  [
+   "2026-10-09",
+   8,
+   "FC Sochaux-Montbéliard",
+   "US Boulogne",
+   "20:00"
+  ],
+  [
+   "2026-10-09",
+   8,
+   "Montpellier HSC",
+   "Grenoble Foot 38",
+   "20:00"
+  ],
+  [
+   "2026-10-09",
+   8,
+   "Pau FC",
+   "Stade Lavallois",
+   "20:00"
+  ],
+  [
+   "2026-10-09",
+   8,
+   "USL Dunkerque",
+   "FC Annecy",
+   "20:00"
+  ],
+  [
+   "2026-10-09",
+   8,
+   "AS Nancy-Lorraine",
+   "EA Guingamp",
+   "20:00"
+  ],
+  [
+   "2026-10-10",
+   8,
+   "AS Saint-Étienne",
+   "Rodez AF",
+   "20:00"
+  ],
+  [
+   "2026-10-10",
+   8,
+   "FC Nantes",
+   "Stade Reims",
+   "14:00"
+  ],
+  [
+   "2026-10-10",
+   8,
+   "Clermont Foot 63",
+   "Red Star FC",
+   "14:00"
+  ],
+  [
+   "2026-10-12",
+   8,
+   "Dijon FCO",
+   "FC Metz",
+   "20:45"
+  ],
+  [
+   "2026-10-16",
+   9,
+   "Grenoble Foot 38",
+   "US Boulogne",
+   "20:00"
+  ],
+  [
+   "2026-10-16",
+   9,
+   "Stade Reims",
+   "Dijon FCO",
+   "20:00"
+  ],
+  [
+   "2026-10-16",
+   9,
+   "Stade Lavallois",
+   "Clermont Foot 63",
+   "20:00"
+  ],
+  [
+   "2026-10-16",
+   9,
+   "FC Annecy",
+   "AS Nancy-Lorraine",
+   "20:00"
+  ],
+  [
+   "2026-10-16",
+   9,
+   "EA Guingamp",
+   "Pau FC",
+   "20:00"
+  ],
+  [
+   "2026-10-17",
+   9,
+   "Red Star FC",
+   "AS Saint-Étienne",
+   "20:00"
+  ],
+  [
+   "2026-10-17",
+   9,
+   "FC Nantes",
+   "USL Dunkerque",
+   "14:00"
+  ],
+  [
+   "2026-10-17",
+   9,
+   "FC Metz",
+   "FC Sochaux-Montbéliard",
+   "14:00"
+  ],
+  [
+   "2026-10-19",
+   9,
+   "Rodez AF",
+   "Montpellier HSC",
+   "20:45"
+  ],
+  [
+   "2026-10-23",
+   10,
+   "Pau FC",
+   "Grenoble Foot 38",
+   "20:00"
+  ],
+  [
+   "2026-10-23",
+   10,
+   "AS Nancy-Lorraine",
+   "Stade Lavallois",
+   "20:00"
+  ],
+  [
+   "2026-10-23",
+   10,
+   "FC Sochaux-Montbéliard",
+   "FC Annecy",
+   "20:00"
+  ],
+  [
+   "2026-10-23",
+   10,
+   "Clermont Foot 63",
+   "EA Guingamp",
+   "20:00"
+  ],
+  [
+   "2026-10-23",
+   10,
+   "USL Dunkerque",
+   "FC Metz",
+   "20:00"
+  ],
+  [
+   "2026-10-24",
+   10,
+   "AS Saint-Étienne",
+   "FC Nantes",
+   "20:45"
+  ],
+  [
+   "2026-10-24",
+   10,
+   "Dijon FCO",
+   "Rodez AF",
+   "14:00"
+  ],
+  [
+   "2026-10-26",
+   10,
+   "US Boulogne",
+   "Stade Reims",
+   "20:45"
+  ],
+  [
+   "2026-10-26",
+   10,
+   "Montpellier HSC",
+   "Red Star FC",
+   "20:45"
+  ],
+  [
+   "2026-10-30",
+   11,
+   "Stade Lavallois",
+   "US Boulogne",
+   "20:00"
+  ],
+  [
+   "2026-10-30",
+   11,
+   "Grenoble Foot 38",
+   "Dijon FCO",
+   "20:00"
+  ],
+  [
+   "2026-10-30",
+   11,
+   "FC Nantes",
+   "Clermont Foot 63",
+   "20:00"
+  ],
+  [
+   "2026-10-30",
+   11,
+   "FC Metz",
+   "Pau FC",
+   "20:00"
+  ],
+  [
+   "2026-10-30",
+   11,
+   "Rodez AF",
+   "USL Dunkerque",
+   "20:00"
+  ],
+  [
+   "2026-10-31",
+   11,
+   "FC Annecy",
+   "Montpellier HSC",
+   "14:00"
+  ],
+  [
+   "2026-10-31",
+   11,
+   "EA Guingamp",
+   "AS Saint-Étienne",
+   "20:00"
+  ],
+  [
+   "2026-11-02",
+   11,
+   "Red Star FC",
+   "AS Nancy-Lorraine",
+   "20:45"
+  ],
+  [
+   "2026-11-02",
+   11,
+   "Stade Reims",
+   "FC Sochaux-Montbéliard",
+   "20:45"
+  ],
+  [
+   "2026-11-06",
+   12,
+   "US Boulogne",
+   "FC Annecy",
+   "20:00"
+  ],
+  [
+   "2026-11-06",
+   12,
+   "Grenoble Foot 38",
+   "Stade Reims",
+   "20:00"
+  ],
+  [
+   "2026-11-06",
+   12,
+   "Montpellier HSC",
+   "FC Metz",
+   "20:00"
+  ],
+  [
+   "2026-11-06",
+   12,
+   "Dijon FCO",
+   "Red Star FC",
+   "20:00"
+  ],
+  [
+   "2026-11-06",
+   12,
+   "USL Dunkerque",
+   "EA Guingamp",
+   "20:00"
+  ],
+  [
+   "2026-11-06",
+   12,
+   "AS Nancy-Lorraine",
+   "FC Sochaux-Montbéliard",
+   "20:00"
+  ],
+  [
+   "2026-11-07",
+   12,
+   "AS Saint-Étienne",
+   "Stade Lavallois",
+   "20:00"
+  ],
+  [
+   "2026-11-07",
+   12,
+   "Pau FC",
+   "FC Nantes",
+   "20:00"
+  ],
+  [
+   "2026-11-07",
+   12,
+   "Clermont Foot 63",
+   "Rodez AF",
+   "14:00"
+  ],
+  [
+   "2026-11-20",
+   13,
+   "FC Metz",
+   "US Boulogne",
+   "20:00"
+  ],
+  [
+   "2026-11-20",
+   13,
+   "AS Nancy-Lorraine",
+   "Dijon FCO",
+   "20:00"
+  ],
+  [
+   "2026-11-20",
+   13,
+   "FC Annecy",
+   "Clermont Foot 63",
+   "20:00"
+  ],
+  [
+   "2026-11-20",
+   13,
+   "EA Guingamp",
+   "Rodez AF",
+   "20:00"
+  ],
+  [
+   "2026-11-20",
+   13,
+   "Red Star FC",
+   "Pau FC",
+   "20:00"
+  ],
+  [
+   "2026-11-21",
+   13,
+   "FC Nantes",
+   "Grenoble Foot 38",
+   "14:00"
+  ],
+  [
+   "2026-11-21",
+   13,
+   "Stade Lavallois",
+   "Montpellier HSC",
+   "14:00"
+  ],
+  [
+   "2026-11-21",
+   13,
+   "Stade Reims",
+   "AS Saint-Étienne",
+   "20:00"
+  ],
+  [
+   "2026-11-23",
+   13,
+   "FC Sochaux-Montbéliard",
+   "USL Dunkerque",
+   "20:45"
+  ],
+  [
+   "2026-12-04",
+   14,
+   "US Boulogne",
+   "Pau FC",
+   "20:00"
+  ],
+  [
+   "2026-12-04",
+   14,
+   "Grenoble Foot 38",
+   "EA Guingamp",
+   "20:00"
+  ],
+  [
+   "2026-12-04",
+   14,
+   "Dijon FCO",
+   "FC Sochaux-Montbéliard",
+   "20:00"
+  ],
+  [
+   "2026-12-04",
+   14,
+   "FC Annecy",
+   "Stade Lavallois",
+   "20:00"
+  ],
+  [
+   "2026-12-04",
+   14,
+   "Clermont Foot 63",
+   "FC Metz",
+   "20:00"
+  ],
+  [
+   "2026-12-05",
+   14,
+   "Montpellier HSC",
+   "FC Nantes",
+   "14:00"
+  ],
+  [
+   "2026-12-05",
+   14,
+   "AS Saint-Étienne",
+   "AS Nancy-Lorraine",
+   "20:45"
+  ],
+  [
+   "2026-12-05",
+   14,
+   "USL Dunkerque",
+   "Red Star FC",
+   "14:00"
+  ],
+  [
+   "2026-12-07",
+   14,
+   "Rodez AF",
+   "Stade Reims",
+   "20:45"
+  ],
+  [
+   "2026-12-11",
+   15,
+   "US Boulogne",
+   "Rodez AF",
+   "20:00"
+  ],
+  [
+   "2026-12-11",
+   15,
+   "FC Nantes",
+   "FC Annecy",
+   "20:00"
+  ],
+  [
+   "2026-12-11",
+   15,
+   "EA Guingamp",
+   "Dijon FCO",
+   "20:00"
+  ],
+  [
+   "2026-12-11",
+   15,
+   "Stade Lavallois",
+   "USL Dunkerque",
+   "20:00"
+  ],
+  [
+   "2026-12-11",
+   15,
+   "AS Nancy-Lorraine",
+   "Clermont Foot 63",
+   "20:00"
+  ],
+  [
+   "2026-12-12",
+   15,
+   "Red Star FC",
+   "Grenoble Foot 38",
+   "14:00"
+  ],
+  [
+   "2026-12-12",
+   15,
+   "Pau FC",
+   "AS Saint-Étienne",
+   "14:00"
+  ],
+  [
+   "2026-12-12",
+   15,
+   "FC Metz",
+   "Stade Reims",
+   "20:00"
+  ],
+  [
+   "2026-12-14",
+   15,
+   "FC Sochaux-Montbéliard",
+   "Montpellier HSC",
+   "20:45"
+  ],
+  [
+   "2027-01-02",
+   16,
+   "USL Dunkerque",
+   "US Boulogne",
+   "19:00"
+  ],
+  [
+   "2027-01-02",
+   16,
+   "Grenoble Foot 38",
+   "FC Sochaux-Montbéliard",
+   "19:00"
+  ],
+  [
+   "2027-01-02",
+   16,
+   "Montpellier HSC",
+   "EA Guingamp",
+   "19:00"
+  ],
+  [
+   "2027-01-02",
+   16,
+   "Dijon FCO",
+   "FC Nantes",
+   "19:00"
+  ],
+  [
+   "2027-01-02",
+   16,
+   "Stade Reims",
+   "Stade Lavallois",
+   "19:00"
+  ],
+  [
+   "2027-01-02",
+   16,
+   "FC Metz",
+   "AS Nancy-Lorraine",
+   "14:00"
+  ],
+  [
+   "2027-01-02",
+   16,
+   "Rodez AF",
+   "Red Star FC",
+   "19:00"
+  ],
+  [
+   "2027-01-02",
+   16,
+   "Clermont Foot 63",
+   "Pau FC",
+   "19:00"
+  ],
+  [
+   "2027-01-04",
+   16,
+   "FC Annecy",
+   "AS Saint-Étienne",
+   "20:45"
+  ],
+  [
+   "2027-01-15",
+   17,
+   "AS Saint-Étienne",
+   "US Boulogne"
+  ],
+  [
+   "2027-01-15",
+   17,
+   "AS Nancy-Lorraine",
+   "Grenoble Foot 38"
+  ],
+  [
+   "2027-01-15",
+   17,
+   "Montpellier HSC",
+   "Clermont Foot 63"
+  ],
+  [
+   "2027-01-15",
+   17,
+   "FC Nantes",
+   "FC Metz"
+  ],
+  [
+   "2027-01-15",
+   17,
+   "Dijon FCO",
+   "USL Dunkerque"
+  ],
+  [
+   "2027-01-15",
+   17,
+   "Stade Lavallois",
+   "EA Guingamp"
+  ],
+  [
+   "2027-01-15",
+   17,
+   "Red Star FC",
+   "FC Annecy"
+  ],
+  [
+   "2027-01-15",
+   17,
+   "FC Sochaux-Montbéliard",
+   "Rodez AF"
+  ],
+  [
+   "2027-01-15",
+   17,
+   "Pau FC",
+   "Stade Reims"
+  ],
+  [
+   "2027-01-22",
+   18,
+   "US Boulogne",
+   "FC Sochaux-Montbéliard"
+  ],
+  [
+   "2027-01-22",
+   18,
+   "Grenoble Foot 38",
+   "Montpellier HSC"
+  ],
+  [
+   "2027-01-22",
+   18,
+   "Clermont Foot 63",
+   "AS Saint-Étienne"
+  ],
+  [
+   "2027-01-22",
+   18,
+   "USL Dunkerque",
+   "FC Nantes"
+  ],
+  [
+   "2027-01-22",
+   18,
+   "FC Metz",
+   "Dijon FCO"
+  ],
+  [
+   "2027-01-22",
+   18,
+   "Stade Lavallois",
+   "Pau FC"
+  ],
+  [
+   "2027-01-22",
+   18,
+   "Rodez AF",
+   "FC Annecy"
+  ],
+  [
+   "2027-01-22",
+   18,
+   "EA Guingamp",
+   "AS Nancy-Lorraine"
+  ],
+  [
+   "2027-01-22",
+   18,
+   "Stade Reims",
+   "Red Star FC"
+  ],
+  [
+   "2027-01-29",
+   19,
+   "AS Nancy-Lorraine",
+   "US Boulogne"
+  ],
+  [
+   "2027-01-29",
+   19,
+   "FC Annecy",
+   "Grenoble Foot 38"
+  ],
+  [
+   "2027-01-29",
+   19,
+   "Montpellier HSC",
+   "Rodez AF"
+  ],
+  [
+   "2027-01-29",
+   19,
+   "AS Saint-Étienne",
+   "USL Dunkerque"
+  ],
+  [
+   "2027-01-29",
+   19,
+   "FC Nantes",
+   "EA Guingamp"
+  ],
+  [
+   "2027-01-29",
+   19,
+   "Dijon FCO",
+   "Clermont Foot 63"
+  ],
+  [
+   "2027-01-29",
+   19,
+   "Red Star FC",
+   "Stade Lavallois"
+  ],
+  [
+   "2027-01-29",
+   19,
+   "Pau FC",
+   "FC Metz"
+  ],
+  [
+   "2027-01-29",
+   19,
+   "FC Sochaux-Montbéliard",
+   "Stade Reims"
+  ],
+  [
+   "2027-02-05",
+   20,
+   "US Boulogne",
+   "Clermont Foot 63"
+  ],
+  [
+   "2027-02-05",
+   20,
+   "Grenoble Foot 38",
+   "AS Saint-Étienne"
+  ],
+  [
+   "2027-02-05",
+   20,
+   "Red Star FC",
+   "Montpellier HSC"
+  ],
+  [
+   "2027-02-05",
+   20,
+   "Rodez AF",
+   "FC Nantes"
+  ],
+  [
+   "2027-02-05",
+   20,
+   "Stade Lavallois",
+   "Dijon FCO"
+  ],
+  [
+   "2027-02-05",
+   20,
+   "FC Metz",
+   "FC Annecy"
+  ],
+  [
+   "2027-02-05",
+   20,
+   "EA Guingamp",
+   "USL Dunkerque"
+  ],
+  [
+   "2027-02-05",
+   20,
+   "Stade Reims",
+   "AS Nancy-Lorraine"
+  ],
+  [
+   "2027-02-05",
+   20,
+   "FC Sochaux-Montbéliard",
+   "Pau FC"
+  ],
+  [
+   "2027-02-12",
+   21,
+   "FC Nantes",
+   "US Boulogne"
+  ],
+  [
+   "2027-02-12",
+   21,
+   "Dijon FCO",
+   "Grenoble Foot 38"
+  ],
+  [
+   "2027-02-12",
+   21,
+   "Montpellier HSC",
+   "Stade Reims"
+  ],
+  [
+   "2027-02-12",
+   21,
+   "AS Saint-Étienne",
+   "FC Metz"
+  ],
+  [
+   "2027-02-12",
+   21,
+   "Clermont Foot 63",
+   "Stade Lavallois"
+  ],
+  [
+   "2027-02-12",
+   21,
+   "FC Annecy",
+   "FC Sochaux-Montbéliard"
+  ],
+  [
+   "2027-02-12",
+   21,
+   "Rodez AF",
+   "EA Guingamp"
+  ],
+  [
+   "2027-02-12",
+   21,
+   "USL Dunkerque",
+   "Pau FC"
+  ],
+  [
+   "2027-02-12",
+   21,
+   "AS Nancy-Lorraine",
+   "Red Star FC"
+  ],
+  [
+   "2027-02-19",
+   22,
+   "US Boulogne",
+   "AS Saint-Étienne"
+  ],
+  [
+   "2027-02-19",
+   22,
+   "Grenoble Foot 38",
+   "Rodez AF"
+  ],
+  [
+   "2027-02-19",
+   22,
+   "FC Metz",
+   "Montpellier HSC"
+  ],
+  [
+   "2027-02-19",
+   22,
+   "Stade Reims",
+   "FC Nantes"
+  ],
+  [
+   "2027-02-19",
+   22,
+   "FC Sochaux-Montbéliard",
+   "Dijon FCO"
+  ],
+  [
+   "2027-02-19",
+   22,
+   "Stade Lavallois",
+   "FC Annecy"
+  ],
+  [
+   "2027-02-19",
+   22,
+   "EA Guingamp",
+   "Clermont Foot 63"
+  ],
+  [
+   "2027-02-19",
+   22,
+   "USL Dunkerque",
+   "AS Nancy-Lorraine"
+  ],
+  [
+   "2027-02-19",
+   22,
+   "Pau FC",
+   "Red Star FC"
+  ],
+  [
+   "2027-02-26",
+   23,
+   "Rodez AF",
+   "US Boulogne"
+  ],
+  [
+   "2027-02-26",
+   23,
+   "FC Metz",
+   "Grenoble Foot 38"
+  ],
+  [
+   "2027-02-26",
+   23,
+   "Montpellier HSC",
+   "Stade Lavallois"
+  ],
+  [
+   "2027-02-26",
+   23,
+   "AS Saint-Étienne",
+   "FC Sochaux-Montbéliard"
+  ],
+  [
+   "2027-02-26",
+   23,
+   "FC Nantes",
+   "Pau FC"
+  ],
+  [
+   "2027-02-26",
+   23,
+   "Dijon FCO",
+   "AS Nancy-Lorraine"
+  ],
+  [
+   "2027-02-26",
+   23,
+   "FC Annecy",
+   "Stade Reims"
+  ],
+  [
+   "2027-02-26",
+   23,
+   "Red Star FC",
+   "EA Guingamp"
+  ],
+  [
+   "2027-02-26",
+   23,
+   "Clermont Foot 63",
+   "USL Dunkerque"
+  ],
+  [
+   "2027-03-05",
+   24,
+   "US Boulogne",
+   "Stade Lavallois"
+  ],
+  [
+   "2027-03-05",
+   24,
+   "Grenoble Foot 38",
+   "Red Star FC"
+  ],
+  [
+   "2027-03-05",
+   24,
+   "Montpellier HSC",
+   "FC Annecy"
+  ],
+  [
+   "2027-03-05",
+   24,
+   "AS Saint-Étienne",
+   "EA Guingamp"
+  ],
+  [
+   "2027-03-05",
+   24,
+   "AS Nancy-Lorraine",
+   "FC Nantes"
+  ],
+  [
+   "2027-03-05",
+   24,
+   "USL Dunkerque",
+   "Dijon FCO"
+  ],
+  [
+   "2027-03-05",
+   24,
+   "FC Sochaux-Montbéliard",
+   "FC Metz"
+  ],
+  [
+   "2027-03-05",
+   24,
+   "Stade Reims",
+   "Rodez AF"
+  ],
+  [
+   "2027-03-05",
+   24,
+   "Pau FC",
+   "Clermont Foot 63"
+  ],
+  [
+   "2027-03-12",
+   25,
+   "FC Annecy",
+   "US Boulogne"
+  ],
+  [
+   "2027-03-12",
+   25,
+   "EA Guingamp",
+   "Grenoble Foot 38"
+  ],
+  [
+   "2027-03-12",
+   25,
+   "Clermont Foot 63",
+   "Montpellier HSC"
+  ],
+  [
+   "2027-03-12",
+   25,
+   "FC Nantes",
+   "AS Saint-Étienne"
+  ],
+  [
+   "2027-03-12",
+   25,
+   "Red Star FC",
+   "Dijon FCO"
+  ],
+  [
+   "2027-03-12",
+   25,
+   "Stade Lavallois",
+   "Stade Reims"
+  ],
+  [
+   "2027-03-12",
+   25,
+   "FC Metz",
+   "USL Dunkerque"
+  ],
+  [
+   "2027-03-12",
+   25,
+   "Rodez AF",
+   "FC Sochaux-Montbéliard"
+  ],
+  [
+   "2027-03-12",
+   25,
+   "AS Nancy-Lorraine",
+   "Pau FC"
+  ],
+  [
+   "2027-03-19",
+   26,
+   "US Boulogne",
+   "FC Metz"
+  ],
+  [
+   "2027-03-19",
+   26,
+   "Grenoble Foot 38",
+   "FC Nantes"
+  ],
+  [
+   "2027-03-19",
+   26,
+   "Pau FC",
+   "Montpellier HSC"
+  ],
+  [
+   "2027-03-19",
+   26,
+   "AS Saint-Étienne",
+   "Red Star FC"
+  ],
+  [
+   "2027-03-19",
+   26,
+   "Dijon FCO",
+   "FC Annecy"
+  ],
+  [
+   "2027-03-19",
+   26,
+   "EA Guingamp",
+   "Stade Lavallois"
+  ],
+  [
+   "2027-03-19",
+   26,
+   "USL Dunkerque",
+   "Rodez AF"
+  ],
+  [
+   "2027-03-19",
+   26,
+   "FC Sochaux-Montbéliard",
+   "AS Nancy-Lorraine"
+  ],
+  [
+   "2027-03-19",
+   26,
+   "Stade Reims",
+   "Clermont Foot 63"
+  ],
+  [
+   "2027-04-02",
+   27,
+   "Red Star FC",
+   "US Boulogne"
+  ],
+  [
+   "2027-04-02",
+   27,
+   "Clermont Foot 63",
+   "Grenoble Foot 38"
+  ],
+  [
+   "2027-04-02",
+   27,
+   "Montpellier HSC",
+   "USL Dunkerque"
+  ],
+  [
+   "2027-04-02",
+   27,
+   "AS Nancy-Lorraine",
+   "AS Saint-Étienne"
+  ],
+  [
+   "2027-04-02",
+   27,
+   "FC Nantes",
+   "FC Sochaux-Montbéliard"
+  ],
+  [
+   "2027-04-02",
+   27,
+   "Rodez AF",
+   "Dijon FCO"
+  ],
+  [
+   "2027-04-02",
+   27,
+   "Stade Lavallois",
+   "FC Metz"
+  ],
+  [
+   "2027-04-02",
+   27,
+   "FC Annecy",
+   "EA Guingamp"
+  ],
+  [
+   "2027-04-02",
+   27,
+   "Stade Reims",
+   "Pau FC"
+  ],
+  [
+   "2027-04-09",
+   28,
+   "US Boulogne",
+   "Grenoble Foot 38"
+  ],
+  [
+   "2027-04-09",
+   28,
+   "EA Guingamp",
+   "Montpellier HSC"
+  ],
+  [
+   "2027-04-09",
+   28,
+   "AS Saint-Étienne",
+   "FC Annecy"
+  ],
+  [
+   "2027-04-09",
+   28,
+   "FC Metz",
+   "FC Nantes"
+  ],
+  [
+   "2027-04-09",
+   28,
+   "Dijon FCO",
+   "Stade Reims"
+  ],
+  [
+   "2027-04-09",
+   28,
+   "USL Dunkerque",
+   "Stade Lavallois"
+  ],
+  [
+   "2027-04-09",
+   28,
+   "Pau FC",
+   "Rodez AF"
+  ],
+  [
+   "2027-04-09",
+   28,
+   "Clermont Foot 63",
+   "AS Nancy-Lorraine"
+  ],
+  [
+   "2027-04-09",
+   28,
+   "FC Sochaux-Montbéliard",
+   "Red Star FC"
+  ],
+  [
+   "2027-04-16",
+   29,
+   "Pau FC",
+   "US Boulogne"
+  ],
+  [
+   "2027-04-16",
+   29,
+   "Grenoble Foot 38",
+   "AS Nancy-Lorraine"
+  ],
+  [
+   "2027-04-16",
+   29,
+   "Montpellier HSC",
+   "FC Sochaux-Montbéliard"
+  ],
+  [
+   "2027-04-16",
+   29,
+   "Stade Lavallois",
+   "AS Saint-Étienne"
+  ],
+  [
+   "2027-04-16",
+   29,
+   "Red Star FC",
+   "FC Nantes"
+  ],
+  [
+   "2027-04-16",
+   29,
+   "Dijon FCO",
+   "EA Guingamp"
+  ],
+  [
+   "2027-04-16",
+   29,
+   "FC Annecy",
+   "USL Dunkerque"
+  ],
+  [
+   "2027-04-16",
+   29,
+   "Stade Reims",
+   "FC Metz"
+  ],
+  [
+   "2027-04-16",
+   29,
+   "Rodez AF",
+   "Clermont Foot 63"
+  ],
+  [
+   "2027-04-23",
+   30,
+   "US Boulogne",
+   "USL Dunkerque"
+  ],
+  [
+   "2027-04-23",
+   30,
+   "Grenoble Foot 38",
+   "Pau FC"
+  ],
+  [
+   "2027-04-23",
+   30,
+   "FC Nantes",
+   "Montpellier HSC"
+  ],
+  [
+   "2027-04-23",
+   30,
+   "AS Saint-Étienne",
+   "Dijon FCO"
+  ],
+  [
+   "2027-04-23",
+   30,
+   "FC Sochaux-Montbéliard",
+   "Stade Lavallois"
+  ],
+  [
+   "2027-04-23",
+   30,
+   "AS Nancy-Lorraine",
+   "FC Annecy"
+  ],
+  [
+   "2027-04-23",
+   30,
+   "EA Guingamp",
+   "Stade Reims"
+  ],
+  [
+   "2027-04-23",
+   30,
+   "FC Metz",
+   "Clermont Foot 63"
+  ],
+  [
+   "2027-04-23",
+   30,
+   "Red Star FC",
+   "Rodez AF"
+  ],
+  [
+   "2027-04-30",
+   31,
+   "Dijon FCO",
+   "US Boulogne"
+  ],
+  [
+   "2027-04-30",
+   31,
+   "Stade Reims",
+   "Grenoble Foot 38"
+  ],
+  [
+   "2027-04-30",
+   31,
+   "Montpellier HSC",
+   "AS Saint-Étienne"
+  ],
+  [
+   "2027-04-30",
+   31,
+   "Clermont Foot 63",
+   "FC Nantes"
+  ],
+  [
+   "2027-04-30",
+   31,
+   "Stade Lavallois",
+   "AS Nancy-Lorraine"
+  ],
+  [
+   "2027-04-30",
+   31,
+   "FC Annecy",
+   "Red Star FC"
+  ],
+  [
+   "2027-04-30",
+   31,
+   "Pau FC",
+   "EA Guingamp"
+  ],
+  [
+   "2027-04-30",
+   31,
+   "Rodez AF",
+   "FC Metz"
+  ],
+  [
+   "2027-04-30",
+   31,
+   "USL Dunkerque",
+   "FC Sochaux-Montbéliard"
+  ],
+  [
+   "2027-05-07",
+   32,
+   "US Boulogne",
+   "Montpellier HSC"
+  ],
+  [
+   "2027-05-07",
+   32,
+   "Grenoble Foot 38",
+   "Stade Lavallois"
+  ],
+  [
+   "2027-05-07",
+   32,
+   "AS Saint-Étienne",
+   "Stade Reims"
+  ],
+  [
+   "2027-05-07",
+   32,
+   "FC Nantes",
+   "Dijon FCO"
+  ],
+  [
+   "2027-05-07",
+   32,
+   "FC Annecy",
+   "Pau FC"
+  ],
+  [
+   "2027-05-07",
+   32,
+   "EA Guingamp",
+   "FC Metz"
+  ],
+  [
+   "2027-05-07",
+   32,
+   "AS Nancy-Lorraine",
+   "Rodez AF"
+  ],
+  [
+   "2027-05-07",
+   32,
+   "Red Star FC",
+   "USL Dunkerque"
+  ],
+  [
+   "2027-05-07",
+   32,
+   "FC Sochaux-Montbéliard",
+   "Clermont Foot 63"
+  ],
+  [
+   "2027-05-14",
+   33,
+   "US Boulogne",
+   "EA Guingamp"
+  ],
+  [
+   "2027-05-14",
+   33,
+   "FC Sochaux-Montbéliard",
+   "Grenoble Foot 38"
+  ],
+  [
+   "2027-05-14",
+   33,
+   "Montpellier HSC",
+   "AS Nancy-Lorraine"
+  ],
+  [
+   "2027-05-14",
+   33,
+   "Rodez AF",
+   "AS Saint-Étienne"
+  ],
+  [
+   "2027-05-14",
+   33,
+   "FC Nantes",
+   "Stade Lavallois"
+  ],
+  [
+   "2027-05-14",
+   33,
+   "Pau FC",
+   "Dijon FCO"
+  ],
+  [
+   "2027-05-14",
+   33,
+   "Clermont Foot 63",
+   "FC Annecy"
+  ],
+  [
+   "2027-05-14",
+   33,
+   "FC Metz",
+   "Red Star FC"
+  ],
+  [
+   "2027-05-14",
+   33,
+   "USL Dunkerque",
+   "Stade Reims"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "Stade Reims",
+   "US Boulogne"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "Grenoble Foot 38",
+   "USL Dunkerque"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "Dijon FCO",
+   "Montpellier HSC"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "AS Saint-Étienne",
+   "Pau FC"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "FC Annecy",
+   "FC Nantes"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "Stade Lavallois",
+   "Rodez AF"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "EA Guingamp",
+   "FC Sochaux-Montbéliard"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "AS Nancy-Lorraine",
+   "FC Metz"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "Red Star FC",
+   "Clermont Foot 63"
+  ]
+ ]
+}

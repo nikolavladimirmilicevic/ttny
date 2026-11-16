@@ -763,11 +763,18 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     _sec = build_second(out_players, today, season, people)
     if _sec:
         extra['second'] = _sec
+    _fr = None
     try:
-        _eu = build_europe(world, out_players, clubs, kits, alias, today, people)
+        _fr = build_france(world, out_players, clubs, kits, alias, today, season, people)
+        if _fr:
+            extra['leagues'] = {'FRA': _fr}
+    except Exception as e:   # another league is an extra: the Premier League is built whatever happens here
+        print(f'  France not built: {e!r}')
+    try:
+        _eu = build_europe(world, out_players, clubs, kits, alias, today, people, other_lg={c['full']: c['id'] for c in (_fr or {}).get('clubs', [])})
         if _eu and _eu['comps']:
             extra['europe'] = _eu
-        _cw = build_cwc(out_players + ((_eu or {}).get('players') or []), today, clubs)
+        _cw = build_cwc(out_players + ((_eu or {}).get('players') or []) + ((_fr or {}).get('players') or []), today, clubs)
         if _cw:
             extra['cwc'] = _cw
     except Exception:   # the cups are an extra: the league is built whatever happens here
@@ -838,15 +845,19 @@ def _value_fit(out_players):
     return feats, _solve(A, b)
 
 
-def build_second(out_players, today, season, people):
-    """The Championship: clubs and players from pipeline/tm_championship.json. A player's overall comes from a fit of
-    the league's own players (overall on log value, age, keeper); his attributes follow a league player of his position
-    and level, moved by the difference. Ids: the API's where the name and age match, else a stable one of our own."""
-    try:
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_championship.json'), encoding='utf-8') as f:
-            src = json.load(f)
-    except (OSError, ValueError):
-        return None
+def build_second(out_players, today, season, people, src=None, ids=None, short=None, kitmap=None, name='Championship', have_extra=(), ctry='ENG', id_base=3000000):
+    """A second tier in the background (the Championship by default): clubs and players from Transfermarkt's squad pages
+    (pipeline/tm_championship.json). A player's overall comes from a fit of the league's own players (overall on log
+    value, age, keeper); his attributes follow a league player of his position and level, moved by the difference.
+    Ids: the API's where the name and age match, else a stable one of our own."""
+    if src is None:
+        try:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_championship.json'), encoding='utf-8') as f:
+                src = json.load(f)
+        except (OSError, ValueError):
+            return None
+    ids = CH_IDS if ids is None else ids
+    kitmap = CH_KIT if kitmap is None else kitmap
     fit = _value_fit(out_players)
     if not fit:
         return None
@@ -855,14 +866,14 @@ def build_second(out_players, today, season, people):
     for x in out_players:
         if x.get('a') and x.get('r'):
             by_pos.setdefault(x['prim'], []).append(x)
-    have = {x['id'] for x in out_players}; have_nm = {(_fold(x['n']), x.get('bd')) for x in out_players}
+    have = {x['id'] for x in out_players} | set(have_extra); have_nm = {(_fold(x['n']), x.get('bd')) for x in out_players}
     loaned = {_fold(x['n']) for x in out_players if x.get('lo')}   # the league's own players out on loan: already there
     pidx = {}
     for kk, e in people.items():
         pidx.setdefault(_fold(e.get('n') or ''), []).append((int(kk), e))
     clubs, players, used = [], [], set()
     for k_i, (cname, c) in enumerate(sorted(src.get('clubs', {}).items())):
-        cid = CH_IDS.get(cname) or 990001 + sum(ord(ch) for ch in cname) % 9000
+        cid = ids.get(cname) or 990001 + sum(ord(ch) for ch in cname) % 9000
         ovrs = []
         for p in c.get('players', []):
             if (_fold(p['n']), p['dob']) in have_nm or _fold(p['n']) in loaned:
@@ -873,7 +884,7 @@ def build_second(out_players, today, season, people):
                 if cand not in have and cand not in used and (not e.get('age') or abs((e.get('age') or age) - age) <= 2):
                     pid = cand; break
             if pid is None:
-                pid = -(3000000 + int.from_bytes(f"{p['n']}|{p['dob']}".encode(), 'little') % 900000)
+                pid = -(id_base + int.from_bytes(f"{p['n']}|{p['dob']}".encode(), 'little') % 900000)
             if pid in have or pid in used:
                 continue
             used.add(pid)
@@ -891,11 +902,136 @@ def build_second(out_players, today, season, people):
             _join(players[-1], p)
             ovrs.append(ovr)
         q = round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1) if ovrs else 65
-        clubs.append({'id': cid, 'name': CH_SHORT.get(cname, re.sub(r' (FC|AFC|City)$', '', cname) if cname not in ('Stoke City', 'Bristol City', 'Cardiff City', 'Swansea City', 'Norwich City', 'Lincoln City', 'Birmingham City') else cname),
-                      'full': cname, 'venue': c.get('stadium'), 'cap': c.get('cap'), 'kit': CH_KIT.get(cname, ['#444444', '#FFFFFF']),
-                      'q': q, 'coach': c.get('coach'), 'second': 1})
-    return {'name': 'Championship', 'clubs': clubs, 'players': players}
+        clubs.append({'id': cid, 'name': short[cname] if short and cname in short else CH_SHORT.get(cname, re.sub(r' (FC|AFC|City)$', '', cname) if cname not in ('Stoke City', 'Bristol City', 'Cardiff City', 'Swansea City', 'Norwich City', 'Lincoln City', 'Birmingham City') else cname),
+                      'full': cname, 'venue': c.get('stadium'), 'cap': c.get('cap'), 'kit': kitmap.get(cname, ['#444444', '#FFFFFF']),
+                      'q': q, 'coach': c.get('coach'), 'second': 1, 'ctry': ctry})
+    return {'name': name, 'clubs': clubs, 'players': players}
 
+
+
+# ---- France: Ligue 1 (playable beside the Premier League) and Ligue 2 in the background ----
+FR_KIT = {'Paris FC': ['#1D2C4C', '#C8A96A'], 'ESTAC Troyes': ['#0055A4', '#FFFFFF'], 'Le Mans FC': ['#E30613', '#F6D300'],
+          'Grenoble Foot 38': ['#0055A4', '#FFFFFF'], 'AS Saint-Étienne': ['#00A650', '#FFFFFF'], 'Stade Lavallois': ['#F58220', '#111111'],
+          'FC Annecy': ['#E30613', '#FFFFFF'], 'Rodez AF': ['#E30613', '#F6D300'], 'USL Dunkerque': ['#0055A4', '#FFFFFF'],
+          'AS Nancy-Lorraine': ['#E30613', '#FFFFFF'], 'Red Star FC': ['#00A650', '#FFFFFF'], 'Clermont Foot 63': ['#7A1E30', '#0055A4'],
+          'Pau FC': ['#F6D300', '#0055A4']}
+FR_CODE = {'Paris Saint-Germain': 'PSG', 'LOSC Lille': 'LIL', 'Paris FC': 'PFC', 'Olympique Marseille': 'OM', 'Olympique Lyon': 'OL',
+           'OGC Nice': 'NIC', 'AS Monaco': 'ASM', 'Stade Rennais FC': 'REN', 'Stade Brestois 29': 'BRE', 'FC Lorient': 'LOR',
+           'RC Lens': 'LEN', 'FC Toulouse': 'TFC', 'RC Strasbourg Alsace': 'STR', 'AJ Auxerre': 'AJA', 'Le Mans FC': 'LMF',
+           'Angers SCO': 'ANG', 'ESTAC Troyes': 'ETR', 'Le Havre AC': 'HAC'}
+
+
+def _elo_q(clubs):
+    """The league's clubs' strength on their Elo (a straight line through the Premier League's own clubs)."""
+    pts = [(c['elo'], c['q']) for c in clubs if c.get('elo') and c.get('q')]
+    if len(pts) < 6:
+        return None
+    mx = statistics.mean(e for e, _ in pts); my = statistics.mean(q for _, q in pts)
+    slope = sum((e - mx) * (q - my) for e, q in pts) / max(1e-9, sum((e - mx) ** 2 for e, _ in pts)); icpt = my - slope * mx
+    return lambda elo: round(max(62, min(90, icpt + slope * elo)), 1)
+
+
+def build_france(world, out_players, clubs, kits, alias, today, season, people):
+    """Ligue 1 as a league of its own: the 18 clubs (pipeline/tm_ligue1.json: stadium, coach, the fixture list), their
+    Transfermarkt squads (pipeline/tm_squads.json) and Ligue 2 behind them. A club's strength is France's level from Elo,
+    spread within it by Transfermarkt's team values; a player's overall is his club's level moved by his value and age
+    (the Premier League's own fit), his attributes those of a league player of his position and level. Ids: the API's
+    where the name matches, else a stable one of our own."""
+    base = os.path.dirname(os.path.abspath(__file__))
+    try:
+        with open(os.path.join(base, 'tm_ligue1.json'), encoding='utf-8') as f:
+            src = json.load(f)
+        with open(os.path.join(base, 'tm_squads.json'), encoding='utf-8') as f:
+            TMS = json.load(f).get('clubs') or {}
+    except (OSError, ValueError):
+        return None
+    try:
+        with open(os.path.join(base, 'tm_values.json'), encoding='utf-8') as f:
+            vals = ((json.load(f).get('leagues') or {}).get('FRA') or {}).get('clubs') or {}
+    except (OSError, ValueError):
+        vals = {}
+    q_of, fit = _elo_q(clubs), _value_fit(out_players)
+    if not q_of or not fit:
+        return None
+    feats, coef = fit
+    welo = {c['id']: c for c in (world or {}).get('clubs', [])}
+    by_pos = {}
+    for x in out_players:
+        if x.get('a') and x.get('r'):
+            by_pos.setdefault(x['prim'], []).append(x)
+    have = {x['id'] for x in out_players}
+    loaned = {_fold(x['n']) for x in out_players if x.get('lo')}
+    pidx = {}
+    for kk, e in (people or {}).items():
+        pidx.setdefault(_fold(e.get('n') or ''), []).append((int(kk), e))
+        if e.get('sq'):
+            pidx.setdefault(_fold(e['sq']), []).append((int(kk), e))
+    top = {full: c for full, c in src['clubs'].items() if c['tier'] == 1}
+    # strength: France's level from Elo (the clubs that have one), spread by team value
+    eq = {full: q_of(welo[c['id']]['elo']) for full, c in top.items() if c.get('id') in welo and welo[c['id']].get('elo')}
+    have_v = [f for f in top if vals.get(f)]
+    mq = statistics.mean(eq[f] for f in eq if f in have_v) if any(f in have_v for f in eq) else 76
+    ml = statistics.mean(math.log(vals[f]) for f in eq if f in have_v) if any(f in have_v for f in eq) else 0
+    qclub = {f: round(mq + .8 * 6.7 * (math.log(vals[f]) - ml), 1) if f in have_v else eq.get(f, 74) for f in top}
+    out_clubs, players, used = [], [], set()
+    for full, c in sorted(top.items()):
+        cid = c['id'] or 980001 + sum(ord(ch) for ch in full) % 9000
+        wname = (welo.get(cid) or {}).get('name')
+        kit = next((kits[k] for k in (wname, c['short'], full, alias.get(c['short'], '')) if k and k in kits), None) or FR_KIT.get(full, ['#444444', '#FFFFFF'])
+        sq = []
+        for t in (TMS.get(full) or {}).get('players', []):
+            if _fold(t['n']) in loaned:
+                continue   # a Premier League club's player out on loan here: he is his club's
+            age = age_of({'bd': t['dob']}, today); pid = None
+            for cand, e in pidx.get(_fold(t['n']), []):
+                if cand not in used and cand not in have and (e.get('bd') == t['dob'] or (not e.get('bd') and abs((e.get('age') or age) - age) <= 2)):
+                    pid = cand; break
+            if pid is None:
+                pid = -(4000000 + int.from_bytes(f"{t['n']}|{t['dob']}".encode(), 'little') % 900000)
+            if pid in have or pid in used:
+                continue
+            used.add(pid); sq.append((pid, t, age))
+        if len(sq) < 14:
+            continue
+        fv = {pid: sum(cf * v for cf, v in zip(coef, feats(t.get('eur') or .1, min(age, 33), CH_POS.get(t['pos']) == 'GK'))) for pid, t, age in sq}
+        mean_top = statistics.mean(sorted(fv.values(), reverse=True)[:14])
+        ovrs = []
+        for pid, t, age in sq:
+            prim = CH_POS.get(t['pos'], 'CMF'); gk = prim == 'GK'; rr = random.Random(pid)
+            ovr = int(round(max(45, min(93, qclub[full] + max(-16, fv[pid] - mean_top) + (rr.random() - .5) * 2))))
+            pool = by_pos.get(prim) or by_pos.get('CMF')
+            tpl = min(pool, key=lambda x: (abs(x['ovr'] - ovr), x['id'])); drop = tpl['ovr'] - ovr
+            a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
+            r = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; r[prim] = ovr
+            eur = t.get('eur')
+            val = (round(eur / 1.17, 1) if eur >= 1.17 else round(max(.05, eur / 1.17), 2)) if eur else round(max(.3, 2 ** ((ovr - 70) / 4)), 1)
+            x = {'id': pid, 'n': t['n'], 'nat': t.get('nat'), 'age': age, 'bd': t['dob'], 'no': t.get('no'), 'club': cid, 'prim': prim, 'pos': [prim],
+                 'ht': t.get('ht') or tpl.get('ht') or 180, 'wt': tpl.get('wt') or 75, 'ovr': ovr, 'r': r, 'a': a, 'style': tpl.get('style'), 'val': val,
+                 **({'ft': t['ft']} if t.get('ft') else {}), **({'cy': t['con']} if t.get('con') else {})}
+            _join(x, t)
+            players.append(x); ovrs.append(ovr)
+        last = c.get('last')
+        out_clubs.append({'id': cid, 'name': c['short'], 'full': full, 'code': FR_CODE.get(full, c['short'][:3].upper()), 'venue': c.get('venue'), 'cap': c.get('cap'),
+                          'kit': kit, **({'elo': welo[cid]['elo']} if cid in welo and welo[cid].get('elo') else {}),
+                          'q': round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1), 'coach': c.get('coach'), 'ctry': 'FRA',
+                          'last': 'promoted' if last == 'promoted' else ({'pos': last} if last else None)})
+    if len(out_clubs) < 18:
+        return None
+    ids = {c['full']: c['id'] for c in out_clubs}
+    fixtures = [[d, f'Regular Season - {r}', ids[h], ids[a]] + x for d, r, h, a, *x in src.get('fixtures', []) if h in ids and a in ids]
+    # Ligue 2, as the Championship is built
+    l2 = {full: {'players': (TMS.get(full) or {}).get('players', []), 'stadium': c.get('venue'), 'cap': c.get('cap'), 'coach': c.get('coach')}
+          for full, c in src['clubs'].items() if c['tier'] == 2 and TMS.get(full)}
+    sec = build_second(out_players, today, season, people, src={'clubs': l2}, ids={f: c['id'] for f, c in src['clubs'].items() if c.get('id')},
+                       short={f: c['short'] for f, c in src['clubs'].items()}, kitmap={**{f: kits[c['short']] for f, c in src['clubs'].items() if c['short'] in kits}, **FR_KIT},
+                       name=src.get('second') or 'Ligue 2', have_extra=used | {x['id'] for x in players}, ctry='FRA', id_base=5000000)
+    facts = src.get('facts') or {}
+    champ = ids.get(facts.get('reigning'))
+    return {'league': src.get('league') or 'Ligue 1', 'ctry': 'FRA', 'country': 'France', 'clubs': out_clubs, 'players': players, 'fixtures': fixtures,
+            'cup': src.get('cup'), 'last_season': {'champion': champ},
+            'league_facts': {'reigning': facts.get('reigning'), 'cup_winner': facts.get('cup_winner'), 'record_champion': facts.get('record_champion'),
+                             'record_titles': facts.get('record_titles'), 'shield_winner': facts.get('shield_winner')},
+            **({'second': sec} if sec else {})}
 
 # ---- the European cups, played beside the league (pipeline/tm_europe.json; foreign squads from the draft game's data) ----
 EU_ALIAS = {'Paris Saint-Germain': 'Paris', 'Borussia Dortmund': 'B. Dortmund', 'FC Bayern Munich': 'Bayern München',
@@ -911,7 +1047,7 @@ EU_LEAGUE_ADJ = {**{c: 0 for c in ('ENG', 'ESP', 'ITA', 'GER', 'FRA')}, **{c: -2
                  **{c: -3.5 for c in ('TUR', 'CZE', 'GRE', 'AUT', 'SUI', 'NOR', 'DEN', 'SCO', 'POL', 'CRO', 'SRB', 'ISR', 'UKR', 'SWE', 'CYP')}}
 
 
-def build_europe(world, out_players, clubs, kits, alias, today, people=None):
+def build_europe(world, out_players, clubs, kits, alias, today, people=None, other_lg=None):
     """The season's three European cups: the clubs and the league-phase schedule from Transfermarkt (no results: the
     game replays the season), the foreign squads from the draft game's players. A foreign club's strength comes from its
     Elo, on the scale of the league's clubs (fitted on the league clubs that have both); its players spread around that
@@ -986,7 +1122,10 @@ def build_europe(world, out_players, clubs, kits, alias, today, people=None):
             sq.append({'id': pid, 'name': t['n'], 'prim': CH_POS.get(t['pos'], 'CMF'), 'age': age, 'bd': t['dob'], 'nat': t.get('nat'), 'no': t.get('no'),
                        'ht': t.get('ht'), 'ft': t.get('ft'), 'eur': t.get('eur'), 'cy': t.get('con'), 'tm': 1})
         return sq
+    olg = {fold(k): v for k, v in (other_lg or {}).items()}
     def find(full, short):
+        if fold(full) in olg:   # a club of another league the game plays (Ligue 1): its own squad, not a foreign one
+            return ('lg', olg[fold(full)])
         for nm in (full, short, EU_ALIAS.get(full)):
             if nm and fold(nm) in lg_name:
                 return ('lg', lg_name[fold(nm)])
