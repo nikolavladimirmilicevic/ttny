@@ -839,13 +839,22 @@ def fetch_profiles(top_ids, squads, people, meta):
             continue
         missing = [pid for pid in sq['p'] if 'nat' not in people.get(str(pid), {}) or 'fn' not in people.get(str(pid), {})]
         age = days_old(done.get(str(tid)))
-        if (age < PROFILE_MAX_AGE and not any('fn' not in people.get(str(pid), {}) for pid in sq['p'])) or (not missing and age < 180):
+        # a club is read again after PROFILE_MAX_AGE days at the soonest, even when some names are still missing (the API
+        # never has a first name for many players: re-reading those clubs every run cost about 1,100 calls a run)
+        if age < PROFILE_MAX_AGE or (not missing and age < 180):
             continue
         for season in (current_season(), current_season() - 1):   # smaller leagues often lack the current season
             if season != current_season() and not [pid for pid in sq['p'] if 'nat' not in people.get(str(pid), {})]:
                 break
             read_players(tid, season, people)
         done[str(tid)] = TODAY.isoformat()
+
+
+def nat_wait(e):
+    """Days before a player whose nationality the API did not have is asked about again: 30 after the first miss, then
+    60, 120, at most 180 (a player the API has nothing on was costing three calls every month, in waves of 1,000+)."""
+    miss = e.get('natMiss') or (2 if e.get('natTried') else 1)   # tried before this rule: already missed at least once, more likely twice
+    return min(180, 30 * 2 ** max(0, miss - 1))
 
 
 def fetch_missing_nat(squads, people, lu, fx):
@@ -862,14 +871,14 @@ def fetch_missing_nat(squads, people, lu, fx):
                 for e in v.get('xi') or []:
                     starts[e[0]] += 1
     todo = sorted({pid for sq in squads.values() if isinstance(sq, dict) for pid in sq.get('p', [])
-                   if not (people.get(str(pid)) or {}).get('nat') and days_old((people.get(str(pid)) or {}).get('natTried')) >= 30},
+                   if not (people.get(str(pid)) or {}).get('nat') and days_old((people.get(str(pid)) or {}).get('natTried')) >= nat_wait(people.get(str(pid)) or {})},
                   key=lambda pid: -starts[pid])
     todo = [pid for pid in todo if starts[pid] > 0] + [pid for pid in todo if starts[pid] == 0]
     if todo:
         log(f'  nationality missing for {len(todo)} squad members ({sum(1 for p in todo if starts[p])} with starts)')
     for pid in todo:
         e = people.setdefault(str(pid), {})
-        e['natTried'] = TODAY.isoformat()
+        e['natMiss'] = (e.get('natMiss') or (1 if e.get('natTried') else 0)) + 1; e['natTried'] = TODAY.isoformat()   # cleared below on a hit
         hit = None
         try:
             hit = ((api('players/profiles', player=pid).get('response') or [{}])[0] or {}).get('player')
@@ -888,6 +897,7 @@ def fetch_missing_nat(squads, people, lu, fx):
                 if r and r[0]['player'].get('nationality'):
                     hit = r[0]['player']; break
         if hit and hit.get('nationality'):
+            e.pop('natMiss', None)
             e['nat'] = hit['nationality']
             if hit.get('firstname') is not None: e['fn'] = hit.get('firstname') or ''
             if hit.get('age'): e['age'] = hit['age']

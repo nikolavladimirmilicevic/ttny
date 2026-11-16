@@ -494,3 +494,8 @@ European cups, round 2 (16.11.2026).
 - **Foreign clubs' strength:**
   - Elo flatters a club that wins a weak league at a canter, so a club's strength now comes down by its league's level: nothing for the big five; −2.5 for Portugal, the Netherlands and Belgium; −3.5 for the next group of countries; −5 below that.
   - A background match in the European cups also follows strength more closely than before, so big upsets are rarer.
+
+API calls (16.11.2026): two leaks fixed.
+- **Club re-reads:** the nationality-and-age step read a club again on every run while any of its players lacked a first name. The API never has one for about 1,500 players in 315 clubs, so that cost about 1,100 calls a run, 4,000 to 5,500 a day. A club is now read again after 30 days at the soonest.
+- **Nationality retries:** a player whose nationality the API does not have was asked about again every 30 days, up to three calls each, in monthly waves of 1,000+ players. These waves made a day's first run cost up to 5,700 calls. The wait now doubles with each miss (30, 60, 120, at most 180 days); players tried before this change count as having missed twice.
+- **Effect:** a normal day should now cost roughly 1,000 to 1,300 calls instead of 5,000 to 7,600. It no longer runs into the 7,500 a day limit, which had stopped some evening runs after one call.
