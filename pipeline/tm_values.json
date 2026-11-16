@@ -2,7 +2,8 @@
  "updated": "2026-11-16",
  "source": [
   "transfermarkt.com 100 most valuable teams in the world (top 25 of each confederation: AFC, CAF, CONCACAF, CONMEBOL, OFC, UEFA)",
-  "transfermarkt.com Serie A 26/27 clubs (16.11.2026)"
+  "transfermarkt.com Serie A 26/27 clubs (16.11.2026)",
+  "Transfermarkt LaLiga clubs page, 16.11.2026"
  ],
  "note": "top18 = market value of the 18 most valuable players, EUR millions. Strength on the league's scale: q = a + b * ln(top18), fitted on the Premier League clubs in the list; clubs outside Europe get WORLD_BONUS on top, as their market prices players far below Europe's (fitting the 2025 Club World Cup's 63 results gives about 13; those were played in Europe's off-season, so 10 is used). A club below its confederation's 25th gets 80% of that value.",
  "world_bonus": 10,
@@ -1255,6 +1256,31 @@
     "Frosinone Calcio": 113.55,
     "AC Monza": 112.5,
     "US Lecce": 82.38
+   }
+  },
+  "ESP": {
+   "name": "LaLiga",
+   "clubs": {
+    "Real Madrid": 1500.0,
+    "FC Barcelona": 1300.0,
+    "Atlético de Madrid": 703.5,
+    "Villarreal CF": 368.05,
+    "Real Sociedad": 291.8,
+    "Real Betis Balompié": 258.1,
+    "Athletic Bilbao": 229.8,
+    "Celta de Vigo": 180.3,
+    "Sevilla FC": 176.8,
+    "Valencia CF": 156.5,
+    "RCD Espanyol Barcelona": 141.6,
+    "Deportivo A Coruña": 125.0,
+    "Racing Santander": 114.5,
+    "Rayo Vallecano": 100.8,
+    "Getafe CF": 98.9,
+    "Levante UD": 91.5,
+    "CA Osasuna": 82.0,
+    "Elche CF": 74.3,
+    "Deportivo Alavés": 72.9,
+    "Málaga CF": 62.45
    }
   }
  },
