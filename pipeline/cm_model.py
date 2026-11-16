@@ -1113,14 +1113,18 @@ def build_cwc(out_players, today, clubs_lg=None):
             rows.append((p, rel, rr))
         top = statistics.mean(sorted((x[1] for x in rows), reverse=True)[:14])
         ovrs = []
+        det, where = e.get('d') or {}, e.get('pos') or {}
         for p, rel, rr in rows:
-            prim = _SQ_POS.get(p[4], 'CMF'); gk = prim == 'GK'
+            w = where.get(str(p[0])) or {}; d = det.get(str(p[0])) or [None, None, None, None]
+            prim = max(w, key=w.get) if w and p[4] != 'Goalkeeper' else _SQ_POS.get(p[4], 'CMF'); gk = prim == 'GK'
+            also = [k for k, n in sorted(w.items(), key=lambda kv: -kv[1]) if k != prim and n >= 2 and k != 'GK'][:2]
             ovr = int(round(max(45, min(90, q0 + rel - top))))
             pool = by_pos.get(prim) or by_pos.get('CMF')
             tpl = min(pool, key=lambda x: (abs(x['ovr'] - ovr), x['id'])); drop = tpl['ovr'] - ovr
             a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
             rp = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; rp[prim] = ovr
-            players.append({'id': p[0], 'n': p[1], 'nat': None, 'age': p[2] or 26, 'no': p[3], 'club': e['id'], 'prim': prim, 'pos': [prim], 'ovr': ovr,
+            age = age_of({'bd': d[1]}, today) if d[1] else (p[2] or 26)
+            players.append({'id': p[0], 'n': d[3] or p[1], 'nat': d[0], 'age': age, **({'bd': d[1]} if d[1] else {}), **({'ht': d[2]} if d[2] else {}), 'no': p[3], 'club': e['id'], 'prim': prim, 'pos': [prim] + also, 'ovr': ovr,
                             'r': rp, 'a': a, 'style': tpl.get('style'), 'val': round(max(.3, 2 ** ((ovr - 70) / 4)), 1), 'eu': 1})
             ovrs.append(ovr)
         clubs.append({'id': e['id'], 'name': r['short'], 'full': r['tm'], 'ctry': r['country'], 'conf': r['conf'], 'kit': CWC_KIT.get(r['tm'], ['#3A3F55', '#FFFFFF']),

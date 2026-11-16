@@ -888,6 +888,50 @@ def update_cwc():
                 e['p'] = [[p['id'], fix_text(p.get('name') or ''), p.get('age'), p.get('number'), p.get('position')] for p in pl]
             elif not e.get('p'):
                 e.pop('id', None)   # most likely the wrong club (an empty squad list): searched again in 30 days
+        # the details, once a month for each club with a squad: nationality, birth date and height from the club's player
+        # pages (2-4 calls), and where each man played from the line-ups of its last ten matches (2 calls)
+        for r in src.get('rest', []):
+            e = cw.get(r['tm']) or {}
+            if not e.get('p') or days_old(e.get('fd')) < CWC_SQUAD_MAX_AGE:
+                continue
+            det, have = {}, {str(p[0]) for p in e['p']}
+            for season in (current_season(), current_season() - 1, current_season() + 1):
+                page, total = 1, 1
+                while page <= min(total, 4):
+                    try:
+                        data = api('players', team=e['id'], season=season, page=page)
+                    except OutOfBudget:
+                        raise
+                    except Exception:
+                        break
+                    total = (data.get('paging') or {}).get('total', 1)
+                    for x in data.get('response', []):
+                        p = x['player']; first = (p.get('firstname') or '').split(' ')[0]; last = p.get('lastname') or ''
+                        m = re.match(r'(\d+)', str(p.get('height') or ''))
+                        det.setdefault(str(p['id']), [p.get('nationality'), (p.get('birth') or {}).get('date'), int(m.group(1)) if m else None,
+                                                      fix_text(f'{first} {last}'.strip() if first and last and len(first + last) < 26 else (p.get('name') or ''))])
+                    page += 1
+                if sum(1 for k in have if k in det) >= .7 * len(have):
+                    break
+            pos = {}
+            try:
+                fxs = api('fixtures', team=e['id'], last=10).get('response', [])
+                ids = [str(it['fixture']['id']) for it in fxs if (it['fixture'].get('status') or {}).get('short') in FINISHED]
+                if ids:
+                    for item in api('fixtures', ids='-'.join(ids[:20])).get('response', []):
+                        for side in item.get('lineups') or []:
+                            if (side.get('team') or {}).get('id') != e['id']:
+                                continue
+                            for st in side.get('startXI') or []:
+                                pl = st.get('player') or {}
+                                code = slot_code(side.get('formation') or '', pl.get('grid') or '', pl.get('pos') or '') if pl.get('id') else None
+                                if code:
+                                    c = pos.setdefault(str(pl['id']), {}); c[code] = c.get(code, 0) + 1
+            except OutOfBudget:
+                raise
+            except Exception:
+                pass
+            e['d'], e['pos'], e['fd'] = det, pos, TODAY.isoformat()
     finally:
         save('cwc', cw)
     log(f"  Club World Cup: {sum(1 for e in cw.values() if e.get('p'))}/{len(src.get('rest', []))} clubs from outside Europe with a squad")
