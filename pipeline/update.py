@@ -1704,7 +1704,8 @@ WEEKLY_CLUBS = 22
 
 def weekly_challenge(world, fx, prev=None, allow_new=True, top_pts=None, national=frozenset()):
     """The weekly challenge, the same for everyone from Monday to Sunday (UTC): the 22 most successful clubs of the 7 days
-    before that Monday, at most one per country and only clubs with 11 players to draft. Success, per competitive match:
+    before that Monday, at most one per country and only clubs with 11 players to draft. Success, per match (friendlies
+    included, so an international break or the summer still gives a fresh list):
     the points won (3, 1, 0) plus three times how much better the result was than the clubs' ratings before kick-off
     expected (Elo, with home advantage): two wins count, and a win over a stronger side counts more than one over a weaker
     side, so neither the giants nor a single upset fill the list. Ties: goal difference, goals, UEFA rank. Split by UEFA rank into 11 pots of 2: the club each pot shows first and the
@@ -1722,7 +1723,7 @@ def weekly_challenge(world, fx, prev=None, allow_new=True, top_pts=None, nationa
     rec = {tid: [0.0, 0, 0, 0] for tid in clubs}   # success, goal difference, goals, matches
     pre = model.run_elo(fx, top_pts, hi, national, (week - dt.timedelta(days=372)).isoformat())[1] if top_pts else {}
     for fid, f in fx.items():
-        if f['s'] not in FINISHED or f['hg'] is None or not (lo <= f['d'] <= hi) or 'riendl' in (f.get('lg') or ''):
+        if f['s'] not in FINISHED or f['hg'] is None or not (lo <= f['d'] <= hi):   # friendlies count too, so breaks and summers stay fresh
             continue
         rh, ra = pre.get(fid, (1500.0, 1500.0))
         eh = 1 / (10 ** (-(rh + model.HFA_ELO - ra) / 400) + 1)
