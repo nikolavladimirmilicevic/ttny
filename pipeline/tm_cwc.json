@@ -454,7 +454,9 @@
    "short": "Boca Juniors",
    "conf": "CONMEBOL",
    "country": "Argentina",
-   "search": "Boca Juniors"
+   "search": [
+    "Boca Juniors"
+   ]
   },
   {
    "tm": "Auckland City FC",
@@ -475,7 +477,14 @@
    "short": "Esperance",
    "conf": "CAF",
    "country": "Tunisia",
-   "search": "Esperance"
+   "search": [
+    "Esperance",
+    "Tunis"
+   ],
+   "prefer": [
+    "esperance",
+    "es tunis"
+   ]
   },
   {
    "tm": "Los Angeles FC",
@@ -524,7 +533,14 @@
    "short": "Ulsan HD",
    "conf": "AFC",
    "country": "South-Korea",
-   "search": "Ulsan"
+   "search": [
+    "Ulsan Hyundai",
+    "Ulsan"
+   ],
+   "prefer": [
+    "hyundai",
+    " hd"
+   ]
   },
   {
    "tm": "Al-Ain FC",
@@ -545,7 +561,13 @@
    "short": "Al-Hilal",
    "conf": "AFC",
    "country": "Saudi-Arabia",
-   "search": "Al Hilal"
+   "search": [
+    "Hilal"
+   ],
+   "prefer": [
+    "saudi",
+    "hilal"
+   ]
   },
   {
    "tm": "CF Pachuca",
@@ -559,16 +581,33 @@
    "short": "Al-Ahli",
    "conf": "AFC",
    "country": "Saudi-Arabia",
-   "search": "Al Ahli",
-   "ic_only": true
+   "search": [
+    "Ahli"
+   ],
+   "ic_only": true,
+   "prefer": [
+    "jeddah",
+    "saudi"
+   ]
   },
   {
    "tm": "Auckland FC",
    "short": "Auckland FC",
    "conf": "OFC",
-   "country": "New-Zealand",
-   "search": "Auckland FC",
-   "ic_only": true
+   "country": [
+    "New-Zealand",
+    "Australia"
+   ],
+   "search": [
+    "Auckland"
+   ],
+   "ic_only": true,
+   "prefer": [
+    "auckland fc"
+   ],
+   "avoid": [
+    "city"
+   ]
   }
  ],
  "slots": {

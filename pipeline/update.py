@@ -846,17 +846,25 @@ def update_cwc():
                 if days_old(e.get('tried')) < 30:
                     continue
                 e['tried'] = TODAY.isoformat()
-                try:
-                    data = api('teams', search=r['search'])
-                except OutOfBudget:
-                    raise
-                except Exception:
-                    continue
-                want = r['country'].lower()
-                cand = [x['team'] for x in data.get('response', []) if (x['team'].get('country') or '').replace(' ', '-').lower() == want and first_team(x['team'])]
+                terms = r['search'] if isinstance(r['search'], list) else [r['search']]
+                want = {c.lower() for c in (r['country'] if isinstance(r['country'], list) else [r['country']])}
+                youth = re.compile(r'(\bW\b|\bU1\d\b|\bU2\d\b|\bII\b|\bB\b|women|reserves?|femenino|feminin)\s*$', re.I)   # not 'Juniors': Boca Juniors
+                cand = []
+                for term in terms:
+                    try:
+                        data = api('teams', search=term)
+                    except OutOfBudget:
+                        raise
+                    except Exception:
+                        continue
+                    cand += [x['team'] for x in data.get('response', []) if (x['team'].get('country') or '').replace(' ', '-').lower() in want
+                             and not youth.search(x['team'].get('name') or '') and not any(a in (x['team'].get('name') or '').lower() for a in r.get('avoid', []))]
+                    if cand:
+                        break
                 if not cand:
                     continue
-                cand.sort(key=lambda t: (fold(t['name']) != fold(r['search']), fold(r['search']) not in fold(t['name']), len(t['name'])))
+                pref = [p.lower() for p in r.get('prefer', [])]
+                cand.sort(key=lambda t: (-sum(p in (t['name'] or '').lower() for p in pref), fold(t['name']) != fold(terms[0]), fold(terms[0]) not in fold(t['name']), len(t['name'])))
                 e['id'], e['name'] = cand[0]['id'], cand[0]['name']
             if days_old(e.get('f')) < CWC_SQUAD_MAX_AGE:
                 continue
@@ -870,6 +878,8 @@ def update_cwc():
             if pl:
                 e['f'] = TODAY.isoformat()
                 e['p'] = [[p['id'], fix_text(p.get('name') or ''), p.get('age'), p.get('number'), p.get('position')] for p in pl]
+            elif not e.get('p'):
+                e.pop('id', None)   # most likely the wrong club (an empty squad list): searched again in 30 days
     finally:
         save('cwc', cw)
     log(f"  Club World Cup: {sum(1 for e in cw.values() if e.get('p'))}/{len(src.get('rest', []))} clubs from outside Europe with a squad")
