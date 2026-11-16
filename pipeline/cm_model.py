@@ -763,18 +763,21 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     _sec = build_second(out_players, today, season, people)
     if _sec:
         extra['second'] = _sec
-    _fr = None
+    _lgs = {}
+    for _k in LG_SPEC:
+        try:
+            _l = build_league(world, out_players, clubs, kits, alias, today, season, people, LG_SPEC[_k])
+            if _l:
+                _lgs[_k] = _l
+        except Exception as e:   # another league is an extra: the Premier League is built whatever happens here
+            print(f'  {LG_SPEC[_k]["country"]} not built: {e!r}')
+    if _lgs:
+        extra['leagues'] = _lgs
     try:
-        _fr = build_france(world, out_players, clubs, kits, alias, today, season, people)
-        if _fr:
-            extra['leagues'] = {'FRA': _fr}
-    except Exception as e:   # another league is an extra: the Premier League is built whatever happens here
-        print(f'  France not built: {e!r}')
-    try:
-        _eu = build_europe(world, out_players, clubs, kits, alias, today, people, other_lg={c['full']: c['id'] for c in (_fr or {}).get('clubs', [])})
+        _eu = build_europe(world, out_players, clubs, kits, alias, today, people, other_lg={c['full']: c['id'] for L in _lgs.values() for c in L.get('clubs', [])})
         if _eu and _eu['comps']:
             extra['europe'] = _eu
-        _cw = build_cwc(out_players + ((_eu or {}).get('players') or []) + ((_fr or {}).get('players') or []), today, clubs)
+        _cw = build_cwc(out_players + ((_eu or {}).get('players') or []) + [x for L in _lgs.values() for x in L.get('players') or []], today, clubs)
         if _cw:
             extra['cwc'] = _cw
     except Exception:   # the cups are an extra: the league is built whatever happens here
@@ -921,6 +924,25 @@ FR_CODE = {'Paris Saint-Germain': 'PSG', 'LOSC Lille': 'LIL', 'Paris FC': 'PFC',
            'Angers SCO': 'ANG', 'ESTAC Troyes': 'ETR', 'Le Havre AC': 'HAC'}
 
 
+IT_KIT = {'Inter Milan': ['#0068A8', '#000000'], 'Juventus FC': ['#FFFFFF', '#000000'], 'AC Milan': ['#FB090B', '#000000'], 'AS Roma': ['#8E1F2F', '#F0BC42'],
+          'SS Lazio': ['#87D8F7', '#FFFFFF'], 'SSC Napoli': ['#12A0D7', '#FFFFFF'], 'Atalanta BC': ['#1E71B8', '#000000'], 'ACF Fiorentina': ['#482E92', '#FFFFFF'],
+          'Bologna FC 1909': ['#A21C26', '#1A2F48'], 'Como 1907': ['#003DA5', '#FFFFFF'], 'Torino FC': ['#8A1E03', '#FFFFFF'], 'Genoa CFC': ['#A71930', '#002147'],
+          'Udinese Calcio': ['#FFFFFF', '#000000'], 'Cagliari Calcio': ['#A6192E', '#002B5C'], 'Parma Calcio 1913': ['#FFFFFF', '#FFD200'], 'Venezia FC': ['#000000', '#F37021'],
+          'Frosinone Calcio': ['#FFD200', '#0047AB'], 'AC Monza': ['#E2001A', '#FFFFFF'], 'US Lecce': ['#FFD700', '#E2001A'], 'US Sassuolo': ['#00A752', '#000000'],
+          'Pisa Sporting Club': ['#000000', '#0047AB'], 'Palermo FC': ['#F5A9C6', '#000000'], 'US Cremonese': ['#A6192E', '#9EA2A2'], 'Hellas Verona': ['#002F6C', '#FFD100'],
+          'UC Sampdoria': ['#1B5497', '#FFFFFF'], 'Modena FC': ['#FFD200', '#0047AB'], 'Mantova 1911': ['#FFFFFF', '#E2001A'], 'US Avellino 1912': ['#00843D', '#FFFFFF'],
+          'FC Südtirol': ['#E2001A', '#FFFFFF'], 'Cesena FC': ['#FFFFFF', '#000000'], 'Calcio Padova': ['#FFFFFF', '#E2001A'], 'FC Empoli': ['#0055A4', '#FFFFFF'],
+          'Carrarese Calcio 1908': ['#FFD200', '#0047AB'], 'US Catanzaro': ['#FFD200', '#A6192E'], 'Benevento Calcio': ['#FFD200', '#E2001A'],
+          'SS Juve Stabia': ['#FFD200', '#0047AB'], 'Ascoli Calcio': ['#000000', '#FFFFFF'], 'LR Vicenza': ['#E2001A', '#FFFFFF'], 'SS Arezzo': ['#8A1538', '#FFFFFF'],
+          'Virtus Entella': ['#41B6E6', '#FFFFFF']}
+IT_CODE = {'Inter Milan': 'INT', 'Juventus FC': 'JUV', 'AC Milan': 'MIL', 'AS Roma': 'ROM', 'SS Lazio': 'LAZ', 'SSC Napoli': 'NAP', 'Atalanta BC': 'ATA',
+           'ACF Fiorentina': 'FIO', 'Bologna FC 1909': 'BOL', 'Como 1907': 'COM', 'Torino FC': 'TOR', 'Genoa CFC': 'GEN', 'Udinese Calcio': 'UDI',
+           'Cagliari Calcio': 'CAG', 'Parma Calcio 1913': 'PAR', 'Venezia FC': 'VEN', 'Frosinone Calcio': 'FRO', 'AC Monza': 'MON', 'US Lecce': 'LEC', 'US Sassuolo': 'SAS'}
+# each playable league beside the Premier League: its Transfermarkt file, names, kits and codes, id range for players the API lacks
+LG_SPEC = {'FRA': {'file': 'tm_ligue1.json', 'ctry': 'FRA', 'country': 'France', 'league': 'Ligue 1', 'second': 'Ligue 2', 'kit': FR_KIT, 'code': FR_CODE, 'n': 18, 'id_base': 4000000},
+           'ITA': {'file': 'tm_seriea.json', 'ctry': 'ITA', 'country': 'Italy', 'league': 'Serie A', 'second': 'Serie B', 'kit': IT_KIT, 'code': IT_CODE, 'n': 20, 'id_base': 6000000}}
+
+
 def _elo_q(clubs):
     """The league's clubs' strength on their Elo (a straight line through the Premier League's own clubs)."""
     pts = [(c['elo'], c['q']) for c in clubs if c.get('elo') and c.get('q')]
@@ -932,6 +954,10 @@ def _elo_q(clubs):
 
 
 def build_france(world, out_players, clubs, kits, alias, today, season, people):
+    return build_league(world, out_players, clubs, kits, alias, today, season, people, LG_SPEC['FRA'])
+
+
+def build_league(world, out_players, clubs, kits, alias, today, season, people, spec):
     """Ligue 1 as a league of its own: the 18 clubs (pipeline/tm_ligue1.json: stadium, coach, the fixture list), their
     Transfermarkt squads (pipeline/tm_squads.json) and Ligue 2 behind them. A club's strength is France's level from Elo,
     spread within it by Transfermarkt's team values; a player's overall is his club's level moved by his value and age
@@ -939,7 +965,7 @@ def build_france(world, out_players, clubs, kits, alias, today, season, people):
     where the name matches, else a stable one of our own."""
     base = os.path.dirname(os.path.abspath(__file__))
     try:
-        with open(os.path.join(base, 'tm_ligue1.json'), encoding='utf-8') as f:
+        with open(os.path.join(base, spec['file']), encoding='utf-8') as f:
             src = json.load(f)
         with open(os.path.join(base, 'tm_squads.json'), encoding='utf-8') as f:
             TMS = json.load(f).get('clubs') or {}
@@ -947,7 +973,7 @@ def build_france(world, out_players, clubs, kits, alias, today, season, people):
         return None
     try:
         with open(os.path.join(base, 'tm_values.json'), encoding='utf-8') as f:
-            vals = ((json.load(f).get('leagues') or {}).get('FRA') or {}).get('clubs') or {}
+            vals = ((json.load(f).get('leagues') or {}).get(spec['ctry']) or {}).get('clubs') or {}
     except (OSError, ValueError):
         vals = {}
     q_of, fit = _elo_q(clubs), _value_fit(out_players)
@@ -977,7 +1003,7 @@ def build_france(world, out_players, clubs, kits, alias, today, season, people):
     for full, c in sorted(top.items()):
         cid = c['id'] or 980001 + sum(ord(ch) for ch in full) % 9000
         wname = (welo.get(cid) or {}).get('name')
-        kit = next((kits[k] for k in (wname, c['short'], full, alias.get(c['short'], '')) if k and k in kits), None) or FR_KIT.get(full, ['#444444', '#FFFFFF'])
+        kit = next((kits[k] for k in (wname, c['short'], full, alias.get(c['short'], '')) if k and k in kits), None) or spec['kit'].get(full, ['#444444', '#FFFFFF'])
         sq = []
         for t in (TMS.get(full) or {}).get('players', []):
             if _fold(t['n']) in loaned:
@@ -987,7 +1013,7 @@ def build_france(world, out_players, clubs, kits, alias, today, season, people):
                 if cand not in used and cand not in have and (e.get('bd') == t['dob'] or (not e.get('bd') and abs((e.get('age') or age) - age) <= 2)):
                     pid = cand; break
             if pid is None:
-                pid = -(4000000 + int.from_bytes(f"{t['n']}|{t['dob']}".encode(), 'little') % 900000)
+                pid = -(spec['id_base'] + int.from_bytes(f"{t['n']}|{t['dob']}".encode(), 'little') % 900000)
             if pid in have or pid in used:
                 continue
             used.add(pid); sq.append((pid, t, age))
@@ -1011,23 +1037,23 @@ def build_france(world, out_players, clubs, kits, alias, today, season, people):
             _join(x, t)
             players.append(x); ovrs.append(ovr)
         last = c.get('last')
-        out_clubs.append({'id': cid, 'name': c['short'], 'full': full, 'code': FR_CODE.get(full, c['short'][:3].upper()), 'venue': c.get('venue'), 'cap': c.get('cap'),
+        out_clubs.append({'id': cid, 'name': c['short'], 'full': full, 'code': spec['code'].get(full, c['short'][:3].upper()), 'venue': c.get('venue'), 'cap': c.get('cap'),
                           'kit': kit, **({'elo': welo[cid]['elo']} if cid in welo and welo[cid].get('elo') else {}),
-                          'q': round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1), 'coach': c.get('coach'), 'ctry': 'FRA',
+                          'q': round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1), 'coach': c.get('coach'), 'ctry': spec['ctry'],
                           'last': 'promoted' if last == 'promoted' else ({'pos': last} if last else None)})
-    if len(out_clubs) < 18:
+    if len(out_clubs) < spec['n']:
         return None
     ids = {c['full']: c['id'] for c in out_clubs}
     fixtures = [[d, f'Regular Season - {r}', ids[h], ids[a]] + x for d, r, h, a, *x in src.get('fixtures', []) if h in ids and a in ids]
-    # Ligue 2, as the Championship is built
+    # the second tier (Ligue 2), as the Championship is built
     l2 = {full: {'players': (TMS.get(full) or {}).get('players', []), 'stadium': c.get('venue'), 'cap': c.get('cap'), 'coach': c.get('coach')}
           for full, c in src['clubs'].items() if c['tier'] == 2 and TMS.get(full)}
     sec = build_second(out_players, today, season, people, src={'clubs': l2}, ids={f: c['id'] for f, c in src['clubs'].items() if c.get('id')},
-                       short={f: c['short'] for f, c in src['clubs'].items()}, kitmap={**{f: kits[c['short']] for f, c in src['clubs'].items() if c['short'] in kits}, **FR_KIT},
-                       name=src.get('second') or 'Ligue 2', have_extra=used | {x['id'] for x in players}, ctry='FRA', id_base=5000000)
+                       short={f: c['short'] for f, c in src['clubs'].items()}, kitmap={**{f: kits[c['short']] for f, c in src['clubs'].items() if c['short'] in kits}, **spec['kit']},
+                       name=src.get('second') or spec['second'], have_extra=used | {x['id'] for x in players}, ctry=spec['ctry'], id_base=spec['id_base'] + 1000000)
     facts = src.get('facts') or {}
     champ = ids.get(facts.get('reigning'))
-    return {'league': src.get('league') or 'Ligue 1', 'ctry': 'FRA', 'country': 'France', 'clubs': out_clubs, 'players': players, 'fixtures': fixtures,
+    return {'league': src.get('league') or spec['league'], 'ctry': spec['ctry'], 'country': spec['country'], 'clubs': out_clubs, 'players': players, 'fixtures': fixtures,
             'cup': src.get('cup'), 'last_season': {'champion': champ},
             'league_facts': {'reigning': facts.get('reigning'), 'cup_winner': facts.get('cup_winner'), 'record_champion': facts.get('record_champion'),
                              'record_titles': facts.get('record_titles'), 'shield_winner': facts.get('shield_winner')},
