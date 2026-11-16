@@ -778,7 +778,7 @@ function buildRounds(ids, seed, season = D.season, fixtures = D.fixtures){
 let CUP_NAMES = ['First round', 'Fourth round', 'Quarter-finals', 'Semi-finals', 'Final'], CUP = 'Cup';
 const CN = () => (S && S.cup && S.cup.n) || 5, cupName = st => CUP_NAMES[CUP_NAMES.length - CN() + st];
 const cupStages = () => hasCh() && CUP_NAMES.length >= 6 ? 6 : 5;   // with the Championship: from the third round, as in January
-const cupEntrants = n => D.clubs.map(c => c.id).concat(n === 6 ? D.second.clubs.map(c => c.id) : []);
+const cupEntrants = n => D.clubs.map(c => c.id).concat(n === 6 ? D.second.clubs.map(c => c.id) : []).filter(id => !(C.get(id) || {}).res);
 // what the board want, by how the club's squad ranks in the league
 const AIMS = [
   { name: 'Serious title challenge', pos: 1, text: 'Nothing less than the title will satisfy them.' },
@@ -2044,8 +2044,10 @@ const sortTbl = T => Object.entries(T || {}).map(([id, t]) => ({ id: +id, ...t, 
 let HOME = 'ENG';
 const LG_RULES = { ENG: { shield: 'Community Shield', shieldAt: 'Wembley Stadium', lc: true, down: 3, quota: { ucl: 5, uel: 2, uecl: 1 } },
   FRA: { shield: 'Trophée des Champions', lc: false, down: 2, barrage: true, quota: { ucl: 4, uel: 1, uecl: 1 } },
-  ITA: { shield: 'Supercoppa Italiana', lc: false, down: 3, po8: true, quota: { ucl: 4, uel: 1, uecl: 1 } } };
+  ITA: { shield: 'Supercoppa Italiana', lc: false, down: 3, po8: true, quota: { ucl: 4, uel: 1, uecl: 1 } },
+  ESP: { shield: 'Supercopa de España', lc: false, down: 3, po2: true, quota: { ucl: 4, uel: 1, uecl: 1 } } };
 const HL = () => D.lgs[HOME];
+const isRes = id => !!(club(id) || {}).res;   // a reserve team (Real Sociedad B, Celta Fortuna): no promotion, no cup
 const theLg = (n, cap) => /^(Premier|Championship)/.test(n || '') ? (cap ? 'The ' : 'the ') + n : n;   // 'the Premier League', but 'Ligue 1', 'Serie A'
 const awayKs = () => Object.keys(D.lgs || {}).filter(k => k !== HOME);
 const ctryClubs = k => (D.allClubs || []).filter(c => (c.ctry || 'ENG') === k);
@@ -2079,9 +2081,12 @@ function awTick(all, only){
    play-offs (3rd v 6th, 4th v 5th over two legs, then a final). France: the bottom two swap with Ligue 2's top two; Ligue
    2's 4th play the 5th, the winner the 3rd, and that winner meets Ligue 1's 16th over two legs for the last place. Italy:
    the bottom three swap with Serie B's top two and the winner of its play-offs (5th v 8th and 6th v 7th in one match at the
-   higher club, the winners meet the 3rd and the 4th over two legs, then a two-legged final; a draw goes to the higher club) */
+   higher club, the winners meet the 3rd and the 4th over two legs, then a two-legged final; a draw goes to the higher club).
+   Spain: the bottom three swap with LaLiga2's top two and the winner of its play-offs (3rd v 6th, 4th v 5th, then the final,
+   every round over two legs, a level tie going to the higher club); reserve teams never go up, the next club takes the place */
 function promoRel(k, top, sec, r){
   const po = [], R = LG_RULES[k] || LG_RULES.ENG;
+  sec = sec.filter(id => !isRes(id));
   const tie = (x, y) => { const l1 = chMatch(y, x, r), l2 = chMatch(x, y, r), gx = l1[1] + l2[0], gy = l1[0] + l2[1];
     const w = gx > gy ? x : gy > gx ? y : (r() < .5 + (chStr(x) - chStr(y)) * .03 ? x : y); po.push({ x, y, s: `${l1[0]}-${l1[1]}, ${l2[0]}-${l2[1]}`, w }); return w; };
   const one = (x, y, fin) => { const [g1, g2] = chMatch(x, y, r, !!fin), w = g1 > g2 ? x : g2 > g1 ? y : (r() < .5 ? x : y); po.push({ x, y, s: `${g1}-${g2}`, w, ...(fin ? { fin: 1 } : {}) }); return w; };
@@ -2093,6 +2098,11 @@ function promoRel(k, top, sec, r){
     const leg2 = (x, y, fin) => { const l1 = chMatch(y, x, r), l2 = chMatch(x, y, r), gx = l1[1] + l2[0], gy = l1[0] + l2[1], w = gx > gy ? x : gy > gx ? y : hi(x, y); po.push({ x, y, s: `${l1[0]}-${l1[1]}, ${l2[0]}-${l2[1]}`, w, ...(fin ? { fin: 1 } : {}) }); return w; };
     const q1 = one8(sec[4], sec[7]), q2 = one8(sec[5], sec[6]), lo = hi(q1, q2) === q1 ? q2 : q1;
     const s1 = leg2(sec[2], lo), s2 = leg2(sec[3], lo === q1 ? q2 : q1), w = leg2(hi(s1, s2), hi(s1, s2) === s1 ? s2 : s1, true);
+    up = [sec[0], sec[1], w]; }
+  else if (R.po2){
+    const hi = (x, y) => sec.indexOf(x) < sec.indexOf(y) ? x : y;
+    const leg2 = (x, y, fin) => { const l1 = chMatch(y, x, r), l2 = chMatch(x, y, r), gx = l1[1] + l2[0], gy = l1[0] + l2[1], w = gx > gy ? x : gy > gx ? y : hi(x, y); po.push({ x, y, s: `${l1[0]}-${l1[1]}, ${l2[0]}-${l2[1]}`, w, ...(fin ? { fin: 1 } : {}) }); return w; };
+    const s1 = leg2(sec[2], sec[5]), s2 = leg2(sec[3], sec[4]), w = leg2(hi(s1, s2), hi(s1, s2) === s1 ? s2 : s1, true);
     up = [sec[0], sec[1], w]; }
   else if (R.barrage){ const w1 = one(sec[3], sec[4]), w2 = one(sec[2], w1), b = top[top.length - R.down - 1], w = tie(b, w2); po[po.length - 1].bar = 1;
     up = [sec[0], sec[1]]; if (w !== b){ up.push(w); down = down.concat([b]); } }
@@ -2109,7 +2119,7 @@ function awFinish(k){
   const A = S.aw && S.aw[k]; if (!A) return null; if (A.fin) return A.fin;
   awTick(true, k);
   const st = sortTbl(A.t), sec = A.ch ? sortTbl(A.ch.t).map(x => x.id) : [], r = rng(`awf-${S.seed}-${k}-${S.season}`), pr = promoRel(k, st.map(x => x.id), sec, r);
-  A.fin = { table: st.map(x => [x.id, x.pts]), champ: st[0].id, cup: cupSim(ctryClubs(k).map(c => c.id), r), ...pr };
+  A.fin = { table: st.map(x => [x.id, x.pts]), champ: st[0].id, cup: cupSim(ctryClubs(k).map(c => c.id).filter(id => !isRes(id)), r), ...pr };
   return A.fin;
 }
 const chStr = id => { const c = club(id), sq = squadOf(id); if (!sq.length) return c.q || 70;
@@ -2139,7 +2149,7 @@ const YOUTH_NAMES = {
     ['Walker', 'Hughes', 'Bennett', 'Cooper', 'Ward', 'Turner', 'Mills', 'Holt', 'Barker', 'Fletcher', 'Gray', 'Parker', 'Harding', 'Brooks', 'Lowe', 'Shaw', 'Pearce', 'Doyle', 'Okafor', 'Mensah', 'Campbell', 'Francis']],
   France: [['Lucas', 'Noah', 'Rayan', 'Enzo', 'Mathis', 'Yanis', 'Ilyes', 'Nolan'], ['Martin', 'Bernard', 'Diallo', 'Traoré', 'Lefebvre', 'Moreau', 'Camara', 'Girard']],
   Italy: [['Leonardo', 'Francesco', 'Alessandro', 'Lorenzo', 'Mattia', 'Tommaso', 'Gabriele', 'Riccardo', 'Edoardo', 'Matteo'], ['Rossi', 'Russo', 'Ferrari', 'Esposito', 'Bianchi', 'Romano', 'Colombo', 'Ricci', 'Marino', 'Greco', 'Conti', 'De Luca']],
-  Spain: [['Pablo', 'Hugo', 'Álvaro', 'Mario', 'Iker', 'Marc'], ['García', 'López', 'Navarro', 'Romero', 'Torres', 'Ruiz']],
+  Spain: [['Pablo', 'Hugo', 'Álvaro', 'Mario', 'Iker', 'Marc', 'Pol', 'Unai', 'Adrián', 'Javi', 'Dani', 'Sergio'], ['García', 'López', 'Navarro', 'Romero', 'Torres', 'Ruiz', 'Martínez', 'Sánchez', 'Gómez', 'Díaz', 'Moreno', 'Jiménez']],
   Netherlands: [['Daan', 'Sem', 'Milan', 'Luuk'], ['de Vries', 'Bakker', 'Visser', 'Smit']],
   Ireland: [['Seán', 'Cian', 'Oisín', 'Conor'], ["O'Brien", 'Byrne', 'Kelly', 'Murphy']],
   Scotland: [['Lewis', 'Fraser', 'Ross', 'Euan'], ['MacLeod', 'Robertson', 'Stewart', 'Fraser']],
@@ -2165,7 +2175,7 @@ function retireAndIntake(){
       const age = 16 + (rr() < .5 ? 1 : 0), ovr = Math.round(50 + rr() * 10 + (c.q - 75) * .4 + (rr() < .08 ? 8 : 0) + (c.id === me() && (S.fac || {}).youth ? 3 : 0)), drop = t.ovr - ovr;
       const a = {}; for (const [key, v] of Object.entries(t.a)) a[key] = clamp(Math.round(v - drop * (GK_KEYS.includes(key) === (prim === 'GK') ? 1 : .6) + (rr() - .5) * 6), 40, 99);
       const r = {}; for (const [q, v] of Object.entries(t.r || {})) r[q] = clamp(Math.round(v - drop), 30, 99);
-      const own = ({ FRA: 'France', ITA: 'Italy' })[c.ctry || 'ENG'] || 'England', other = ['England', 'France', 'Italy', 'Spain', 'Netherlands', 'Ireland', 'Scotland', 'Wales'].filter(n => n !== own);
+      const own = ({ FRA: 'France', ITA: 'Italy', ESP: 'Spain' })[c.ctry || 'ENG'] || 'England', other = ['England', 'France', 'Italy', 'Spain', 'Netherlands', 'Ireland', 'Scotland', 'Wales'].filter(n => n !== own);
       const natPool = rr() < .7 ? own : other[Math.floor(rr() * other.length)], NM = YOUTH_NAMES[natPool];
       const nm = `${NM[0][Math.floor(rr() * NM[0].length)]} ${NM[1][Math.floor(rr() * NM[1].length)]}`;
       const used = new Set(squadOf(c.id).map(x => x.no)); let no = 30; while (used.has(no)) no++;
@@ -3549,7 +3559,7 @@ function setupFlow(state, files){
     return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select Nationality', back: 'name', next: NEWG.nat ? () => to('team') : null,
       tools: `<span style="flex:1"></span><select class="dd" id="reg">${[['all', 'Filter: All'], ['EUR', 'Europe'], ['AFR', 'Africa'], ['SAM', 'South America'], ['NAM', 'North & Central America'], ['ASI', 'Asia'], ['OCE', 'Oceania']].map(([k, n]) => `<option value="${k}" ${flt === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`,
       body: `<div class="two">${L.map(n => `<button class="nat ${NEWG.nat === n ? 'on' : ''}" data-nat="${esc(n)}"><b>${esc(n)}</b><span>${REGION[n] || ''}</span></button>`).join('')}</div>` }; }
-  if (state === 'team' || state === 'quick'){ const LGC = { ENG: 'PRM', FRA: 'L1', ITA: 'SA' }, clubs = Object.values(D.lgs).flatMap(L => L.top0.map(id => club(id)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name)).map(c2 => ({ c2, k: L.k })));
+  if (state === 'team' || state === 'quick'){ const LGC = { ENG: 'PRM', FRA: 'L1', ITA: 'SA', ESP: 'LL' }, clubs = Object.values(D.lgs).flatMap(L => L.top0.map(id => club(id)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name)).map(c2 => ({ c2, k: L.k })));
     return { title: state === 'quick' ? 'Quick Start Game' : `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select Team', back: state === 'quick' ? 'menu' : 'nat',
       body: `${state === 'quick' ? '<p class="c dim small" style="margin-top:0">Pick a club and go straight to the first match day: the assistant has picked the side.</p>' : ''}<div class="two">${clubs.map(({ c2, k }) => `<button class="nat" data-club="${c2.id}"><b>${esc(c2.name)}</b><span>${k} <em>${LGC[k] || '1'}</em></span></button>`).join('')}</div>` }; }
   if (state === 'preview'){ const sq = squadOf(c.id).slice().sort((a, b) => ({ GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[a.prim]] - { GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[b.prim]]) || ovrNow(b) - ovrNow(a)), half = Math.ceil(sq.length / 2);
@@ -3709,7 +3719,7 @@ function transferTick(){
       const mine = squadOf(me()).filter(p => !(S.loans || {})[p.id] && !S.offers.some(o => o.id === p.id && o.st === 'open')).sort((a, b) => b.val - a.val).slice(0, 18);
       const wants = squadOf(me()).filter(x => !(S.loans || {})[x.id] && ps(x.id).req === S.season && !S.offers.some(o => o.id === x.id && o.st === 'open'));
       const p = wants.length && Math.random() < .6 ? wants[Math.floor(Math.random() * wants.length)] : mine[Math.floor(Math.pow(Math.random(), 1.6) * mine.length)];
-      const buyers = D.allClubs.filter(c => c.id !== me() && LG.has(c.id) ? c.q >= ovrNow(p) - 6 : c.id !== me() && c.q >= ovrNow(p) - 3 && c.q <= ovrNow(p) + 4);
+      const buyers = !p ? [] : D.allClubs.filter(c => c.id !== me() && LG.has(c.id) ? c.q >= ovrNow(p) - 6 : c.id !== me() && c.q >= ovrNow(p) - 3 && c.q <= ovrNow(p) + 4);
       if (p && buyers.length){ const c = buyers[Math.floor(Math.random() * buyers.length)], fee = roundFee(p.val * 1e6 * (.85 + Math.random() * .45));
         S.offers.push({ id: p.id, from: c.id, fee, d: S.date, st: 'open' });
         news('club', `${c.name} bid for ${p.n}`, `${esc(c.name)} have offered ${cash(fee)} for <b>${esc(p.n)}</b>. Accept or turn it down on his Transfer screen within a week.`); }

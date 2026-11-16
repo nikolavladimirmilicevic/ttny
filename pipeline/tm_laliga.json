@@ -1,8 +1,10 @@
 {
- "about": "LaLiga from Transfermarkt pages Nikola supplied (clubs page, transfers page, 16.11.2026); for a playable LaLiga later",
+ "about": "LaLiga and LaLiga2 from Transfermarkt pages Nikola supplied (governance, clubs, transfers, club overview and squad pages, the LaLiga2 pages, the complete LaLiga schedule and the managers page, 16.11.2026): clubs (stadium, seats, head coach at the game's August start), all 380 LaLiga fixtures of 2026/27 (dates; kick-off times where set; no results), last season. LaLiga is playable in the manager game; LaLiga2 runs in the background (reserve teams cannot go up). API team ids from the API-Football fixtures cached.",
  "updated": "2026-11-16",
  "league": "LaLiga",
+ "second": "LaLiga2",
  "country": "Spain",
+ "season": 2026,
  "facts": {
   "reigning": "FC Barcelona",
   "cup_winner": "Real Sociedad",
@@ -87,120 +89,2875 @@
    ],
    "winner": "Málaga CF",
    "note": "2025/26 LaLiga2 promotion play-off, two legs each round, from the club pages"
-  }
+  },
+  "shield_note": "Supercopa de España: four clubs in January in reality; here a single match in August, champions v cup winners"
+ },
+ "cup": {
+  "name": "Copa del Rey",
+  "rounds": [
+   [
+    "First round",
+    "2026-10-28"
+   ],
+   [
+    "Second round",
+    "2026-12-03"
+   ],
+   [
+    "Round of 32",
+    "2026-12-16"
+   ],
+   [
+    "Round of 16",
+    "2027-01-13"
+   ],
+   [
+    "Quarter-finals",
+    "2027-02-03"
+   ],
+   [
+    "Semi-finals",
+    "2027-03-03"
+   ],
+   [
+    "Final",
+    "2027-04-17"
+   ]
+  ],
+  "note": "first round on the dates from the club pages (27 to 29 October 2026); later rounds assumed (semi-finals one match here, two legs in reality)"
  },
  "clubs": {
   "Real Madrid": {
-   "value": 1500.0,
+   "tier": 1,
+   "id": 541,
+   "short": "Real Madrid",
    "venue": "Santiago Bernabéu",
-   "cap": 83186
+   "cap": 83186,
+   "coach": "José Mourinho",
+   "value": 1500.0,
+   "last": 2
   },
   "FC Barcelona": {
-   "value": 1300.0,
+   "tier": 1,
+   "id": 529,
+   "short": "Barcelona",
    "venue": "Spotify Camp Nou",
    "cap": 62657,
-   "coach": "Hansi Flick"
+   "coach": "Hansi Flick",
+   "value": 1300.0,
+   "last": 1
   },
   "Atlético de Madrid": {
-   "value": 703.5,
+   "tier": 1,
+   "id": 530,
+   "short": "Atlético",
    "venue": "Riyadh Air Metropolitano",
-   "cap": 70813
+   "cap": 70813,
+   "coach": "Diego Simeone",
+   "value": 703.5,
+   "last": 4
   },
   "Villarreal CF": {
-   "value": 368.05,
+   "tier": 1,
+   "id": 533,
+   "short": "Villarreal",
    "venue": "La Cerámica",
-   "cap": 23500
+   "cap": 23500,
+   "coach": "Iñigo Pérez",
+   "value": 368.05,
+   "last": 3
   },
   "Real Sociedad": {
-   "value": 291.8,
+   "tier": 1,
+   "id": 548,
+   "short": "Real Sociedad",
    "venue": "Anoeta",
-   "cap": 40000
+   "cap": 40000,
+   "coach": "Pellegrino Matarazzo",
+   "value": 291.8,
+   "last": 10
   },
   "Real Betis Balompié": {
-   "value": 258.1,
+   "tier": 1,
+   "id": 543,
+   "short": "Betis",
    "venue": "La Cartuja",
-   "cap": 71374
+   "cap": 71374,
+   "coach": "Manuel Pellegrini",
+   "value": 258.1,
+   "last": 5
   },
   "Athletic Bilbao": {
-   "value": 229.8,
+   "tier": 1,
+   "id": 531,
+   "short": "Athletic",
    "venue": "San Mamés",
-   "cap": 53289
+   "cap": 53289,
+   "coach": "Edin Terzic",
+   "value": 229.8,
+   "last": 12
   },
   "Celta de Vigo": {
-   "value": 180.3,
+   "tier": 1,
+   "id": 538,
+   "short": "Celta",
    "venue": "Abanca Balaídos",
-   "cap": 23432
+   "cap": 23432,
+   "coach": "Claudio Giráldez",
+   "value": 180.3,
+   "last": 6
   },
   "Sevilla FC": {
-   "value": 176.8,
+   "tier": 1,
+   "id": 536,
+   "short": "Sevilla",
    "venue": "Ramón Sánchez-Pizjuán",
-   "cap": 43751
+   "cap": 43751,
+   "coach": "Luis García",
+   "value": 176.8,
+   "last": 13
   },
   "Valencia CF": {
-   "value": 156.5,
+   "tier": 1,
+   "id": 532,
+   "short": "Valencia",
    "venue": "Mestalla",
-   "cap": 49430
+   "cap": 49430,
+   "coach": null,
+   "value": 156.5,
+   "last": 9
   },
   "RCD Espanyol Barcelona": {
-   "value": 141.6,
+   "tier": 1,
+   "id": 540,
+   "short": "Espanyol",
    "venue": "RCDE Stadium",
-   "cap": 37776
+   "cap": 37776,
+   "coach": null,
+   "value": 141.6,
+   "last": 11
   },
   "Deportivo A Coruña": {
-   "value": 125.0,
+   "tier": 1,
+   "id": 544,
+   "short": "Deportivo",
    "venue": "Abanca Riazor",
    "cap": 32912,
-   "coach": "Antonio Hidalgo"
+   "coach": "Antonio Hidalgo",
+   "value": 125.0,
+   "last": "promoted"
   },
   "Racing Santander": {
-   "value": 114.5,
+   "tier": 1,
+   "id": 4665,
+   "short": "Racing",
    "venue": "El Sardinero",
    "cap": 22514,
-   "coach": "José Alberto López"
+   "coach": "José Alberto López",
+   "value": 114.5,
+   "last": "promoted"
   },
   "Rayo Vallecano": {
-   "value": 100.8,
+   "tier": 1,
+   "id": 728,
+   "short": "Rayo",
    "venue": "Estadio de Vallecas",
    "cap": 14708,
-   "coach": "Beñat San José"
+   "coach": "Beñat San José",
+   "value": 100.8,
+   "last": 8
   },
   "Getafe CF": {
-   "value": 98.9,
+   "tier": 1,
+   "id": 546,
+   "short": "Getafe",
    "venue": "Coliseum",
    "cap": 16800,
-   "coach": "José Bordalás"
+   "coach": "José Bordalás",
+   "value": 98.9,
+   "last": 7
   },
   "Levante UD": {
-   "value": 91.5,
+   "tier": 1,
+   "id": 539,
+   "short": "Levante",
    "venue": "Ciutat de València",
    "cap": 26354,
-   "coach": "Luís Castro"
+   "coach": "Luís Castro",
+   "value": 91.5,
+   "last": 16
   },
   "CA Osasuna": {
-   "value": 82.0,
+   "tier": 1,
+   "id": 727,
+   "short": "Osasuna",
    "venue": "El Sadar",
-   "cap": 23576
+   "cap": 23576,
+   "coach": null,
+   "value": 82.0,
+   "last": 17
   },
   "Elche CF": {
-   "value": 74.3,
+   "tier": 1,
+   "id": 797,
+   "short": "Elche",
    "venue": "Manuel Martínez Valero",
    "cap": 31388,
-   "coach": "Martín Anselmi"
+   "coach": "Martín Anselmi",
+   "value": 74.3,
+   "last": 15
   },
   "Deportivo Alavés": {
-   "value": 72.9,
+   "tier": 1,
+   "id": 542,
+   "short": "Alavés",
    "venue": "Mendizorroza",
    "cap": 19840,
-   "coach": "Quique Sánchez Flores"
+   "coach": "Quique Sánchez Flores",
+   "value": 72.9,
+   "last": 14
   },
   "Málaga CF": {
-   "value": 62.45,
+   "tier": 1,
+   "id": 535,
+   "short": "Málaga",
    "venue": "La Rosaleda",
    "cap": 30044,
-   "coach": "Juan Funes"
+   "coach": "Juan Funes",
+   "value": 62.45,
+   "last": "promoted"
+  },
+  "UD Almería": {
+   "tier": 2,
+   "id": 723,
+   "short": "Almería",
+   "venue": "UD Almería Stadium",
+   "cap": 18331,
+   "coach": "Xavier García Pimienta",
+   "value": 68.1
+  },
+  "Girona FC": {
+   "tier": 2,
+   "id": 547,
+   "short": "Girona",
+   "venue": "Montilivi",
+   "cap": 14624,
+   "coach": "Quique Álvarez",
+   "value": 65.75
+  },
+  "RCD Mallorca": {
+   "tier": 2,
+   "id": 798,
+   "short": "Mallorca",
+   "venue": "Mallorca Son Moix",
+   "cap": 25736,
+   "coach": "Luis García",
+   "value": 48.9
+  },
+  "Real Oviedo": {
+   "tier": 2,
+   "id": 718,
+   "short": "Oviedo",
+   "venue": "Carlos Tartiere",
+   "cap": 30500,
+   "coach": null,
+   "value": 33.0
+  },
+  "UD Las Palmas": {
+   "tier": 2,
+   "id": 534,
+   "short": "Las Palmas",
+   "venue": "Estadio de Gran Canaria",
+   "cap": 32400,
+   "coach": null,
+   "value": 29.65
+  },
+  "CD Leganés": {
+   "tier": 2,
+   "id": 537,
+   "short": "Leganés",
+   "venue": "Ontime Butarque",
+   "cap": 14422,
+   "coach": null,
+   "value": 28.4
+  },
+  "Real Valladolid CF": {
+   "tier": 2,
+   "id": 720,
+   "short": "Valladolid",
+   "venue": "José Zorrilla",
+   "cap": 27618,
+   "coach": "Fran Escribá",
+   "value": 27.5
+  },
+  "Cádiz CF": {
+   "tier": 2,
+   "id": 724,
+   "short": "Cádiz",
+   "venue": "JP Financial",
+   "cap": 21094,
+   "coach": null,
+   "value": 27.25
+  },
+  "Sporting Gijón": {
+   "tier": 2,
+   "id": 731,
+   "short": "Sporting",
+   "venue": "El Molinón - Enrique Castro 'Quini'",
+   "cap": 29371,
+   "coach": "Nicolás Larcamón",
+   "value": 26.3
+  },
+  "CD Castellón": {
+   "tier": 2,
+   "id": 5254,
+   "short": "Castellón",
+   "venue": "SkyFi Castalia",
+   "cap": 15500,
+   "coach": "Pablo Hernández",
+   "value": 25.15
+  },
+  "Real Sociedad B": {
+   "tier": 2,
+   "id": 9585,
+   "short": "Real Sociedad B",
+   "venue": "Instalaciones de Zubieta",
+   "cap": 2500,
+   "coach": "Ion Ansotegi",
+   "value": 22.25,
+   "res": "Real Sociedad"
+  },
+  "Burgos CF": {
+   "tier": 2,
+   "id": 9580,
+   "short": "Burgos",
+   "venue": "El Plantío",
+   "cap": 12642,
+   "coach": "Sergio Francisco",
+   "value": 19.5
+  },
+  "Granada CF": {
+   "tier": 2,
+   "id": 715,
+   "short": "Granada",
+   "venue": "Nuevo Los Cármenes",
+   "cap": 19336,
+   "coach": "Pacheta",
+   "value": 17.55
+  },
+  "SD Eibar": {
+   "tier": 2,
+   "id": 545,
+   "short": "Eibar",
+   "venue": "Ipurua",
+   "cap": 8164,
+   "coach": null,
+   "value": 16.5
+  },
+  "Córdoba CF": {
+   "tier": 2,
+   "id": 713,
+   "short": "Córdoba",
+   "venue": "Bahrain Victorious Nuevo Arcángel",
+   "cap": 21822,
+   "coach": "Iván Ania",
+   "value": 16.1
+  },
+  "Albacete Balompié": {
+   "tier": 2,
+   "id": 722,
+   "short": "Albacete",
+   "venue": "Carlos Belmonte",
+   "cap": 16998,
+   "coach": null,
+   "value": 15.95
+  },
+  "FC Andorra": {
+   "tier": 2,
+   "id": 8157,
+   "short": "Andorra",
+   "venue": "Estadi de la FAF",
+   "cap": 5600,
+   "coach": "Carles Manso",
+   "value": 15.0
+  },
+  "RC Celta Fortuna": {
+   "tier": 2,
+   "id": 9571,
+   "short": "Celta Fortuna",
+   "venue": "Abanca Balaídos",
+   "cap": 24870,
+   "coach": "Fredi Álvarez",
+   "value": 12.75,
+   "res": "Celta de Vigo"
+  },
+  "CD Eldense": {
+   "tier": 2,
+   "id": 9692,
+   "short": "Eldense",
+   "venue": "Nuevo Pepico Amat",
+   "cap": 5776,
+   "coach": null,
+   "value": 11.9
+  },
+  "CE Sabadell FC": {
+   "tier": 2,
+   "id": 9593,
+   "short": "Sabadell",
+   "venue": "Nova Creu Alta",
+   "cap": 11981,
+   "coach": "Ferran Costa",
+   "value": 11.9
+  },
+  "AD Ceuta FC": {
+   "tier": 2,
+   "id": 10139,
+   "short": "Ceuta",
+   "venue": "Alfonso Murube",
+   "cap": 6500,
+   "coach": null,
+   "value": 11.4
+  },
+  "CD Tenerife": {
+   "tier": 2,
+   "id": 719,
+   "short": "Tenerife",
+   "venue": "Heliodoro Rodríguez López",
+   "cap": 22824,
+   "coach": "Álvaro Cervera",
+   "value": 11.0
   }
  },
- "second": "LaLiga2",
+ "fixtures": [
+  [
+   "2026-08-15",
+   1,
+   "Deportivo Alavés",
+   "Getafe CF",
+   "19:30"
+  ],
+  [
+   "2026-08-15",
+   1,
+   "Sevilla FC",
+   "Rayo Vallecano",
+   "21:30"
+  ],
+  [
+   "2026-08-16",
+   1,
+   "Racing Santander",
+   "Villarreal CF",
+   "17:00"
+  ],
+  [
+   "2026-08-16",
+   1,
+   "RCD Espanyol Barcelona",
+   "Levante UD",
+   "19:00"
+  ],
+  [
+   "2026-08-17",
+   1,
+   "Deportivo A Coruña",
+   "Elche CF",
+   "21:00"
+  ],
+  [
+   "2026-08-19",
+   1,
+   "Atlético de Madrid",
+   "Málaga CF",
+   "21:00"
+  ],
+  [
+   "2026-08-25",
+   1,
+   "Valencia CF",
+   "Real Betis Balompié",
+   "21:00"
+  ],
+  [
+   "2026-08-26",
+   1,
+   "Real Madrid",
+   "Real Sociedad",
+   "21:00"
+  ],
+  [
+   "2026-08-27",
+   1,
+   "Celta de Vigo",
+   "CA Osasuna",
+   "20:30"
+  ],
+  [
+   "2026-08-27",
+   1,
+   "FC Barcelona",
+   "Athletic Bilbao",
+   "21:00"
+  ],
+  [
+   "2026-08-20",
+   2,
+   "Rayo Vallecano",
+   "Deportivo Alavés",
+   "21:00"
+  ],
+  [
+   "2026-08-21",
+   2,
+   "Real Betis Balompié",
+   "Real Sociedad",
+   "21:00"
+  ],
+  [
+   "2026-08-22",
+   2,
+   "Athletic Bilbao",
+   "Sevilla FC",
+   "17:00"
+  ],
+  [
+   "2026-08-22",
+   2,
+   "Valencia CF",
+   "Celta de Vigo",
+   "19:30"
+  ],
+  [
+   "2026-08-22",
+   2,
+   "RCD Espanyol Barcelona",
+   "Real Madrid",
+   "21:30"
+  ],
+  [
+   "2026-08-23",
+   2,
+   "Atlético de Madrid",
+   "Villarreal CF",
+   "17:00"
+  ],
+  [
+   "2026-08-23",
+   2,
+   "Getafe CF",
+   "Racing Santander",
+   "19:30"
+  ],
+  [
+   "2026-08-23",
+   2,
+   "Elche CF",
+   "FC Barcelona",
+   "21:30"
+  ],
+  [
+   "2026-08-24",
+   2,
+   "CA Osasuna",
+   "Levante UD",
+   "19:30"
+  ],
+  [
+   "2026-08-24",
+   2,
+   "Málaga CF",
+   "Deportivo A Coruña",
+   "21:30"
+  ],
+  [
+   "2026-08-28",
+   3,
+   "Racing Santander",
+   "Elche CF",
+   "19:00"
+  ],
+  [
+   "2026-08-28",
+   3,
+   "Deportivo Alavés",
+   "Villarreal CF",
+   "21:30"
+  ],
+  [
+   "2026-08-29",
+   3,
+   "Levante UD",
+   "Real Betis Balompié",
+   "17:00"
+  ],
+  [
+   "2026-08-29",
+   3,
+   "Real Sociedad",
+   "RCD Espanyol Barcelona",
+   "19:00"
+  ],
+  [
+   "2026-08-29",
+   3,
+   "Sevilla FC",
+   "Atlético de Madrid",
+   "21:30"
+  ],
+  [
+   "2026-08-30",
+   3,
+   "Real Madrid",
+   "Málaga CF",
+   "17:00"
+  ],
+  [
+   "2026-08-30",
+   3,
+   "Deportivo A Coruña",
+   "Valencia CF",
+   "19:30"
+  ],
+  [
+   "2026-08-30",
+   3,
+   "Celta de Vigo",
+   "Athletic Bilbao",
+   "21:30"
+  ],
+  [
+   "2026-08-31",
+   3,
+   "CA Osasuna",
+   "Getafe CF",
+   "19:30"
+  ],
+  [
+   "2026-08-31",
+   3,
+   "FC Barcelona",
+   "Rayo Vallecano",
+   "21:30"
+  ],
+  [
+   "2026-09-04",
+   4,
+   "Real Betis Balompié",
+   "Real Madrid",
+   "21:00"
+  ],
+  [
+   "2026-09-05",
+   4,
+   "Athletic Bilbao",
+   "Atlético de Madrid",
+   "16:15"
+  ],
+  [
+   "2026-09-05",
+   4,
+   "Rayo Vallecano",
+   "Racing Santander",
+   "18:30"
+  ],
+  [
+   "2026-09-05",
+   4,
+   "Villarreal CF",
+   "Deportivo A Coruña",
+   "21:00"
+  ],
+  [
+   "2026-09-06",
+   4,
+   "Valencia CF",
+   "FC Barcelona",
+   "16:15"
+  ],
+  [
+   "2026-09-06",
+   4,
+   "Deportivo Alavés",
+   "CA Osasuna",
+   "18:30"
+  ],
+  [
+   "2026-09-06",
+   4,
+   "Málaga CF",
+   "Levante UD"
+  ],
+  [
+   "2026-09-06",
+   4,
+   "RCD Espanyol Barcelona",
+   "Sevilla FC",
+   "21:00"
+  ],
+  [
+   "2026-09-07",
+   4,
+   "Getafe CF",
+   "Celta de Vigo",
+   "19:00"
+  ],
+  [
+   "2026-09-07",
+   4,
+   "Elche CF",
+   "Real Sociedad",
+   "21:30"
+  ],
+  [
+   "2026-09-11",
+   5,
+   "Sevilla FC",
+   "Valencia CF",
+   "21:00"
+  ],
+  [
+   "2026-09-12",
+   5,
+   "Racing Santander",
+   "Deportivo Alavés",
+   "14:00"
+  ],
+  [
+   "2026-09-12",
+   5,
+   "CA Osasuna",
+   "RCD Espanyol Barcelona",
+   "16:15"
+  ],
+  [
+   "2026-09-12",
+   5,
+   "Athletic Bilbao",
+   "Elche CF",
+   "18:30"
+  ],
+  [
+   "2026-09-12",
+   5,
+   "Real Madrid",
+   "Rayo Vallecano",
+   "21:00"
+  ],
+  [
+   "2026-09-13",
+   5,
+   "Celta de Vigo",
+   "Málaga CF",
+   "14:00"
+  ],
+  [
+   "2026-09-13",
+   5,
+   "Levante UD",
+   "FC Barcelona",
+   "16:15"
+  ],
+  [
+   "2026-09-13",
+   5,
+   "Getafe CF",
+   "Deportivo A Coruña",
+   "18:30"
+  ],
+  [
+   "2026-09-13",
+   5,
+   "Real Sociedad",
+   "Atlético de Madrid",
+   "21:00"
+  ],
+  [
+   "2026-09-14",
+   5,
+   "Villarreal CF",
+   "Real Betis Balompié",
+   "21:00"
+  ],
+  [
+   "2026-09-03",
+   6,
+   "Real Sociedad",
+   "Celta de Vigo",
+   "21:00"
+  ],
+  [
+   "2026-09-15",
+   6,
+   "Rayo Vallecano",
+   "RCD Espanyol Barcelona",
+   "19:00"
+  ],
+  [
+   "2026-09-15",
+   6,
+   "Deportivo Alavés",
+   "Valencia CF",
+   "20:00"
+  ],
+  [
+   "2026-09-15",
+   6,
+   "Elche CF",
+   "Real Madrid",
+   "21:30"
+  ],
+  [
+   "2026-09-16",
+   6,
+   "Atlético de Madrid",
+   "CA Osasuna",
+   "19:00"
+  ],
+  [
+   "2026-09-16",
+   6,
+   "Deportivo A Coruña",
+   "Sevilla FC"
+  ],
+  [
+   "2026-09-16",
+   6,
+   "FC Barcelona",
+   "Racing Santander",
+   "21:30"
+  ],
+  [
+   "2026-09-17",
+   6,
+   "Real Betis Balompié",
+   "Getafe CF",
+   "19:00"
+  ],
+  [
+   "2026-09-17",
+   6,
+   "Málaga CF",
+   "Villarreal CF",
+   "21:30"
+  ],
+  [
+   "2026-10-21",
+   6,
+   "Levante UD",
+   "Athletic Bilbao",
+   "20:00"
+  ],
+  [
+   "2026-09-18",
+   7,
+   "RCD Espanyol Barcelona",
+   "Elche CF",
+   "21:00"
+  ],
+  [
+   "2026-09-19",
+   7,
+   "CA Osasuna",
+   "Rayo Vallecano",
+   "14:00"
+  ],
+  [
+   "2026-09-19",
+   7,
+   "Athletic Bilbao",
+   "Deportivo Alavés",
+   "16:15"
+  ],
+  [
+   "2026-09-19",
+   7,
+   "Celta de Vigo",
+   "Racing Santander",
+   "18:30"
+  ],
+  [
+   "2026-09-19",
+   7,
+   "Sevilla FC",
+   "FC Barcelona",
+   "21:00"
+  ],
+  [
+   "2026-09-20",
+   7,
+   "Getafe CF",
+   "Málaga CF",
+   "14:00"
+  ],
+  [
+   "2026-09-20",
+   7,
+   "Atlético de Madrid",
+   "Real Madrid",
+   "16:15"
+  ],
+  [
+   "2026-09-20",
+   7,
+   "Deportivo A Coruña",
+   "Real Betis Balompié",
+   "18:30"
+  ],
+  [
+   "2026-09-20",
+   7,
+   "Villarreal CF",
+   "Levante UD"
+  ],
+  [
+   "2026-09-20",
+   7,
+   "Valencia CF",
+   "Real Sociedad",
+   "21:00"
+  ],
+  [
+   "2026-10-09",
+   8,
+   "Málaga CF",
+   "RCD Espanyol Barcelona",
+   "21:00"
+  ],
+  [
+   "2026-10-10",
+   8,
+   "Deportivo Alavés",
+   "Atlético de Madrid",
+   "16:15"
+  ],
+  [
+   "2026-10-10",
+   8,
+   "FC Barcelona",
+   "Getafe CF",
+   "18:30"
+  ],
+  [
+   "2026-10-10",
+   8,
+   "Real Madrid",
+   "Villarreal CF",
+   "21:00"
+  ],
+  [
+   "2026-10-11",
+   8,
+   "Elche CF",
+   "Celta de Vigo",
+   "14:00"
+  ],
+  [
+   "2026-10-11",
+   8,
+   "Real Sociedad",
+   "Deportivo A Coruña",
+   "16:15"
+  ],
+  [
+   "2026-10-11",
+   8,
+   "Real Betis Balompié",
+   "CA Osasuna",
+   "18:30"
+  ],
+  [
+   "2026-10-11",
+   8,
+   "Racing Santander",
+   "Valencia CF",
+   "21:00"
+  ],
+  [
+   "2026-10-12",
+   8,
+   "Levante UD",
+   "Sevilla FC",
+   "21:00"
+  ],
+  [
+   "2026-12-09",
+   8,
+   "Rayo Vallecano",
+   "Athletic Bilbao",
+   "20:00"
+  ],
+  [
+   "2026-10-16",
+   9,
+   "Deportivo A Coruña",
+   "Levante UD",
+   "21:00"
+  ],
+  [
+   "2026-10-17",
+   9,
+   "RCD Espanyol Barcelona",
+   "Atlético de Madrid",
+   "14:00"
+  ],
+  [
+   "2026-10-17",
+   9,
+   "Villarreal CF",
+   "Elche CF",
+   "16:15"
+  ],
+  [
+   "2026-10-17",
+   9,
+   "Real Betis Balompié",
+   "FC Barcelona",
+   "18:30"
+  ],
+  [
+   "2026-10-17",
+   9,
+   "Valencia CF",
+   "Athletic Bilbao",
+   "21:00"
+  ],
+  [
+   "2026-10-18",
+   9,
+   "CA Osasuna",
+   "Racing Santander",
+   "14:00"
+  ],
+  [
+   "2026-10-18",
+   9,
+   "Celta de Vigo",
+   "Deportivo Alavés",
+   "16:15"
+  ],
+  [
+   "2026-10-18",
+   9,
+   "Málaga CF",
+   "Real Sociedad",
+   "18:30"
+  ],
+  [
+   "2026-10-18",
+   9,
+   "Real Madrid",
+   "Sevilla FC",
+   "21:00"
+  ],
+  [
+   "2026-10-19",
+   9,
+   "Getafe CF",
+   "Rayo Vallecano",
+   "21:00"
+  ],
+  [
+   "2026-10-23",
+   10,
+   "Deportivo Alavés",
+   "Málaga CF",
+   "21:00"
+  ],
+  [
+   "2026-10-24",
+   10,
+   "Rayo Vallecano",
+   "Elche CF",
+   "14:00"
+  ],
+  [
+   "2026-10-24",
+   10,
+   "Racing Santander",
+   "RCD Espanyol Barcelona",
+   "16:15"
+  ],
+  [
+   "2026-10-24",
+   10,
+   "Valencia CF",
+   "Villarreal CF",
+   "18:30"
+  ],
+  [
+   "2026-10-24",
+   10,
+   "Atlético de Madrid",
+   "Deportivo A Coruña",
+   "21:00"
+  ],
+  [
+   "2026-10-25",
+   10,
+   "Athletic Bilbao",
+   "Getafe CF",
+   "14:00"
+  ],
+  [
+   "2026-10-25",
+   10,
+   "Celta de Vigo",
+   "Real Betis Balompié",
+   "16:15"
+  ],
+  [
+   "2026-10-25",
+   10,
+   "Real Sociedad",
+   "Levante UD",
+   "18:30"
+  ],
+  [
+   "2026-10-25",
+   10,
+   "FC Barcelona",
+   "Real Madrid",
+   "21:00"
+  ],
+  [
+   "2026-10-26",
+   10,
+   "Sevilla FC",
+   "CA Osasuna",
+   "21:00"
+  ],
+  [
+   "2026-10-30",
+   11,
+   "Villarreal CF",
+   "RCD Espanyol Barcelona",
+   "21:00"
+  ],
+  [
+   "2026-10-31",
+   11,
+   "Levante UD",
+   "Atlético de Madrid",
+   "14:00"
+  ],
+  [
+   "2026-10-31",
+   11,
+   "Rayo Vallecano",
+   "Celta de Vigo",
+   "16:15"
+  ],
+  [
+   "2026-10-31",
+   11,
+   "Real Betis Balompié",
+   "Málaga CF",
+   "18:30"
+  ],
+  [
+   "2026-10-31",
+   11,
+   "FC Barcelona",
+   "Deportivo Alavés",
+   "21:00"
+  ],
+  [
+   "2026-11-01",
+   11,
+   "Getafe CF",
+   "Sevilla FC",
+   "14:00"
+  ],
+  [
+   "2026-11-01",
+   11,
+   "Racing Santander",
+   "Real Madrid",
+   "16:15"
+  ],
+  [
+   "2026-11-01",
+   11,
+   "Elche CF",
+   "Valencia CF",
+   "18:30"
+  ],
+  [
+   "2026-11-01",
+   11,
+   "Athletic Bilbao",
+   "Real Sociedad",
+   "21:00"
+  ],
+  [
+   "2026-11-02",
+   11,
+   "Deportivo A Coruña",
+   "CA Osasuna",
+   "21:00"
+  ],
+  [
+   "2026-11-06",
+   12,
+   "Sevilla FC",
+   "Deportivo Alavés",
+   "21:00"
+  ],
+  [
+   "2026-11-07",
+   12,
+   "Málaga CF",
+   "Racing Santander",
+   "14:00"
+  ],
+  [
+   "2026-11-07",
+   12,
+   "RCD Espanyol Barcelona",
+   "Deportivo A Coruña",
+   "16:15"
+  ],
+  [
+   "2026-11-07",
+   12,
+   "CA Osasuna",
+   "Athletic Bilbao",
+   "18:30"
+  ],
+  [
+   "2026-11-07",
+   12,
+   "Valencia CF",
+   "Real Madrid",
+   "21:00"
+  ],
+  [
+   "2026-11-08",
+   12,
+   "Elche CF",
+   "Real Betis Balompié",
+   "14:00"
+  ],
+  [
+   "2026-11-08",
+   12,
+   "Real Sociedad",
+   "Rayo Vallecano",
+   "16:15"
+  ],
+  [
+   "2026-11-08",
+   12,
+   "Celta de Vigo",
+   "Levante UD",
+   "18:30"
+  ],
+  [
+   "2026-11-08",
+   12,
+   "Villarreal CF",
+   "Getafe CF"
+  ],
+  [
+   "2026-11-08",
+   12,
+   "Atlético de Madrid",
+   "FC Barcelona",
+   "21:00"
+  ],
+  [
+   "2026-11-20",
+   13,
+   "Athletic Bilbao",
+   "RCD Espanyol Barcelona",
+   "21:00"
+  ],
+  [
+   "2026-11-21",
+   13,
+   "Deportivo Alavés",
+   "Deportivo A Coruña",
+   "14:00"
+  ],
+  [
+   "2026-11-21",
+   13,
+   "Rayo Vallecano",
+   "Valencia CF",
+   "16:15"
+  ],
+  [
+   "2026-11-21",
+   13,
+   "Sevilla FC",
+   "Real Betis Balompié",
+   "18:30"
+  ],
+  [
+   "2026-11-21",
+   13,
+   "Real Madrid",
+   "Celta de Vigo",
+   "21:00"
+  ],
+  [
+   "2026-11-22",
+   13,
+   "FC Barcelona",
+   "Villarreal CF",
+   "14:00"
+  ],
+  [
+   "2026-11-22",
+   13,
+   "Racing Santander",
+   "Real Sociedad",
+   "16:15"
+  ],
+  [
+   "2026-11-22",
+   13,
+   "CA Osasuna",
+   "Málaga CF",
+   "18:30"
+  ],
+  [
+   "2026-11-22",
+   13,
+   "Getafe CF",
+   "Atlético de Madrid",
+   "21:00"
+  ],
+  [
+   "2026-11-23",
+   13,
+   "Levante UD",
+   "Elche CF",
+   "21:00"
+  ],
+  [
+   "2026-11-27",
+   14,
+   "Levante UD",
+   "Racing Santander",
+   "21:00"
+  ],
+  [
+   "2026-11-28",
+   14,
+   "Real Betis Balompié",
+   "Rayo Vallecano",
+   "14:00"
+  ],
+  [
+   "2026-11-28",
+   14,
+   "Málaga CF",
+   "Athletic Bilbao",
+   "16:15"
+  ],
+  [
+   "2026-11-28",
+   14,
+   "Elche CF",
+   "Atlético de Madrid",
+   "18:30"
+  ],
+  [
+   "2026-11-28",
+   14,
+   "Real Madrid",
+   "Deportivo Alavés",
+   "21:00"
+  ],
+  [
+   "2026-11-29",
+   14,
+   "Valencia CF",
+   "CA Osasuna",
+   "14:00"
+  ],
+  [
+   "2026-11-29",
+   14,
+   "Deportivo A Coruña",
+   "FC Barcelona",
+   "16:15"
+  ],
+  [
+   "2026-11-29",
+   14,
+   "Celta de Vigo",
+   "Villarreal CF",
+   "18:30"
+  ],
+  [
+   "2026-11-29",
+   14,
+   "Real Sociedad",
+   "Sevilla FC",
+   "21:00"
+  ],
+  [
+   "2026-11-30",
+   14,
+   "RCD Espanyol Barcelona",
+   "Getafe CF",
+   "21:00"
+  ],
+  [
+   "2026-12-04",
+   15,
+   "Deportivo Alavés",
+   "RCD Espanyol Barcelona",
+   "21:00"
+  ],
+  [
+   "2026-12-05",
+   15,
+   "Racing Santander",
+   "Deportivo A Coruña",
+   "14:00"
+  ],
+  [
+   "2026-12-05",
+   15,
+   "Rayo Vallecano",
+   "Levante UD",
+   "16:15"
+  ],
+  [
+   "2026-12-05",
+   15,
+   "Villarreal CF",
+   "Real Sociedad",
+   "18:30"
+  ],
+  [
+   "2026-12-05",
+   15,
+   "FC Barcelona",
+   "Celta de Vigo",
+   "21:00"
+  ],
+  [
+   "2026-12-06",
+   15,
+   "CA Osasuna",
+   "Elche CF",
+   "14:00"
+  ],
+  [
+   "2026-12-06",
+   15,
+   "Athletic Bilbao",
+   "Real Madrid",
+   "16:15"
+  ],
+  [
+   "2026-12-06",
+   15,
+   "Getafe CF",
+   "Valencia CF",
+   "18:30"
+  ],
+  [
+   "2026-12-06",
+   15,
+   "Atlético de Madrid",
+   "Real Betis Balompié",
+   "21:00"
+  ],
+  [
+   "2026-12-07",
+   15,
+   "Sevilla FC",
+   "Málaga CF",
+   "21:00"
+  ],
+  [
+   "2026-12-13",
+   16,
+   "Atlético de Madrid",
+   "Valencia CF"
+  ],
+  [
+   "2026-12-13",
+   16,
+   "Real Betis Balompié",
+   "Racing Santander"
+  ],
+  [
+   "2026-12-13",
+   16,
+   "Deportivo A Coruña",
+   "Athletic Bilbao"
+  ],
+  [
+   "2026-12-13",
+   16,
+   "Elche CF",
+   "Sevilla FC"
+  ],
+  [
+   "2026-12-13",
+   16,
+   "RCD Espanyol Barcelona",
+   "Celta de Vigo"
+  ],
+  [
+   "2026-12-13",
+   16,
+   "Levante UD",
+   "Deportivo Alavés"
+  ],
+  [
+   "2026-12-13",
+   16,
+   "Málaga CF",
+   "FC Barcelona"
+  ],
+  [
+   "2026-12-13",
+   16,
+   "Real Madrid",
+   "CA Osasuna"
+  ],
+  [
+   "2026-12-13",
+   16,
+   "Real Sociedad",
+   "Getafe CF"
+  ],
+  [
+   "2026-12-13",
+   16,
+   "Villarreal CF",
+   "Rayo Vallecano"
+  ],
+  [
+   "2026-12-20",
+   17,
+   "Deportivo Alavés",
+   "Elche CF"
+  ],
+  [
+   "2026-12-20",
+   17,
+   "Athletic Bilbao",
+   "Real Betis Balompié"
+  ],
+  [
+   "2026-12-20",
+   17,
+   "Celta de Vigo",
+   "Atlético de Madrid"
+  ],
+  [
+   "2026-12-20",
+   17,
+   "Deportivo A Coruña",
+   "Real Madrid"
+  ],
+  [
+   "2026-12-20",
+   17,
+   "FC Barcelona",
+   "Real Sociedad"
+  ],
+  [
+   "2026-12-20",
+   17,
+   "Getafe CF",
+   "Levante UD"
+  ],
+  [
+   "2026-12-20",
+   17,
+   "CA Osasuna",
+   "Villarreal CF"
+  ],
+  [
+   "2026-12-20",
+   17,
+   "Rayo Vallecano",
+   "Málaga CF"
+  ],
+  [
+   "2026-12-20",
+   17,
+   "Sevilla FC",
+   "Racing Santander"
+  ],
+  [
+   "2026-12-20",
+   17,
+   "Valencia CF",
+   "RCD Espanyol Barcelona"
+  ],
+  [
+   "2027-01-03",
+   18,
+   "Real Betis Balompié",
+   "Deportivo Alavés"
+  ],
+  [
+   "2027-01-03",
+   18,
+   "Celta de Vigo",
+   "Deportivo A Coruña"
+  ],
+  [
+   "2027-01-03",
+   18,
+   "RCD Espanyol Barcelona",
+   "FC Barcelona"
+  ],
+  [
+   "2027-01-03",
+   18,
+   "Levante UD",
+   "Valencia CF"
+  ],
+  [
+   "2027-01-03",
+   18,
+   "Málaga CF",
+   "Elche CF"
+  ],
+  [
+   "2027-01-03",
+   18,
+   "Racing Santander",
+   "Athletic Bilbao"
+  ],
+  [
+   "2027-01-03",
+   18,
+   "Rayo Vallecano",
+   "Atlético de Madrid"
+  ],
+  [
+   "2027-01-03",
+   18,
+   "Real Madrid",
+   "Getafe CF"
+  ],
+  [
+   "2027-01-03",
+   18,
+   "Real Sociedad",
+   "CA Osasuna"
+  ],
+  [
+   "2027-01-03",
+   18,
+   "Villarreal CF",
+   "Sevilla FC"
+  ],
+  [
+   "2027-01-10",
+   19,
+   "Deportivo Alavés",
+   "Real Sociedad"
+  ],
+  [
+   "2027-01-10",
+   19,
+   "Athletic Bilbao",
+   "Villarreal CF"
+  ],
+  [
+   "2027-01-10",
+   19,
+   "Atlético de Madrid",
+   "Racing Santander"
+  ],
+  [
+   "2027-01-10",
+   19,
+   "Deportivo A Coruña",
+   "Rayo Vallecano"
+  ],
+  [
+   "2027-01-10",
+   19,
+   "Elche CF",
+   "Getafe CF"
+  ],
+  [
+   "2027-01-10",
+   19,
+   "RCD Espanyol Barcelona",
+   "Real Betis Balompié"
+  ],
+  [
+   "2027-01-10",
+   19,
+   "CA Osasuna",
+   "FC Barcelona"
+  ],
+  [
+   "2027-01-10",
+   19,
+   "Real Madrid",
+   "Levante UD"
+  ],
+  [
+   "2027-01-10",
+   19,
+   "Sevilla FC",
+   "Celta de Vigo"
+  ],
+  [
+   "2027-01-10",
+   19,
+   "Valencia CF",
+   "Málaga CF"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Atlético de Madrid",
+   "Real Sociedad"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Real Betis Balompié",
+   "Deportivo A Coruña"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Celta de Vigo",
+   "Valencia CF"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "FC Barcelona",
+   "Elche CF"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Getafe CF",
+   "Athletic Bilbao"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Levante UD",
+   "RCD Espanyol Barcelona"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Málaga CF",
+   "Real Madrid"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Racing Santander",
+   "CA Osasuna"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Rayo Vallecano",
+   "Sevilla FC"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Villarreal CF",
+   "Deportivo Alavés"
+  ],
+  [
+   "2027-01-24",
+   21,
+   "Deportivo Alavés",
+   "FC Barcelona"
+  ],
+  [
+   "2027-01-24",
+   21,
+   "Athletic Bilbao",
+   "Levante UD"
+  ],
+  [
+   "2027-01-24",
+   21,
+   "Deportivo A Coruña",
+   "Atlético de Madrid"
+  ],
+  [
+   "2027-01-24",
+   21,
+   "Elche CF",
+   "Rayo Vallecano"
+  ],
+  [
+   "2027-01-24",
+   21,
+   "RCD Espanyol Barcelona",
+   "Villarreal CF"
+  ],
+  [
+   "2027-01-24",
+   21,
+   "Getafe CF",
+   "CA Osasuna"
+  ],
+  [
+   "2027-01-24",
+   21,
+   "Racing Santander",
+   "Celta de Vigo"
+  ],
+  [
+   "2027-01-24",
+   21,
+   "Real Madrid",
+   "Real Betis Balompié"
+  ],
+  [
+   "2027-01-24",
+   21,
+   "Real Sociedad",
+   "Málaga CF"
+  ],
+  [
+   "2027-01-24",
+   21,
+   "Valencia CF",
+   "Sevilla FC"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "Atlético de Madrid",
+   "RCD Espanyol Barcelona"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "Real Betis Balompié",
+   "Elche CF"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "Celta de Vigo",
+   "Getafe CF"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "FC Barcelona",
+   "Valencia CF"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "Levante UD",
+   "Real Sociedad"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "Málaga CF",
+   "Deportivo Alavés"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "CA Osasuna",
+   "Deportivo A Coruña"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "Rayo Vallecano",
+   "Real Madrid"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "Sevilla FC",
+   "Athletic Bilbao"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "Villarreal CF",
+   "Racing Santander"
+  ],
+  [
+   "2026-12-02",
+   23,
+   "Real Sociedad",
+   "Real Madrid",
+   "19:00"
+  ],
+  [
+   "2026-12-02",
+   23,
+   "FC Barcelona",
+   "Atlético de Madrid",
+   "21:30"
+  ],
+  [
+   "2027-02-07",
+   23,
+   "Deportivo Alavés",
+   "Celta de Vigo"
+  ],
+  [
+   "2027-02-07",
+   23,
+   "Athletic Bilbao",
+   "CA Osasuna"
+  ],
+  [
+   "2027-02-07",
+   23,
+   "Real Betis Balompié",
+   "Sevilla FC"
+  ],
+  [
+   "2027-02-07",
+   23,
+   "Deportivo A Coruña",
+   "Málaga CF"
+  ],
+  [
+   "2027-02-07",
+   23,
+   "Elche CF",
+   "Levante UD"
+  ],
+  [
+   "2027-02-07",
+   23,
+   "RCD Espanyol Barcelona",
+   "Rayo Vallecano"
+  ],
+  [
+   "2027-02-07",
+   23,
+   "Getafe CF",
+   "Villarreal CF"
+  ],
+  [
+   "2027-02-07",
+   23,
+   "Valencia CF",
+   "Racing Santander"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "Celta de Vigo",
+   "Rayo Vallecano"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "Elche CF",
+   "Deportivo A Coruña"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "Levante UD",
+   "Málaga CF"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "CA Osasuna",
+   "Atlético de Madrid"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "Racing Santander",
+   "Getafe CF"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "Real Madrid",
+   "Athletic Bilbao"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "Real Sociedad",
+   "Real Betis Balompié"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "Sevilla FC",
+   "RCD Espanyol Barcelona"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "Valencia CF",
+   "Deportivo Alavés"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "Villarreal CF",
+   "FC Barcelona"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "Deportivo Alavés",
+   "Racing Santander"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "Athletic Bilbao",
+   "Celta de Vigo"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "Atlético de Madrid",
+   "Elche CF"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "Deportivo A Coruña",
+   "Real Sociedad"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "RCD Espanyol Barcelona",
+   "CA Osasuna"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "FC Barcelona",
+   "Levante UD"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "Málaga CF",
+   "Real Betis Balompié"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "Rayo Vallecano",
+   "Getafe CF"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "Sevilla FC",
+   "Real Madrid"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "Villarreal CF",
+   "Valencia CF"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "Athletic Bilbao",
+   "FC Barcelona"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "Real Betis Balompié",
+   "Villarreal CF"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "Celta de Vigo",
+   "RCD Espanyol Barcelona"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "Getafe CF",
+   "Deportivo Alavés"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "Levante UD",
+   "Deportivo A Coruña"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "Málaga CF",
+   "Atlético de Madrid"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "CA Osasuna",
+   "Sevilla FC"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "Racing Santander",
+   "Rayo Vallecano"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "Real Madrid",
+   "Valencia CF"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "Real Sociedad",
+   "Elche CF"
+  ],
+  [
+   "2027-03-07",
+   27,
+   "Deportivo Alavés",
+   "Athletic Bilbao"
+  ],
+  [
+   "2027-03-07",
+   27,
+   "Atlético de Madrid",
+   "Celta de Vigo"
+  ],
+  [
+   "2027-03-07",
+   27,
+   "Deportivo A Coruña",
+   "Getafe CF"
+  ],
+  [
+   "2027-03-07",
+   27,
+   "Elche CF",
+   "Málaga CF"
+  ],
+  [
+   "2027-03-07",
+   27,
+   "RCD Espanyol Barcelona",
+   "Racing Santander"
+  ],
+  [
+   "2027-03-07",
+   27,
+   "FC Barcelona",
+   "Real Betis Balompié"
+  ],
+  [
+   "2027-03-07",
+   27,
+   "Rayo Vallecano",
+   "CA Osasuna"
+  ],
+  [
+   "2027-03-07",
+   27,
+   "Sevilla FC",
+   "Real Sociedad"
+  ],
+  [
+   "2027-03-07",
+   27,
+   "Valencia CF",
+   "Levante UD"
+  ],
+  [
+   "2027-03-07",
+   27,
+   "Villarreal CF",
+   "Real Madrid"
+  ],
+  [
+   "2027-03-14",
+   28,
+   "Deportivo Alavés",
+   "Sevilla FC"
+  ],
+  [
+   "2027-03-14",
+   28,
+   "Athletic Bilbao",
+   "Valencia CF"
+  ],
+  [
+   "2027-03-14",
+   28,
+   "Real Betis Balompié",
+   "Levante UD"
+  ],
+  [
+   "2027-03-14",
+   28,
+   "Elche CF",
+   "Villarreal CF"
+  ],
+  [
+   "2027-03-14",
+   28,
+   "FC Barcelona",
+   "Deportivo A Coruña"
+  ],
+  [
+   "2027-03-14",
+   28,
+   "Getafe CF",
+   "Real Sociedad"
+  ],
+  [
+   "2027-03-14",
+   28,
+   "Málaga CF",
+   "Rayo Vallecano"
+  ],
+  [
+   "2027-03-14",
+   28,
+   "CA Osasuna",
+   "Celta de Vigo"
+  ],
+  [
+   "2027-03-14",
+   28,
+   "Racing Santander",
+   "Atlético de Madrid"
+  ],
+  [
+   "2027-03-14",
+   28,
+   "Real Madrid",
+   "RCD Espanyol Barcelona"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "Atlético de Madrid",
+   "Getafe CF"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "Celta de Vigo",
+   "Real Madrid"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "RCD Espanyol Barcelona",
+   "Athletic Bilbao"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "Levante UD",
+   "CA Osasuna"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "Racing Santander",
+   "Real Betis Balompié"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "Rayo Vallecano",
+   "FC Barcelona"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "Real Sociedad",
+   "Deportivo Alavés"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "Sevilla FC",
+   "Elche CF"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "Valencia CF",
+   "Deportivo A Coruña"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "Villarreal CF",
+   "Málaga CF"
+  ],
+  [
+   "2027-04-04",
+   30,
+   "Athletic Bilbao",
+   "Racing Santander"
+  ],
+  [
+   "2027-04-04",
+   30,
+   "Real Betis Balompié",
+   "Celta de Vigo"
+  ],
+  [
+   "2027-04-04",
+   30,
+   "Deportivo A Coruña",
+   "Villarreal CF"
+  ],
+  [
+   "2027-04-04",
+   30,
+   "Elche CF",
+   "Deportivo Alavés"
+  ],
+  [
+   "2027-04-04",
+   30,
+   "FC Barcelona",
+   "Sevilla FC"
+  ],
+  [
+   "2027-04-04",
+   30,
+   "Getafe CF",
+   "RCD Espanyol Barcelona"
+  ],
+  [
+   "2027-04-04",
+   30,
+   "Levante UD",
+   "Rayo Vallecano"
+  ],
+  [
+   "2027-04-04",
+   30,
+   "Málaga CF",
+   "CA Osasuna"
+  ],
+  [
+   "2027-04-04",
+   30,
+   "Real Madrid",
+   "Atlético de Madrid"
+  ],
+  [
+   "2027-04-04",
+   30,
+   "Real Sociedad",
+   "Valencia CF"
+  ],
+  [
+   "2027-04-11",
+   31,
+   "Deportivo Alavés",
+   "Real Betis Balompié"
+  ],
+  [
+   "2027-04-11",
+   31,
+   "Atlético de Madrid",
+   "Levante UD"
+  ],
+  [
+   "2027-04-11",
+   31,
+   "Celta de Vigo",
+   "Elche CF"
+  ],
+  [
+   "2027-04-11",
+   31,
+   "RCD Espanyol Barcelona",
+   "Málaga CF"
+  ],
+  [
+   "2027-04-11",
+   31,
+   "CA Osasuna",
+   "Real Madrid"
+  ],
+  [
+   "2027-04-11",
+   31,
+   "Racing Santander",
+   "FC Barcelona"
+  ],
+  [
+   "2027-04-11",
+   31,
+   "Rayo Vallecano",
+   "Real Sociedad"
+  ],
+  [
+   "2027-04-11",
+   31,
+   "Sevilla FC",
+   "Deportivo A Coruña"
+  ],
+  [
+   "2027-04-11",
+   31,
+   "Valencia CF",
+   "Getafe CF"
+  ],
+  [
+   "2027-04-11",
+   31,
+   "Villarreal CF",
+   "Athletic Bilbao"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Deportivo Alavés",
+   "Rayo Vallecano"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Atlético de Madrid",
+   "Sevilla FC"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Real Betis Balompié",
+   "Athletic Bilbao"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Deportivo A Coruña",
+   "Celta de Vigo"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Elche CF",
+   "CA Osasuna"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "FC Barcelona",
+   "RCD Espanyol Barcelona"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Getafe CF",
+   "Real Madrid"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Levante UD",
+   "Villarreal CF"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Málaga CF",
+   "Valencia CF"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Real Sociedad",
+   "Racing Santander"
+  ],
+  [
+   "2027-04-21",
+   33,
+   "Athletic Bilbao",
+   "Deportivo A Coruña"
+  ],
+  [
+   "2027-04-21",
+   33,
+   "Celta de Vigo",
+   "FC Barcelona"
+  ],
+  [
+   "2027-04-21",
+   33,
+   "RCD Espanyol Barcelona",
+   "Real Sociedad"
+  ],
+  [
+   "2027-04-21",
+   33,
+   "Getafe CF",
+   "Real Betis Balompié"
+  ],
+  [
+   "2027-04-21",
+   33,
+   "CA Osasuna",
+   "Deportivo Alavés"
+  ],
+  [
+   "2027-04-21",
+   33,
+   "Racing Santander",
+   "Málaga CF"
+  ],
+  [
+   "2027-04-21",
+   33,
+   "Real Madrid",
+   "Elche CF"
+  ],
+  [
+   "2027-04-21",
+   33,
+   "Sevilla FC",
+   "Levante UD"
+  ],
+  [
+   "2027-04-21",
+   33,
+   "Valencia CF",
+   "Rayo Vallecano"
+  ],
+  [
+   "2027-04-21",
+   33,
+   "Villarreal CF",
+   "Atlético de Madrid"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Atlético de Madrid",
+   "Deportivo Alavés"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Real Betis Balompié",
+   "Valencia CF"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Celta de Vigo",
+   "Sevilla FC"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Deportivo A Coruña",
+   "Racing Santander"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Elche CF",
+   "RCD Espanyol Barcelona"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "FC Barcelona",
+   "CA Osasuna"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Levante UD",
+   "Real Madrid"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Málaga CF",
+   "Getafe CF"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Rayo Vallecano",
+   "Villarreal CF"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Real Sociedad",
+   "Athletic Bilbao"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Deportivo Alavés",
+   "Levante UD"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Athletic Bilbao",
+   "Málaga CF"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Real Betis Balompié",
+   "RCD Espanyol Barcelona"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Getafe CF",
+   "Elche CF"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "CA Osasuna",
+   "Real Sociedad"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Racing Santander",
+   "Sevilla FC"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Rayo Vallecano",
+   "Deportivo A Coruña"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Real Madrid",
+   "FC Barcelona"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Valencia CF",
+   "Atlético de Madrid"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Villarreal CF",
+   "Celta de Vigo"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Atlético de Madrid",
+   "Rayo Vallecano"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Deportivo A Coruña",
+   "Deportivo Alavés"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Elche CF",
+   "Athletic Bilbao"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "RCD Espanyol Barcelona",
+   "Valencia CF"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Levante UD",
+   "Getafe CF"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Málaga CF",
+   "Celta de Vigo"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "CA Osasuna",
+   "Real Betis Balompié"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Real Madrid",
+   "Racing Santander"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Real Sociedad",
+   "FC Barcelona"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Sevilla FC",
+   "Villarreal CF"
+  ],
+  [
+   "2027-05-23",
+   37,
+   "Deportivo Alavés",
+   "Real Madrid"
+  ],
+  [
+   "2027-05-23",
+   37,
+   "Atlético de Madrid",
+   "Athletic Bilbao"
+  ],
+  [
+   "2027-05-23",
+   37,
+   "Celta de Vigo",
+   "Real Sociedad"
+  ],
+  [
+   "2027-05-23",
+   37,
+   "Deportivo A Coruña",
+   "RCD Espanyol Barcelona"
+  ],
+  [
+   "2027-05-23",
+   37,
+   "FC Barcelona",
+   "Málaga CF"
+  ],
+  [
+   "2027-05-23",
+   37,
+   "Racing Santander",
+   "Levante UD"
+  ],
+  [
+   "2027-05-23",
+   37,
+   "Rayo Vallecano",
+   "Real Betis Balompié"
+  ],
+  [
+   "2027-05-23",
+   37,
+   "Sevilla FC",
+   "Getafe CF"
+  ],
+  [
+   "2027-05-23",
+   37,
+   "Valencia CF",
+   "Elche CF"
+  ],
+  [
+   "2027-05-23",
+   37,
+   "Villarreal CF",
+   "CA Osasuna"
+  ],
+  [
+   "2027-05-30",
+   38,
+   "Athletic Bilbao",
+   "Rayo Vallecano"
+  ],
+  [
+   "2027-05-30",
+   38,
+   "Real Betis Balompié",
+   "Atlético de Madrid"
+  ],
+  [
+   "2027-05-30",
+   38,
+   "Elche CF",
+   "Racing Santander"
+  ],
+  [
+   "2027-05-30",
+   38,
+   "RCD Espanyol Barcelona",
+   "Deportivo Alavés"
+  ],
+  [
+   "2027-05-30",
+   38,
+   "Getafe CF",
+   "FC Barcelona"
+  ],
+  [
+   "2027-05-30",
+   38,
+   "Levante UD",
+   "Celta de Vigo"
+  ],
+  [
+   "2027-05-30",
+   38,
+   "Málaga CF",
+   "Sevilla FC"
+  ],
+  [
+   "2027-05-30",
+   38,
+   "CA Osasuna",
+   "Valencia CF"
+  ],
+  [
+   "2027-05-30",
+   38,
+   "Real Madrid",
+   "Deportivo A Coruña"
+  ],
+  [
+   "2027-05-30",
+   38,
+   "Real Sociedad",
+   "Villarreal CF"
+  ]
+ ],
  "second_values": {
   "UD Almería": 68.1,
   "Girona FC": 65.75,
@@ -224,131 +2981,5 @@
   "CE Sabadell FC": 11.9,
   "AD Ceuta FC": 11.4,
   "CD Tenerife": 11.0
- },
- "second_clubs": {
-  "UD Almería": {
-   "value": 68.1,
-   "venue": "UD Almería Stadium",
-   "cap": 18331,
-   "coach": "Xavier García Pimienta"
-  },
-  "Girona FC": {
-   "value": 65.75,
-   "venue": "Montilivi",
-   "cap": 14624,
-   "coach": "Quique Álvarez"
-  },
-  "RCD Mallorca": {
-   "value": 48.9,
-   "venue": "Mallorca Son Moix",
-   "cap": 25736,
-   "coach": "Luis García"
-  },
-  "Real Oviedo": {
-   "value": 33.0,
-   "venue": "Carlos Tartiere",
-   "cap": 30500
-  },
-  "UD Las Palmas": {
-   "value": 29.65,
-   "venue": "Estadio de Gran Canaria",
-   "cap": 32400
-  },
-  "CD Leganés": {
-   "value": 28.4,
-   "venue": "Ontime Butarque",
-   "cap": 14422
-  },
-  "Real Valladolid CF": {
-   "value": 27.5,
-   "venue": "José Zorrilla",
-   "cap": 27618,
-   "coach": "Fran Escribá"
-  },
-  "Cádiz CF": {
-   "value": 27.25,
-   "venue": "JP Financial",
-   "cap": 21094
-  },
-  "Sporting Gijón": {
-   "value": 26.3,
-   "venue": "El Molinón - Enrique Castro 'Quini'",
-   "cap": 29371,
-   "coach": "Nicolás Larcamón"
-  },
-  "CD Castellón": {
-   "value": 25.15,
-   "venue": "SkyFi Castalia",
-   "cap": 15500,
-   "coach": "Pablo Hernández"
-  },
-  "Real Sociedad B": {
-   "value": 22.25,
-   "venue": "Instalaciones de Zubieta",
-   "cap": 2500,
-   "coach": "Ion Ansotegi"
-  },
-  "Burgos CF": {
-   "value": 19.5,
-   "venue": "El Plantío",
-   "cap": 12642,
-   "coach": "Sergio Francisco"
-  },
-  "Granada CF": {
-   "value": 17.55,
-   "venue": "Nuevo Los Cármenes",
-   "cap": 19336,
-   "coach": "Pacheta"
-  },
-  "SD Eibar": {
-   "value": 16.5,
-   "venue": "Ipurua",
-   "cap": 8164
-  },
-  "Córdoba CF": {
-   "value": 16.1,
-   "venue": "Bahrain Victorious Nuevo Arcángel",
-   "cap": 21822,
-   "coach": "Iván Ania"
-  },
-  "Albacete Balompié": {
-   "value": 15.95,
-   "venue": "Carlos Belmonte",
-   "cap": 16998
-  },
-  "FC Andorra": {
-   "value": 15.0,
-   "venue": "Estadi de la FAF",
-   "cap": 5600,
-   "coach": "Carles Manso"
-  },
-  "RC Celta Fortuna": {
-   "value": 12.75,
-   "venue": "Abanca Balaídos",
-   "cap": 24870,
-   "coach": "Fredi Álvarez"
-  },
-  "CD Eldense": {
-   "value": 11.9,
-   "venue": "Nuevo Pepico Amat",
-   "cap": 5776
-  },
-  "CE Sabadell FC": {
-   "value": 11.9,
-   "venue": "Nova Creu Alta",
-   "cap": 11981,
-   "coach": "Ferran Costa"
-  },
-  "AD Ceuta FC": {
-   "value": 11.4,
-   "venue": "Alfonso Murube",
-   "cap": 6500
-  },
-  "CD Tenerife": {
-   "value": 11.0,
-   "venue": "Heliodoro Rodríguez López",
-   "cap": 22824,
-   "coach": "Álvaro Cervera"
-  }
  }
 }

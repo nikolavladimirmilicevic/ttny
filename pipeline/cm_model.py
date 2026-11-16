@@ -907,7 +907,7 @@ def build_second(out_players, today, season, people, src=None, ids=None, short=N
         q = round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1) if ovrs else 65
         clubs.append({'id': cid, 'name': short[cname] if short and cname in short else CH_SHORT.get(cname, re.sub(r' (FC|AFC|City)$', '', cname) if cname not in ('Stoke City', 'Bristol City', 'Cardiff City', 'Swansea City', 'Norwich City', 'Lincoln City', 'Birmingham City') else cname),
                       'full': cname, 'venue': c.get('stadium'), 'cap': c.get('cap'), 'kit': kitmap.get(cname, ['#444444', '#FFFFFF']),
-                      'q': q, 'coach': c.get('coach'), 'second': 1, 'ctry': ctry})
+                      'q': q, 'coach': c.get('coach'), 'second': 1, 'ctry': ctry, **({'res': c['res']} if c.get('res') else {})})
     return {'name': name, 'clubs': clubs, 'players': players}
 
 
@@ -938,9 +938,25 @@ IT_KIT = {'Inter Milan': ['#0068A8', '#000000'], 'Juventus FC': ['#FFFFFF', '#00
 IT_CODE = {'Inter Milan': 'INT', 'Juventus FC': 'JUV', 'AC Milan': 'MIL', 'AS Roma': 'ROM', 'SS Lazio': 'LAZ', 'SSC Napoli': 'NAP', 'Atalanta BC': 'ATA',
            'ACF Fiorentina': 'FIO', 'Bologna FC 1909': 'BOL', 'Como 1907': 'COM', 'Torino FC': 'TOR', 'Genoa CFC': 'GEN', 'Udinese Calcio': 'UDI',
            'Cagliari Calcio': 'CAG', 'Parma Calcio 1913': 'PAR', 'Venezia FC': 'VEN', 'Frosinone Calcio': 'FRO', 'AC Monza': 'MON', 'US Lecce': 'LEC', 'US Sassuolo': 'SAS'}
+ES_KIT = {'Real Madrid': ['#FFFFFF', '#FEBE10'], 'FC Barcelona': ['#A50044', '#004D98'], 'Atlético de Madrid': ['#CB3524', '#FFFFFF'], 'Villarreal CF': ['#FFE667', '#005187'],
+          'Real Sociedad': ['#0067B1', '#FFFFFF'], 'Real Betis Balompié': ['#00954C', '#FFFFFF'], 'Athletic Bilbao': ['#EE2523', '#FFFFFF'], 'Celta de Vigo': ['#8AC3EE', '#FFFFFF'],
+          'Sevilla FC': ['#FFFFFF', '#D4021D'], 'Valencia CF': ['#FFFFFF', '#000000'], 'RCD Espanyol Barcelona': ['#007FC8', '#FFFFFF'], 'Getafe CF': ['#005999', '#FFFFFF'],
+          'CA Osasuna': ['#D91A21', '#0A346F'], 'Rayo Vallecano': ['#FFFFFF', '#E53027'], 'Deportivo Alavés': ['#0761AF', '#FFFFFF'], 'Levante UD': ['#B4053F', '#004F9F'],
+          'Elche CF': ['#FFFFFF', '#05642C'], 'Deportivo A Coruña': ['#0052A5', '#FFFFFF'], 'Racing Santander': ['#FFFFFF', '#00A650'], 'Málaga CF': ['#87CEEB', '#FFFFFF'],
+          'RCD Mallorca': ['#E20613', '#000000'], 'Girona FC': ['#CD2534', '#FFFFFF'], 'Real Oviedo': ['#0055A4', '#FFFFFF'], 'UD Almería': ['#EE1119', '#FFFFFF'],
+          'UD Las Palmas': ['#FFE400', '#0047AB'], 'CD Castellón': ['#000000', '#FFFFFF'], 'Burgos CF': ['#FFFFFF', '#000000'], 'SD Eibar': ['#A6192E', '#0047AB'],
+          'Sporting Gijón': ['#E2001A', '#FFFFFF'], 'Córdoba CF': ['#FFFFFF', '#009639'], 'AD Ceuta FC': ['#FFFFFF', '#000000'], 'Albacete Balompié': ['#FFFFFF', '#E2001A'],
+          'FC Andorra': ['#1A2F6E', '#E2001A'], 'Granada CF': ['#E2001A', '#FFFFFF'], 'Real Sociedad B': ['#0067B1', '#FFFFFF'], 'CD Leganés': ['#FFFFFF', '#0047AB'],
+          'Real Valladolid CF': ['#5B2C83', '#FFFFFF'], 'Cádiz CF': ['#FFE400', '#0047AB'], 'CD Tenerife': ['#FFFFFF', '#0047AB'], 'CD Eldense': ['#0047AB', '#E2001A'],
+          'CE Sabadell FC': ['#0099DA', '#FFFFFF'], 'RC Celta Fortuna': ['#8AC3EE', '#FFFFFF']}
+ES_CODE = {'Real Madrid': 'RMA', 'FC Barcelona': 'BAR', 'Atlético de Madrid': 'ATM', 'Villarreal CF': 'VIL', 'Real Sociedad': 'RSO', 'Real Betis Balompié': 'BET',
+           'Athletic Bilbao': 'ATH', 'Celta de Vigo': 'CEL', 'Sevilla FC': 'SEV', 'Valencia CF': 'VAL', 'RCD Espanyol Barcelona': 'ESP', 'Getafe CF': 'GET',
+           'CA Osasuna': 'OSA', 'Rayo Vallecano': 'RAY', 'Deportivo Alavés': 'ALA', 'Levante UD': 'LEV', 'Elche CF': 'ELC', 'Deportivo A Coruña': 'DEP',
+           'Racing Santander': 'RAC', 'Málaga CF': 'MAL'}
 # each playable league beside the Premier League: its Transfermarkt file, names, kits and codes, id range for players the API lacks
 LG_SPEC = {'FRA': {'file': 'tm_ligue1.json', 'ctry': 'FRA', 'country': 'France', 'league': 'Ligue 1', 'second': 'Ligue 2', 'kit': FR_KIT, 'code': FR_CODE, 'n': 18, 'id_base': 4000000},
-           'ITA': {'file': 'tm_seriea.json', 'ctry': 'ITA', 'country': 'Italy', 'league': 'Serie A', 'second': 'Serie B', 'kit': IT_KIT, 'code': IT_CODE, 'n': 20, 'id_base': 6000000}}
+           'ITA': {'file': 'tm_seriea.json', 'ctry': 'ITA', 'country': 'Italy', 'league': 'Serie A', 'second': 'Serie B', 'kit': IT_KIT, 'code': IT_CODE, 'n': 20, 'id_base': 6000000},
+           'ESP': {'file': 'tm_laliga.json', 'ctry': 'ESP', 'country': 'Spain', 'league': 'LaLiga', 'second': 'LaLiga2', 'kit': ES_KIT, 'code': ES_CODE, 'n': 20, 'id_base': 8000000}}
 
 
 def _elo_q(clubs):
@@ -1046,7 +1062,8 @@ def build_league(world, out_players, clubs, kits, alias, today, season, people, 
     ids = {c['full']: c['id'] for c in out_clubs}
     fixtures = [[d, f'Regular Season - {r}', ids[h], ids[a]] + x for d, r, h, a, *x in src.get('fixtures', []) if h in ids and a in ids]
     # the second tier (Ligue 2), as the Championship is built
-    l2 = {full: {'players': (TMS.get(full) or {}).get('players', []), 'stadium': c.get('venue'), 'cap': c.get('cap'), 'coach': c.get('coach')}
+    l2 = {full: {'players': (TMS.get(full) or {}).get('players', []), 'stadium': c.get('venue'), 'cap': c.get('cap'), 'coach': c.get('coach'),
+                 **({'res': src['clubs'][c['res']]['id']} if c.get('res') in src['clubs'] else {})}   # a reserve team: never promoted
           for full, c in src['clubs'].items() if c['tier'] == 2 and TMS.get(full)}
     sec = build_second(out_players, today, season, people, src={'clubs': l2}, ids={f: c['id'] for f, c in src['clubs'].items() if c.get('id')},
                        short={f: c['short'] for f, c in src['clubs'].items()}, kitmap={**{f: kits[c['short']] for f, c in src['clubs'].items() if c['short'] in kits}, **spec['kit']},
