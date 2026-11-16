@@ -793,7 +793,7 @@ CH_KIT = {'West Ham United': ['#7A263A', '#1BB1E7'], 'Wolverhampton Wanderers': 
           'Bolton Wanderers': ['#FFFFFF', '#263C7E'], 'Cardiff City': ['#0070B5', '#FFFFFF'], 'Lincoln City': ['#E21C23', '#FFFFFF']}
 CH_POS = {'Goalkeeper': 'GK', 'Centre-Back': 'CB', 'Left-Back': 'LB', 'Right-Back': 'RB', 'Defensive Midfield': 'DMF',
           'Central Midfield': 'CMF', 'Attacking Midfield': 'AMF', 'Left Winger': 'LWF', 'Right Winger': 'RWF',
-          'Centre-Forward': 'CF', 'Left Midfield': 'LMF', 'Right Midfield': 'RMF', 'Second Striker': 'SS'}
+          'Centre-Forward': 'CF', 'Left Midfield': 'LMF', 'Right Midfield': 'RMF', 'Second Striker': 'SS', 'Striker': 'CF', 'Midfielder': 'CMF'}
 GK_KEYS = ('ga', 'gc', 'gl', 'gr', 'gh')
 
 
