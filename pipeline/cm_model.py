@@ -767,7 +767,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         _eu = build_europe(world, out_players, clubs, kits, alias, today)
         if _eu and _eu['comps']:
             extra['europe'] = _eu
-        _cw = build_cwc(out_players + ((_eu or {}).get('players') or []), today)
+        _cw = build_cwc(out_players + ((_eu or {}).get('players') or []), today, clubs)
         if _cw:
             extra['cwc'] = _cw
     except Exception:   # the cups are an extra: the league is built whatever happens here
@@ -1022,8 +1022,8 @@ def build_europe(world, out_players, clubs, kits, alias, today):
 
 
 # ---- the Club World Cup (every four years) and the UEFA Super Cup's honours (pipeline/tm_cwc.json) ----
-# the clubs from outside Europe: their strength on the league's scale is our estimate (no Elo for them in the data),
-# by their standing at the 2025 edition and in their own continent
+# the clubs from outside Europe: their strength comes from Transfermarkt's team values (_value_scale); these old
+# estimates stand in only for a club missing there
 CWC_Q = {'Al-Ahli SFC': 75, 'Auckland FC': 66, 'Sociedade Esportiva Palmeiras': 77, 'CR Flamengo': 78, 'Botafogo de Futebol e Regatas': 75, 'Fluminense Football Club': 74,
          'CA River Plate': 76, 'CA Boca Juniors': 75, 'CF Monterrey': 74, 'CF Pachuca': 71, 'Inter Miami CF': 72, 'Seattle Sounders FC': 70,
          'Los Angeles FC': 71, 'Al Ahly FC': 72, 'Esperance Tunis': 69, 'Mamelodi Sundowns FC': 71, 'Wydad Casablanca': 68,
@@ -1038,7 +1038,43 @@ CWC_KIT = {'Al-Ahli SFC': ['#0A8F3C', '#FFFFFF'], 'Auckland FC': ['#0B1F3A', '#3
 _SQ_POS = {'Goalkeeper': 'GK', 'Defender': 'CB', 'Midfielder': 'CMF', 'Attacker': 'CF'}
 
 
-def build_cwc(out_players, today):
+def _value_scale(clubs):
+    """Strength from Transfermarkt's team values (pipeline/tm_values.json): q = a + b * ln(value of the best 18), fitted
+    on the league's own clubs in the list. Returns (q_of(tm_name, conf) or None, the values)."""
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_values.json'), encoding='utf-8') as f:
+            tv = json.load(f)
+    except (OSError, ValueError):
+        return None
+    V = tv.get('clubs') or {}
+    lg = {re.sub(r'[^a-z0-9]', '', _fold(c.get('name') or '')): c['q'] for c in clubs if c.get('q')}
+    pts = []
+    for nm, v in V.items():
+        if v.get('conf') != 'UEFA' or 'Premier League' not in (v.get('comp') or ''):
+            continue
+        k = re.sub(r'[^a-z0-9]', '', _fold(re.sub(r' (FC|AFC)$|^AFC ', '', nm)))
+        hit = next((q for kk, q in lg.items() if kk and (kk == k or kk in k or k in kk)), None)
+        if hit:
+            pts.append((math.log(v['top18']), hit))
+    if len(pts) < 6:
+        return None
+    mx = statistics.mean(x for x, _ in pts); my = statistics.mean(y for _, y in pts)
+    b = sum((x - mx) * (y - my) for x, y in pts) / max(1e-9, sum((x - mx) ** 2 for x, _ in pts)); a = my - b * mx
+    bonus = tv.get('world_bonus', 10)
+    floor = {}
+    for v in V.values():
+        floor[v['conf']] = min(floor.get(v['conf'], 1e9), v['top18'])
+    conf_key = {'Concacaf': 'CONCACAF'}
+    def q_of(name, conf):
+        c = conf_key.get(conf, conf)
+        v = (V.get(name) or {}).get('top18') or (floor.get(c, 0) * .8 or None)
+        if not v:
+            return None
+        return round(a + b * math.log(v) + (bonus if c != 'UEFA' else 0), 1)
+    return q_of
+
+
+def build_cwc(out_players, today, clubs_lg=None):
     """The Club World Cup's shape (groups, dates, bracket) from its 2025 edition, its clubs from outside Europe with
     their squads (fetched by update.py into data/cache/cwc.json), and the honours (2025 winners, the 2026 Super Cup)."""
     try:
@@ -1056,6 +1092,7 @@ def build_cwc(out_players, today):
         if x.get('a') and x.get('r'):
             by_pos.setdefault(x['prim'], []).append(x)
     have = {x['id'] for x in out_players}
+    vq = _value_scale(clubs_lg or [])
     groups = src['groups']; slot = {t: (g, i) for g, L in groups.items() for i, t in enumerate(L)}
     gfx = [[d, g, slot[h][1], slot[a][1]] for d, g, h, a in src['fx']]
     clubs, players = [], []
@@ -1063,7 +1100,7 @@ def build_cwc(out_players, today):
         e = cache.get(r['tm']) or {}
         if not e.get('id') or not e.get('p'):
             continue
-        q0 = CWC_Q.get(r['tm'], 70)
+        q0 = (vq and vq(r['tm'], r['conf'])) or CWC_Q.get(r['tm'], 70)   # Transfermarkt's team value; our old estimate only if it is missing
         raw = [p for p in e['p'] if p[0] not in have]
         gks = [p for p in raw if p[4] == 'Goalkeeper'][:3]; rest = [p for p in raw if p[4] != 'Goalkeeper'][:20]
         sq = gks + rest

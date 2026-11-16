@@ -521,3 +521,10 @@ FIFA Intercontinental Cup (16.11.2026). Every season, in the format of FIFA's 20
 - **Before the game's squads arrive:** the cup waits until the pipeline has fetched those clubs' squads.
 - **Honours:** Real Madrid (2024) and PSG (2025), from Transfermarkt.
 - **Screens:** a page under Europe, plus fixtures, Next Match and the trophy cabinet.
+
+World clubs' strength from Transfermarkt (16.11.2026). The Club World Cup and Intercontinental Cup clubs from outside Europe now take their strength from Transfermarkt's team values (`pipeline/tm_values.json`: the 25 most valuable clubs of each confederation, value of the best 18 players).
+- **Value to strength:** q = a + b · ln(value) is fitted on the Premier League clubs in the list (doubling the value is worth about four points).
+- **Clubs outside Europe** get 10 points on top: the market prices their players far below Europe's. Fitting the 2025 Club World Cup's 63 results gives about 13, but those games were played in Europe's off-season, so 10 is used.
+- **Below the list:** a club below its confederation's 25th (Urawa, Ulsan, Pachuca) gets 80% of the 25th value.
+- **Results:** Al-Hilal 83, Palmeiras and Flamengo 82, Al-Ahli 82, River 79, Botafogo, Fluminense and Boca 78, Inter Miami 77, Monterrey 75, LAFC 74, Seattle 73, Pachuca 71, Al Ain 71, Al Ahly 70, Sundowns 70, Esperance 66, Urawa and Ulsan 66, Wydad 65, Auckland FC 60, Auckland City 53.
+- **European foreign clubs** keep their Elo-based strength (with the league discount): the list covers only Europe's 25 most valuable, and on Premier League clubs value predicts strength only loosely.
