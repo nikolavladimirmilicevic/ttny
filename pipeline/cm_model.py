@@ -474,6 +474,51 @@ def apply_fixes(rows, fixes, teams, wc, people, wp, season):
             hit['e'] = {k: v for k, v in dict(hit['e'], bd=fx['dob']).items() if k != 'age'}
 
 
+def make_attrs(pid, pos, pos_list, o, ht, wt, age, z, rnd, p=None):
+    """A player's attributes and his rating in every position: the learned shape of his position at his overall (height,
+    weight, age), moved by his season's numbers where there are any (z), his PES character traits by his API id, and each
+    other position rated against his own (a position he plays: as is; same group: -3; else -6). Shared by every league."""
+    g = _GROUP[pos]
+    a = _shape(PROF, pos, o, ht, wt, age, z, rnd) if PROF else _shape_old(pos, g, o, ht, wt, age, z, rnd, p)
+    style_pick = a.pop('_style', None)
+    # his season moves attributes against each other (the shift below keeps his position's rating on his overall)
+    if g == 'GK':
+        a['gr'] += 2 * z('sv90'); a['ga'] -= 1.5 * z('gc90'); a['gc'] += 1 * z('sv90')
+    else:
+        a['fi'] += 2 * z('g90') + 1 * z('sot'); a['oa'] += 1.5 * z('g90') + 1 * z('a90')
+        a['lp'] += 2 * z('acc') + 1 * z('kp90'); a['lf'] += 1.5 * z('kp90'); a['tp'] += 1 * z('acc')
+        a['dr'] += 2 * z('drs90') + 1 * z('drpct'); a['ba'] += 1 * z('drpct')
+        a['bw'] += 2 * z('def90'); a['da'] += 1.5 * z('int90') - 1.5 * z('past90')
+        a['pc'] += 2 * z('duw'); a['ag'] += 1.5 * z('fc90') + 1 * z('cards90')
+        a['cu'] += 1 * z('a90')
+    own = GKA if g == 'GK' else OUT
+    # his character (pipeline/cm_traits.json: the few attributes that stand out in his PES 2021 profile, names only):
+    # +3 on his strengths, -3 on his weaknesses, the rest shifted so his position's rating stays where it was
+    tr = TRAITS.get(str(pid))
+    if tr and PROF:
+        before = pos_rating({k: clip(v) for k, v in a.items()}, pos)
+        for k in tr.get('s', []): a[k] += TRAIT_PTS
+        for k in tr.get('w', []): a[k] -= TRAIT_PTS
+        rest = [k for k in own if k not in tr.get('s', []) and k not in tr.get('w', [])]
+        wk = dict(zip(PROF['keys'], PROF['rating'][pos]['w']))
+        wsum = sum(wk.get(k, 0) for k in rest)
+        if wsum > .05:
+            shift = (before - pos_rating({k: clip(v) for k, v in a.items()}, pos)) / wsum
+            for k in rest: a[k] += shift
+    if not PROF:   # the old profiles: shift so his position's rating lands on his overall
+        shift = o - pos_rating(a, pos)
+        for k in own:
+            a[k] = clip(a[k] + shift)
+    # (with the learned shapes, attributes already sit around his overall as they do at that level; the rating
+    # formula, linear, runs a little low for the very best, so other positions are rated against his own)
+    base = pos_rating({k: clip(v) for k, v in a.items()}, pos)
+    a = {k: int(round(clip(a[k]))) for k in KEYS}
+    ratings = {q: int(round(clip(o + pos_rating(a, q) - base + (0 if q in pos_list else -3 if _GROUP[q] == g else -6)))) for q in POSITIONS}
+    ratings[pos] = int(round(o))
+    style = (style_pick if style_pick and style_pick != '---' else None) or _style(a, pos)
+    return a, ratings, style
+
+
 def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen=None, fixes=None):
     """cm.json as a dict, or None while the league's clubs are not all in."""
     teams = cm.get('teams') or []
@@ -601,47 +646,11 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             mu, sd = norm[(g, m)]
             return max(-2.5, min(2.5, (p[m] - mu) / sd)) * min(1, p['min'] / 1500)
         ht, wt, age = e.get('ht'), e.get('wt'), age_of(e, today)
-        a = _shape(PROF, pos, o, ht, wt, age, z, rnd) if PROF else _shape_old(pos, g, o, ht, wt, age, z, rnd, p)
-        style_pick = a.pop('_style', None)
-        # his season moves attributes against each other (the shift below keeps his position's rating on his overall)
-        if g == 'GK':
-            a['gr'] += 2 * z('sv90'); a['ga'] -= 1.5 * z('gc90'); a['gc'] += 1 * z('sv90')
-        else:
-            a['fi'] += 2 * z('g90') + 1 * z('sot'); a['oa'] += 1.5 * z('g90') + 1 * z('a90')
-            a['lp'] += 2 * z('acc') + 1 * z('kp90'); a['lf'] += 1.5 * z('kp90'); a['tp'] += 1 * z('acc')
-            a['dr'] += 2 * z('drs90') + 1 * z('drpct'); a['ba'] += 1 * z('drpct')
-            a['bw'] += 2 * z('def90'); a['da'] += 1.5 * z('int90') - 1.5 * z('past90')
-            a['pc'] += 2 * z('duw'); a['ag'] += 1.5 * z('fc90') + 1 * z('cards90')
-            a['cu'] += 1 * z('a90')
-        own = GKA if g == 'GK' else OUT
-        # his character (pipeline/cm_traits.json: the few attributes that stand out in his PES 2021 profile, names only):
-        # +3 on his strengths, -3 on his weaknesses, the rest shifted so his position's rating stays where it was
-        tr = TRAITS.get(str(r['pid']))
-        if tr and PROF:
-            before = pos_rating({k: clip(v) for k, v in a.items()}, pos)
-            for k in tr.get('s', []): a[k] += TRAIT_PTS
-            for k in tr.get('w', []): a[k] -= TRAIT_PTS
-            rest = [k for k in own if k not in tr.get('s', []) and k not in tr.get('w', [])]
-            wk = dict(zip(PROF['keys'], PROF['rating'][pos]['w']))
-            wsum = sum(wk.get(k, 0) for k in rest)
-            if wsum > .05:
-                shift = (before - pos_rating({k: clip(v) for k, v in a.items()}, pos)) / wsum
-                for k in rest: a[k] += shift
-        if not PROF:   # the old profiles: shift so his position's rating lands on his overall
-            shift = o - pos_rating(a, pos)
-            for k in own:
-                a[k] = clip(a[k] + shift)
-        # (with the learned shapes, attributes already sit around his overall as they do at that level; the rating
-        # formula, linear, runs a little low for the very best, so other positions are rated against his own)
-        base = pos_rating({k: clip(v) for k, v in a.items()}, pos)
-        a = {k: int(round(clip(a[k]))) for k in KEYS}
-        ratings = {q: int(round(clip(o + pos_rating(a, q) - base + (0 if q in r['pos'] else -3 if _GROUP[q] == g else -6)))) for q in POSITIONS}
-        ratings[pos] = int(round(o))
+        a, ratings, style = make_attrs(r['pid'], pos, r['pos'], o, ht, wt, age, z, rnd, p)
         rating = ratings[pos]
         val = round(max(.2, (math.exp((rating - 60) / 7.5) * .9) * (1.25 if age <= 23 else 1 if age <= 28 else max(.25, 1 - (age - 28) * .12))), 1)
         w = r['w'] or {}
         st = r['st']
-        style = (style_pick if style_pick and style_pick != '---' else None) or _style(a, pos)
         out_players.append({'id': r['pid'], 'n': display(e, r['pid']) if (e.get('sq') or e.get('n')) else (w.get('name') or str(r['pid'])), 'nat': e.get('nat') or w.get('nat'),
                             'age': age, **({'bd': e['bd'][:10]} if e.get('bd') else {}), 'no': e.get('no'), 'club': r['tid'], 'prim': pos, 'pos': r['pos'], 'ht': ht, 'wt': wt,
                             'ovr': rating, 'r': ratings, 'a': a, 'style': style, 'val': val,
@@ -766,7 +775,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     _lgs = {}
     for _k in LG_SPEC:
         try:
-            _l = build_league(world, out_players, clubs, kits, alias, today, season, people, LG_SPEC[_k])
+            _l = build_league(world, out_players, clubs, kits, alias, today, season, people, LG_SPEC[_k], lastseen=lastseen)
             if _l:
                 _lgs[_k] = _l
         except Exception as e:   # another league is an extra: the Premier League is built whatever happens here
@@ -973,7 +982,7 @@ def build_france(world, out_players, clubs, kits, alias, today, season, people):
     return build_league(world, out_players, clubs, kits, alias, today, season, people, LG_SPEC['FRA'])
 
 
-def build_league(world, out_players, clubs, kits, alias, today, season, people, spec):
+def build_league(world, out_players, clubs, kits, alias, today, season, people, spec, lastseen=None):
     """Ligue 1 as a league of its own: the 18 clubs (pipeline/tm_ligue1.json: stadium, coach, the fixture list), their
     Transfermarkt squads (pipeline/tm_squads.json) and Ligue 2 behind them. A club's strength is France's level from Elo,
     spread within it by Transfermarkt's team values; a player's overall is his club's level moved by his value and age
@@ -1015,6 +1024,21 @@ def build_league(world, out_players, clubs, kits, alias, today, season, people, 
     mq = statistics.mean(eq[f] for f in eq if f in have_v) if any(f in have_v for f in eq) else 76
     ml = statistics.mean(math.log(vals[f]) for f in eq if f in have_v) if any(f in have_v for f in eq) else 0
     qclub = {f: round(mq + .8 * 6.7 * (math.log(vals[f]) - ml), 1) if f in have_v else eq.get(f, 74) for f in top}
+    # the API side, as for the Premier League: the draft game's player (his long-run level and performance, his
+    # positions and how his starts split over them), else his starts by position in the line-ups held
+    wby = {}
+    for p in (world or {}).get('players', []):
+        wby.setdefault(p.get('club'), []).append(p)
+    lun = {}   # the line-ups' names by team ("K. Tani"): an API id for a player the draft game does not rank
+    try:
+        _lu = json.load(open(os.path.join(base, '..', 'data', 'cache', 'lineups.json'), encoding='utf-8'))
+        for v in _lu.values():
+            for tid, side in (v or {}).items():
+                for x in (side or {}).get('xi') or []:
+                    if x and len(x) > 2 and x[2]:
+                        lun.setdefault(int(tid), {})[x[0]] = x[2]
+    except (OSError, ValueError):
+        pass
     out_clubs, players, used = [], [], set()
     for full, c in sorted(top.items()):
         cid = c['id'] or 980001 + sum(ord(ch) for ch in full) % 9000
@@ -1024,31 +1048,58 @@ def build_league(world, out_players, clubs, kits, alias, today, season, people, 
         for t in (TMS.get(full) or {}).get('players', []):
             if _fold(t['n']) in loaned:
                 continue   # a Premier League club's player out on loan here: he is his club's
-            age = age_of({'bd': t['dob']}, today); pid = None
-            for cand, e in pidx.get(_fold(t['n']), []):
+            age = age_of({'bd': t['dob']}, today); pid = None; w = None
+            wn = {_fold(p['name']): p for p in wby.get(c.get('id'), []) if p['id'] not in used and p['id'] not in have}
+            w = wn.get(_fold(t['n']))
+            if not w:   # spelt differently (a second surname, a short name): the surname of one in the other's name, a close age
+                tw = re.split(r'[ -]', _fold(t['n']))
+                w = next((p for nm, p in wn.items() if (not p.get('age') or abs(p['age'] - age) <= 2)
+                          and any(len(x) >= 4 and x in ws for x, ws in ((tw[-1], re.split(r'[ -]', nm)), (re.split(r'[ -]', nm)[-1], tw)))), None)
+            if w:
+                pid = w['id']
+            for cand, e in ([] if pid else pidx.get(_fold(t['n']), [])):
                 if cand not in used and cand not in have and (e.get('bd') == t['dob'] or (not e.get('bd') and abs((e.get('age') or age) - age) <= 2)):
                     pid = cand; break
+            if pid is None and c.get('id') in lun:   # same surname and initial, one such man only
+                tw = _fold(t['n']).split(); ini = tw[0][:1] if len(tw) > 1 else ''
+                cands = [k for k, nm in lun[c['id']].items() if k not in used and k not in have
+                         and _fold(nm).split()[-1:] == tw[-1:] and (not ini or not re.match(r'^\w\.', nm) or _fold(nm)[:1] == ini)]
+                if len(cands) == 1:
+                    pid = cands[0]
             if pid is None:
                 pid = -(spec['id_base'] + int.from_bytes(f"{t['n']}|{t['dob']}".encode(), 'little') % 900000)
             if pid in have or pid in used:
                 continue
-            used.add(pid); sq.append((pid, t, age))
+            used.add(pid); sq.append((pid, t, age, w))
         if len(sq) < 14:
             continue
-        fv = {pid: sum(cf * v for cf, v in zip(coef, feats(t.get('eur') or .1, min(age, 33), CH_POS.get(t['pos']) == 'GK'))) for pid, t, age in sq}
+        fv = {pid: sum(cf * v for cf, v in zip(coef, feats(t.get('eur') or .1, min(age, 33), CH_POS.get(t['pos']) == 'GK'))) for pid, t, age, w in sq}
         mean_top = statistics.mean(sorted(fv.values(), reverse=True)[:14])
         ovrs = []
-        for pid, t, age in sq:
-            prim = CH_POS.get(t['pos'], 'CMF'); gk = prim == 'GK'; rr = random.Random(pid)
-            ovr = int(round(max(45, min(93, qclub[full] + max(-16, fv[pid] - mean_top) + (rr.random() - .5) * 2))))
-            pool = by_pos.get(prim) or by_pos.get('CMF')
-            tpl = min(pool, key=lambda x: (abs(x['ovr'] - ovr), x['id'])); drop = tpl['ovr'] - ovr
-            a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
-            r = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; r[prim] = ovr
+        for pid, t, age, w in sq:
+            prim = CH_POS.get(t['pos'], 'CMF'); rr = random.Random(pid)
+            if w and w.get('lvl') is not None and w.get('ovr'):
+                ovr = int(round(max(45, min(93, ability(w)))))   # the draft game's rating, as for the Premier League's players
+            else:
+                ovr = int(round(max(45, min(93, qclub[full] + max(-16, fv[pid] - mean_top) + (rr.random() - .5) * 2))))
+            # positions: Transfermarkt's is his main one; the others from the draft game, else from his starts (twice or more)
+            if w and w.get('pos'):
+                pl, pcl = list(w['pos']), list(w.get('pc') or [])
+            else:
+                gc = ((lastseen or {}).get(pid) or [None, None, {}])[2] or {}
+                order = sorted(gc, key=lambda k: -gc[k])
+                pl = order[:1] + [k for k in order[1:] if gc[k] >= 2]; pcl = [gc[k] for k in pl]
+            old = dict(zip(pl, pcl)) if len(pcl) == len(pl) else {}
+            pl = [prim] + [q for q in pl if q != prim and (q == 'GK') == (prim == 'GK')]
+            e = next((e for cand, e in pidx.get(_fold(t['n']), []) if cand == pid), {})
+            ht, wt = t.get('ht') or e.get('ht'), e.get('wt')
+            a, r, style = make_attrs(pid, prim, pl, ovr, ht, wt, age, lambda m: 0.0, random.Random(f"cm-{pid}"))
             eur = t.get('eur')
             val = (round(eur / 1.17, 1) if eur >= 1.17 else round(max(.05, eur / 1.17), 2)) if eur else round(max(.3, 2 ** ((ovr - 70) / 4)), 1)
-            x = {'id': pid, 'n': t['n'], 'nat': t.get('nat'), 'age': age, 'bd': t['dob'], 'no': t.get('no'), 'club': cid, 'prim': prim, 'pos': [prim],
-                 'ht': t.get('ht') or tpl.get('ht') or 180, 'wt': tpl.get('wt') or 75, 'ovr': ovr, 'r': r, 'a': a, 'style': tpl.get('style'), 'val': val,
+            x = {'id': pid, 'n': t['n'], 'nat': t.get('nat'), 'age': age, 'bd': t['dob'], 'no': t.get('no'), 'club': cid, 'prim': prim, 'pos': pl,
+                 'ht': ht or 180, 'wt': wt or 75, 'ovr': ovr, 'r': r, 'a': a, 'style': style, 'val': val,
+                 **({'pc': _sh} if len(pl) > 1 and old and (_sh := _shares({'pos': pl, 'pc': [old.get(q, 0) for q in pl]}, pl)) else {}),
+                 **({'nt': 1} if w and w.get('nt') else {}),
                  **({'ft': t['ft']} if t.get('ft') else {}), **({'cy': t['con']} if t.get('con') else {})}
             _join(x, t)
             players.append(x); ovrs.append(ovr)
