@@ -1,5 +1,5 @@
 {
- "about": "Serie A from Transfermarkt pages Nikola supplied (club overview pages, 16.11.2026): stadiums, head coaches, the fixtures in those pages (2026/27, partial until every club is in)",
+ "about": "Serie A from Transfermarkt pages Nikola supplied (club overview pages, 16.11.2026): stadiums, head coaches, the fixtures in those pages (2026/27)",
  "updated": "2026-11-16",
  "clubs": {
   "AS Roma": {
@@ -61,6 +61,66 @@
    "venue": "Giuseppe Meazza",
    "cap": 75923,
    "coach": null
+  },
+  "Udinese Calcio": {
+   "tier": 1,
+   "venue": "Bluenergy Stadium",
+   "cap": 25144,
+   "coach": "Paolo Zanetti"
+  },
+  "Cagliari Calcio": {
+   "tier": 1,
+   "venue": "Unipol Domus",
+   "cap": 16412,
+   "coach": "Fabio Pisacane"
+  },
+  "Genoa CFC": {
+   "tier": 1,
+   "venue": "Luigi Ferraris",
+   "cap": 34901,
+   "coach": "Daniele De Rossi"
+  },
+  "Venezia FC": {
+   "tier": 1,
+   "venue": "Pier Luigi Penzo",
+   "cap": 12048,
+   "coach": "Davide Nicola"
+  },
+  "Parma Calcio 1913": {
+   "tier": 1,
+   "venue": "Ennio Tardini",
+   "cap": 22352,
+   "coach": "Alberto Gilardino"
+  },
+  "Frosinone Calcio": {
+   "tier": 1,
+   "venue": "Benito Stirpe",
+   "cap": 16227,
+   "coach": "Massimiliano Alvini"
+  },
+  "US Lecce": {
+   "tier": 1,
+   "venue": "Via del Mare - Ettore Giardiniero",
+   "cap": 31559,
+   "coach": "Eusebio Di Francesco"
+  },
+  "Torino FC": {
+   "tier": 1,
+   "venue": "Olimpico Grande Torino",
+   "cap": 28177,
+   "coach": "Ignazio Abate"
+  },
+  "AC Monza": {
+   "tier": 1,
+   "venue": "Brianteo",
+   "cap": 17102,
+   "coach": "Ivan Jurić"
+  },
+  "US Sassuolo": {
+   "tier": 1,
+   "venue": "Mapei Stadium - Città del Tricolore",
+   "cap": 21584,
+   "coach": "Roberto D'Aversa"
   }
  },
  "fixtures": [
@@ -86,6 +146,13 @@
    "18:30"
   ],
   [
+   "2026-08-22",
+   1,
+   "Parma",
+   "Cagliari",
+   "20:45"
+  ],
+  [
    "2026-08-23",
    1,
    "Frosinone",
@@ -105,6 +172,13 @@
    "Torino",
    "AC Milan",
    "20:45"
+  ],
+  [
+   "2026-08-23",
+   1,
+   "Venezia",
+   "Lecce",
+   "18:30"
   ],
   [
    "2026-08-24",
@@ -139,6 +213,20 @@
    2,
    "Fiorentina",
    "Frosinone",
+   "18:30"
+  ],
+  [
+   "2026-08-29",
+   2,
+   "Monza",
+   "Udinese",
+   "18:30"
+  ],
+  [
+   "2026-08-29",
+   2,
+   "Sassuolo",
+   "Torino",
    "18:30"
   ],
   [
@@ -219,11 +307,32 @@
    "18:00"
   ],
   [
+   "2026-09-06",
+   3,
+   "Frosinone",
+   "Venezia",
+   "15:00"
+  ],
+  [
+   "2026-09-06",
+   3,
+   "Parma",
+   "Monza",
+   "15:00"
+  ],
+  [
    "2026-09-07",
    3,
    "Udinese",
    "Lazio",
    "20:45"
+  ],
+  [
+   "2026-09-07",
+   3,
+   "Cagliari",
+   "Lecce",
+   "18:30"
   ],
   [
    "2026-09-11",
@@ -247,6 +356,13 @@
    "18:00"
   ],
   [
+   "2026-09-12",
+   4,
+   "Genoa",
+   "Frosinone",
+   "15:00"
+  ],
+  [
    "2026-09-13",
    4,
    "Sassuolo",
@@ -259,6 +375,13 @@
    "Napoli",
    "Bologna",
    "18:00"
+  ],
+  [
+   "2026-09-13",
+   4,
+   "Lecce",
+   "Monza",
+   "15:00"
   ],
   [
    "2026-09-14",
@@ -282,6 +405,13 @@
    "20:45"
   ],
   [
+   "2026-09-18",
+   5,
+   "Monza",
+   "Sassuolo",
+   "20:45"
+  ],
+  [
    "2026-09-19",
    5,
    "Roma",
@@ -301,6 +431,13 @@
    "Venezia",
    "Lazio",
    "20:45"
+  ],
+  [
+   "2026-09-19",
+   5,
+   "Udinese",
+   "Cagliari",
+   "15:00"
   ],
   [
    "2026-09-20",
@@ -329,6 +466,13 @@
    "AC Milan",
    "Lecce",
    "20:45"
+  ],
+  [
+   "2026-09-20",
+   5,
+   "Parma",
+   "Genoa",
+   "15:00"
   ],
   [
    "2026-10-10",
@@ -394,6 +538,20 @@
    "18:30"
   ],
   [
+   "2026-10-12",
+   6,
+   "Torino",
+   "Udinese",
+   "20:45"
+  ],
+  [
+   "2026-10-16",
+   7,
+   "Frosinone",
+   "Sassuolo",
+   "20:45"
+  ],
+  [
    "2026-10-17",
    7,
    "Roma",
@@ -434,6 +592,34 @@
    "Fiorentina",
    "Como",
    "15:00"
+  ],
+  [
+   "2026-10-18",
+   7,
+   "Udinese",
+   "Lecce",
+   "12:30"
+  ],
+  [
+   "2026-10-19",
+   7,
+   "Monza",
+   "Cagliari",
+   "18:30"
+  ],
+  [
+   "2026-10-19",
+   7,
+   "Parma",
+   "Torino",
+   "20:45"
+  ],
+  [
+   "2026-10-23",
+   8,
+   "Torino",
+   "Monza",
+   "20:45"
   ],
   [
    "2026-10-24",
@@ -492,6 +678,13 @@
    "20:45"
   ],
   [
+   "2026-10-25",
+   8,
+   "Genoa",
+   "Venezia",
+   "15:00"
+  ],
+  [
    "2026-10-27",
    9,
    "Roma",
@@ -538,6 +731,13 @@
    9,
    "Venezia",
    "Inter",
+   "18:30"
+  ],
+  [
+   "2026-10-28",
+   9,
+   "Parma",
+   "Udinese",
    "18:30"
   ],
   [
@@ -548,6 +748,13 @@
    "20:45"
   ],
   [
+   "2026-10-29",
+   9,
+   "Frosinone",
+   "Lecce",
+   "18:30"
+  ],
+  [
    "2026-10-31",
    10,
    "Udinese",
@@ -590,6 +797,20 @@
    "15:00"
   ],
   [
+   "2026-11-01",
+   10,
+   "Lecce",
+   "Genoa",
+   "18:00"
+  ],
+  [
+   "2026-11-01",
+   10,
+   "Frosinone",
+   "Torino",
+   "15:00"
+  ],
+  [
    "2026-11-02",
    10,
    "Atalanta",
@@ -604,6 +825,13 @@
    "18:30"
   ],
   [
+   "2026-11-06",
+   11,
+   "Venezia",
+   "Udinese",
+   "20:45"
+  ],
+  [
    "2026-11-07",
    11,
    "Roma",
@@ -616,6 +844,20 @@
    "Parma",
    "Bologna",
    "18:00"
+  ],
+  [
+   "2026-11-07",
+   11,
+   "Cagliari",
+   "Frosinone",
+   "15:00"
+  ],
+  [
+   "2026-11-07",
+   11,
+   "Torino",
+   "Lecce",
+   "15:00"
   ],
   [
    "2026-11-08",
@@ -707,6 +949,13 @@
    "AC Milan",
    "Frosinone",
    "18:00"
+  ],
+  [
+   "2026-11-22",
+   12,
+   "Sassuolo",
+   "Genoa",
+   "15:00"
   ],
   [
    "2026-11-23",
@@ -735,6 +984,13 @@
    "Inter",
    "Genoa",
    "20:45"
+  ],
+  [
+   "2026-11-28",
+   13,
+   "Frosinone",
+   "Parma",
+   "15:00"
   ],
   [
    "2026-11-29",
@@ -828,10 +1084,31 @@
    "20:45"
   ],
   [
+   "2026-12-06",
+   14,
+   "Genoa",
+   "Torino",
+   "12:30"
+  ],
+  [
    "2026-12-07",
    14,
    "Fiorentina",
    "Cagliari",
+   "20:45"
+  ],
+  [
+   "2026-12-07",
+   14,
+   "Venezia",
+   "Sassuolo",
+   "18:30"
+  ],
+  [
+   "2026-12-11",
+   15,
+   "Udinese",
+   "Frosinone",
    "20:45"
   ],
   [
@@ -842,6 +1119,20 @@
    "20:45"
   ],
   [
+   "2026-12-12",
+   15,
+   "Cagliari",
+   "Venezia",
+   "15:00"
+  ],
+  [
+   "2026-12-12",
+   15,
+   "Lecce",
+   "Sassuolo",
+   "18:00"
+  ],
+  [
    "2026-12-13",
    15,
    "Lazio",
@@ -912,6 +1203,13 @@
    "18:00"
   ],
   [
+   "2026-12-19",
+   16,
+   "Sassuolo",
+   "Parma",
+   "15:00"
+  ],
+  [
    "2026-12-20",
    16,
    "Atalanta",
@@ -924,6 +1222,27 @@
    "Fiorentina",
    "Bologna",
    "12:30"
+  ],
+  [
+   "2026-12-20",
+   16,
+   "Genoa",
+   "Udinese",
+   "18:00"
+  ],
+  [
+   "2026-12-20",
+   16,
+   "Torino",
+   "Cagliari",
+   "15:00"
+  ],
+  [
+   "2026-12-20",
+   16,
+   "Venezia",
+   "Monza",
+   "15:00"
   ],
   [
    "2027-01-02",
@@ -945,6 +1264,20 @@
    "Monza",
    "AC Milan",
    "20:45"
+  ],
+  [
+   "2027-01-02",
+   17,
+   "Cagliari",
+   "Genoa",
+   "12:30"
+  ],
+  [
+   "2027-01-02",
+   17,
+   "Torino",
+   "Venezia",
+   "15:00"
   ],
   [
    "2027-01-03",
@@ -996,6 +1329,13 @@
    "20:45"
   ],
   [
+   "2027-01-05",
+   18,
+   "Genoa",
+   "Monza",
+   "18:30"
+  ],
+  [
    "2027-01-06",
    18,
    "Juventus",
@@ -1024,11 +1364,25 @@
    "20:45"
   ],
   [
+   "2027-01-06",
+   18,
+   "Lecce",
+   "Parma",
+   "15:00"
+  ],
+  [
    "2027-01-07",
    18,
    "Napoli",
    "Cagliari",
    "20:45"
+  ],
+  [
+   "2027-01-07",
+   18,
+   "Sassuolo",
+   "Udinese",
+   "18:30"
   ],
   [
    "2027-01-09",
@@ -1043,6 +1397,13 @@
    "Bologna",
    "Genoa",
    "20:45"
+  ],
+  [
+   "2027-01-09",
+   19,
+   "Monza",
+   "Frosinone",
+   "15:00"
   ],
   [
    "2027-01-10",
@@ -1070,6 +1431,13 @@
    19,
    "Fiorentina",
    "Lecce",
+   "15:00"
+  ],
+  [
+   "2027-01-10",
+   19,
+   "Parma",
+   "Venezia",
    "15:00"
   ],
   [
@@ -1080,6 +1448,13 @@
    "20:45"
   ],
   [
+   "2027-01-11",
+   19,
+   "Cagliari",
+   "Sassuolo",
+   "18:30"
+  ],
+  [
    "2027-01-17",
    20,
    "Atalanta",
@@ -1120,6 +1495,24 @@
    20,
    "Parma",
    "Inter"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Lecce",
+   "Udinese"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Venezia",
+   "Frosinone"
+  ],
+  [
+   "2027-01-17",
+   20,
+   "Sassuolo",
+   "Monza"
   ],
   [
    "2027-01-24",
@@ -1170,6 +1563,18 @@
    "Venezia"
   ],
   [
+   "2027-01-24",
+   21,
+   "Genoa",
+   "Parma"
+  ],
+  [
+   "2027-01-24",
+   21,
+   "Lecce",
+   "Torino"
+  ],
+  [
    "2027-01-31",
    22,
    "Monza",
@@ -1210,6 +1615,24 @@
    22,
    "Lazio",
    "Venezia"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "Cagliari",
+   "Parma"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "Genoa",
+   "Lecce"
+  ],
+  [
+   "2027-01-31",
+   22,
+   "Torino",
+   "Frosinone"
   ],
   [
    "2027-02-07",
@@ -1260,6 +1683,18 @@
    "Cagliari"
   ],
   [
+   "2027-02-07",
+   23,
+   "Venezia",
+   "Genoa"
+  ],
+  [
+   "2027-02-07",
+   23,
+   "Parma",
+   "Frosinone"
+  ],
+  [
    "2027-02-14",
    24,
    "Roma",
@@ -1302,6 +1737,24 @@
    "AC Milan"
   ],
   [
+   "2027-02-14",
+   24,
+   "Udinese",
+   "Venezia"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "Monza",
+   "Lecce"
+  ],
+  [
+   "2027-02-14",
+   24,
+   "Torino",
+   "Sassuolo"
+  ],
+  [
    "2027-02-21",
    25,
    "Sassuolo",
@@ -1342,6 +1795,24 @@
    25,
    "AC Milan",
    "Genoa"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "Udinese",
+   "Parma"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "Venezia",
+   "Cagliari"
+  ],
+  [
+   "2027-02-21",
+   25,
+   "Lecce",
+   "Frosinone"
   ],
   [
    "2027-02-28",
@@ -1390,6 +1861,18 @@
    26,
    "Genoa",
    "Lazio"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "Cagliari",
+   "Udinese"
+  ],
+  [
+   "2027-02-28",
+   26,
+   "Parma",
+   "Sassuolo"
   ],
   [
    "2027-03-07",
@@ -1444,6 +1927,12 @@
    27,
    "Udinese",
    "Inter"
+  ],
+  [
+   "2027-03-07",
+   27,
+   "Monza",
+   "Genoa"
   ],
   [
    "2027-03-14",
@@ -1494,6 +1983,18 @@
    "Inter"
   ],
   [
+   "2027-03-14",
+   28,
+   "Parma",
+   "Lecce"
+  ],
+  [
+   "2027-03-14",
+   28,
+   "Frosinone",
+   "Monza"
+  ],
+  [
    "2027-03-21",
    29,
    "Roma",
@@ -1540,6 +2041,18 @@
    29,
    "Inter",
    "Frosinone"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "Udinese",
+   "Torino"
+  ],
+  [
+   "2027-03-21",
+   29,
+   "Sassuolo",
+   "Cagliari"
   ],
   [
    "2027-04-04",
@@ -1590,6 +2103,18 @@
    "Inter"
   ],
   [
+   "2027-04-04",
+   30,
+   "Frosinone",
+   "Udinese"
+  ],
+  [
+   "2027-04-04",
+   30,
+   "Venezia",
+   "Parma"
+  ],
+  [
    "2027-04-11",
    31,
    "Inter",
@@ -1638,6 +2163,18 @@
    "Torino"
   ],
   [
+   "2027-04-11",
+   31,
+   "Udinese",
+   "Monza"
+  ],
+  [
+   "2027-04-11",
+   31,
+   "Frosinone",
+   "Genoa"
+  ],
+  [
    "2027-04-18",
    32,
    "Atalanta",
@@ -1662,6 +2199,36 @@
    "Lazio"
   ],
   [
+   "2027-04-18",
+   32,
+   "Torino",
+   "Genoa"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Venezia",
+   "Juventus"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Como",
+   "Frosinone"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Sassuolo",
+   "Lecce"
+  ],
+  [
+   "2027-04-18",
+   32,
+   "Monza",
+   "Inter"
+  ],
+  [
    "2027-04-25",
    33,
    "Juventus",
@@ -1680,6 +2247,48 @@
    "Como"
   ],
   [
+   "2027-04-25",
+   33,
+   "Napoli",
+   "Udinese"
+  ],
+  [
+   "2027-04-25",
+   33,
+   "Cagliari",
+   "Monza"
+  ],
+  [
+   "2027-04-25",
+   33,
+   "Genoa",
+   "Sassuolo"
+  ],
+  [
+   "2027-04-25",
+   33,
+   "Venezia",
+   "Torino"
+  ],
+  [
+   "2027-04-25",
+   33,
+   "Parma",
+   "Atalanta"
+  ],
+  [
+   "2027-04-25",
+   33,
+   "Frosinone",
+   "Roma"
+  ],
+  [
+   "2027-04-25",
+   33,
+   "Lecce",
+   "AC Milan"
+  ],
+  [
    "2027-05-02",
    34,
    "Bologna",
@@ -1690,6 +2299,36 @@
    34,
    "AC Milan",
    "Lazio"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Udinese",
+   "Genoa"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Lecce",
+   "Cagliari"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Monza",
+   "Venezia"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Torino",
+   "Parma"
+  ],
+  [
+   "2027-05-02",
+   34,
+   "Sassuolo",
+   "Frosinone"
   ],
   [
    "2027-05-09",
@@ -1708,6 +2347,78 @@
    35,
    "Lazio",
    "Sassuolo"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Udinese",
+   "Juventus"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Genoa",
+   "Cagliari"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Venezia",
+   "Como"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Parma",
+   "AC Milan"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Frosinone",
+   "Atalanta"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Inter",
+   "Lecce"
+  ],
+  [
+   "2027-05-09",
+   35,
+   "Napoli",
+   "Monza"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Cagliari",
+   "Torino"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Sassuolo",
+   "Venezia"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Monza",
+   "Parma"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Bologna",
+   "Frosinone"
+  ],
+  [
+   "2027-05-16",
+   36,
+   "Lecce",
+   "Fiorentina"
   ]
  ],
  "facts": {
