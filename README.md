@@ -534,3 +534,11 @@ World clubs' details (16.11.2026). Once a month, each Club World Cup / Intercont
 - **From the line-ups of its last ten matches:** where each man played (the same position model as the draft game's clubs). The API's squad list gives only keeper, defender, midfielder or forward.
 - **The 23 a club takes into the game:** those who started most, with at least 6 defenders, 6 midfielders and 4 forwards. The squad list runs keepers, defenders, midfielders, forwards, so before this its first 20 were mostly defenders. Regulars rate a little higher.
 - **Names:** the squad list's, as the player is known (Alex Sandro, Pedro). An initial ('E. Pulgar') takes the first name from his pages ('Erick Pulgar').
+
+Club World Cup 2029 and Intercontinental Cup 2026 from Wikipedia (16.11.2026).
+- **2029 qualifiers already known:** Al-Ahli (AFC Champions League Elite 2025 and 2026), Pyramids (CAF 2025), Mamelodi Sundowns (CAF 2026), Cruz Azul (Concacaf 2025), Toluca (Concacaf 2026), Flamengo (Libertadores 2025) and PSG (Champions League 2025 and 2026). They take their places as FIFA's slots allow: UEFA 12, CONMEBOL 6, Concacaf 4, AFC 4, CAF 4, OFC 1, host 1.
+  - The other places go to the strongest of each continent in the data.
+  - The host's place goes to the strongest club left from outside Europe (the host is not chosen yet).
+  - Toluca, Cruz Azul and Pyramids are fetched with the other world clubs.
+- **Intercontinental Cup 2026:** Toluca are the Concacaf club (2026 Concacaf Champions Cup winners). The CONMEBOL club, the Libertadores winner, is decided on 28 November and stands in until then. The December dates (9, 12 and 16 December) are confirmed.
+- **Not modelled:** the possible UEFA boycott of the 2029 Club World Cup and its possible growth to 48 clubs are reported but not decided, so the game keeps FIFA's 32-club regulations.

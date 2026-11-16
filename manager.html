@@ -1855,15 +1855,22 @@ function cwcSetup(){
   if (!D.cwc || !cwcSeason() || S.cwc) return;
   const k = (cwcYear() - D.cwc.edition) / 4, sh = d => day(d, 1456 * k);
   // Europe: the Champions League winners of the four seasons before it, then the strongest, at most two a country
-  const wins = []; const real = fullId(((D.eu && D.eu.comps.find(c => c.k === 'ucl')) || {}).champion); if (real && S.season - 3 <= (D.eu.season || D.season) - 1) wins.push(real);
+  const fixed = ((D.cwc.qualified || {})[String(cwcYear())]) || {}, fx = k => (fixed[k] || []).map(fullId).filter(id => id && C.has(id));
+  const wins = [...fx('UEFA')]; const real = fullId(((D.eu && D.eu.comps.find(c => c.k === 'ucl')) || {}).champion); if (real && S.season - 3 <= (D.eu.season || D.season) - 1) wins.push(real);
   for (const x of S.past || []) if (x.s >= S.season - 3 && x.eu && x.eu.ucl) wins.push(x.eu.ucl);
   if (euOn() && S.eu.c.ucl && S.eu.c.ucl.win) wins.push(S.eu.c.ucl.win);
   const uefa = [...new Set(wins)].slice(0, 12), cnt = {}; for (const id of uefa) cnt[ctryOf(id)] = (cnt[ctryOf(id)] || 0) + 1;
-  const pool = [...D.clubs.map(c => c.id), ...[...EU].filter(id => !club(id).cwc)].filter(id => !uefa.includes(id)).sort((a, b) => chStr(b) - chStr(a));
+  const pool = [...D.clubs.map(c => c.id), ...[...EU].filter(id => !club(id).conf)].filter(id => !uefa.includes(id)).sort((a, b) => chStr(b) - chStr(a));
   for (const id of pool){ if (uefa.length >= 12) break; const c = ctryOf(id); if ((cnt[c] || 0) >= 2) continue; uefa.push(id); cnt[c] = (cnt[c] || 0) + 1; }
-  const rest = (D.cwc.clubs || []).filter(c => c.cwc).map(c => c.id).filter(id => C.has(id));
+  // the rest of the world, by FIFA's slots: those already qualified (Wikipedia, for 2029), then the strongest of each
+  // continent in the data; the host's place to the strongest club left from outside Europe
+  const slots = D.cwc.slots || { CONMEBOL: 6, Concacaf: 4, AFC: 4, CAF: 4, OFC: 1, Host: 1 }, wpool = (D.cwc.clubs || []).filter(c => C.has(c.id)), rest = [];
+  for (const k of ['CONMEBOL', 'Concacaf', 'AFC', 'CAF', 'OFC']){ const mine = fx(k).slice(0, slots[k] || 0);
+    for (const c of wpool.filter(c => c.conf === k && !mine.includes(c.id)).sort((a, b) => chStr(b.id) - chStr(a.id))){ if (mine.length >= (slots[k] || 0)) break; mine.push(c.id); }
+    rest.push(...mine); }
+  for (let h = 0; h < (slots.Host || 0); h++){ const c = wpool.filter(c => !rest.includes(c.id)).sort((a, b) => chStr(b.id) - chStr(a.id))[0]; if (c) rest.push(c.id); }
   // short of clubs from the rest of the world (their squads not fetched yet): more of Europe's strongest, at most three a country
-  const teams = [...uefa, ...rest]; for (const id of pool){ if (teams.length >= 32) break; const c = ctryOf(id); if (teams.includes(id) || (cnt[c] || 0) >= 3) continue; teams.push(id); cnt[c] = (cnt[c] || 0) + 1; }
+  const teams = [...new Set([...uefa, ...rest])]; for (const id of pool){ if (teams.length >= 32) break; const c = ctryOf(id); if (teams.includes(id) || (cnt[c] || 0) >= 3) continue; teams.push(id); cnt[c] = (cnt[c] || 0) + 1; }
   for (const id of pool){ if (teams.length >= 32) break; if (!teams.includes(id)) teams.push(id); }
   if (teams.length < 32) return;
   // the draw: four pots of eight by strength, one from each pot a group, no two of one country where it can
@@ -1927,7 +1934,7 @@ function ficSetup(){
   const sh = d => day(d, 364 * yrs), r = rng(`fic-${S.seed}-${S.season}`);
   const pick = conf => { const L = (D.cwc.clubs || []).filter(c => c.conf === conf && C.has(c.id)); if (!L.length) return null; const w = L.map(c => Math.exp((c.q - 70) / 3)); let x = r() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < L.length; i++){ x -= w[i]; if (x <= 0) return L[i].id; } return L[L.length - 1].id; };
   const real = yrs === 0 ? I['2026'] : null;
-  const afc = (real && fullId(real.m1[1])) || pick('AFC'), ofc = (real && fullId(real.m1[2])) || pick('OFC'), caf = (real && fullId(real.m2[1])) || pick('CAF'), cmc = pick('Concacaf'), csm = pick('CONMEBOL');
+  const afc = (real && fullId(real.m1[1])) || pick('AFC'), ofc = (real && fullId(real.m1[2])) || pick('OFC'), caf = (real && fullId(real.m2[1])) || pick('CAF'), cmc = (real && fullId(real.concacaf)) || pick('Concacaf'), csm = pick('CONMEBOL');
   const pv = (S.past || [])[(S.past || []).length - 1], uefa = yrs === 0 ? fullId(((D.eu.comps.find(c => c.k === 'ucl')) || {}).champion) : pv && pv.eu && pv.eu.ucl;
   if (![afc, ofc, caf, cmc, csm, uefa].every(Boolean)) return;
   const even = yrs % 2 === 0, d0 = I.dates;   // 2026: the AFC club hosts the first round (Transfermarkt); the CAF club the year after, and so on
