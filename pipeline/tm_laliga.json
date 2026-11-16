@@ -69,7 +69,25 @@
    "Real Sociedad B": "Real Sociedad",
    "RC Celta Fortuna": "Celta de Vigo"
   },
-  "second_note": "LaLiga2 2026/27: 22 clubs. second_order is the order of the 2025/26 LaLiga2 clubs that stayed (relative places, after Racing, Deportivo and Málaga went up); second_promoted came up from Primera Federación. Reserve teams cannot be promoted to their first team's league."
+  "second_note": "LaLiga2 2026/27: 22 clubs. second_order is the order of the 2025/26 LaLiga2 clubs that stayed (relative places, after Racing, Deportivo and Málaga went up); second_promoted came up from Primera Federación. Reserve teams cannot be promoted to their first team's league.",
+  "second_playoff": {
+   "semis": [
+    [
+     "CD Castellón",
+     "UD Almería"
+    ],
+    [
+     "UD Las Palmas",
+     "Málaga CF"
+    ]
+   ],
+   "final": [
+    "UD Almería",
+    "Málaga CF"
+   ],
+   "winner": "Málaga CF",
+   "note": "2025/26 LaLiga2 promotion play-off, two legs each round, from the club pages"
+  }
  },
  "clubs": {
   "Real Madrid": {
@@ -206,5 +224,131 @@
   "CE Sabadell FC": 11.9,
   "AD Ceuta FC": 11.4,
   "CD Tenerife": 11.0
+ },
+ "second_clubs": {
+  "UD Almería": {
+   "value": 68.1,
+   "venue": "UD Almería Stadium",
+   "cap": 18331,
+   "coach": "Xavier García Pimienta"
+  },
+  "Girona FC": {
+   "value": 65.75,
+   "venue": "Montilivi",
+   "cap": 14624,
+   "coach": "Quique Álvarez"
+  },
+  "RCD Mallorca": {
+   "value": 48.9,
+   "venue": "Mallorca Son Moix",
+   "cap": 25736,
+   "coach": "Luis García"
+  },
+  "Real Oviedo": {
+   "value": 33.0,
+   "venue": "Carlos Tartiere",
+   "cap": 30500
+  },
+  "UD Las Palmas": {
+   "value": 29.65,
+   "venue": "Estadio de Gran Canaria",
+   "cap": 32400
+  },
+  "CD Leganés": {
+   "value": 28.4,
+   "venue": "Ontime Butarque",
+   "cap": 14422
+  },
+  "Real Valladolid CF": {
+   "value": 27.5,
+   "venue": "José Zorrilla",
+   "cap": 27618,
+   "coach": "Fran Escribá"
+  },
+  "Cádiz CF": {
+   "value": 27.25,
+   "venue": "JP Financial",
+   "cap": 21094
+  },
+  "Sporting Gijón": {
+   "value": 26.3,
+   "venue": "El Molinón - Enrique Castro 'Quini'",
+   "cap": 29371,
+   "coach": "Nicolás Larcamón"
+  },
+  "CD Castellón": {
+   "value": 25.15,
+   "venue": "SkyFi Castalia",
+   "cap": 15500,
+   "coach": "Pablo Hernández"
+  },
+  "Real Sociedad B": {
+   "value": 22.25,
+   "venue": "Instalaciones de Zubieta",
+   "cap": 2500,
+   "coach": "Ion Ansotegi"
+  },
+  "Burgos CF": {
+   "value": 19.5,
+   "venue": "El Plantío",
+   "cap": 12642,
+   "coach": "Sergio Francisco"
+  },
+  "Granada CF": {
+   "value": 17.55,
+   "venue": "Nuevo Los Cármenes",
+   "cap": 19336,
+   "coach": "Pacheta"
+  },
+  "SD Eibar": {
+   "value": 16.5,
+   "venue": "Ipurua",
+   "cap": 8164
+  },
+  "Córdoba CF": {
+   "value": 16.1,
+   "venue": "Bahrain Victorious Nuevo Arcángel",
+   "cap": 21822,
+   "coach": "Iván Ania"
+  },
+  "Albacete Balompié": {
+   "value": 15.95,
+   "venue": "Carlos Belmonte",
+   "cap": 16998
+  },
+  "FC Andorra": {
+   "value": 15.0,
+   "venue": "Estadi de la FAF",
+   "cap": 5600,
+   "coach": "Carles Manso"
+  },
+  "RC Celta Fortuna": {
+   "value": 12.75,
+   "venue": "Abanca Balaídos",
+   "cap": 24870,
+   "coach": "Fredi Álvarez"
+  },
+  "CD Eldense": {
+   "value": 11.9,
+   "venue": "Nuevo Pepico Amat",
+   "cap": 5776
+  },
+  "CE Sabadell FC": {
+   "value": 11.9,
+   "venue": "Nova Creu Alta",
+   "cap": 11981,
+   "coach": "Ferran Costa"
+  },
+  "AD Ceuta FC": {
+   "value": 11.4,
+   "venue": "Alfonso Murube",
+   "cap": 6500
+  },
+  "CD Tenerife": {
+   "value": 11.0,
+   "venue": "Heliodoro Rodríguez López",
+   "cap": 22824,
+   "coach": "Álvaro Cervera"
+  }
  }
 }
