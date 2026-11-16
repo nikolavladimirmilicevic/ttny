@@ -893,6 +893,10 @@ EU_IDS = {'Iberia 1999 Tbilisi': 3502}   # clubs the draft game does not rank (s
 EU_SHORT = {'Iberia 1999 Tbilisi': 'Iberia 1999'}
 EU_CTRY = {3502: 'GEO'}
 _GRID_POS = {'G': 'GK', 'D': 'CB', 'M': 'CMF', 'F': 'CF'}
+# Elo flatters a club that wins a weak league at a canter: its strength is taken down by how strong its league is
+# (UEFA's country ranking, in four bands; the big five as the league's clubs, on whose Elo the scale is fitted)
+EU_LEAGUE_ADJ = {**{c: 0 for c in ('ENG', 'ESP', 'ITA', 'GER', 'FRA')}, **{c: -2.5 for c in ('POR', 'NED', 'BEL')},
+                 **{c: -3.5 for c in ('TUR', 'CZE', 'GRE', 'AUT', 'SUI', 'NOR', 'DEN', 'SCO', 'POL', 'CRO', 'SRB', 'ISR', 'UKR', 'SWE', 'CYP')}}
 
 
 def build_europe(world, out_players, clubs, kits, alias, today):
@@ -973,7 +977,7 @@ def build_europe(world, out_players, clubs, kits, alias, today):
                 continue
             done.add(tid)
             wcl = c if kind == 'w' else {'id': tid, 'name': EU_SHORT.get(full, short), 'ctry': EU_CTRY.get(tid), 'elo': None}
-            q = q_of(wcl['elo']) if wcl.get('elo') else None
+            q = round(q_of(wcl['elo']) + EU_LEAGUE_ADJ.get(wcl.get('ctry'), -5), 1) if wcl.get('elo') else None
             raw = sorted(by_club.get(tid, []), key=lambda p: -(p.get('mn') or p.get('starts') or 0)) if kind == 'w' else from_lineups(tid)
             gks = [p for p in raw if p.get('prim') == 'GK'][:3]; out = [p for p in raw if p.get('prim') != 'GK'][:20]
             sq = [p for p in gks + out if p['id'] not in have]

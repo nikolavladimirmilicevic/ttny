@@ -483,3 +483,14 @@ European cups (16.11.2026). The manager game now has the Champions League, the E
   - A Europe menu: league table, matches by day, knockout rounds.
   - The cups appear in fixtures, Next Match, club info and the trophy cabinet.
   - Foreign players cannot be signed yet.
+
+European cups, round 2 (16.11.2026).
+- **Signing from abroad:** foreign players can be bought, through the same bids and personal terms as anyone else. A player signed from abroad joins the game's own players (kept in the save) and leaves his old club's list. Player search has an *Abroad* choice.
+- **Foreign players age and develop between seasons:**
+  - They get better while young and worse with age, each his own way and the same in every game.
+  - A club keeps roughly its level: its players move together so that its best fourteen average what they did.
+  - Past 36 a player retires if his club still has 18 without him.
+- **The league phase draw** of later seasons keeps clubs of one country apart. A pairing of two clubs of one country swaps opponents with another pairing of the same day, as long as neither new pairing is of one country or a repeat.
+- **Foreign clubs' strength:**
+  - Elo flatters a club that wins a weak league at a canter, so a club's strength now comes down by its league's level: nothing for the big five; −2.5 for Portugal, the Netherlands and Belgium; −3.5 for the next group of countries; −5 below that.
+  - A background match in the European cups also follows strength more closely than before, so big upsets are rarer.

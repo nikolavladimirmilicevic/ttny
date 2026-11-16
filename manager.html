@@ -825,7 +825,7 @@ function newGame(cid, manager){
     con: {}, started: Date.now(), loans: Object.fromEntries((D.loans || []).filter(l => P.has(l.id)).map(l => [l.id, { from: l.from, to: l.to }])) };
   S.lg = D.clubs.map(c => c.id);
   for (const p of D.pool) S.con[p.id] = contractFor(p);
-  euCon(); chInit(); shieldSetup(); euSetup(); lcSetup();
+  S.euOut = []; euApply(); chInit(); shieldSetup(); euSetup(); lcSetup();
   ensureStaff();
   // every game a little different: each attribute of each player moves -2, -1, 0, +1 or +2, one chance in five each,
   // never out of 40-99 (a move that would leave it is not made)
@@ -1646,9 +1646,38 @@ const euLabel = (k, d) => d.st == null ? `${EU_NAME[k]} matchday ${d.md}` : `${E
 function euLoad(){
   const E = D.europe; D.eu = null; EU = new Set(); EUP = new Set();
   if (!E || !Array.isArray(E.comps) || !E.comps.length || !Array.isArray(E.clubs)) return;
-  D.eu = E;
-  for (const c of E.clubs){ C.set(c.id, c); EU.add(c.id); }
-  for (const p of E.players){ P.set(p.id, p); EUP.add(p.id); }
+  D.eu = E; D.euAll = E.players.slice();
+  for (const c of E.clubs){ C.set(c.id, c); EU.add(c.id); c._q = c.q; }
+  for (const p of E.players){ P.set(p.id, p); EUP.add(p.id); p._b = { age: p.age, ovr: p.ovr, a: { ...p.a }, r: { ...p.r } }; }
+}
+/* the foreign players in this game's season: a year older for every season played, better while young and worse with
+   age (each his own way, the same in every game), the clubs keeping roughly their level (the players move together so
+   a club's best fourteen average what they did); past 36 a man retires if his club still has 18 without him. Players
+   you have signed from abroad are yours (in S.gen) and leave the foreign list */
+function euApply(){
+  if (!D.eu) return;
+  const yrs = Math.max(0, S.season - (D.eu.season || D.season)), out = new Set(S.euOut || []), dv = new Map();
+  for (const p of D.euAll){ if (out.has(p.id)) continue; let v = 0;
+    for (let y = 0; y < yrs; y++){ const ag = p._b.age + y, x = rng(`eua-${p.id}-${y}`)(); v += ag <= 20 ? 1.5 + x * 3 : ag <= 23 ? .5 + x * 2 : ag <= 28 ? -.5 + x : ag <= 31 ? -1.5 + x : -3 + x * 1.5; }
+    dv.set(p.id, v); }
+  const act = [];
+  for (const c of D.eu.clubs){ const sq = D.euAll.filter(p => p.club === c.id && dv.has(p.id));
+    let keep = sq.filter(p => p._b.age + yrs <= 36); if (keep.length < 18) keep = sq.slice().sort((a, b) => a._b.age - b._b.age).slice(0, Math.max(18, keep.length));
+    const top = keep.map(p => p._b.ovr + dv.get(p.id)).sort((a, b) => b - a).slice(0, 14), mean = top.reduce((t, v) => t + v, 0) / Math.max(1, top.length), shift = yrs ? (c._q - mean) * .8 : 0;
+    for (const p of keep){ const d = Math.round(dv.get(p.id) + shift); p.age = p._b.age + yrs; p.ovr = clamp(p._b.ovr + d, 40, 95); const dd = p.ovr - p._b.ovr;
+      for (const k in p.a) p.a[k] = clamp(p._b.a[k] + dd, 40, 99); for (const k in p.r) p.r[k] = clamp(p._b.r[k] + dd, 30, 99); p.val = +Math.max(.3, 2 ** ((p.ovr - 70) / 4) * (p.age <= 23 ? 1.4 : p.age >= 31 ? .6 : 1)).toFixed(1); act.push(p); }
+    const q14 = keep.map(p => p.ovr).sort((a, b) => b - a).slice(0, 14); c.q = +(q14.reduce((t, v) => t + v, 0) / Math.max(1, q14.length)).toFixed(1); }
+  D.eu.players = act; EUP = new Set(act.map(p => p.id));
+  for (const p of act) P.set(p.id, p);
+  euCon();
+}
+// a player signed from abroad: he joins the game's own players (kept in the save, like the academy's youngsters)
+function euSign(p){
+  (S.euOut = S.euOut || []).push(p.id); EUP.delete(p.id); D.eu.players = D.eu.players.filter(x => x !== p);
+  const q = JSON.parse(JSON.stringify(p, (k, v) => k === '_b' || k === 'eu' ? undefined : v));   // the data's own copy stays as it was, for the next game
+  q._a0 = q.age - (S.season - D.season); q._c0 = p.club;
+  (S.gen = S.gen || []).push(q); D.pool.push(q); P.set(q.id, q);
+  return q;
 }
 function euCon(){ if (!D.eu) return; for (const p of D.eu.players) if (!S.con[p.id]) S.con[p.id] = contractFor(p); }
 function shuffleR(L, r){ for (let i = L.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [L[i], L[j]] = [L[j], L[i]]; } return L; }
@@ -1677,6 +1706,14 @@ function euDraw(k, teams, fx0, yrs){
     const L = shuffleR(teams.slice(), r), picks = shuffleR([...Array(n - 1).keys()], r).slice(0, R), rounds = picks.map(i => round(L, i));
     const bad = rounds.flat().filter(([a, b]) => ctryOf(a) === ctryOf(b)).length;
     if (!best || bad < best.bad) best = { rounds, bad }; if (!bad) break; }
+  // repair: a pairing of two clubs of one country swaps opponents with another pairing of the same day, when neither
+  // new pairing is of one country or a repeat
+  const R2 = best.rounds, key = (a, b) => a < b ? a + '-' + b : b + '-' + a, met = new Set(R2.flat().map(([a, b]) => key(a, b))), same = (a, b) => ctryOf(a) === ctryOf(b);
+  for (let it = 0; it < 4000; it++){
+    let bi = -1, bj = -1; R2.some((rd, i) => rd.some(([a, b], j) => same(a, b) && (bi = i, bj = j, true))); if (bi < 0) break;
+    const rd = R2[bi], [a, b] = rd[bj], j2 = Math.floor(r() * rd.length); if (j2 === bj) continue; const [c, d] = rd[j2];
+    for (const [x1, y1, x2, y2] of [[a, c, b, d], [a, d, b, c]]){ if (same(x1, y1) || same(x2, y2) || met.has(key(x1, y1)) || met.has(key(x2, y2))) continue;
+      met.delete(key(a, b)); met.delete(key(c, d)); met.add(key(x1, y1)); met.add(key(x2, y2)); rd[bj] = [x1, y1]; rd[j2] = [x2, y2]; break; } }
   const home = {}, out = [];
   best.rounds.forEach((rd, i) => rd.forEach(([a, b], j) => { const [h, x] = (home[a] || 0) <= (home[b] || 0) ? [a, b] : [b, a]; home[h] = (home[h] || 0) + 1; out.push([mds[i][j % mds[i].length], h, x]); }));
   return out;
@@ -1740,7 +1777,7 @@ function finishEU(k, myM, others){
   for (const m of d0.m){
     const o = euOpts(c, m); let x;
     if (!LG.has(m.h) && !LG.has(m.a) && !(myM && myM.h === m.h)){
-      const [g1, g2] = chMatch(m.h, m.a, r, !!o.neutral); x = { h: m.h, a: m.a, s: [g1, g2], p: null, hs: [], inc: [], st: {}, bg: 1 };
+      const [g1, g2] = chMatch(m.h, m.a, r, !!o.neutral, .16); x = { h: m.h, a: m.a, s: [g1, g2], p: null, hs: [], inc: [], st: {}, bg: 1 };
       const tot = o.agg ? [g1 + o.agg[0], g2 + o.agg[1]] : [g1, g2];
       if (!o.noPens && tot[0] === tot[1]){ x.p = [3 + Math.floor(r() * 3), 3 + Math.floor(r() * 3)]; if (x.p[0] === x.p[1]) x.p[r() < .5 ? 0 : 1]++; }
       x.w = g1 > g2 ? m.h : g2 > g1 ? m.a : x.p ? (x.p[0] > x.p[1] ? m.h : m.a) : null; }
@@ -1830,7 +1867,7 @@ function chInit(){
 const chStr = id => { const c = club(id), sq = squadOf(id); if (!sq.length) return c.q || 70;
   const best = sq.map(p => ovrNow(p)).sort((a, b) => b - a).slice(0, 14); return .5 * (c.q || 70) + .5 * (best.reduce((t, v) => t + v, 0) / best.length - 1.5); };
 function poisson(l, r){ let k = 0, p = Math.exp(-l), s = p; const u = r(); while (u > s && k < 9){ k++; p *= l / k; s += p; } return k; }
-function chMatch(h, a, r, neutral){ const d = (chStr(h) - chStr(a)) * .09, e = neutral ? 0 : .13;
+function chMatch(h, a, r, neutral, k = .09){ const d = (chStr(h) - chStr(a)) * k, e = neutral ? 0 : .13;
   return [poisson(1.28 * Math.exp(d / 2 + e), r), poisson(1.28 * Math.exp(-d / 2 - e), r)]; }
 // how far the season has run: the league's first and last match days bracket the Championship's 46 rounds
 function chTick(all){
@@ -1939,6 +1976,7 @@ function newSeason(){
   Object.assign(S, { rounds, cupDates, round: 0, cup: { stage: 0, alive: cupEntrants(cn), log: [], n: cn }, results: [], done: false, next: false, ultimatum: null,
     table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])), date: day(rounds[0].date, -6) });
   for (const id of EUP) delete S.pl[id]; for (const id of EU) delete S.tac[id];   // the foreign clubs start each season afresh
+  euApply();
   S.train.last = S.date; S.lastTr = S.date; monthSnap(); chInit(); shieldSetup(); euSetup(); lcSetup();
   S.bids = (S.bids || []).filter(b => b.st === 'done'); S.offers = [];
   S.aim = aimFor(expRank(me())); S.conf = Math.max(45, Math.min(75, S.conf));
@@ -2177,7 +2215,7 @@ function rebuildPlayers(){
   if (!D.all) D.all = D.players.slice();
   const gone = new Set((S && S.ret) || []);
   D.pool = D.all.filter(p => !gone.has(p.id)).concat((S && S.gen) || []);
-  P.clear(); D.pool.forEach(p => P.set(p.id, p)); if (D.eu) D.eu.players.forEach(p => P.set(p.id, p));
+  P.clear(); if (D.eu) D.eu.players.forEach(p => P.set(p.id, p)); D.pool.forEach(p => P.set(p.id, p));
   applyMoves(); setLeagues(S && S.lg);
 }
 function applyMoves(){ const yrs = S ? (S.season || D.season) - D.season : 0;
@@ -2212,7 +2250,7 @@ function adopt(s){
   if (!S.lg) S.lg = D.clubs.map(c => c.id);
   for (const p of D.pool) if (!S.con[p.id]) S.con[p.id] = contractFor(p);
   if (S.ch === undefined) chInit();
-  euCon(); if (S.eu === undefined && D.eu){ euSetup(); euCatchUp(); }
+  euApply(); if (S.eu === undefined && D.eu){ euSetup(); euCatchUp(); }
   longInjured();
   if (!S.slot){ S.slot = 'Game in play'; save(); try { localStorage.removeItem(STORE); } catch (e) {} }
   return true;
@@ -2997,7 +3035,7 @@ function scrPlayer(){
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
   frame(ofClub(p.club, { nav: playerNav(p), short: esc(p.n), title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(<a class="bclk" data-lc="${p.club}" href="#" title="Open ${esc(fullName(p.club))}">${esc(fullName(p.club))}</a>)</span>`,
     act: mine ? `<button class="btn sm" id="promo">${firstTeam(me()).has(p.id) ? 'Move to Reserves' : 'Promote to First Team'}</button><button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
-    top: [['profile', 'Profile'], ...(mine && !onLoan(p) ? [['talk', 'Talk']] : []), ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ...(EUP.has(p.id) ? [] : [['tr', 'Transfer']]), ['hist', 'History']], topOn: tab,
+    top: [['profile', 'Profile'], ...(mine && !onLoan(p) ? [['talk', 'Talk']] : []), ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['hist', 'History']], topOn: tab,
     onTab: k => { V = { ...V, tab: k, say: null, nsay: null, ow: null, oy: null, orl: null }; view(); }, body,
     next: at >= 0 && at < list.length - 1 ? () => { V = { ...V, id: list[at + 1] }; view(); } : null }));
   const pk = $('#pick'); if (pk) pk.addEventListener('click', () => { toggleSel(p.id); view(); });
@@ -3305,6 +3343,7 @@ function askingPrice(p){
 // his wage demand from a club: a rise on what he earns now, more the bigger his part
 const wageDemand = p => { const now = (S.con[p.id] || contractFor(p)).w; return Math.round(Math.max(now * 1.2, p.val * 1700) / 500) * 500; };
 function moveP(p, to, fee, note){
+  if (EUP.has(p.id)) p = euSign(p);
   const from = p.club, fc = club(from), tc = club(to);
   p.club = to; S.moves = S.moves || {}; S.moves[p.id] = to;
   // across the divisions: a player going to the Championship leaves the league's list, one coming up joins it
@@ -3489,7 +3528,8 @@ function scrFind(){
   const tab = V.tab || 'search', qv = V.q || '', fold = s => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const F = V.f || {}, pg = V.pg || 0, per = 15;
   const sh = new Set((S.short || []).map(x => x.id));
-  let L = tab === 'short' ? D.pool.filter(p => sh.has(p.id)) : D.pool.filter(p => (F.lg !== 'pl' || LG.has(p.club)) && (F.lg !== 'ch' || !LG.has(p.club)) && (!qv || fold(p.n).includes(fold(qv))) && (!F.g || GROUP[p.prim] === F.g) && (!F.age || p.age <= +F.age) && (!F.amin || p.age >= +F.amin) && (!F.club || p.club === +F.club) && (!F.pos || p.pos.includes(F.pos)));
+  const ALL = D.eu ? D.pool.concat(D.eu.players) : D.pool;
+  let L = tab === 'short' ? ALL.filter(p => sh.has(p.id)) : ALL.filter(p => (F.lg !== 'pl' || LG.has(p.club)) && (F.lg !== 'ch' || !LG.has(p.club) && !EUP.has(p.id)) && (F.lg !== 'eu' || EUP.has(p.id)) && (!qv || fold(p.n).includes(fold(qv))) && (!F.g || GROUP[p.prim] === F.g) && (!F.age || p.age <= +F.age) && (!F.amin || p.age >= +F.amin) && (!F.club || p.club === +F.club) && (!F.pos || p.pos.includes(F.pos)));
   // sort by any attribute, as in CM's search (a masked player counts by the bottom of his range)
   const sk = V.sort && V.sort.startsWith('a:') ? V.sort.slice(2) : null, av = p => seenA(p, sk) ? A(p, sk) : -1;
   L = L.slice().sort((a, b) => sk ? av(b) - av(a) || b.val - a.val : V.sort === 'val' ? b.val - a.val : V.sort === 'age' ? a.age - b.age : surname(a.n).localeCompare(surname(b.n)));
@@ -3498,7 +3538,7 @@ function scrFind(){
   const tools = tab === 'short' ? `<span class="dim small">Players on your short list: their attributes are known after a week.</span>` : `<input type="text" id="fq" placeholder="Name" value="${esc(qv)}" style="flex:1;min-width:140px">
     <select class="dd" id="fg"><option value="">All roles</option>${[['GK', 'Goalkeepers'], ['DEF', 'Defenders'], ['MID', 'Midfielders'], ['FWD', 'Forwards']].map(([k, n]) => `<option value="${k}" ${F.g === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <select class="dd" id="fa"><option value="">Max age: any</option>${[19, 21, 23, 25, 28, 31].map(a => `<option value="${a}" ${+F.age === a ? 'selected' : ''}>Up to ${a}</option>`).join('')}</select>
-    <select class="dd" id="fl"><option value="">Any league</option><option value="pl" ${F.lg === 'pl' ? 'selected' : ''}>${esc(D.league)}</option>${hasCh() ? `<option value="ch" ${F.lg === 'ch' ? 'selected' : ''}>Other Clubs</option>` : ''}</select>
+    <select class="dd" id="fl"><option value="">Any league</option><option value="pl" ${F.lg === 'pl' ? 'selected' : ''}>${esc(D.league)}</option>${hasCh() ? `<option value="ch" ${F.lg === 'ch' ? 'selected' : ''}>Other Clubs</option>` : ''}${D.eu ? `<option value="eu" ${F.lg === 'eu' ? 'selected' : ''}>Abroad</option>` : ''}</select>
     <select class="dd" id="fc"><option value="">Any club</option>${[[esc(D.league), D.clubs], ['Other Clubs', hasCh() ? D.second.clubs : []]].filter(x => x[1].length).map(([g, L]) => `<optgroup label="${g}">${L.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<option value="${c.id}" ${+F.club === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>`).join('')}</select>
     <select class="dd" id="fam"><option value="">Min age: any</option>${[17, 19, 20, 23, 26, 30].map(a => `<option value="${a}" ${+F.amin === a ? 'selected' : ''}>${a} and over</option>`).join('')}</select>
     <select class="dd" id="fp"><option value="">Any exact position</option>${['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'CF'].map(x => `<option value="${x}" ${F.pos === x ? 'selected' : ''}>Plays ${x}</option>`).join('')}</select>
