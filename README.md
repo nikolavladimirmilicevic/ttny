@@ -528,3 +528,9 @@ World clubs' strength from Transfermarkt (16.11.2026). The Club World Cup and In
 - **Below the list:** a club below its confederation's 25th (Urawa, Ulsan, Pachuca) gets 80% of the 25th value.
 - **Results:** Al-Hilal 83, Palmeiras and Flamengo 82, Al-Ahli 82, River 79, Botafogo, Fluminense and Boca 78, Inter Miami 77, Monterrey 75, LAFC 74, Seattle 73, Pachuca 71, Al Ain 71, Al Ahly 70, Sundowns 70, Esperance 66, Urawa and Ulsan 66, Wydad 65, Auckland FC 60, Auckland City 53.
 - **European foreign clubs** keep their Elo-based strength (with the league discount): the list covers only Europe's 25 most valuable, and on Premier League clubs value predicts strength only loosely.
+
+World clubs' details (16.11.2026). Once a month, each Club World Cup / Intercontinental club gets its details fetched, about 5 calls a club (112 in the first run):
+- **From its player pages:** nationality, birth date (so the age counts on), height and full name.
+- **From the line-ups of its last ten matches:** where each man played (the same position model as the draft game's clubs). The API's squad list gives only keeper, defender, midfielder or forward.
+- **The 23 a club takes into the game:** those who started most, with at least 6 defenders, 6 midfielders and 4 forwards. The squad list runs keepers, defenders, midfielders, forwards, so before this its first 20 were mostly defenders. Regulars rate a little higher.
+- **Names:** the squad list's, as the player is known (Alex Sandro, Pedro). An initial ('E. Pulgar') takes the first name from his pages ('Erick Pulgar').

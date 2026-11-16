@@ -1102,18 +1102,25 @@ def build_cwc(out_players, today, clubs_lg=None):
             continue
         q0 = (vq and vq(r['tm'], r['conf'])) or CWC_Q.get(r['tm'], 70)   # Transfermarkt's team value; our old estimate only if it is missing
         raw = [p for p in e['p'] if p[0] not in have]
-        gks = [p for p in raw if p[4] == 'Goalkeeper'][:3]; rest = [p for p in raw if p[4] != 'Goalkeeper'][:20]
+        det, where = e.get('d') or {}, e.get('pos') or {}
+        starts = lambda p: sum((where.get(str(p[0])) or {}).values())
+        # the 23: those who started most in the last ten matches first, with at least 6 defenders, 6 midfielders and
+        # 4 forwards (the squad list runs keepers, defenders, midfielders, forwards: its first 20 were mostly defenders)
+        gks = sorted([p for p in raw if p[4] == 'Goalkeeper'], key=lambda p: -starts(p))[:3]
+        out = sorted([p for p in raw if p[4] != 'Goalkeeper'], key=lambda p: -starts(p)); rest = []
+        for grp, n in (('Defender', 6), ('Midfielder', 6), ('Attacker', 4)):
+            rest += [p for p in out if p[4] == grp and p not in rest][:n]
+        rest += [p for p in out if p not in rest][:max(0, 20 - len(rest))]
         sq = gks + rest
         if len(sq) < 14:
             continue
         rows = []
         for p in sq:
             rr = random.Random(p[0]); age = p[2] or 26
-            rel = (rr.random() - .5) * 8 + (2 if 24 <= age <= 30 else -1 if age < 21 or age > 33 else 0)
+            rel = (rr.random() - .5) * 6 + min(4, starts(p) * .5) + (1.5 if 24 <= age <= 30 else -1 if age < 21 or age > 33 else 0)   # regulars stronger
             rows.append((p, rel, rr))
         top = statistics.mean(sorted((x[1] for x in rows), reverse=True)[:14])
         ovrs = []
-        det, where = e.get('d') or {}, e.get('pos') or {}
         for p, rel, rr in rows:
             w = where.get(str(p[0])) or {}; d = det.get(str(p[0])) or [None, None, None, None]
             prim = max(w, key=w.get) if w and p[4] != 'Goalkeeper' else _SQ_POS.get(p[4], 'CMF'); gk = prim == 'GK'
@@ -1124,7 +1131,9 @@ def build_cwc(out_players, today, clubs_lg=None):
             a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
             rp = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; rp[prim] = ovr
             age = age_of({'bd': d[1]}, today) if d[1] else (p[2] or 26)
-            players.append({'id': p[0], 'n': d[3] or p[1], 'nat': d[0], 'age': age, **({'bd': d[1]} if d[1] else {}), **({'ht': d[2]} if d[2] else {}), 'no': p[3], 'club': e['id'], 'prim': prim, 'pos': [prim] + also, 'ovr': ovr,
+            # the squad list's name ('Alex Sandro'); for an initial, the first name from the player pages ('E. Pulgar' -> 'Erick Pulgar')
+            nm = (d[3].split(' ')[0] + ' ' + re.sub(r'^\w\.\s*', '', p[1])) if d[3] and re.match(r'^\w\.', p[1] or '') else (p[1] or d[3])
+            players.append({'id': p[0], 'n': nm, 'nat': d[0], 'age': age, **({'bd': d[1]} if d[1] else {}), **({'ht': d[2]} if d[2] else {}), 'no': p[3], 'club': e['id'], 'prim': prim, 'pos': [prim] + also, 'ovr': ovr,
                             'r': rp, 'a': a, 'style': tpl.get('style'), 'val': round(max(.3, 2 ** ((ovr - 70) / 4)), 1), 'eu': 1})
             ovrs.append(ovr)
         clubs.append({'id': e['id'], 'name': r['short'], 'full': r['tm'], 'ctry': r['country'], 'conf': r['conf'], 'kit': CWC_KIT.get(r['tm'], ['#3A3F55', '#FFFFFF']),
