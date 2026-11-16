@@ -2203,7 +2203,7 @@ function newSeason(){
   for (const p of D.players) if (p.lo && was === D.season && p.club === me()) news('club', `${p.n} is back`, `<b>${esc(p.n)}</b> returns from his loan at ${esc(p.lo)}.`);
   retireAndIntake();
   // contracts ending 30 June: your players whose deals have run out leave on a free; the other clubs renew theirs
-  for (const p of D.players){ const c = S.con[p.id]; if (!c || c.y > S.season) continue;   // 'until 30.6.y': the season that just ended ran to 30 June of S.season
+  for (const p of D.pool){ const c = S.con[p.id]; if (!c || c.y > S.season) continue;   // 'until 30.6.y': the season that just ended ran to 30 June of S.season
     if (p.club === me()){ const to = D.clubs.filter(x => x.id !== me())[Math.floor(Math.random() * (D.clubs.length - 1))].id; S.con[p.id] = { y: S.season + 1 + Math.floor(Math.random() * 3), w: wageDemand(p) };
       news('club', `${p.n} leaves on a free`, `<b>${esc(p.n)}</b>'s contract has run out, and he joins ${esc(club(to).name)}.`); moveP(p, to, 0); }
     else S.con[p.id] = { y: S.season + 1 + Math.floor(Math.random() * 3), w: c.w }; }
