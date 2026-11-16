@@ -1355,7 +1355,8 @@ function shieldSetup(){
   const pf = pv && pv.s === S.season - 1 ? ((pv.home || 'ENG') === HOME ? pv : (pv.aw || {})[HOME]) : null;   // last season in this country: the home league's, or its line while it ran beside
   if (pf){ champ = pf.champ; cup = pf.cup; second = (pf.table || [])[1] && pf.table[1][0]; }
   else { const lc = D.last_season && D.last_season.champion; champ = typeof lc === 'number' ? lc : lfClub(lc); cup = lfClub(D.league_facts && D.league_facts.cup_winner);
-    second = (D.clubs.find(c => c.id !== champ && c.last && c.last.pos === 2) || D.clubs.filter(c => c.id !== champ).sort((a, b) => b.q - a.q)[0]).id; }
+    second = (D.clubs.find(c => c.id !== champ && c.last && c.last.pos === 2) || D.clubs.filter(c => c.id !== champ).sort((a, b) => b.q - a.q)[0]).id;
+    if (D.league_facts && (D.league_facts.shield_pair || []).length === 2) [champ, cup] = D.league_facts.shield_pair; }   // the data's season: the real pairing (Inter v Lazio)
   if (!LG.has(champ)) champ = D.clubs.slice().sort((a, b) => b.q - a.q)[0].id;
   if (!cup || cup === champ || !LG.has(cup)) cup = second && LG.has(second) && second !== champ ? second : D.clubs.filter(c => c.id !== champ).sort((a, b) => b.q - a.q)[0].id;
   S.shield = { h: champ, a: cup, date: day(S.rounds[0].date, -3), done: false };

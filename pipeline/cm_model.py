@@ -1056,7 +1056,8 @@ def build_league(world, out_players, clubs, kits, alias, today, season, people, 
     return {'league': src.get('league') or spec['league'], 'ctry': spec['ctry'], 'country': spec['country'], 'clubs': out_clubs, 'players': players, 'fixtures': fixtures,
             'cup': src.get('cup'), 'last_season': {'champion': champ},
             'league_facts': {'reigning': facts.get('reigning'), 'cup_winner': facts.get('cup_winner'), 'record_champion': facts.get('record_champion'),
-                             'record_titles': facts.get('record_titles'), 'shield_winner': facts.get('shield_winner')},
+                             'record_titles': facts.get('record_titles'), 'shield_winner': facts.get('shield_winner'),
+                             **({'shield_pair': [ids[x] for x in facts['shield_pair']]} if all(x in ids for x in facts.get('shield_pair') or [None]) else {})},
             **({'second': sec} if sec else {})}
 
 # ---- the European cups, played beside the league (pipeline/tm_europe.json; foreign squads from the draft game's data) ----
