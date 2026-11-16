@@ -31,9 +31,45 @@
    "Deportivo Alavés": 14,
    "Elche CF": 15,
    "Levante UD": 16,
-   "CA Osasuna": 17
+   "CA Osasuna": 17,
+   "RCD Mallorca": 18,
+   "Girona FC": 19,
+   "Real Oviedo": 20
   },
-  "last_note": "2025/26 places 1 to 17 from the order of the transfers page (clubs by last season's final place, promoted clubs last); the three relegated clubs are not named on these pages"
+  "last_note": "2025/26 places from the order of the LaLiga and LaLiga2 transfers pages (clubs by last season's final place, promoted clubs last): 1 to 17 from LaLiga's, 18 to 20 (Mallorca, Girona, Oviedo, the three listed first on LaLiga2's) from LaLiga2's",
+  "relegated": [
+   "RCD Mallorca",
+   "Girona FC",
+   "Real Oviedo"
+  ],
+  "second_order": [
+   "UD Almería",
+   "UD Las Palmas",
+   "CD Castellón",
+   "Burgos CF",
+   "SD Eibar",
+   "Sporting Gijón",
+   "Córdoba CF",
+   "AD Ceuta FC",
+   "Albacete Balompié",
+   "FC Andorra",
+   "Granada CF",
+   "Real Sociedad B",
+   "CD Leganés",
+   "Real Valladolid CF",
+   "Cádiz CF"
+  ],
+  "second_promoted": [
+   "CD Tenerife",
+   "CD Eldense",
+   "CE Sabadell FC",
+   "RC Celta Fortuna"
+  ],
+  "second_reserve": {
+   "Real Sociedad B": "Real Sociedad",
+   "RC Celta Fortuna": "Celta de Vigo"
+  },
+  "second_note": "LaLiga2 2026/27: 22 clubs. second_order is the order of the 2025/26 LaLiga2 clubs that stayed (relative places, after Racing, Deportivo and Málaga went up); second_promoted came up from Primera Federación. Reserve teams cannot be promoted to their first team's league."
  },
  "clubs": {
   "Real Madrid": {
@@ -145,5 +181,30 @@
    "cap": 30044,
    "coach": "Juan Funes"
   }
+ },
+ "second": "LaLiga2",
+ "second_values": {
+  "UD Almería": 68.1,
+  "Girona FC": 65.75,
+  "RCD Mallorca": 48.9,
+  "Real Oviedo": 33.0,
+  "UD Las Palmas": 29.65,
+  "CD Leganés": 28.4,
+  "Real Valladolid CF": 27.5,
+  "Cádiz CF": 27.25,
+  "Sporting Gijón": 26.3,
+  "CD Castellón": 25.15,
+  "Real Sociedad B": 22.25,
+  "Burgos CF": 19.5,
+  "Granada CF": 17.55,
+  "SD Eibar": 16.5,
+  "Córdoba CF": 16.1,
+  "Albacete Balompié": 15.95,
+  "FC Andorra": 15.0,
+  "RC Celta Fortuna": 12.75,
+  "CD Eldense": 11.9,
+  "CE Sabadell FC": 11.9,
+  "AD Ceuta FC": 11.4,
+  "CD Tenerife": 11.0
  }
 }
