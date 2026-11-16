@@ -5,7 +5,9 @@
   "FIFA Club World Cup 2025 Regulations (art. 1.2, 11, 12, 14)",
   "transfermarkt.com UEFA Super Cup 26/27",
   "transfermarkt.com FIFA Intercontinental Cup 26/27",
-  "FIFA Intercontinental Cup 2025 Regulations (art. 4, 11)"
+  "FIFA Intercontinental Cup 2025 Regulations (art. 4, 11)",
+  "en.wikipedia.org 2026 FIFA Intercontinental Cup",
+  "en.wikipedia.org 2029 FIFA Club World Cup (qualified teams)"
  ],
  "note": "The 2025 edition: its groups, dates and bracket shape. Every four years (regulations 1.2). The non-UEFA clubs stand in for the next edition, whose other clubs are not known yet. Results are kept only for the honours (winner, final).",
  "edition": 2025,
@@ -614,6 +616,33 @@
     188,
     2025
    ]
+  },
+  {
+   "tm": "Deportivo Toluca",
+   "short": "Toluca",
+   "conf": "Concacaf",
+   "country": "Mexico",
+   "search": [
+    "Toluca"
+   ]
+  },
+  {
+   "tm": "CD Cruz Azul",
+   "short": "Cruz Azul",
+   "conf": "Concacaf",
+   "country": "Mexico",
+   "search": [
+    "Cruz Azul"
+   ]
+  },
+  {
+   "tm": "Pyramids FC",
+   "short": "Pyramids",
+   "conf": "CAF",
+   "country": "Egypt",
+   "search": [
+    "Pyramids"
+   ]
   }
  ],
  "slots": {
@@ -637,7 +666,7 @@
   }
  },
  "intercontinental": {
-  "note": "Format from the 2025 regulations (art. 4): M1 CAF v OFC, M2 AFC v winner of M1 (home grounds, hosts alternate yearly), M3 Concacaf v CONMEBOL, M4 winner of M3 v winner of M2, M5 UEFA v winner of M4 (neutral). 2026: the first two matches' clubs and dates from Transfermarkt (their results are not used: the game replays the season); the December dates follow 2025's (10, 13, 17 December), a year on.",
+  "note": "Format from the 2025 regulations (art. 4): M1 CAF v OFC, M2 AFC v winner of M1 (home grounds, hosts alternate yearly), M3 Concacaf v CONMEBOL, M4 winner of M3 v winner of M2, M5 UEFA v winner of M4 (neutral). 2026: the first two matches' clubs and dates from Transfermarkt (their results are not used: the game replays the season); the December dates follow 2025's (10, 13, 17 December), a year on. Toluca are the 2026 Concacaf club (2026 Concacaf Champions Cup winners); the CONMEBOL club, the 2026 Libertadores winners, is decided on 28 November 2026.",
   "2026": {
    "m1": [
     "2026-08-26",
@@ -648,7 +677,8 @@
     "2026-09-19",
     "Mamelodi Sundowns FC",
     null
-   ]
+   ],
+   "concacaf": "Deportivo Toluca"
   },
   "dates": {
    "m1": "2026-08-26",
@@ -667,5 +697,27 @@
     2025
    ]
   ]
+ },
+ "qualified": {
+  "2029": {
+   "UEFA": [
+    "Paris Saint-Germain"
+   ],
+   "AFC": [
+    "Al-Ahli SFC"
+   ],
+   "CAF": [
+    "Pyramids FC",
+    "Mamelodi Sundowns FC"
+   ],
+   "Concacaf": [
+    "CD Cruz Azul",
+    "Deportivo Toluca"
+   ],
+   "CONMEBOL": [
+    "CR Flamengo"
+   ]
+  },
+  "note": "Already qualified for 2029 (continental winners of 2025 and 2026). The other places: the strongest of their continent among the clubs in the data; the host place: the strongest club left from outside Europe."
  }
 }

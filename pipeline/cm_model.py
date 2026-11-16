@@ -1028,7 +1028,7 @@ CWC_Q = {'Al-Ahli SFC': 75, 'Auckland FC': 66, 'Sociedade Esportiva Palmeiras': 
          'CA River Plate': 76, 'CA Boca Juniors': 75, 'CF Monterrey': 74, 'CF Pachuca': 71, 'Inter Miami CF': 72, 'Seattle Sounders FC': 70,
          'Los Angeles FC': 71, 'Al Ahly FC': 72, 'Esperance Tunis': 69, 'Mamelodi Sundowns FC': 71, 'Wydad Casablanca': 68,
          'Al-Hilal SFC': 77, 'Al-Ain FC': 70, 'Urawa Red Diamonds': 70, 'Ulsan HD FC': 69, 'Auckland City FC': 60}
-CWC_KIT = {'Al-Ahli SFC': ['#0A8F3C', '#FFFFFF'], 'Auckland FC': ['#0B1F3A', '#3DB7E4'], 'Sociedade Esportiva Palmeiras': ['#006437', '#FFFFFF'], 'CR Flamengo': ['#C8102E', '#000000'], 'Botafogo de Futebol e Regatas': ['#000000', '#FFFFFF'],
+CWC_KIT = {'Deportivo Toluca': ['#D0021B', '#FFFFFF'], 'CD Cruz Azul': ['#0047AB', '#FFFFFF'], 'Pyramids FC': ['#0B1F4B', '#7EC8E3'], 'Al-Ahli SFC': ['#0A8F3C', '#FFFFFF'], 'Auckland FC': ['#0B1F3A', '#3DB7E4'], 'Sociedade Esportiva Palmeiras': ['#006437', '#FFFFFF'], 'CR Flamengo': ['#C8102E', '#000000'], 'Botafogo de Futebol e Regatas': ['#000000', '#FFFFFF'],
            'Fluminense Football Club': ['#7A1A2E', '#00613C'], 'CA River Plate': ['#FFFFFF', '#E30613'], 'CA Boca Juniors': ['#103F79', '#F3B229'],
            'CF Monterrey': ['#0B2341', '#FFFFFF'], 'CF Pachuca': ['#004B87', '#FFFFFF'], 'Inter Miami CF': ['#F7B5CD', '#231F20'],
            'Seattle Sounders FC': ['#5D9741', '#005595'], 'Los Angeles FC': ['#000000', '#C39E6D'], 'Al Ahly FC': ['#C8102E', '#FFFFFF'],
@@ -1139,4 +1139,4 @@ def build_cwc(out_players, today, clubs_lg=None):
         clubs.append({'id': e['id'], 'name': r['short'], 'full': r['tm'], 'ctry': r['country'], 'conf': r['conf'], 'kit': CWC_KIT.get(r['tm'], ['#3A3F55', '#FFFFFF']),
                       'q': round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1), **({'ic': 1} if r.get('ic_only') else {'cwc': 1})})
     return {'edition': src.get('edition', 2025), 'gfx': gfx, 'ko': src['ko'], 'slots': src.get('slots'), 'winner': src.get('winner'), 'runner_up': src.get('runner_up'),
-            'super_cup': src.get('super_cup') or {}, 'ic': src.get('intercontinental') or {}, 'clubs': clubs, 'players': players}
+            'super_cup': src.get('super_cup') or {}, 'ic': src.get('intercontinental') or {}, 'qualified': src.get('qualified') or {}, 'clubs': clubs, 'players': players}
