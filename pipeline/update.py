@@ -826,6 +826,55 @@ def update_cm(squads, people, meta, seen=None):
     log(f"  manager game: {have}/{len(cm.get('teams', []))} clubs with squad and season stats")
 
 
+CWC_SQUAD_MAX_AGE = 30   # days between squad refreshes of the Club World Cup's clubs from outside Europe
+
+
+def update_cwc():
+    """The Club World Cup's clubs from outside Europe (pipeline/tm_cwc.json): each one's API id (one search, once; a miss
+    is tried again after 30 days) and its squad (once a month). About 20 calls a month."""
+    try:
+        with open(os.path.join(ROOT, 'pipeline', 'tm_cwc.json'), encoding='utf-8') as f:
+            src = json.load(f)
+    except (OSError, ValueError):
+        return
+    cw = load('cwc', {})
+    fold = lambda x: re.sub(r'[^a-z0-9]', '', ascii_name(x or '').lower())
+    try:
+        for r in src.get('rest', []):
+            e = cw.setdefault(r['tm'], {})
+            if not e.get('id'):
+                if days_old(e.get('tried')) < 30:
+                    continue
+                e['tried'] = TODAY.isoformat()
+                try:
+                    data = api('teams', search=r['search'])
+                except OutOfBudget:
+                    raise
+                except Exception:
+                    continue
+                want = r['country'].lower()
+                cand = [x['team'] for x in data.get('response', []) if (x['team'].get('country') or '').replace(' ', '-').lower() == want and first_team(x['team'])]
+                if not cand:
+                    continue
+                cand.sort(key=lambda t: (fold(t['name']) != fold(r['search']), fold(r['search']) not in fold(t['name']), len(t['name'])))
+                e['id'], e['name'] = cand[0]['id'], cand[0]['name']
+            if days_old(e.get('f')) < CWC_SQUAD_MAX_AGE:
+                continue
+            try:
+                data = api('players/squads', team=e['id'])
+            except OutOfBudget:
+                raise
+            except Exception:
+                continue
+            pl = (data.get('response') or [{}])[0].get('players', []) if data.get('response') else []
+            if pl:
+                e['f'] = TODAY.isoformat()
+                e['p'] = [[p['id'], fix_text(p.get('name') or ''), p.get('age'), p.get('number'), p.get('position')] for p in pl]
+    finally:
+        save('cwc', cw)
+    log(f"  Club World Cup: {sum(1 for e in cw.values() if e.get('p'))}/{len(src.get('rest', []))} clubs from outside Europe with a squad")
+
+
 def current_season():
     return TODAY.year if TODAY.month >= 7 else TODAY.year - 1
 
@@ -1797,6 +1846,7 @@ def main():
         fetch_missing_nat(squads, people, lu, fx)
         log('6b Manager game league')
         update_cm(squads, people, meta, last_starts(fx, lu))
+        update_cwc()
         log('7/7 National teams and the clubs players came from')
         fetch_nations(people, squads, extra, meta)
         fetch_arrivals(top_ids, extra, meta, squads, careers)

@@ -767,6 +767,9 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         _eu = build_europe(world, out_players, clubs, kits, alias, today)
         if _eu and _eu['comps']:
             extra['europe'] = _eu
+        _cw = build_cwc(out_players + ((_eu or {}).get('players') or []), today)
+        if _cw:
+            extra['cwc'] = _cw
     except Exception:   # the cups are an extra: the league is built whatever happens here
         pass
     return {'season': season, 'updated': today, 'league': 'Premier League', 'complete': len(clubs) == len(teams) and len(teams) >= 18,
@@ -1016,3 +1019,74 @@ def build_europe(world, out_players, clubs, kits, alias, today):
             ovrs.append(ovr)
         c['q'] = round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1)
     return {'season': src.get('season'), 'comps': comps, 'clubs': eclubs, 'players': eplayers}
+
+
+# ---- the Club World Cup (every four years) and the UEFA Super Cup's honours (pipeline/tm_cwc.json) ----
+# the clubs from outside Europe: their strength on the league's scale is our estimate (no Elo for them in the data),
+# by their standing at the 2025 edition and in their own continent
+CWC_Q = {'Sociedade Esportiva Palmeiras': 77, 'CR Flamengo': 78, 'Botafogo de Futebol e Regatas': 75, 'Fluminense Football Club': 74,
+         'CA River Plate': 76, 'CA Boca Juniors': 75, 'CF Monterrey': 74, 'CF Pachuca': 71, 'Inter Miami CF': 72, 'Seattle Sounders FC': 70,
+         'Los Angeles FC': 71, 'Al Ahly FC': 72, 'Esperance Tunis': 69, 'Mamelodi Sundowns FC': 71, 'Wydad Casablanca': 68,
+         'Al-Hilal SFC': 77, 'Al-Ain FC': 70, 'Urawa Red Diamonds': 70, 'Ulsan HD FC': 69, 'Auckland City FC': 60}
+CWC_KIT = {'Sociedade Esportiva Palmeiras': ['#006437', '#FFFFFF'], 'CR Flamengo': ['#C8102E', '#000000'], 'Botafogo de Futebol e Regatas': ['#000000', '#FFFFFF'],
+           'Fluminense Football Club': ['#7A1A2E', '#00613C'], 'CA River Plate': ['#FFFFFF', '#E30613'], 'CA Boca Juniors': ['#103F79', '#F3B229'],
+           'CF Monterrey': ['#0B2341', '#FFFFFF'], 'CF Pachuca': ['#004B87', '#FFFFFF'], 'Inter Miami CF': ['#F7B5CD', '#231F20'],
+           'Seattle Sounders FC': ['#5D9741', '#005595'], 'Los Angeles FC': ['#000000', '#C39E6D'], 'Al Ahly FC': ['#C8102E', '#FFFFFF'],
+           'Esperance Tunis': ['#C8102E', '#F5C400'], 'Mamelodi Sundowns FC': ['#F5D000', '#00843D'], 'Wydad Casablanca': ['#D50000', '#FFFFFF'],
+           'Al-Hilal SFC': ['#1A3E8C', '#FFFFFF'], 'Al-Ain FC': ['#5B2A86', '#FFFFFF'], 'Urawa Red Diamonds': ['#E60012', '#FFFFFF'],
+           'Ulsan HD FC': ['#0A3D91', '#F5C400'], 'Auckland City FC': ['#0D2B6B', '#FFFFFF']}
+_SQ_POS = {'Goalkeeper': 'GK', 'Defender': 'CB', 'Midfielder': 'CMF', 'Attacker': 'CF'}
+
+
+def build_cwc(out_players, today):
+    """The Club World Cup's shape (groups, dates, bracket) from its 2025 edition, its clubs from outside Europe with
+    their squads (fetched by update.py into data/cache/cwc.json), and the honours (2025 winners, the 2026 Super Cup)."""
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_cwc.json'), encoding='utf-8') as f:
+            src = json.load(f)
+    except (OSError, ValueError):
+        return None
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'cache', 'cwc.json'), encoding='utf-8') as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        cache = {}
+    by_pos = {}
+    for x in out_players:
+        if x.get('a') and x.get('r'):
+            by_pos.setdefault(x['prim'], []).append(x)
+    have = {x['id'] for x in out_players}
+    groups = src['groups']; slot = {t: (g, i) for g, L in groups.items() for i, t in enumerate(L)}
+    gfx = [[d, g, slot[h][1], slot[a][1]] for d, g, h, a in src['fx']]
+    clubs, players = [], []
+    for r in src.get('rest', []):
+        e = cache.get(r['tm']) or {}
+        if not e.get('id') or not e.get('p'):
+            continue
+        q0 = CWC_Q.get(r['tm'], 70)
+        raw = [p for p in e['p'] if p[0] not in have]
+        gks = [p for p in raw if p[4] == 'Goalkeeper'][:3]; rest = [p for p in raw if p[4] != 'Goalkeeper'][:20]
+        sq = gks + rest
+        if len(sq) < 14:
+            continue
+        rows = []
+        for p in sq:
+            rr = random.Random(p[0]); age = p[2] or 26
+            rel = (rr.random() - .5) * 8 + (2 if 24 <= age <= 30 else -1 if age < 21 or age > 33 else 0)
+            rows.append((p, rel, rr))
+        top = statistics.mean(sorted((x[1] for x in rows), reverse=True)[:14])
+        ovrs = []
+        for p, rel, rr in rows:
+            prim = _SQ_POS.get(p[4], 'CMF'); gk = prim == 'GK'
+            ovr = int(round(max(45, min(90, q0 + rel - top))))
+            pool = by_pos.get(prim) or by_pos.get('CMF')
+            tpl = min(pool, key=lambda x: (abs(x['ovr'] - ovr), x['id'])); drop = tpl['ovr'] - ovr
+            a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
+            rp = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; rp[prim] = ovr
+            players.append({'id': p[0], 'n': p[1], 'nat': None, 'age': p[2] or 26, 'no': p[3], 'club': e['id'], 'prim': prim, 'pos': [prim], 'ovr': ovr,
+                            'r': rp, 'a': a, 'style': tpl.get('style'), 'val': round(max(.3, 2 ** ((ovr - 70) / 4)), 1), 'eu': 1})
+            ovrs.append(ovr)
+        clubs.append({'id': e['id'], 'name': r['short'], 'full': r['tm'], 'ctry': r['country'], 'conf': r['conf'], 'kit': CWC_KIT.get(r['tm'], ['#3A3F55', '#FFFFFF']),
+                      'q': round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1), 'cwc': 1})
+    return {'edition': src.get('edition', 2025), 'gfx': gfx, 'ko': src['ko'], 'slots': src.get('slots'), 'winner': src.get('winner'), 'runner_up': src.get('runner_up'),
+            'super_cup': src.get('super_cup') or {}, 'clubs': clubs, 'players': players}

@@ -499,3 +499,16 @@ API calls (16.11.2026): two leaks fixed.
 - **Club re-reads:** the nationality-and-age step read a club again on every run while any of its players lacked a first name. The API never has one for about 1,500 players in 315 clubs, so that cost about 1,100 calls a run, 4,000 to 5,500 a day. A club is now read again after 30 days at the soonest.
 - **Nationality retries:** a player whose nationality the API does not have was asked about again every 30 days, up to three calls each, in monthly waves of 1,000+ players. These waves made a day's first run cost up to 5,700 calls. The wait now doubles with each miss (30, 60, 120, at most 180 days); players tried before this change count as having missed twice.
 - **Effect:** a normal day should now cost roughly 1,000 to 1,300 calls instead of 5,000 to 7,600. It no longer runs into the 7,500 a day limit, which had stopped some evening runs after one call.
+
+UEFA Super Cup and FIFA Club World Cup (16.11.2026).
+- **Super Cup:** each August from 2027, last season's Champions League winners play the Europa League winners. One match at a neutral ground, penalties if level (Transfermarkt's date pattern, 12 August 2026, 52 weeks on).
+  - The 2026 one (PSG 2-1 Aston Villa, from Transfermarkt) was played before the game's season starts, so it is in PSG's honours, as Chelsea's 2025 Club World Cup is in theirs.
+- **Club World Cup:** every four years (FIFA's regulations, art. 1.2), so the next is in June and July 2029, after the 2028/29 season. Its shape and dates are the 2025 edition's (Transfermarkt), four years on: 32 clubs in eight groups of four, the top two through, then single-match rounds and the final, all at neutral grounds.
+  - Level in a knockout match: penalties (the game plays no extra time).
+  - Europe's twelve: the Champions League winners of the four seasons before it (2026: PSG, from Transfermarkt), then the strongest clubs, at most two a country.
+  - The other twenty are the 2025 edition's clubs from outside Europe, standing in for clubs not known yet. Their squads come from the API (`update_cwc`: one search each, once, then a squad a month, about 20 calls a month). Their strength is our own estimate (`CWC_Q` in `pipeline/cm_model.py`), as the data has no Elo for them. Until their squads are in, the places go to more of Europe's strongest, at most three a country.
+- **Prize money:** about FIFA's and UEFA's.
+- **Board confidence:**
+  - European and world matches move it half as much as a league match.
+  - Each knockout round reached in Europe adds a little.
+- **Screens:** both cups have a page under Europe (groups, matches, knockout) and appear in fixtures, Next Match and the trophy cabinet.
