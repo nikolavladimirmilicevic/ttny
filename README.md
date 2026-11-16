@@ -542,3 +542,9 @@ Club World Cup 2029 and Intercontinental Cup 2026 from Wikipedia (16.11.2026).
   - Toluca, Cruz Azul and Pyramids are fetched with the other world clubs.
 - **Intercontinental Cup 2026:** Toluca are the Concacaf club (2026 Concacaf Champions Cup winners). The CONMEBOL club, the Libertadores winner, is decided on 28 November and stands in until then. The December dates (9, 12 and 16 December) are confirmed.
 - **Not modelled:** the possible UEFA boycott of the 2029 Club World Cup and its possible growth to 48 clubs are reported but not decided, so the game keeps FIFA's 32-club regulations.
+
+Ligue 1 pages (16.11.2026). From the Ligue 1 clubs and transfers pages:
+- **Transfers:** every 2026/27 move between France and English clubs was already right in the data (Barcola and Jacquet at Liverpool, Bouaddi and Rulli at Man City, Barco and Emegha at Chelsea, Mbaye at Villa, Sangaré at Brentford, Fernandez-Pardo at Newcastle; Digne at PSG; Bakwa, Essugo and Detourbet out on loan).
+- **Player values:** the page's values are those at the time of each transfer, older than the detailed squad pages of 12.11.2026 already in `tm_facts.json`, so these were kept. Only the three loanees without a value got the page's (Bakwa 28, Essugo 15, Detourbet 15).
+- **French clubs in Europe:** they keep France's level from Elo but are spread within it by Transfermarkt's team values (`tm_values.json` leagues): PSG 88, Monaco 81, Lyon and Lille 79, Rennes and Lens 78, Marseille 77. Any other league's team values can be added the same way.
+- **Not used:** Arthur Masuaku (back at Sunderland from his Lens loan, per the page) is not in Sunderland's squad in the API. This page cannot tell whether he is still there, so he is not added; Sunderland's squad page would settle it.

@@ -1206,5 +1206,31 @@
    "mv": 503.2,
    "top18": 447.0
   }
- }
+ },
+ "leagues": {
+  "FRA": {
+   "source": "transfermarkt.com Ligue 1 26/27 clubs (16.11.2026), total market value, EUR millions",
+   "clubs": {
+    "Paris Saint-Germain": 1360,
+    "AS Monaco": 377.65,
+    "RC Strasbourg Alsace": 320.9,
+    "Olympique Lyon": 264.45,
+    "Stade Rennais FC": 253.4,
+    "LOSC Lille": 253.3,
+    "RC Lens": 243.0,
+    "Paris FC": 193.6,
+    "Olympique Marseille": 190.35,
+    "OGC Nice": 150.25,
+    "FC Toulouse": 123.9,
+    "FC Lorient": 99.05,
+    "AJ Auxerre": 96.2,
+    "Stade Brestois 29": 87.9,
+    "Angers SCO": 65.8,
+    "Le Havre AC": 63.15,
+    "ESTAC Troyes": 44.35,
+    "Le Mans FC": 33.5
+   }
+  }
+ },
+ "note_leagues": "A league's clubs in Europe keep their league's level from Elo (the mean of their Elo-based strengths); within the league they are spread by Transfermarkt's total team value: q = league mean + 0.8 x 6.7 x (ln value - mean ln value), 6.7 being the value slope fitted on the Premier League, 0.8 a pull towards the mean."
 }

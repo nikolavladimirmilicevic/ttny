@@ -1004,6 +1004,20 @@ def build_europe(world, out_players, clubs, kits, alias, today):
         if c['q'] is None:
             mates = [x['q'] for x in eclubs if x['eu'] == c['eu'] and x['q'] is not None]
             c['q'] = round(min(mates) - 1.5, 1) if mates else 68.0
+    # a league whose team values Transfermarkt gives (tm_values.json leagues): its clubs keep the league's level from Elo,
+    # spread within it by value (q = league mean + 0.8 x 6.7 x (ln value - mean ln value))
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_values.json'), encoding='utf-8') as f:
+            LV = json.load(f).get('leagues') or {}
+    except (OSError, ValueError):
+        LV = {}
+    for ctry, lv in LV.items():
+        vals = lv.get('clubs') or {}
+        mates = [c for c in eclubs if c.get('ctry') == ctry and vals.get(c.get('full'))]
+        if len(mates) >= 3:
+            mq = statistics.mean(c['q'] for c in mates); ml = statistics.mean(math.log(vals[c['full']]) for c in mates)
+            for c in mates:
+                c['q'] = round(mq + .8 * 6.7 * (math.log(vals[c['full']]) - ml), 1)
     for c in eclubs:
         rows = c.pop('_rows'); ovrs = []
         for p, rel, rr in rows:
