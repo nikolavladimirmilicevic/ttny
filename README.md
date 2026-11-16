@@ -512,3 +512,12 @@ UEFA Super Cup and FIFA Club World Cup (16.11.2026).
   - European and world matches move it half as much as a league match.
   - Each knockout round reached in Europe adds a little.
 - **Screens:** both cups have a page under Europe (groups, matches, knockout) and appear in fixtures, Next Match and the trophy cabinet.
+
+FIFA Intercontinental Cup (16.11.2026). Every season, in the format of FIFA's 2025 regulations (art. 4):
+- **First two rounds, at home grounds:** M1, the CAF club v the OFC club; M2, the AFC club v the winner. The hosts change places each year: in 2026 the AFC club hosts the first round, as on Transfermarkt.
+- **December, at neutral grounds:** M3, the Concacaf club v the CONMEBOL club; M4, the winners of M3 and M2; M5, the final against last season's Champions League winners. Level: penalties.
+- **2026:** the first two rounds' clubs (Al-Ahli, Auckland FC, Mamelodi Sundowns) and dates (26 August, 19 September) come from Transfermarkt; their results are not used. The December dates follow 2025's (10, 13 and 17 December), a year on.
+- **The other clubs** stand in from the Club World Cup's clubs of their continent, picked each season with the stronger more likely. Al-Ahli and Auckland FC are fetched with them (two more clubs in `update_cwc`).
+- **Before the game's squads arrive:** the cup waits until the pipeline has fetched those clubs' squads.
+- **Honours:** Real Madrid (2024) and PSG (2025), from Transfermarkt.
+- **Screens:** a page under Europe, plus fixtures, Next Match and the trophy cabinet.

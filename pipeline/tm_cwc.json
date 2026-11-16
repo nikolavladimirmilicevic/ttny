@@ -3,7 +3,9 @@
  "source": [
   "transfermarkt.com FIFA Club World Cup 2025 fixtures & results",
   "FIFA Club World Cup 2025 Regulations (art. 1.2, 11, 12, 14)",
-  "transfermarkt.com UEFA Super Cup 26/27"
+  "transfermarkt.com UEFA Super Cup 26/27",
+  "transfermarkt.com FIFA Intercontinental Cup 26/27",
+  "FIFA Intercontinental Cup 2025 Regulations (art. 4, 11)"
  ],
  "note": "The 2025 edition: its groups, dates and bracket shape. Every four years (regulations 1.2). The non-UEFA clubs stand in for the next edition, whose other clubs are not known yet. Results are kept only for the honours (winner, final).",
  "edition": 2025,
@@ -551,6 +553,22 @@
    "conf": "Concacaf",
    "country": "Mexico",
    "search": "Pachuca"
+  },
+  {
+   "tm": "Al-Ahli SFC",
+   "short": "Al-Ahli",
+   "conf": "AFC",
+   "country": "Saudi-Arabia",
+   "search": "Al Ahli",
+   "ic_only": true
+  },
+  {
+   "tm": "Auckland FC",
+   "short": "Auckland FC",
+   "conf": "OFC",
+   "country": "New-Zealand",
+   "search": "Auckland FC",
+   "ic_only": true
   }
  ],
  "slots": {
@@ -572,5 +590,37 @@
     1
    ]
   }
+ },
+ "intercontinental": {
+  "note": "Format from the 2025 regulations (art. 4): M1 CAF v OFC, M2 AFC v winner of M1 (home grounds, hosts alternate yearly), M3 Concacaf v CONMEBOL, M4 winner of M3 v winner of M2, M5 UEFA v winner of M4 (neutral). 2026: the first two matches' clubs and dates from Transfermarkt (their results are not used: the game replays the season); the December dates follow 2025's (10, 13, 17 December), a year on.",
+  "2026": {
+   "m1": [
+    "2026-08-26",
+    "Al-Ahli SFC",
+    "Auckland FC"
+   ],
+   "m2": [
+    "2026-09-19",
+    "Mamelodi Sundowns FC",
+    null
+   ]
+  },
+  "dates": {
+   "m1": "2026-08-26",
+   "m2": "2026-09-19",
+   "m3": "2026-12-09",
+   "m4": "2026-12-12",
+   "m5": "2026-12-16"
+  },
+  "honours": [
+   [
+    "Real Madrid",
+    2024
+   ],
+   [
+    "Paris Saint-Germain",
+    2025
+   ]
+  ]
  }
 }

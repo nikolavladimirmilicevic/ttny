@@ -1024,11 +1024,11 @@ def build_europe(world, out_players, clubs, kits, alias, today):
 # ---- the Club World Cup (every four years) and the UEFA Super Cup's honours (pipeline/tm_cwc.json) ----
 # the clubs from outside Europe: their strength on the league's scale is our estimate (no Elo for them in the data),
 # by their standing at the 2025 edition and in their own continent
-CWC_Q = {'Sociedade Esportiva Palmeiras': 77, 'CR Flamengo': 78, 'Botafogo de Futebol e Regatas': 75, 'Fluminense Football Club': 74,
+CWC_Q = {'Al-Ahli SFC': 75, 'Auckland FC': 66, 'Sociedade Esportiva Palmeiras': 77, 'CR Flamengo': 78, 'Botafogo de Futebol e Regatas': 75, 'Fluminense Football Club': 74,
          'CA River Plate': 76, 'CA Boca Juniors': 75, 'CF Monterrey': 74, 'CF Pachuca': 71, 'Inter Miami CF': 72, 'Seattle Sounders FC': 70,
          'Los Angeles FC': 71, 'Al Ahly FC': 72, 'Esperance Tunis': 69, 'Mamelodi Sundowns FC': 71, 'Wydad Casablanca': 68,
          'Al-Hilal SFC': 77, 'Al-Ain FC': 70, 'Urawa Red Diamonds': 70, 'Ulsan HD FC': 69, 'Auckland City FC': 60}
-CWC_KIT = {'Sociedade Esportiva Palmeiras': ['#006437', '#FFFFFF'], 'CR Flamengo': ['#C8102E', '#000000'], 'Botafogo de Futebol e Regatas': ['#000000', '#FFFFFF'],
+CWC_KIT = {'Al-Ahli SFC': ['#0A8F3C', '#FFFFFF'], 'Auckland FC': ['#0B1F3A', '#3DB7E4'], 'Sociedade Esportiva Palmeiras': ['#006437', '#FFFFFF'], 'CR Flamengo': ['#C8102E', '#000000'], 'Botafogo de Futebol e Regatas': ['#000000', '#FFFFFF'],
            'Fluminense Football Club': ['#7A1A2E', '#00613C'], 'CA River Plate': ['#FFFFFF', '#E30613'], 'CA Boca Juniors': ['#103F79', '#F3B229'],
            'CF Monterrey': ['#0B2341', '#FFFFFF'], 'CF Pachuca': ['#004B87', '#FFFFFF'], 'Inter Miami CF': ['#F7B5CD', '#231F20'],
            'Seattle Sounders FC': ['#5D9741', '#005595'], 'Los Angeles FC': ['#000000', '#C39E6D'], 'Al Ahly FC': ['#C8102E', '#FFFFFF'],
@@ -1087,6 +1087,6 @@ def build_cwc(out_players, today):
                             'r': rp, 'a': a, 'style': tpl.get('style'), 'val': round(max(.3, 2 ** ((ovr - 70) / 4)), 1), 'eu': 1})
             ovrs.append(ovr)
         clubs.append({'id': e['id'], 'name': r['short'], 'full': r['tm'], 'ctry': r['country'], 'conf': r['conf'], 'kit': CWC_KIT.get(r['tm'], ['#3A3F55', '#FFFFFF']),
-                      'q': round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1), 'cwc': 1})
+                      'q': round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1), **({'ic': 1} if r.get('ic_only') else {'cwc': 1})})
     return {'edition': src.get('edition', 2025), 'gfx': gfx, 'ko': src['ko'], 'slots': src.get('slots'), 'winner': src.get('winner'), 'runner_up': src.get('runner_up'),
-            'super_cup': src.get('super_cup') or {}, 'clubs': clubs, 'players': players}
+            'super_cup': src.get('super_cup') or {}, 'ic': src.get('intercontinental') or {}, 'clubs': clubs, 'players': players}
