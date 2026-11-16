@@ -861,6 +861,14 @@ def update_cwc():
                              and not youth.search(x['team'].get('name') or '') and not any(a in (x['team'].get('name') or '').lower() for a in r.get('avoid', []))]
                     if cand:
                         break
+                if not cand and r.get('league'):   # a club the search misses: its league's teams (one call)
+                    try:
+                        data = api('teams', league=r['league'][0], season=r['league'][1])
+                    except OutOfBudget:
+                        raise
+                    except Exception:
+                        data = {}
+                    cand = [x['team'] for x in data.get('response', []) if fold(x['team'].get('name')) == fold(r['tm'])]
                 if not cand:
                     continue
                 pref = [p.lower() for p in r.get('prefer', [])]
