@@ -461,3 +461,25 @@ Dressing room, young players, saves (14.11.2026). Each of your players has a Tal
 Pick the side by dragging (14.11.2026): in the Pick view a place in the strip can be dragged onto a player, a player onto a place, or one place onto another to swap them; a player who already has a place swaps with whoever holds the new one. With a finger, hold the player a moment first so the list still scrolls; dragging to the top edge scrolls up to the strip. The tags beside a name open that player's screen on the page they are about: Ctr and Loan the Contract page, Bid and Req the Transfer page, Wrd and Unh the Talk page, Inj, Sus, Yel, Tir and Int Injuries & Bans. The buttons in the player's banner sit in the middle of it, not at the top.
 
 Weekly challenge: friendlies count (16.11.2026). The 22 clubs of the week are now picked from every match of the 7 days before, friendlies included, so a week of international break or a summer week still gives a fresh list of clubs that actually played, instead of filling the gaps by UEFA rank (in the November break only 11 countries had a competitive club match; in June 2026, 2 to 12). The Elo ratings that judge how surprising a result was already counted friendlies, at half weight. The week of 16.11.2026 keeps the list it was made with.
+
+European cups (16.11.2026). The manager game now has the Champions League, the Europa League and the Conference League, 36 clubs each.
+- **The first season** takes its clubs and its league-phase schedule (dates, home and away) from Transfermarkt's 2026/27 pages, in `pipeline/tm_europe.json`. The results there are left out: the season replays from the start.
+- **Foreign clubs and squads** come from the draft game's data (`world.json`). `cm_model.build_europe` builds them into `cm.json` (`europe`).
+  - A club's strength comes from its Elo, on the league's scale (fitted on the league clubs that have both).
+  - Its players spread around that strength by the draft game's rating, each with the attributes of a league player of his position and level.
+  - A club the draft game does not rank (Iberia 1999) takes its players from its recent line-ups.
+- **Format:**
+  - The league phase is one table: 8 games, 6 in the Conference League. First to eighth go to the last 16, ninth to 24th play off over two legs.
+  - Then come two-legged rounds and a one-off final at a neutral ground. Level on aggregate after the second leg: penalties.
+  - Knockout dates are those of the usual UEFA calendar; the Champions League final is Transfermarkt's (5 June 2027).
+  - A tie between two foreign clubs is settled in the background from their strength. A match with a league club is a full match, live if it is yours.
+  - European bookings bring no bans at home.
+- **Prize money:** taking part, league-phase wins and draws, each knockout round and the trophy.
+- **Calendar:**
+  - A league round on the Friday after a Thursday in Europe moves to the Saturday.
+  - League Cup rounds avoid European days and the days next to league rounds.
+- **Later seasons:** the league's top five go to the Champions League. The next two and the FA Cup winners go to the Europa League, and the League Cup winners to the Conference League; a club already in Europe passes its place down the table. They join the data's foreign clubs, re-sorted each season, in a fresh league phase that keeps clubs of one country apart where it can.
+- **Screens:**
+  - A Europe menu: league table, matches by day, knockout rounds.
+  - The cups appear in fixtures, Next Match, club info and the trophy cabinet.
+  - Foreign players cannot be signed yet.

@@ -763,6 +763,12 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     _sec = build_second(out_players, today, season, people)
     if _sec:
         extra['second'] = _sec
+    try:
+        _eu = build_europe(world, out_players, clubs, kits, alias, today)
+        if _eu and _eu['comps']:
+            extra['europe'] = _eu
+    except Exception:   # the cups are an extra: the league is built whatever happens here
+        pass
     return {'season': season, 'updated': today, 'league': 'Premier League', 'complete': len(clubs) == len(teams) and len(teams) >= 18,
             'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures, **extra}
 
@@ -877,3 +883,132 @@ def build_second(out_players, today, season, people):
                       'full': cname, 'venue': c.get('stadium'), 'cap': c.get('cap'), 'kit': CH_KIT.get(cname, ['#444444', '#FFFFFF']),
                       'q': q, 'coach': c.get('coach'), 'second': 1})
     return {'name': 'Championship', 'clubs': clubs, 'players': players}
+
+
+# ---- the European cups, played beside the league (pipeline/tm_europe.json; foreign squads from the draft game's data) ----
+EU_ALIAS = {'Paris Saint-Germain': 'Paris', 'Borussia Dortmund': 'B. Dortmund', 'FC Bayern Munich': 'Bayern München',
+            'Manchester United': 'Man Utd', 'Manchester City': 'Man City', 'Viking FK': 'Viking', 'Atlético de Madrid': 'Atleti',
+            'Sabah FK': 'Sabah', 'SK Slavia Prague': 'Slavia Praha', 'AC Milan': 'Milan', 'Red Star Belgrade': 'Crvena Zvezda'}
+EU_IDS = {'Iberia 1999 Tbilisi': 3502}   # clubs the draft game does not rank (squad from their recent line-ups)
+EU_SHORT = {'Iberia 1999 Tbilisi': 'Iberia 1999'}
+EU_CTRY = {3502: 'GEO'}
+_GRID_POS = {'G': 'GK', 'D': 'CB', 'M': 'CMF', 'F': 'CF'}
+
+
+def build_europe(world, out_players, clubs, kits, alias, today):
+    """The season's three European cups: the clubs and the league-phase schedule from Transfermarkt (no results: the
+    game replays the season), the foreign squads from the draft game's players. A foreign club's strength comes from its
+    Elo, on the scale of the league's clubs (fitted on the league clubs that have both); its players spread around that
+    by the draft game's own rating, and each gets the attributes of a league player of his position and level."""
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_europe.json'), encoding='utf-8') as f:
+            src = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not world or not world.get('clubs'):
+        return None
+    fold = lambda s: re.sub(r'[^a-z0-9]', '', _fold(s or ''))
+    wc = {}
+    for c in world['clubs']:
+        wc.setdefault(fold(c['name']), c)
+    lg = {c['id']: c for c in clubs}
+    lg_name = {fold(c['name']): c['id'] for c in clubs}
+    pts = [(c['elo'], c['q']) for c in clubs if c.get('elo') and c.get('q')]
+    if len(pts) < 6:
+        return None
+    mx = statistics.mean(e for e, _ in pts); my = statistics.mean(q for _, q in pts)
+    slope = sum((e - mx) * (q - my) for e, q in pts) / max(1e-9, sum((e - mx) ** 2 for e, _ in pts)); icpt = my - slope * mx
+    q_of = lambda elo: round(max(62, min(90, icpt + slope * elo)), 1)
+    by_club = {}
+    for p in world.get('players', []):
+        by_club.setdefault(p['club'], []).append(p)
+    by_pos = {}
+    for x in out_players:
+        if x.get('a') and x.get('r'):
+            by_pos.setdefault(x['prim'], []).append(x)
+    have = {x['id'] for x in out_players}
+    def find(full, short):
+        for nm in (full, short, EU_ALIAS.get(full)):
+            if nm and fold(nm) in lg_name:
+                return ('lg', lg_name[fold(nm)])
+            if nm and fold(nm) in wc:
+                return ('w', wc[fold(nm)])
+        return ('x', EU_IDS.get(full))
+    lineups = None
+    def from_lineups(tid):
+        nonlocal lineups
+        if lineups is None:
+            try:
+                base = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'cache')
+                lineups = (json.load(open(os.path.join(base, 'lineups.json'), encoding='utf-8')), json.load(open(os.path.join(base, 'fixtures.json'), encoding='utf-8')))
+            except (OSError, ValueError):
+                lineups = ({}, {})
+        lu, fx = lineups; cnt, info = {}, {}
+        for fid, f in sorted(fx.items(), key=lambda kv: kv[1].get('d', ''), reverse=True):
+            side = (lu.get(fid) or {}).get(str(tid))
+            if not side:
+                continue
+            for x in side.get('xi', []):
+                cnt[x[0]] = cnt.get(x[0], 0) + 1; info.setdefault(x[0], x)
+        return [{'id': pid, 'name': info[pid][2] if len(info[pid]) > 2 else str(pid), 'prim': _GRID_POS.get(info[pid][3] if len(info[pid]) > 3 else '', 'CMF') if info[pid][1] != '1:1' else 'GK',
+                 'mn': cnt[pid] * 90, 'age': None, 'nat': None, 'no': None, 'ovr': None} for pid in sorted(cnt, key=lambda k: -cnt[k])][:23]
+    comps, eclubs, eplayers, done = [], [], [], set()
+    for key in ('ucl', 'uel', 'uecl'):
+        cp = (src.get('comps') or {}).get(key)
+        if not cp:
+            continue
+        ids, nm2id = [], {}
+        for full, short in cp['teams']:
+            kind, c = find(full, short)
+            if kind == 'lg':
+                tid = c
+            elif kind == 'w':
+                tid = c['id']
+            elif c:
+                tid = c
+            else:
+                continue
+            nm2id[full] = tid; ids.append(tid)
+            if kind == 'lg' or tid in done:
+                continue
+            done.add(tid)
+            wcl = c if kind == 'w' else {'id': tid, 'name': EU_SHORT.get(full, short), 'ctry': EU_CTRY.get(tid), 'elo': None}
+            q = q_of(wcl['elo']) if wcl.get('elo') else None
+            raw = sorted(by_club.get(tid, []), key=lambda p: -(p.get('mn') or p.get('starts') or 0)) if kind == 'w' else from_lineups(tid)
+            gks = [p for p in raw if p.get('prim') == 'GK'][:3]; out = [p for p in raw if p.get('prim') != 'GK'][:20]
+            sq = [p for p in gks + out if p['id'] not in have]
+            if len(sq) < 14:
+                continue
+            if q is None:   # no Elo: a little below the weakest club in the same cup that has one
+                q = None
+            wv = [p['ovr'] for p in sq if p.get('ovr')]
+            top = statistics.mean(sorted(wv, reverse=True)[:14]) if wv else None
+            rows = []
+            for i, p in enumerate(sq):
+                rr = random.Random(p['id'])
+                rel = (p['ovr'] - top) * .55 if p.get('ovr') and top else -(i * .45) + 2
+                rows.append((p, rel, rr))
+            eclubs.append({'id': tid, 'name': wcl['name'], 'full': full, 'ctry': wcl.get('ctry'), 'kit': kits.get(wcl['name']) or kits.get(alias.get(wcl['name'], '')) or kits.get(full) or ['#3A3F55', '#FFFFFF'],
+                           'q': q, 'eu': key, '_rows': rows})
+        fx = [[d, nm2id[h], nm2id[a]] for d, h, a in cp.get('fx', []) if h in nm2id and a in nm2id]
+        comps.append({'k': key, 'name': cp['name'], 'champion': cp.get('champion'), 'teams': sorted(ids), 'fx': fx, **({'final': src['final'][key]} if (src.get('final') or {}).get(key) else {})})
+    # strength for a club without an Elo: below the weakest of its cup
+    for c in eclubs:
+        if c['q'] is None:
+            mates = [x['q'] for x in eclubs if x['eu'] == c['eu'] and x['q'] is not None]
+            c['q'] = round(min(mates) - 1.5, 1) if mates else 68.0
+    for c in eclubs:
+        rows = c.pop('_rows'); ovrs = []
+        for p, rel, rr in rows:
+            prim = p.get('prim') or 'CMF'; gk = prim == 'GK'
+            ovr = int(round(max(45, min(93, c['q'] + rel + (rr.random() - .5) * 2))))
+            pool = by_pos.get(prim) or by_pos.get('CMF')
+            tpl = min(pool, key=lambda x: (abs(x['ovr'] - ovr), x['id']))
+            drop = tpl['ovr'] - ovr
+            a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
+            r = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; r[prim] = ovr
+            eplayers.append({'id': p['id'], 'n': p['name'], 'nat': p.get('nat'), 'age': p.get('age') or 26, 'no': p.get('no'), 'club': c['id'], 'prim': prim,
+                             'pos': [prim], 'ovr': ovr, 'r': r, 'a': a, 'style': tpl.get('style'), 'val': round(max(.3, 2 ** ((ovr - 70) / 4)), 1), 'eu': 1})
+            ovrs.append(ovr)
+        c['q'] = round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1)
+    return {'season': src.get('season'), 'comps': comps, 'clubs': eclubs, 'players': eplayers}
