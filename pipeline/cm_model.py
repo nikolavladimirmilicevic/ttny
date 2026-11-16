@@ -1223,7 +1223,7 @@ def build_europe(world, out_players, clubs, kits, alias, today, people=None, oth
             drop = tpl['ovr'] - ovr
             a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
             r = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; r[prim] = ovr
-            eur = p.get('eur')
+            eur = p.get('eur') or (TM_FACTS.get(str(p['id'])) or {}).get('eur')   # a value a Transfermarkt page gave
             val = (round(eur / 1.17, 1) if eur >= 1.17 else round(max(.05, eur / 1.17), 2)) if eur else round(max(.3, 2 ** ((ovr - 70) / 4)), 1)
             eplayers.append({'id': p['id'], 'n': p['name'], 'nat': p.get('nat'), 'age': p.get('age') or 26, 'no': p.get('no'), 'club': c['id'], 'prim': prim,
                              'pos': [prim], 'ovr': ovr, 'r': r, 'a': a, 'style': tpl.get('style'), 'val': val, 'eu': 1,

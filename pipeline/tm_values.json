@@ -1,7 +1,8 @@
 {
  "updated": "2026-11-16",
  "source": [
-  "transfermarkt.com 100 most valuable teams in the world (top 25 of each confederation: AFC, CAF, CONCACAF, CONMEBOL, OFC, UEFA)"
+  "transfermarkt.com 100 most valuable teams in the world (top 25 of each confederation: AFC, CAF, CONCACAF, CONMEBOL, OFC, UEFA)",
+  "transfermarkt.com Serie A 26/27 clubs (16.11.2026)"
  ],
  "note": "top18 = market value of the 18 most valuable players, EUR millions. Strength on the league's scale: q = a + b * ln(top18), fitted on the Premier League clubs in the list; clubs outside Europe get WORLD_BONUS on top, as their market prices players far below Europe's (fitting the 2025 Club World Cup's 63 results gives about 13; those were played in Europe's off-season, so 10 is used). A club below its confederation's 25th gets 80% of that value.",
  "world_bonus": 10,
@@ -1229,6 +1230,31 @@
     "Le Havre AC": 63.15,
     "ESTAC Troyes": 44.35,
     "Le Mans FC": 33.5
+   }
+  },
+  "ITA": {
+   "source": "transfermarkt.com Serie A 26/27 clubs (16.11.2026), total market value, EUR millions",
+   "clubs": {
+    "Inter Milan": 738.3,
+    "Juventus FC": 613.6,
+    "Como 1907": 568.15,
+    "AC Milan": 503.2,
+    "AS Roma": 498.4,
+    "Atalanta BC": 449.05,
+    "SSC Napoli": 424.5,
+    "ACF Fiorentina": 353.25,
+    "SS Lazio": 262.05,
+    "Bologna FC 1909": 229.15,
+    "US Sassuolo": 219.1,
+    "Torino FC": 171.1,
+    "Genoa CFC": 165.8,
+    "Udinese Calcio": 161.8,
+    "Parma Calcio 1913": 156.13,
+    "Cagliari Calcio": 141.85,
+    "Venezia FC": 120.25,
+    "Frosinone Calcio": 113.55,
+    "AC Monza": 112.5,
+    "US Lecce": 82.38
    }
   }
  },
