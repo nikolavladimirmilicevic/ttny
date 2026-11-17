@@ -918,6 +918,7 @@ def build_second(out_players, today, season, people, src=None, ids=None, short=N
             eur = p.get('eur') or .1
             ovr = int(round(min(84, max(50, sum(cf * v for cf, v in zip(coef, feats(eur, age, gk)))))))
             pool = by_pos.get(prim) or by_pos.get('CMF')
+            pool = [x for x in pool if x.get('ht')] or pool   # a player added by hand without a height is no template
             tpl = min(pool, key=lambda x: (abs(x['ovr'] - ovr), x['id']))
             rr = random.Random(pid); drop = tpl['ovr'] - ovr
             a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
@@ -1442,6 +1443,7 @@ def build_cwc(out_players, today, clubs_lg=None):
             also = [k for k, n in sorted(w.items(), key=lambda kv: -kv[1]) if k != prim and n >= 2 and k != 'GK'][:2]
             ovr = int(round(max(45, min(90, q0 + rel - top))))
             pool = by_pos.get(prim) or by_pos.get('CMF')
+            pool = [x for x in pool if x.get('ht')] or pool   # a player added by hand without a height is no template
             tpl = min(pool, key=lambda x: (abs(x['ovr'] - ovr), x['id'])); drop = tpl['ovr'] - ovr
             a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
             rp = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; rp[prim] = ovr

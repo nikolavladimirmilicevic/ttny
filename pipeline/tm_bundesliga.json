@@ -32,9 +32,53 @@
    "Borussia Mönchengladbach": 12,
    "Hamburger SV": 13,
    "1.FC Köln": 14,
-   "SV Werder Bremen": 15
+   "SV Werder Bremen": 15,
+   "VfL Wolfsburg": 16,
+   "1.FC Heidenheim 1846": 17,
+   "FC St. Pauli": 18
   },
-  "last_note": "2025/26 places 1 to 15 from the order of the Bundesliga transfers page (clubs by last season's final place, promoted clubs last); the three clubs that went down (16 to 18) are not on these pages"
+  "last_note": "2025/26 places 1 to 15 from the order of the Bundesliga transfers page (clubs by last season's final place, promoted clubs last); 16 to 18 from the 2. Bundesliga transfers page, which lists the three relegated clubs first in that order (Wolfsburg lost the relegation play-off to Paderborn)",
+  "relegated": [
+   "VfL Wolfsburg",
+   "1.FC Heidenheim 1846",
+   "FC St. Pauli"
+  ],
+  "relegation_playoff": {
+   "legs": [
+    [
+     "VfL Wolfsburg",
+     "SC Paderborn 07",
+     "0:0"
+    ],
+    [
+     "SC Paderborn 07",
+     "VfL Wolfsburg",
+     "2:1 AET"
+    ]
+   ],
+   "winner": "SC Paderborn 07",
+   "note": "2025/26 Bundesliga relegation play-off (16th v 3rd of the 2. Bundesliga), from the club pages"
+  },
+  "second_order": [
+   "Hannover 96",
+   "SV Darmstadt 98",
+   "1.FC Kaiserslautern",
+   "Hertha BSC",
+   "1.FC Nuremberg",
+   "VfL Bochum",
+   "Karlsruher SC",
+   "SG Dynamo Dresden",
+   "Holstein Kiel",
+   "Arminia Bielefeld",
+   "1.FC Magdeburg",
+   "Eintracht Braunschweig",
+   "SpVgg Greuther Fürth"
+  ],
+  "second_promoted": [
+   "VfL Osnabrück",
+   "FC Energie Cottbus"
+  ],
+  "second_note": "2. Bundesliga 2026/27: 18 clubs. second_order is the order of the 2025/26 2. Bundesliga clubs that stayed (places 4 to 16, after Schalke, Elversberg and Paderborn went up), from the transfers page; second_promoted came up from the 3. Liga (Osnabrück champions). Holstein Kiel and Hannover appointed their coaches after the season began (Kniat 10.11.2026, Wagner 21.09.2026), so they are left without one. Magdeburg list two managers (Sander and Ibold, both from 03.11.2025)."
  },
  "clubs": {
   "FC Bayern Munich": {
@@ -126,6 +170,186 @@
    "value": 53.88,
    "venue": "Home Deluxe Arena",
    "cap": 15000
+  },
+  "VfL Wolfsburg": {
+   "tier": 2,
+   "id": 161,
+   "short": "Wolfsburg",
+   "venue": "Volkswagen Arena",
+   "cap": 28917,
+   "value": 94.8,
+   "coach": "Tobias Strobl"
+  },
+  "1.FC Nuremberg": {
+   "tier": 2,
+   "id": 171,
+   "short": "Nuremberg",
+   "venue": "Max-Morlock-Stadion",
+   "cap": 50000,
+   "value": 63.88,
+   "coach": "Miroslav Klose"
+  },
+  "FC St. Pauli": {
+   "tier": 2,
+   "id": 186,
+   "short": "St. Pauli",
+   "venue": "Millerntor-Stadion",
+   "cap": 29546,
+   "value": 41.08,
+   "coach": "Marcel Rapp"
+  },
+  "Karlsruher SC": {
+   "tier": 2,
+   "id": 785,
+   "short": "Karlsruhe",
+   "venue": "BBBank Wildpark",
+   "cap": 33180,
+   "value": 37.83,
+   "coach": "Maximilian Senft"
+  },
+  "1.FC Kaiserslautern": {
+   "tier": 2,
+   "id": 745,
+   "short": "K'lautern",
+   "venue": "Fritz-Walter-Stadion",
+   "cap": 49327,
+   "value": 35.15,
+   "coach": "Torsten Lieberknecht"
+  },
+  "1.FC Heidenheim 1846": {
+   "tier": 2,
+   "id": 180,
+   "short": "Heidenheim",
+   "venue": "Voith-Arena",
+   "cap": 15000,
+   "value": 33.75,
+   "coach": "Frank Schmidt"
+  },
+  "Holstein Kiel": {
+   "tier": 2,
+   "id": 191,
+   "short": "Holstein Kiel",
+   "venue": "Holstein-Stadion",
+   "cap": 15034,
+   "value": 33.73
+  },
+  "Hertha BSC": {
+   "tier": 2,
+   "id": 159,
+   "short": "Hertha",
+   "venue": "Olympiastadion Berlin",
+   "cap": 74475,
+   "value": 32.38,
+   "coach": "Stefan Leitl"
+  },
+  "Hannover 96": {
+   "tier": 2,
+   "id": 166,
+   "short": "Hannover",
+   "venue": "Heinz-von-Heiden-Arena",
+   "cap": 49000,
+   "value": 31.6
+  },
+  "1.FC Magdeburg": {
+   "tier": 2,
+   "id": 179,
+   "short": "Magdeburg",
+   "venue": "Avnet-Arena",
+   "cap": 30098,
+   "value": 27.55,
+   "coach": "Petrik Sander"
+  },
+  "VfL Bochum": {
+   "tier": 2,
+   "id": 176,
+   "short": "Bochum",
+   "venue": "Vonovia Ruhrstadion",
+   "cap": 26000,
+   "value": 26.38,
+   "coach": "Uwe Rösler"
+  },
+  "SV Darmstadt 98": {
+   "tier": 2,
+   "id": 181,
+   "short": "Darmstadt",
+   "venue": "Merck-Stadion am Böllenfalltor",
+   "cap": 17810,
+   "value": 25.15,
+   "coach": "Florian Kohfeldt"
+  },
+  "SpVgg Greuther Fürth": {
+   "tier": 2,
+   "id": 178,
+   "short": "Greuther Fürth",
+   "venue": "Sportpark Ronhof | Thomas Sommer",
+   "cap": 16126,
+   "value": 24.5,
+   "coach": "Heiko Vogel"
+  },
+  "SG Dynamo Dresden": {
+   "tier": 2,
+   "id": 183,
+   "short": "Dynamo Dresden",
+   "venue": "Rudolf-Harbig-Stadion",
+   "cap": 32249,
+   "value": 24.48,
+   "coach": "Thomas Stamm"
+  },
+  "Eintracht Braunschweig": {
+   "tier": 2,
+   "id": 744,
+   "short": "Braunschweig",
+   "venue": "EINTRACHT-Stadion",
+   "cap": 23325,
+   "value": 20.98,
+   "coach": "Lars Kornetka"
+  },
+  "Arminia Bielefeld": {
+   "tier": 2,
+   "id": 188,
+   "short": "Bielefeld",
+   "venue": "SchücoArena",
+   "cap": 26750,
+   "value": 20.15,
+   "coach": "Oliver Kirch"
+  },
+  "FC Energie Cottbus": {
+   "tier": 2,
+   "id": 1320,
+   "short": "Cottbus",
+   "venue": "LEAG Energie Stadion",
+   "cap": 22528,
+   "value": 15.0,
+   "coach": "Claus-Dieter Wollitz"
+  },
+  "VfL Osnabrück": {
+   "tier": 2,
+   "id": 1324,
+   "short": "Osnabrück",
+   "venue": "Bremer Brücke",
+   "cap": 15741,
+   "value": 13.0,
+   "coach": "Timo Schultz"
   }
+ },
+ "second_values": {
+  "VfL Wolfsburg": 94.8,
+  "1.FC Nuremberg": 63.88,
+  "FC St. Pauli": 41.08,
+  "Karlsruher SC": 37.83,
+  "1.FC Kaiserslautern": 35.15,
+  "1.FC Heidenheim 1846": 33.75,
+  "Holstein Kiel": 33.73,
+  "Hertha BSC": 32.38,
+  "Hannover 96": 31.6,
+  "1.FC Magdeburg": 27.55,
+  "VfL Bochum": 26.38,
+  "SV Darmstadt 98": 25.15,
+  "SpVgg Greuther Fürth": 24.5,
+  "SG Dynamo Dresden": 24.48,
+  "Eintracht Braunschweig": 20.98,
+  "Arminia Bielefeld": 20.15,
+  "FC Energie Cottbus": 15.0,
+  "VfL Osnabrück": 13.0
  }
 }
