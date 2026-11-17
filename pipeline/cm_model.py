@@ -474,6 +474,21 @@ def apply_fixes(rows, fixes, teams, wc, people, wp, season):
             hit['e'] = {k: v for k, v in dict(hit['e'], bd=fx['dob']).items() if k != 'age'}
 
 
+def api_positions(prim, w, gc):
+    """A player's positions with Transfermarkt's as the main one: the others from the draft game (w), else from his
+    starts in the line-ups held (gc, twice or more); the shares of his starts, same order (None if unknown)."""
+    if w and w.get('pos'):
+        pl, pcl = list(w['pos']), list(w.get('pc') or [])
+    else:
+        gc = gc or {}
+        order = sorted(gc, key=lambda k: -gc[k])
+        pl = order[:1] + [k for k in order[1:] if gc[k] >= 2]; pcl = [gc[k] for k in pl]
+    old = dict(zip(pl, pcl)) if len(pcl) == len(pl) else {}
+    pl = [prim] + [q for q in pl if q != prim and (q == 'GK') == (prim == 'GK')]
+    sh = _shares({'pos': pl, 'pc': [old.get(q, 0) for q in pl]}, pl) if len(pl) > 1 and old else None
+    return pl, sh
+
+
 def make_attrs(pid, pos, pos_list, o, ht, wt, age, z, rnd, p=None):
     """A player's attributes and his rating in every position: the learned shape of his position at his overall (height,
     weight, age), moved by his season's numbers where there are any (z), his PES character traits by his API id, and each
@@ -783,7 +798,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     if _lgs:
         extra['leagues'] = _lgs
     try:
-        _eu = build_europe(world, out_players, clubs, kits, alias, today, people, other_lg={c['full']: c['id'] for L in _lgs.values() for c in L.get('clubs', [])})
+        _eu = build_europe(world, out_players, clubs, kits, alias, today, people, lastseen=lastseen, other_lg={c['full']: c['id'] for L in _lgs.values() for c in L.get('clubs', [])})
         if _eu and _eu['comps']:
             extra['europe'] = _eu
         _cw = build_cwc(out_players + ((_eu or {}).get('players') or []) + [x for L in _lgs.values() for x in L.get('players') or []], today, clubs)
@@ -1083,14 +1098,7 @@ def build_league(world, out_players, clubs, kits, alias, today, season, people, 
             else:
                 ovr = int(round(max(45, min(93, qclub[full] + max(-16, fv[pid] - mean_top) + (rr.random() - .5) * 2))))
             # positions: Transfermarkt's is his main one; the others from the draft game, else from his starts (twice or more)
-            if w and w.get('pos'):
-                pl, pcl = list(w['pos']), list(w.get('pc') or [])
-            else:
-                gc = ((lastseen or {}).get(pid) or [None, None, {}])[2] or {}
-                order = sorted(gc, key=lambda k: -gc[k])
-                pl = order[:1] + [k for k in order[1:] if gc[k] >= 2]; pcl = [gc[k] for k in pl]
-            old = dict(zip(pl, pcl)) if len(pcl) == len(pl) else {}
-            pl = [prim] + [q for q in pl if q != prim and (q == 'GK') == (prim == 'GK')]
+            pl, _sh = api_positions(prim, w, ((lastseen or {}).get(pid) or [None, None, {}])[2])
             e = next((e for cand, e in pidx.get(_fold(t['n']), []) if cand == pid), {})
             ht, wt = t.get('ht') or e.get('ht'), e.get('wt')
             a, r, style = make_attrs(pid, prim, pl, ovr, ht, wt, age, lambda m: 0.0, random.Random(f"cm-{pid}"))
@@ -1098,7 +1106,7 @@ def build_league(world, out_players, clubs, kits, alias, today, season, people, 
             val = (round(eur / 1.17, 1) if eur >= 1.17 else round(max(.05, eur / 1.17), 2)) if eur else round(max(.3, 2 ** ((ovr - 70) / 4)), 1)
             x = {'id': pid, 'n': t['n'], 'nat': t.get('nat'), 'age': age, 'bd': t['dob'], 'no': t.get('no'), 'club': cid, 'prim': prim, 'pos': pl,
                  'ht': ht or 180, 'wt': wt or 75, 'ovr': ovr, 'r': r, 'a': a, 'style': style, 'val': val,
-                 **({'pc': _sh} if len(pl) > 1 and old and (_sh := _shares({'pos': pl, 'pc': [old.get(q, 0) for q in pl]}, pl)) else {}),
+                 **({'pc': _sh} if _sh else {}),
                  **({'nt': 1} if w and w.get('nt') else {}),
                  **({'ft': t['ft']} if t.get('ft') else {}), **({'cy': t['con']} if t.get('con') else {})}
             _join(x, t)
@@ -1142,7 +1150,7 @@ EU_LEAGUE_ADJ = {**{c: 0 for c in ('ENG', 'ESP', 'ITA', 'GER', 'FRA')}, **{c: -2
                  **{c: -3.5 for c in ('TUR', 'CZE', 'GRE', 'AUT', 'SUI', 'NOR', 'DEN', 'SCO', 'POL', 'CRO', 'SRB', 'ISR', 'UKR', 'SWE', 'CYP')}}
 
 
-def build_europe(world, out_players, clubs, kits, alias, today, people=None, other_lg=None):
+def build_europe(world, out_players, clubs, kits, alias, today, people=None, other_lg=None, lastseen=None):
     """The season's three European cups: the clubs and the league-phase schedule from Transfermarkt (no results: the
     game replays the season), the foreign squads from the draft game's players. A foreign club's strength comes from its
     Elo, on the scale of the league's clubs (fitted on the league clubs that have both); its players spread around that
@@ -1188,7 +1196,7 @@ def build_europe(world, out_players, clubs, kits, alias, today, people=None, oth
         pidx.setdefault(_fold(e.get('n') or ''), []).append((int(kk), e))
         if e.get('sq'):
             pidx.setdefault(_fold(e['sq']), []).append((int(kk), e))
-    def from_tm(full, raw):
+    def from_tm(full, raw, isw=False):
         sq, used = [], set()
         rn = {}
         for p in raw:
@@ -1215,7 +1223,7 @@ def build_europe(world, out_players, clubs, kits, alias, today, people=None, oth
                 continue
             used.add(pid)
             sq.append({'id': pid, 'name': t['n'], 'prim': CH_POS.get(t['pos'], 'CMF'), 'age': age, 'bd': t['dob'], 'nat': t.get('nat'), 'no': t.get('no'),
-                       'ht': t.get('ht'), 'ft': t.get('ft'), 'eur': t.get('eur'), 'cy': t.get('con'), 'tm': 1})
+                       'ht': t.get('ht'), 'ft': t.get('ft'), 'eur': t.get('eur'), 'cy': t.get('con'), 'tm': 1, 'w': hit if isw else None})
         return sq
     olg = {fold(k): v for k, v in (other_lg or {}).items()}
     def find(full, short):
@@ -1269,7 +1277,7 @@ def build_europe(world, out_players, clubs, kits, alias, today, people=None, oth
             q = round(q_of(wcl['elo']) + EU_LEAGUE_ADJ.get(wcl.get('ctry'), -5), 1) if wcl.get('elo') else None
             raw = sorted(by_club.get(tid, []), key=lambda p: -(p.get('mn') or p.get('starts') or 0)) if kind == 'w' else from_lineups(tid)
             if full in TMS and vfit:
-                sq = from_tm(full, raw)
+                sq = from_tm(full, raw, kind == 'w')
                 fv = {p['id']: sum(cf * v for cf, v in zip(vfit[1], vfit[0](p.get('eur') or .1, min(p['age'], 33), p['prim'] == 'GK'))) for p in sq}   # past 33 the fit's age term runs beyond the league's players
                 top = statistics.mean(sorted(fv.values(), reverse=True)[:14]) if fv else 0
                 rows = [(p, max(-16, fv[p['id']] - top), random.Random(p['id'])) for p in sq]
@@ -1313,15 +1321,15 @@ def build_europe(world, out_players, clubs, kits, alias, today, people=None, oth
         for p, rel, rr in rows:
             prim = p.get('prim') or 'CMF'; gk = prim == 'GK'
             ovr = int(round(max(45, min(93, c['q'] + rel + (rr.random() - .5) * 2))))
-            pool = by_pos.get(prim) or by_pos.get('CMF')
-            tpl = min(pool, key=lambda x: (abs(x['ovr'] - ovr), x['id']))
-            drop = tpl['ovr'] - ovr
-            a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
-            r = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; r[prim] = ovr
+            # positions and attributes as for the leagues' players: the draft game's player, else his starts in the line-ups
+            w = p.get('w') if p.get('tm') else (p if p.get('lvl') is not None else None)
+            pl, sh = api_positions(prim, w, ((lastseen or {}).get(p['id']) or [None, None, {}])[2] if p['id'] > 0 else {})
+            ht = p.get('ht') or (w or {}).get('ht')
+            a, r, style = make_attrs(p['id'], prim, pl, ovr, ht, None, p.get('age') or 26, lambda m: 0.0, random.Random(f"cm-{p['id']}"))
             eur = p.get('eur') or (TM_FACTS.get(str(p['id'])) or {}).get('eur')   # a value a Transfermarkt page gave
             val = (round(eur / 1.17, 1) if eur >= 1.17 else round(max(.05, eur / 1.17), 2)) if eur else round(max(.3, 2 ** ((ovr - 70) / 4)), 1)
             eplayers.append({'id': p['id'], 'n': p['name'], 'nat': p.get('nat'), 'age': p.get('age') or 26, 'no': p.get('no'), 'club': c['id'], 'prim': prim,
-                             'pos': [prim], 'ovr': ovr, 'r': r, 'a': a, 'style': tpl.get('style'), 'val': val, 'eu': 1,
+                             'pos': pl, 'ovr': ovr, 'r': r, 'a': a, 'style': style, 'val': val, 'eu': 1, **({'pc': sh} if sh else {}),
                              **{k: p[k] for k in ('bd', 'ht', 'ft', 'cy') if p.get(k)}})
             ovrs.append(ovr)
         c['q'] = round(statistics.mean(sorted(ovrs, reverse=True)[:14]), 1)
