@@ -1532,22 +1532,9 @@ function pendingActs(){
   return out;
 }
 const wantsWord = p => { (S.word = S.word || {})[p.id] = S.date; };
-// does the manager's club play at this stop of the calendar? (the draws are seeded, so asking does not change them)
-function mePlays(ev){ const m = x => !!x && (x.h === me() || x.a === me());
-  if (ev.k === 'cup') return cupDraw().ties.some(m);
-  if (ev.k === 'lc') return !!S.lc && S.lc.alive.concat(S.lc.stage === 1 ? S.lc.wait : []).includes(me()) && lcDraw().some(m);
-  if (ev.k === 'eu'){ const c = S.eu.c[ev.c]; return c.days[c.cur].m.some(m); }
-  if (ev.k === 'cwc') return S.cwc.days[S.cwc.cur].m.some(m);
-  if (ev.k === 'shield') return m(S.shield);
-  if (ev.k === 'usc') return m(S.usc);
-  if (ev.k === 'fic'){ const x0 = S.fic.st[S.fic.cur]; ficFill(x0); return m(x0); }
-  return (S.rounds[S.round] || { m: [] }).m.some(m); }   // the league
-function onContinue(){
-  if (S.done) return;
-  const todo = pendingActs();
-  if (todo.length){ const a = todo[0]; choice('Waiting for your answer', `${todo.length > 1 ? `${todo.length} things need your answer before the game goes on. The first: ` : 'This needs your answer before the game goes on: '}${a.txt}`, [[a.btn, () => go(a.v), 'go']]); return; }
-  const ev = events()[0]; if (!ev){ endSeason(); view(); return; }
-  if (ev.date > S.date){ passDays(daysBetween(S.date, nextStop(ev.date))); monthly(); save(); view(); return; }
+// before kick-off, from the pre-match screen (Go to Match): eleven are needed, and a short bench is pointed out once a day
+function sideCheck(ok){
+  const toTac = () => { LIVE = null; go({ s: 'club', cid: me(), tab: 'tactics' }); toast('Press Continue Game when you are ready for the match.'); };
   const tt = readyTactic(me()), missing = tt.xi.filter(x => !x).length, b0 = tt.bench.length,
     canB = (() => { const keep = JSON.stringify(tt); fillRest(); const n = S.tac[me()].bench.length; S.tac[me()] = JSON.parse(keep); return n; })(),   // what the assistant could name
     shortB = Math.min(BENCH, canB) - b0;
@@ -1555,10 +1542,18 @@ function onContinue(){
   const patch = () => { fillRest(); const t = S.tac[me()];
     for (let i = 0; i < 11; i++) if (!t.xi[i]){ const p = squadOf(me()).filter(x => !t.xi.includes(x.id) && !onLoan(x) && !ps(x.id).sus && (FORMS[t.form] || [])[i] && (slotsOf(t)[i][0] === 'GK') === (x.prim === 'GK')).sort((a, b) => (ps(a.id).injD || 0) - (ps(b.id).injD || 0))[0];
       if (p){ t.xi[i] = p.id; t.bench = t.bench.filter(x => x !== p.id); if (t.out && t.out[i]){ t.stand = t.stand || {}; t.stand[i] = p.id; } toast(`${cmName(p.n)} plays through it: there is no one else.`, 4000); } }
-    save(); onContinue(); };
-  const plays = mePlays(ev);   // the side is checked only before a match of yours, not at every stop of the calendar
-  if (plays && missing){ choice('Not enough players', `Your side has ${missing} empty place${missing > 1 ? 's' : ''}. You cannot start a match without eleven.`, [['Assistant fills the rest', patch, 'go'], ['Go to tactics', () => go({ s: 'club', cid: me(), tab: 'tactics' })]]); return; }
-  if (plays && shortB > 0 && S.benchOk !== S.date){ choice('The bench is not full', `Only ${b0} of ${BENCH} substitutes are named.`, [['Assistant fills the bench', () => { fillRest(); save(); onContinue(); }, 'go'], ['Play anyway', () => { S.benchOk = S.date; onContinue(); }], ['Go to tactics', () => go({ s: 'club', cid: me(), tab: 'tactics' })]]); return; }
+    save(); ok(); };
+  if (missing){ choice('Not enough players', `Your side has ${missing} empty place${missing > 1 ? 's' : ''}. You cannot start a match without eleven.`, [['Assistant fills the rest', patch, 'go'], ['Go to tactics', toTac]]); return; }
+  if (shortB > 0 && S.benchOk !== S.date){ choice('The bench is not full', `Only ${b0} of ${BENCH} substitutes are named.`, [['Assistant fills the bench', () => { fillRest(); save(); ok(); }, 'go'], ['Play anyway', () => { S.benchOk = S.date; ok(); }], ['Go to tactics', toTac]]); return; }
+  ok();
+}
+function onContinue(){
+  if (S.done) return;
+  const todo = pendingActs();
+  if (todo.length){ const a = todo[0]; choice('Waiting for your answer', `${todo.length > 1 ? `${todo.length} things need your answer before the game goes on. The first: ` : 'This needs your answer before the game goes on: '}${a.txt}`, [[a.btn, () => go(a.v), 'go']]); return; }
+  const ev = events()[0]; if (!ev){ endSeason(); view(); return; }
+  if (ev.date > S.date){ passDays(daysBetween(S.date, nextStop(ev.date))); monthly(); save(); view(); return; }
+  readyTactic(me());   // the side is checked on the pre-match screen, when you go to the match (sideCheck)
   if (ev.k === 'lc'){
     const ties = lcDraw(), mine = S.lc.alive.concat(S.lc.stage === 1 ? S.lc.wait : []).includes(me()) && ties.find(x => x.h === me() || x.a === me());
     S.lc.cur = ties;
@@ -4303,6 +4298,7 @@ function startLive(h, a, opts){
   const others = (opts.others || []).map(m => newMatch(m.h, m.a, { cup: opts.cup, date: S.date, ...mo(m) }));
   M.att = opts.shield || (opts.lc && opts.cup === 'Final') ? 80000 + Math.round(Math.random() * 7000) : Math.round((club(h).cap || 30000) * clamp(.86 + (S.conf - 50) / 400 + Math.random() * .08, .65, 1));
   LIVE = { M, others, cup: opts.cup, shield: !!opts.shield, lc: !!opts.lc, eu: opts.eu || null, usc: !!opts.usc, cwc: !!opts.cwc, fic: !!opts.fic, started: false, paused: true, sel: null, pre: true, atHT: false };
+  LIVE.args = [h, a, opts]; LIVE.side = JSON.stringify([S.tac[me()].xi, S.tac[me()].bench]);
   MTAB = 'overview'; view(); scrollTo(0, 0);
 }
 const icon = k => ({ goal: '⚽ ', red: '🟥 ', yel: '🟨 ', inj: '✚ ', sub: '⇄ ' })[k] || '';
@@ -4321,7 +4317,8 @@ function viewPre(){
     <section class="pane">${(() => { const fm = !L.cup && ((S.rounds[S.round] || {}).m || []).find(x => x.h === M.h && x.a === M.a), wd = new Date(S.date + 'T12:00:00Z').getUTCDay();
       return previewHTML(M.h, M.a, { M, date: S.date, ko: fm ? fm.ko || (wd === 0 || wd === 6 ? '15:00' : '19:45') : null, tv: fm && fm.tv, venue: L.shield ? (HL().shieldAt || 'Neutral ground') : (L.lc && L.cup === 'Final') ? 'Wembley Stadium' : club(M.h).venue, ref: M.ref, weather: M.weather, temp: M.temp, wxNote: wxNote.replace(/^ \(|\)$/g, '') }); })()}</section>
     <div class="bn"><button id="totac2">Back</button><button id="tomatch2">Next</button></div>`);
-  const goMatch = () => { L.pre = false; viewMatch(); }, toTac = () => { LIVE = null; go({ s: 'club', cid: me(), tab: 'tactics' }); toast('Press Continue Game when you are ready for the match.'); };
+  // the side is checked when you go to the match; if it changed (the assistant filled it), the match starts again with it
+  const goMatch = () => sideCheck(() => { if (!LIVE) return; if (LIVE.side !== JSON.stringify([S.tac[me()].xi, S.tac[me()].bench])) startLive(...LIVE.args); LIVE.pre = false; viewMatch(); }), toTac = () => { LIVE = null; go({ s: 'club', cid: me(), tab: 'tactics' }); toast('Press Continue Game when you are ready for the match.'); };
   $('#tomatch').addEventListener('click', goMatch); $('#tomatch2').addEventListener('click', goMatch);
   $('#totac').addEventListener('click', toTac); $('#totac2').addEventListener('click', toTac);
   previewWire(() => viewPre()); const q = $('#qtac'); if (q) q.addEventListener('click', toTac);
