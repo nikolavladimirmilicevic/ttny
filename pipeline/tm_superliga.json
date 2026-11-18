@@ -1,16 +1,17 @@
 {
- "about": "Super liga Srbije 2026/27 from the Transfermarkt pages Nikola supplied (the competition start page and the transfers page, 18.11.2026) and the FSS propositions for 2026/27 (Propozicije takmicenja za prvenstvo Super lige Srbije, Sluzbeni list FSS 'Fudbal' br. 12, 05.06.2026): the 14 clubs with their squad sizes, ages, foreigners and team values, last season's honours, the transfer window, and the competition rules. No squad pages were supplied, so there are no players here and the league cannot be played yet. The current season's table, results and scorers are deliberately not stored: the game always starts the season from zero.",
+ "about": "Super liga Srbije 2026/27 from the Transfermarkt pages Nikola supplied (the competition start page, the transfers page, the complete schedule and the 14 club squad pages, 18.11.2026), the FSS propositions for 2026/27 (Propozicije takmicenja za prvenstvo Super lige Srbije, Sluzbeni list FSS 'Fudbal' br. 12, 05.06.2026), and the Prva liga Srbije behind it (start page, transfers page, the 16 club squad pages): the clubs with their squad sizes, ages, foreigners, team values, stadiums and coaches, last season's honours, the transfer window, the competition rules and the preliminary phase's fixtures. The squads are in tm_squads.json. The league is playable (cm_model.LG_SPEC['SRB']). The current season's table, results and scorers are deliberately not stored: the game always starts the season from zero.",
  "updated": "2026-11-18",
  "league": "Super liga Srbije",
  "second": "Prva liga Srbije",
  "country": "SRB",
  "season": 2026,
- "playable": false,
+ "playable": true,
  "source": [
   "transfermarkt.com Super liga Srbije 26/27 start page (clubs, market values, most valuable players), 18.11.2026",
   "transfermarkt.com Super liga Srbije 26/27 transfers page (every club's arrivals and departures), 18.11.2026",
   "FSS, Propozicije takmicenja za prvenstvo Super lige Srbije u fudbalu za takmicarsku sezonu 2026/2027 (Fudbal br. 12, 05.06.2026)",
-  "16 Prva liga Srbije club squad pages (18.11.2026)"
+  "16 Prva liga Srbije club squad pages (18.11.2026)",
+  "Complete Super liga Srbije schedule 2026/27, rounds 1 to 26 (18.11.2026)"
  ],
  "facts": {
   "reigning": "Red Star Belgrade",
@@ -553,7 +554,8 @@
  "notes": [
   "venue, cap and the current head coach with his appointment date (coach_now, coach_from) from the club squad pages (18.11.2026); most were appointed after the season began on 17 July, so only Kokovic (Zeleznicar), Popovic (IMT), Rendulic (Radnik), Dudic (Radnicki 1923), Curcic (Mladost) and Glusica (Macva) were in charge from the start",
   "second_clubs: squad size, average age, foreigners, value, venue, cap and current head coach with appointment date (coach_now, coach_from) from the 16 Prva liga club squad pages (18.11.2026); the Prva liga began on 31 July, so Nadj (Dubocica), Krtolica (Borac), Mirjacic (Javor-Matis), Mijailovic (Smederevo), Rakocevic (Vrsac), Brankovic (Vozdovac), Bugarski (Metalac), Milijas (TSC) and Jovanovic (Teleoptik) were in charge from the start; Jedinstvo Ub, Proleter, Bor, Graficar, Loznica, Spartak and Napredak changed coach later. Their squads are in tm_squads.json.",
-  "Savo Radanovic, Matej Strika and Dimitrije Saric appear both in Graficar's squad and in Red Star's (Graficar is Red Star's feeder club); the game keeps them at Red Star, so a Prva liga promotion pool must skip them for Graficar."
+  "Savo Radanovic, Matej Strika and Dimitrije Saric appear both in Graficar's squad and in Red Star's (Graficar is Red Star's feeder club); the game keeps them at Red Star, so a Prva liga promotion pool must skip them for Graficar.",
+  "fixtures: the 182 matches of the preliminary phase (rounds 1 to 26) with date and kick-off time from the complete schedule page (18.11.2026); no results kept. A match moved from its round keeps its real date (Radnicki 1923 v Zeleznicar of round 2 on 28 October). The play-off and play-out rounds (27 to 33) are not on the page yet: the game draws them from the table after round 26 by the article 24 pairings."
  ],
  "second_values": {
   "FK TSC Backa Topola": 9.4,
@@ -766,5 +768,1237 @@
    "coach_now": "Marko Jovanovic",
    "coach_from": "2025-11-14"
   }
- ]
+ ],
+ "fixtures": [
+  [
+   "2026-07-17",
+   1,
+   "Red Star Belgrade",
+   "FK Macva Sabac",
+   "20:00"
+  ],
+  [
+   "2026-07-17",
+   1,
+   "FK Zeleznicar Pancevo",
+   "FK Radnicki Nis",
+   "20:00"
+  ],
+  [
+   "2026-07-18",
+   1,
+   "FK Novi Pazar",
+   "FK Radnicki 1923 Kragujevac",
+   "20:00"
+  ],
+  [
+   "2026-07-18",
+   1,
+   "FK Zemun",
+   "FK Partizan Belgrade",
+   "20:00"
+  ],
+  [
+   "2026-07-19",
+   1,
+   "FK Vojvodina Novi Sad",
+   "OFK Beograd",
+   "19:00"
+  ],
+  [
+   "2026-07-19",
+   1,
+   "FK Radnik Surdulica",
+   "FK Mladost Lucani",
+   "19:00"
+  ],
+  [
+   "2026-07-19",
+   1,
+   "FK Cukaricki",
+   "FK IMT Belgrad",
+   "19:00"
+  ],
+  [
+   "2026-07-25",
+   2,
+   "FK Radnicki Nis",
+   "FK Cukaricki",
+   "17:30"
+  ],
+  [
+   "2026-07-25",
+   2,
+   "FK IMT Belgrad",
+   "FK Zemun",
+   "20:00"
+  ],
+  [
+   "2026-07-25",
+   2,
+   "OFK Beograd",
+   "FK Radnik Surdulica",
+   "20:00"
+  ],
+  [
+   "2026-07-26",
+   2,
+   "Red Star Belgrade",
+   "FK Vojvodina Novi Sad",
+   "19:00"
+  ],
+  [
+   "2026-07-26",
+   2,
+   "FK Mladost Lucani",
+   "FK Novi Pazar",
+   "20:30"
+  ],
+  [
+   "2026-07-26",
+   2,
+   "FK Macva Sabac",
+   "FK Partizan Belgrade",
+   "21:00"
+  ],
+  [
+   "2026-10-28",
+   2,
+   "FK Radnicki 1923 Kragujevac",
+   "FK Zeleznicar Pancevo",
+   "15:00"
+  ],
+  [
+   "2026-08-01",
+   3,
+   "FK Novi Pazar",
+   "OFK Beograd",
+   "20:00"
+  ],
+  [
+   "2026-08-01",
+   3,
+   "FK Cukaricki",
+   "FK Radnicki 1923 Kragujevac",
+   "20:30"
+  ],
+  [
+   "2026-08-02",
+   3,
+   "FK Zemun",
+   "FK Radnicki Nis",
+   "20:00"
+  ],
+  [
+   "2026-08-02",
+   3,
+   "FK Partizan Belgrade",
+   "FK IMT Belgrad",
+   "20:00"
+  ],
+  [
+   "2026-08-03",
+   3,
+   "FK Vojvodina Novi Sad",
+   "FK Macva Sabac",
+   "19:00"
+  ],
+  [
+   "2026-08-03",
+   3,
+   "FK Zeleznicar Pancevo",
+   "FK Mladost Lucani",
+   "21:00"
+  ],
+  [
+   "2026-09-10",
+   3,
+   "FK Radnik Surdulica",
+   "Red Star Belgrade",
+   "19:00"
+  ],
+  [
+   "2026-08-08",
+   4,
+   "FK Radnicki 1923 Kragujevac",
+   "FK Zemun",
+   "20:00"
+  ],
+  [
+   "2026-08-08",
+   4,
+   "Red Star Belgrade",
+   "FK Novi Pazar",
+   "20:00"
+  ],
+  [
+   "2026-08-09",
+   4,
+   "FK Macva Sabac",
+   "FK IMT Belgrad",
+   "20:00"
+  ],
+  [
+   "2026-08-09",
+   4,
+   "FK Vojvodina Novi Sad",
+   "FK Radnik Surdulica",
+   "20:00"
+  ],
+  [
+   "2026-08-09",
+   4,
+   "FK Mladost Lucani",
+   "FK Cukaricki",
+   "21:00"
+  ],
+  [
+   "2026-08-09",
+   4,
+   "OFK Beograd",
+   "FK Zeleznicar Pancevo",
+   "21:00"
+  ],
+  [
+   "2026-10-28",
+   4,
+   "FK Radnicki Nis",
+   "FK Partizan Belgrade",
+   "17:00"
+  ],
+  [
+   "2026-08-15",
+   5,
+   "FK Radnik Surdulica",
+   "FK Macva Sabac",
+   "19:00"
+  ],
+  [
+   "2026-08-15",
+   5,
+   "FK Cukaricki",
+   "OFK Beograd",
+   "21:00"
+  ],
+  [
+   "2026-08-16",
+   5,
+   "FK IMT Belgrad",
+   "FK Radnicki Nis",
+   "19:00"
+  ],
+  [
+   "2026-08-16",
+   5,
+   "FK Zemun",
+   "FK Mladost Lucani",
+   "21:00"
+  ],
+  [
+   "2026-08-16",
+   5,
+   "FK Partizan Belgrade",
+   "FK Radnicki 1923 Kragujevac",
+   "21:00"
+  ],
+  [
+   "2026-08-17",
+   5,
+   "FK Novi Pazar",
+   "FK Vojvodina Novi Sad",
+   "20:00"
+  ],
+  [
+   "2026-09-17",
+   5,
+   "FK Zeleznicar Pancevo",
+   "Red Star Belgrade",
+   "20:00"
+  ],
+  [
+   "2026-08-22",
+   6,
+   "FK Macva Sabac",
+   "FK Radnicki Nis",
+   "18:30"
+  ],
+  [
+   "2026-08-22",
+   6,
+   "FK Radnicki 1923 Kragujevac",
+   "FK IMT Belgrad",
+   "19:00"
+  ],
+  [
+   "2026-08-22",
+   6,
+   "OFK Beograd",
+   "FK Zemun",
+   "21:00"
+  ],
+  [
+   "2026-08-23",
+   6,
+   "Red Star Belgrade",
+   "FK Cukaricki",
+   "19:00"
+  ],
+  [
+   "2026-08-23",
+   6,
+   "FK Radnik Surdulica",
+   "FK Novi Pazar",
+   "19:00"
+  ],
+  [
+   "2026-08-23",
+   6,
+   "FK Mladost Lucani",
+   "FK Partizan Belgrade",
+   "21:00"
+  ],
+  [
+   "2026-08-23",
+   6,
+   "FK Vojvodina Novi Sad",
+   "FK Zeleznicar Pancevo",
+   "21:00"
+  ],
+  [
+   "2026-08-29",
+   7,
+   "FK Zeleznicar Pancevo",
+   "FK Radnik Surdulica",
+   "19:00"
+  ],
+  [
+   "2026-08-29",
+   7,
+   "FK Novi Pazar",
+   "FK Macva Sabac",
+   "21:00"
+  ],
+  [
+   "2026-08-29",
+   7,
+   "FK Cukaricki",
+   "FK Vojvodina Novi Sad",
+   "21:00"
+  ],
+  [
+   "2026-08-29",
+   7,
+   "FK Radnicki Nis",
+   "FK Radnicki 1923 Kragujevac",
+   "21:00"
+  ],
+  [
+   "2026-08-30",
+   7,
+   "FK Zemun",
+   "Red Star Belgrade",
+   "20:00"
+  ],
+  [
+   "2026-08-30",
+   7,
+   "FK IMT Belgrad",
+   "FK Mladost Lucani",
+   "21:00"
+  ],
+  [
+   "2026-08-31",
+   7,
+   "FK Partizan Belgrade",
+   "OFK Beograd",
+   "19:00"
+  ],
+  [
+   "2026-09-04",
+   8,
+   "FK Novi Pazar",
+   "FK Zeleznicar Pancevo",
+   "19:00"
+  ],
+  [
+   "2026-09-05",
+   8,
+   "FK Radnik Surdulica",
+   "FK Cukaricki",
+   "18:00"
+  ],
+  [
+   "2026-09-05",
+   8,
+   "FK Macva Sabac",
+   "FK Radnicki 1923 Kragujevac",
+   "20:00"
+  ],
+  [
+   "2026-09-05",
+   8,
+   "FK Mladost Lucani",
+   "FK Radnicki Nis",
+   "20:00"
+  ],
+  [
+   "2026-09-06",
+   8,
+   "Red Star Belgrade",
+   "FK Partizan Belgrade",
+   "19:00"
+  ],
+  [
+   "2026-09-06",
+   8,
+   "FK Vojvodina Novi Sad",
+   "FK Zemun",
+   "21:00"
+  ],
+  [
+   "2026-09-07",
+   8,
+   "OFK Beograd",
+   "FK IMT Belgrad",
+   "20:00"
+  ],
+  [
+   "2026-09-11",
+   9,
+   "FK Zeleznicar Pancevo",
+   "FK Macva Sabac",
+   "18:30"
+  ],
+  [
+   "2026-09-12",
+   9,
+   "FK Cukaricki",
+   "FK Novi Pazar",
+   "18:30"
+  ],
+  [
+   "2026-09-12",
+   9,
+   "FK Radnicki 1923 Kragujevac",
+   "FK Mladost Lucani",
+   "20:30"
+  ],
+  [
+   "2026-09-13",
+   9,
+   "FK Radnicki Nis",
+   "OFK Beograd",
+   "16:00"
+  ],
+  [
+   "2026-09-13",
+   9,
+   "FK Partizan Belgrade",
+   "FK Vojvodina Novi Sad",
+   "17:00"
+  ],
+  [
+   "2026-09-13",
+   9,
+   "FK IMT Belgrad",
+   "Red Star Belgrade",
+   "19:00"
+  ],
+  [
+   "2026-09-14",
+   9,
+   "FK Zemun",
+   "FK Radnik Surdulica",
+   "19:00"
+  ],
+  [
+   "2026-09-19",
+   10,
+   "FK Vojvodina Novi Sad",
+   "FK IMT Belgrad",
+   "17:00"
+  ],
+  [
+   "2026-09-19",
+   10,
+   "FK Novi Pazar",
+   "FK Zemun",
+   "17:00"
+  ],
+  [
+   "2026-09-19",
+   10,
+   "OFK Beograd",
+   "FK Radnicki 1923 Kragujevac",
+   "19:00"
+  ],
+  [
+   "2026-09-19",
+   10,
+   "FK Radnik Surdulica",
+   "FK Partizan Belgrade",
+   "19:00"
+  ],
+  [
+   "2026-09-20",
+   10,
+   "FK Macva Sabac",
+   "FK Mladost Lucani",
+   "17:00"
+  ],
+  [
+   "2026-09-20",
+   10,
+   "Red Star Belgrade",
+   "FK Radnicki Nis",
+   "19:00"
+  ],
+  [
+   "2026-09-20",
+   10,
+   "FK Zeleznicar Pancevo",
+   "FK Cukaricki",
+   "20:00"
+  ],
+  [
+   "2026-10-10",
+   11,
+   "FK IMT Belgrad",
+   "FK Radnik Surdulica",
+   "15:00"
+  ],
+  [
+   "2026-10-10",
+   11,
+   "FK Cukaricki",
+   "FK Macva Sabac",
+   "17:00"
+  ],
+  [
+   "2026-10-10",
+   11,
+   "FK Radnicki 1923 Kragujevac",
+   "Red Star Belgrade",
+   "19:00"
+  ],
+  [
+   "2026-10-11",
+   11,
+   "FK Radnicki Nis",
+   "FK Vojvodina Novi Sad",
+   "15:00"
+  ],
+  [
+   "2026-10-11",
+   11,
+   "FK Partizan Belgrade",
+   "FK Novi Pazar",
+   "17:00"
+  ],
+  [
+   "2026-10-11",
+   11,
+   "FK Zemun",
+   "FK Zeleznicar Pancevo",
+   "19:00"
+  ],
+  [
+   "2026-10-12",
+   11,
+   "FK Mladost Lucani",
+   "OFK Beograd",
+   "20:00"
+  ],
+  [
+   "2026-10-16",
+   12,
+   "FK Radnik Surdulica",
+   "FK Radnicki Nis",
+   "17:00"
+  ],
+  [
+   "2026-10-17",
+   12,
+   "FK Cukaricki",
+   "FK Zemun",
+   "15:00"
+  ],
+  [
+   "2026-10-17",
+   12,
+   "FK Vojvodina Novi Sad",
+   "FK Radnicki 1923 Kragujevac",
+   "17:00"
+  ],
+  [
+   "2026-10-17",
+   12,
+   "FK Macva Sabac",
+   "OFK Beograd",
+   "19:00"
+  ],
+  [
+   "2026-10-18",
+   12,
+   "FK Novi Pazar",
+   "FK IMT Belgrad",
+   "14:00"
+  ],
+  [
+   "2026-10-18",
+   12,
+   "Red Star Belgrade",
+   "FK Mladost Lucani",
+   "16:00"
+  ],
+  [
+   "2026-10-18",
+   12,
+   "FK Zeleznicar Pancevo",
+   "FK Partizan Belgrade",
+   "18:30"
+  ],
+  [
+   "2026-10-23",
+   13,
+   "FK Zemun",
+   "FK Macva Sabac",
+   "18:00"
+  ],
+  [
+   "2026-10-23",
+   13,
+   "FK IMT Belgrad",
+   "FK Zeleznicar Pancevo",
+   "18:00"
+  ],
+  [
+   "2026-10-23",
+   13,
+   "FK Radnicki Nis",
+   "FK Novi Pazar",
+   "18:00"
+  ],
+  [
+   "2026-10-23",
+   13,
+   "FK Radnicki 1923 Kragujevac",
+   "FK Radnik Surdulica",
+   "18:00"
+  ],
+  [
+   "2026-10-24",
+   13,
+   "FK Partizan Belgrade",
+   "FK Cukaricki",
+   "16:00"
+  ],
+  [
+   "2026-10-24",
+   13,
+   "FK Mladost Lucani",
+   "FK Vojvodina Novi Sad",
+   "18:00"
+  ],
+  [
+   "2026-10-25",
+   13,
+   "OFK Beograd",
+   "Red Star Belgrade",
+   "16:00"
+  ],
+  [
+   "2026-10-31",
+   14,
+   "FK Macva Sabac",
+   "Red Star Belgrade",
+   "17:00"
+  ],
+  [
+   "2026-11-01",
+   14,
+   "FK IMT Belgrad",
+   "FK Cukaricki",
+   "14:00"
+  ],
+  [
+   "2026-11-01",
+   14,
+   "OFK Beograd",
+   "FK Vojvodina Novi Sad",
+   "15:00"
+  ],
+  [
+   "2026-11-01",
+   14,
+   "FK Radnicki 1923 Kragujevac",
+   "FK Novi Pazar",
+   "16:00"
+  ],
+  [
+   "2026-11-01",
+   14,
+   "FK Partizan Belgrade",
+   "FK Zemun",
+   "17:00"
+  ],
+  [
+   "2026-11-02",
+   14,
+   "FK Mladost Lucani",
+   "FK Radnik Surdulica",
+   "18:00"
+  ],
+  [
+   "2026-11-02",
+   14,
+   "FK Radnicki Nis",
+   "FK Zeleznicar Pancevo",
+   "18:00"
+  ],
+  [
+   "2026-11-07",
+   15,
+   "FK Zemun",
+   "FK IMT Belgrad",
+   "13:00"
+  ],
+  [
+   "2026-11-07",
+   15,
+   "FK Cukaricki",
+   "FK Radnicki Nis",
+   "15:00"
+  ],
+  [
+   "2026-11-07",
+   15,
+   "FK Zeleznicar Pancevo",
+   "FK Radnicki 1923 Kragujevac",
+   "17:00"
+  ],
+  [
+   "2026-11-08",
+   15,
+   "FK Novi Pazar",
+   "FK Mladost Lucani",
+   "13:00"
+  ],
+  [
+   "2026-11-08",
+   15,
+   "FK Radnik Surdulica",
+   "OFK Beograd",
+   "13:00"
+  ],
+  [
+   "2026-11-08",
+   15,
+   "FK Partizan Belgrade",
+   "FK Macva Sabac",
+   "17:00"
+  ],
+  [
+   "2026-11-08",
+   15,
+   "FK Vojvodina Novi Sad",
+   "Red Star Belgrade",
+   "19:00"
+  ],
+  [
+   "2026-11-21",
+   16,
+   "FK Radnicki Nis",
+   "FK Zemun",
+   "13:00"
+  ],
+  [
+   "2026-11-21",
+   16,
+   "Red Star Belgrade",
+   "FK Radnik Surdulica",
+   "14:00"
+  ],
+  [
+   "2026-11-21",
+   16,
+   "OFK Beograd",
+   "FK Novi Pazar",
+   "15:00"
+  ],
+  [
+   "2026-11-21",
+   16,
+   "FK Mladost Lucani",
+   "FK Zeleznicar Pancevo",
+   "17:00"
+  ],
+  [
+   "2026-11-22",
+   16,
+   "FK Radnicki 1923 Kragujevac",
+   "FK Cukaricki",
+   "13:00"
+  ],
+  [
+   "2026-11-22",
+   16,
+   "FK IMT Belgrad",
+   "FK Partizan Belgrade",
+   "15:00"
+  ],
+  [
+   "2026-11-22",
+   16,
+   "FK Macva Sabac",
+   "FK Vojvodina Novi Sad",
+   "17:00"
+  ],
+  [
+   "2026-11-28",
+   17,
+   "FK IMT Belgrad",
+   "FK Macva Sabac"
+  ],
+  [
+   "2026-11-28",
+   17,
+   "FK Partizan Belgrade",
+   "FK Radnicki Nis"
+  ],
+  [
+   "2026-11-28",
+   17,
+   "FK Zemun",
+   "FK Radnicki 1923 Kragujevac"
+  ],
+  [
+   "2026-11-28",
+   17,
+   "FK Cukaricki",
+   "FK Mladost Lucani"
+  ],
+  [
+   "2026-11-28",
+   17,
+   "FK Zeleznicar Pancevo",
+   "OFK Beograd"
+  ],
+  [
+   "2026-11-28",
+   17,
+   "FK Novi Pazar",
+   "Red Star Belgrade"
+  ],
+  [
+   "2026-11-28",
+   17,
+   "FK Radnik Surdulica",
+   "FK Vojvodina Novi Sad"
+  ],
+  [
+   "2026-12-06",
+   18,
+   "FK Macva Sabac",
+   "FK Radnik Surdulica"
+  ],
+  [
+   "2026-12-06",
+   18,
+   "FK Vojvodina Novi Sad",
+   "FK Novi Pazar"
+  ],
+  [
+   "2026-12-06",
+   18,
+   "Red Star Belgrade",
+   "FK Zeleznicar Pancevo"
+  ],
+  [
+   "2026-12-06",
+   18,
+   "OFK Beograd",
+   "FK Cukaricki"
+  ],
+  [
+   "2026-12-06",
+   18,
+   "FK Mladost Lucani",
+   "FK Zemun"
+  ],
+  [
+   "2026-12-06",
+   18,
+   "FK Radnicki 1923 Kragujevac",
+   "FK Partizan Belgrade"
+  ],
+  [
+   "2026-12-06",
+   18,
+   "FK Radnicki Nis",
+   "FK IMT Belgrad"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "FK Radnicki Nis",
+   "FK Macva Sabac"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "FK IMT Belgrad",
+   "FK Radnicki 1923 Kragujevac"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "FK Partizan Belgrade",
+   "FK Mladost Lucani"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "FK Zemun",
+   "OFK Beograd"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "FK Cukaricki",
+   "Red Star Belgrade"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "FK Zeleznicar Pancevo",
+   "FK Vojvodina Novi Sad"
+  ],
+  [
+   "2027-02-06",
+   19,
+   "FK Novi Pazar",
+   "FK Radnik Surdulica"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "FK Macva Sabac",
+   "FK Novi Pazar"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "FK Radnik Surdulica",
+   "FK Zeleznicar Pancevo"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "FK Vojvodina Novi Sad",
+   "FK Cukaricki"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "Red Star Belgrade",
+   "FK Zemun"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "OFK Beograd",
+   "FK Partizan Belgrade"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "FK Mladost Lucani",
+   "FK IMT Belgrad"
+  ],
+  [
+   "2027-02-13",
+   20,
+   "FK Radnicki 1923 Kragujevac",
+   "FK Radnicki Nis"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "FK Radnicki 1923 Kragujevac",
+   "FK Macva Sabac"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "FK Radnicki Nis",
+   "FK Mladost Lucani"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "FK IMT Belgrad",
+   "OFK Beograd"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "FK Partizan Belgrade",
+   "Red Star Belgrade"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "FK Zemun",
+   "FK Vojvodina Novi Sad"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "FK Cukaricki",
+   "FK Radnik Surdulica"
+  ],
+  [
+   "2027-02-20",
+   21,
+   "FK Zeleznicar Pancevo",
+   "FK Novi Pazar"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "FK Macva Sabac",
+   "FK Zeleznicar Pancevo"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "FK Novi Pazar",
+   "FK Cukaricki"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "FK Radnik Surdulica",
+   "FK Zemun"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "FK Vojvodina Novi Sad",
+   "FK Partizan Belgrade"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "Red Star Belgrade",
+   "FK IMT Belgrad"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "OFK Beograd",
+   "FK Radnicki Nis"
+  ],
+  [
+   "2027-02-27",
+   22,
+   "FK Mladost Lucani",
+   "FK Radnicki 1923 Kragujevac"
+  ],
+  [
+   "2027-03-07",
+   23,
+   "FK Mladost Lucani",
+   "FK Macva Sabac"
+  ],
+  [
+   "2027-03-07",
+   23,
+   "FK Radnicki 1923 Kragujevac",
+   "OFK Beograd"
+  ],
+  [
+   "2027-03-07",
+   23,
+   "FK Radnicki Nis",
+   "Red Star Belgrade"
+  ],
+  [
+   "2027-03-07",
+   23,
+   "FK IMT Belgrad",
+   "FK Vojvodina Novi Sad"
+  ],
+  [
+   "2027-03-07",
+   23,
+   "FK Partizan Belgrade",
+   "FK Radnik Surdulica"
+  ],
+  [
+   "2027-03-07",
+   23,
+   "FK Zemun",
+   "FK Novi Pazar"
+  ],
+  [
+   "2027-03-07",
+   23,
+   "FK Cukaricki",
+   "FK Zeleznicar Pancevo"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "FK Macva Sabac",
+   "FK Cukaricki"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "FK Zeleznicar Pancevo",
+   "FK Zemun"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "FK Novi Pazar",
+   "FK Partizan Belgrade"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "FK Radnik Surdulica",
+   "FK IMT Belgrad"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "FK Vojvodina Novi Sad",
+   "FK Radnicki Nis"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "Red Star Belgrade",
+   "FK Radnicki 1923 Kragujevac"
+  ],
+  [
+   "2027-03-13",
+   24,
+   "OFK Beograd",
+   "FK Mladost Lucani"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "OFK Beograd",
+   "FK Macva Sabac"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "FK Mladost Lucani",
+   "Red Star Belgrade"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "FK Radnicki 1923 Kragujevac",
+   "FK Vojvodina Novi Sad"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "FK Radnicki Nis",
+   "FK Radnik Surdulica"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "FK IMT Belgrad",
+   "FK Novi Pazar"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "FK Partizan Belgrade",
+   "FK Zeleznicar Pancevo"
+  ],
+  [
+   "2027-03-20",
+   25,
+   "FK Zemun",
+   "FK Cukaricki"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "FK Macva Sabac",
+   "FK Zemun"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "FK Cukaricki",
+   "FK Partizan Belgrade"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "FK Zeleznicar Pancevo",
+   "FK IMT Belgrad"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "FK Novi Pazar",
+   "FK Radnicki Nis"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "FK Radnik Surdulica",
+   "FK Radnicki 1923 Kragujevac"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "FK Vojvodina Novi Sad",
+   "FK Mladost Lucani"
+  ],
+  [
+   "2027-04-03",
+   26,
+   "Red Star Belgrade",
+   "OFK Beograd"
+  ]
+ ],
+ "cup": {
+  "name": "Kup Srbije",
+  "rounds": [
+   [
+    "First round",
+    "2026-10-28"
+   ],
+   [
+    "Round of 16",
+    "2026-12-02"
+   ],
+   [
+    "Quarter-finals",
+    "2027-03-17"
+   ],
+   [
+    "Semi-finals",
+    "2027-04-28"
+   ],
+   [
+    "Final",
+    "2027-05-20"
+   ]
+  ],
+  "note": "First round 28 October 2026 from the club pages (Super liga and Prva liga clubs, 27/28 October; Dubocica v Radnicki Nis on 18 November). The later dates are estimates until a Kup Srbije page gives them: round of 16 early December, quarter-finals mid-March, semi-finals late April (last season's semi-final was on 30 April 2026), final in May. 32 clubs in reality, the Super liga and the Prva liga here."
+ }
 }

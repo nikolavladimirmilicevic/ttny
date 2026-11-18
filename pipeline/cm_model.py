@@ -790,7 +790,8 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     _lgs = {}
     for _k in LG_SPEC:
         try:
-            _l = build_league(world, out_players, clubs, kits, alias, today, season, people, LG_SPEC[_k], lastseen=lastseen)
+            _l = build_league(world, out_players, clubs, kits, alias, today, season, people, LG_SPEC[_k], lastseen=lastseen,
+                              taken={x['id'] for L in _lgs.values() for x in L.get('players', []) + (L.get('second') or {}).get('players', [])})
             if _l:
                 _lgs[_k] = _l
         except Exception as e:   # another league is an extra: the Premier League is built whatever happens here
@@ -801,7 +802,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         _eu = build_europe(world, out_players, clubs, kits, alias, today, people, lastseen=lastseen, other_lg={c['full']: c['id'] for L in _lgs.values() for c in L.get('clubs', [])})
         if _eu and _eu['comps']:
             extra['europe'] = _eu
-        _cw = build_cwc(out_players + ((_eu or {}).get('players') or []) + [x for L in _lgs.values() for x in L.get('players') or []], today, clubs)
+        _cw = build_cwc(out_players + ((_eu or {}).get('players') or []) + [x for k, L in _lgs.items() if k != 'SRB' for x in L.get('players') or []], today, clubs)   # Serbia's players are no templates for the Club World Cup's (its pool as before Serbia was played)
         if _cw:
             extra['cwc'] = _cw
     except Exception:   # the cups are an extra: the league is built whatever happens here
@@ -872,7 +873,7 @@ def _value_fit(out_players):
     return feats, _solve(A, b)
 
 
-def build_second(out_players, today, season, people, src=None, ids=None, short=None, kitmap=None, name='Championship', have_extra=(), ctry='ENG', id_base=3000000):
+def build_second(out_players, today, season, people, src=None, ids=None, short=None, kitmap=None, name='Championship', have_extra=(), ctry='ENG', id_base=3000000, strict=False):
     """A second tier in the background (the Championship by default): clubs and players from Transfermarkt's squad pages
     (pipeline/tm_championship.json). A player's overall comes from a fit of the league's own players (overall on log
     value, age, keeper); his attributes follow a league player of his position and level, moved by the difference.
@@ -908,7 +909,7 @@ def build_second(out_players, today, season, people, src=None, ids=None, short=N
             age = age_of({'bd': p['dob']}, today); prim = CH_POS.get(p['pos'], 'CMF'); gk = prim == 'GK'
             pid = None
             for cand, e in pidx.get(_fold(p['n']), []):
-                if cand not in have and cand not in used and (not e.get('age') or abs((e.get('age') or age) - age) <= 2):
+                if cand not in have and cand not in used and (not strict or not e.get('bd') or e['bd'] == p['dob']) and (not e.get('age') or abs((e.get('age') or age) - age) <= 2):   # strict (Serbia): a namesake born on another day is someone else
                     pid = cand; break
             if pid is None:
                 pid = -(id_base + int.from_bytes(f"{p['n']}|{p['dob']}".encode(), 'little') % 900000)
@@ -991,10 +992,57 @@ GE_CODE = {'FC Bayern Munich': 'FCB', 'Borussia Dortmund': 'BVB', 'Bayer 04 Leve
            'TSG 1899 Hoffenheim': 'TSG', 'SC Freiburg': 'SCF', 'FC Augsburg': 'FCA', '1.FSV Mainz 05': 'M05', '1.FC Köln': 'KOE', 'Hamburger SV': 'HSV',
            'Borussia Mönchengladbach': 'BMG', 'SV Werder Bremen': 'SVW', '1.FC Union Berlin': 'FCU', 'FC Schalke 04': 'S04', 'SV 07 Elversberg': 'SVE', 'SC Paderborn 07': 'SCP'}
 # each playable league beside the Premier League: its Transfermarkt file, names, kits and codes, id range for players the API lacks
+# Serbia: the Super liga and the Prva liga (pipeline/tm_superliga.json keeps the clubs as lists, as Transfermarkt shows
+# them; _srb_src turns them into the shape build_league reads). Ids: the API's where the club has one, else ours from
+# 12000001 on. Kit colours are approximate (no Transfermarkt page gives them).
+SR_IDS = {'Red Star Belgrade': 598, 'FK Partizan Belgrade': 573, 'FK Vojvodina Novi Sad': 702, 'FK Cukaricki': 2656, 'FK Zeleznicar Pancevo': 12360,
+          'FK Radnicki 1923 Kragujevac': 2644, 'FK Novi Pazar': 2643, 'FK Radnicki Nis': 2254, 'FK TSC Backa Topola': 2646,
+          'OFK Beograd': 12000001, 'FK IMT Belgrad': 12000002, 'FK Radnik Surdulica': 12000003, 'FK Mladost Lucani': 12000004, 'FK Macva Sabac': 12000005,
+          'FK Zemun': 12000006, 'FK Napredak Krusevac': 12000007, 'FK Javor-Matis Ivanjica': 12000008, 'Graficar Belgrad': 12000009,
+          'FK Spartak Subotica': 12000010, 'FK Smederevo 1924': 12000011, 'FK Vozdovac': 12000012, 'FK Loznica': 12000013, 'OFK Vrsac': 12000014,
+          'FK Borac 1926 Cacak': 12000015, 'FK Jedinstvo Ub': 12000016, 'FK Bor 1919': 12000017, 'FK Dubocica Leskovac': 12000018,
+          'FK Proleter 023 Zrenjanin': 12000019, 'FK Teleoptik Zemun': 12000020, 'FK Metalac Gornji Milanovac': 12000021}
+SR_SHORT = {'Red Star Belgrade': 'Crvena Zvezda', 'FK Partizan Belgrade': 'Partizan', 'FK Vojvodina Novi Sad': 'Vojvodina', 'OFK Beograd': 'OFK Beograd',
+            'FK Zeleznicar Pancevo': 'Železničar', 'FK Cukaricki': 'Čukarički', 'FK Novi Pazar': 'Novi Pazar', 'FK IMT Belgrad': 'IMT',
+            'FK Radnik Surdulica': 'Radnik', 'FK Radnicki Nis': 'Radnički Niš', 'FK Radnicki 1923 Kragujevac': 'Radnički 1923', 'FK Mladost Lucani': 'Mladost',
+            'FK Macva Sabac': 'Mačva', 'FK Zemun': 'Zemun', 'FK TSC Backa Topola': 'TSC', 'FK Napredak Krusevac': 'Napredak', 'FK Javor-Matis Ivanjica': 'Javor',
+            'Graficar Belgrad': 'Grafičar', 'FK Spartak Subotica': 'Spartak', 'FK Smederevo 1924': 'Smederevo', 'FK Vozdovac': 'Voždovac', 'FK Loznica': 'Loznica',
+            'OFK Vrsac': 'Vršac', 'FK Borac 1926 Cacak': 'Borac', 'FK Jedinstvo Ub': 'Jedinstvo Ub', 'FK Bor 1919': 'Bor', 'FK Dubocica Leskovac': 'Dubočica',
+            'FK Proleter 023 Zrenjanin': 'Proleter', 'FK Teleoptik Zemun': 'Teleoptik', 'FK Metalac Gornji Milanovac': 'Metalac'}
+SR_KIT = {'Red Star Belgrade': ['#E30613', '#FFFFFF'], 'FK Partizan Belgrade': ['#111111', '#FFFFFF'], 'FK Vojvodina Novi Sad': ['#E30613', '#FFFFFF'],
+          'OFK Beograd': ['#0055A4', '#FFFFFF'], 'FK Zeleznicar Pancevo': ['#1C3F94', '#FFFFFF'], 'FK Cukaricki': ['#FFFFFF', '#111111'],
+          'FK Novi Pazar': ['#C8102E', '#FFFFFF'], 'FK IMT Belgrad': ['#004B93', '#FFFFFF'], 'FK Radnik Surdulica': ['#0033A0', '#FFFFFF'],
+          'FK Radnicki Nis': ['#E30613', '#FFFFFF'], 'FK Radnicki 1923 Kragujevac': ['#D7141A', '#FFFFFF'], 'FK Mladost Lucani': ['#D50032', '#FFFFFF'],
+          'FK Macva Sabac': ['#007A33', '#FFFFFF'], 'FK Zemun': ['#0050A0', '#FFFFFF'], 'FK TSC Backa Topola': ['#0057B8', '#FFFFFF'],
+          'FK Napredak Krusevac': ['#C8102E', '#FFFFFF'], 'FK Javor-Matis Ivanjica': ['#003399', '#FFFFFF'], 'Graficar Belgrad': ['#C8102E', '#FFFFFF'],
+          'FK Spartak Subotica': ['#1E4D9B', '#FFFFFF'], 'FK Smederevo 1924': ['#C8102E', '#FFFFFF'], 'FK Teleoptik Zemun': ['#111111', '#FFFFFF'],
+          'FK Proleter 023 Zrenjanin': ['#C8102E', '#FFFFFF'], 'FK Borac 1926 Cacak': ['#C8102E', '#FFFFFF']}
+SR_CODE = {'Red Star Belgrade': 'CZV', 'FK Partizan Belgrade': 'PAR', 'FK Vojvodina Novi Sad': 'VOJ', 'OFK Beograd': 'OFK', 'FK Zeleznicar Pancevo': 'ZEL',
+           'FK Cukaricki': 'CUK', 'FK Novi Pazar': 'NPA', 'FK IMT Belgrad': 'IMT', 'FK Radnik Surdulica': 'RAD', 'FK Radnicki Nis': 'RNI',
+           'FK Radnicki 1923 Kragujevac': 'RKG', 'FK Mladost Lucani': 'MLA', 'FK Macva Sabac': 'MAC', 'FK Zemun': 'ZEM'}
+
+
+def _srb_src(src):
+    """tm_superliga.json in build_league's shape: the clubs by full name with tier, id, short name, stadium, coach (only one
+    in charge from the start of the season: the Super liga began on 17 July, the Prva liga on 31 July), value and last
+    season's place where known (Red Star champions, Zemun and Macva promoted)."""
+    f = src.get('facts') or {}
+    clubs = {}
+    for tier, rows, start in ((1, src.get('clubs') or [], '2026-07-17'), (2, src.get('second_clubs') or [], '2026-07-31')):
+        for c in rows:
+            full = c['name']
+            clubs[full] = {'tier': tier, 'id': SR_IDS.get(full), 'short': SR_SHORT.get(full, full), 'venue': c.get('venue'), 'cap': c.get('cap'),
+                           'value': c.get('value'), 'coach': c.get('coach_now') if (c.get('coach_from') or '9999') <= start else None,
+                           **({'last': 1} if full == f.get('reigning') and tier == 1 else {'last': 'promoted'} if full in (f.get('promoted') or []) else {})}
+    return {**src, 'clubs': clubs, 'facts': {**f, 'record_titles': f.get('record_titles')}}
+
+
 LG_SPEC = {'FRA': {'file': 'tm_ligue1.json', 'ctry': 'FRA', 'country': 'France', 'league': 'Ligue 1', 'second': 'Ligue 2', 'kit': FR_KIT, 'code': FR_CODE, 'n': 18, 'id_base': 4000000},
            'ITA': {'file': 'tm_seriea.json', 'ctry': 'ITA', 'country': 'Italy', 'league': 'Serie A', 'second': 'Serie B', 'kit': IT_KIT, 'code': IT_CODE, 'n': 20, 'id_base': 6000000},
            'ESP': {'file': 'tm_laliga.json', 'ctry': 'ESP', 'country': 'Spain', 'league': 'LaLiga', 'second': 'LaLiga2', 'kit': ES_KIT, 'code': ES_CODE, 'n': 20, 'id_base': 8000000},
-           'GER': {'file': 'tm_bundesliga.json', 'ctry': 'GER', 'country': 'Germany', 'league': 'Bundesliga', 'second': '2. Bundesliga', 'kit': GE_KIT, 'code': GE_CODE, 'n': 18, 'id_base': 10000000}}
+           'GER': {'file': 'tm_bundesliga.json', 'ctry': 'GER', 'country': 'Germany', 'league': 'Bundesliga', 'second': '2. Bundesliga', 'kit': GE_KIT, 'code': GE_CODE, 'n': 18, 'id_base': 10000000},
+           'SRB': {'file': 'tm_superliga.json', 'ctry': 'SRB', 'country': 'Serbia', 'league': 'Super liga Srbije', 'second': 'Prva liga Srbije', 'kit': SR_KIT, 'code': SR_CODE, 'n': 14, 'id_base': 12000000,
+                   'shape': _srb_src, 'adj': -3.5, 'fit_values': True, 'no_draft': True, 'strict_ids': True}}   # adj: Elo taken down by the league's strength, as for Serbia's clubs in the European cups (EU_LEAGUE_ADJ)
 
 
 def _elo_q(clubs):
@@ -1011,7 +1059,7 @@ def build_france(world, out_players, clubs, kits, alias, today, season, people):
     return build_league(world, out_players, clubs, kits, alias, today, season, people, LG_SPEC['FRA'])
 
 
-def build_league(world, out_players, clubs, kits, alias, today, season, people, spec, lastseen=None):
+def build_league(world, out_players, clubs, kits, alias, today, season, people, spec, lastseen=None, taken=()):
     """Ligue 1 as a league of its own: the 18 clubs (pipeline/tm_ligue1.json: stadium, coach, the fixture list), their
     Transfermarkt squads (pipeline/tm_squads.json) and Ligue 2 behind them. A club's strength is France's level from Elo,
     spread within it by Transfermarkt's team values; a player's overall is his club's level moved by his value and age
@@ -1025,6 +1073,8 @@ def build_league(world, out_players, clubs, kits, alias, today, season, people, 
             TMS = json.load(f).get('clubs') or {}
     except (OSError, ValueError):
         return None
+    if spec.get('shape'):
+        src = spec['shape'](src)
     try:
         with open(os.path.join(base, 'tm_values.json'), encoding='utf-8') as f:
             vals = ((json.load(f).get('leagues') or {}).get(spec['ctry']) or {}).get('clubs') or {}
@@ -1048,11 +1098,18 @@ def build_league(world, out_players, clubs, kits, alias, today, season, people, 
             pidx.setdefault(_fold(e['sq']), []).append((int(kk), e))
     top = {full: c for full, c in src['clubs'].items() if c['tier'] == 1}
     # strength: France's level from Elo (the clubs that have one), spread by team value
-    eq = {full: q_of(welo[c['id']]['elo']) for full, c in top.items() if c.get('id') in welo and welo[c['id']].get('elo')}
+    eq = {full: q_of(welo[c['id']]['elo']) + spec.get('adj', 0) for full, c in top.items() if c.get('id') in welo and welo[c['id']].get('elo')}
     have_v = [f for f in top if vals.get(f)]
     mq = statistics.mean(eq[f] for f in eq if f in have_v) if any(f in have_v for f in eq) else 76
     ml = statistics.mean(math.log(vals[f]) for f in eq if f in have_v) if any(f in have_v for f in eq) else 0
     qclub = {f: round(mq + .8 * 6.7 * (math.log(vals[f]) - ml), 1) if f in have_v else eq.get(f, 74) for f in top}
+    both = [f for f in eq if f in have_v]
+    if spec.get('fit_values') and len(both) >= 5:
+        # a league whose values one club dwarfs (Serbia: Red Star near three times Partizan): the line from value to strength is
+        # the league's own, fitted on its clubs that have an Elo, so each of those stays near its Elo level
+        xs = [math.log(vals[f]) for f in both]; mx2 = statistics.mean(xs); my2 = statistics.mean(eq[f] for f in both)
+        b2 = sum((x - mx2) * (eq[f] - my2) for x, f in zip(xs, both)) / max(1e-9, sum((x - mx2) ** 2 for x in xs))
+        qclub = {f: round(my2 + b2 * (math.log(vals[f]) - mx2), 1) if f in have_v else eq.get(f, 74) for f in top}
     # the API side, as for the Premier League: the draft game's player (his long-run level and performance, his
     # positions and how his starts split over them), else his starts by position in the line-ups held
     wby = {}
@@ -1107,8 +1164,8 @@ def build_league(world, out_players, clubs, kits, alias, today, season, people, 
         ovrs = []
         for pid, t, age, w in sq:
             prim = CH_POS.get(t['pos'], 'CMF'); rr = random.Random(pid)
-            if w and w.get('lvl') is not None and w.get('ovr'):
-                ovr = int(round(max(45, min(93, ability(w)))))   # the draft game's rating, as for the Premier League's players
+            if w and w.get('lvl') is not None and w.get('ovr') and not spec.get('no_draft'):
+                ovr = int(round(max(45, min(93, ability(w)))))   # the draft game's rating, as for the Premier League's players (not in a weaker league, where it runs high: there the club's level and his value, as in the European cups)
             else:
                 ovr = int(round(max(45, min(93, qclub[full] + max(-16, fv[pid] - mean_top) + (rr.random() - .5) * 2))))
             # positions: Transfermarkt's is his main one; the others from the draft game, else from his starts (twice or more)
@@ -1135,12 +1192,14 @@ def build_league(world, out_players, clubs, kits, alias, today, season, people, 
     ids = {c['full']: c['id'] for c in out_clubs}
     fixtures = [[d, f'Regular Season - {r}', ids[h], ids[a]] + x for d, r, h, a, *x in src.get('fixtures', []) if h in ids and a in ids]
     # the second tier (Ligue 2), as the Championship is built
-    l2 = {full: {'players': (TMS.get(full) or {}).get('players', []), 'stadium': c.get('venue'), 'cap': c.get('cap'), 'coach': c.get('coach'),
+    have_nb = {(_fold(x['n']), x.get('bd')) for x in players}   # a player Transfermarkt lists at a top-flight club and at its feeder (Red Star and Graficar): the top flight's
+    l2 = {full: {'players': [t for t in (TMS.get(full) or {}).get('players', []) if (_fold(t['n']), t['dob']) not in have_nb], 'stadium': c.get('venue'), 'cap': c.get('cap'), 'coach': c.get('coach'),
                  **({'res': src['clubs'][c['res']]['id']} if c.get('res') in src['clubs'] else {})}   # a reserve team: never promoted
           for full, c in src['clubs'].items() if c['tier'] == 2 and TMS.get(full)}
     sec = build_second(out_players, today, season, people, src={'clubs': l2}, ids={f: c['id'] for f, c in src['clubs'].items() if c.get('id')},
                        short={f: c['short'] for f, c in src['clubs'].items()}, kitmap={**{f: kits[c['short']] for f, c in src['clubs'].items() if c['short'] in kits}, **spec['kit']},
-                       name=src.get('second') or spec['second'], have_extra=used | {x['id'] for x in players}, ctry=spec['ctry'], id_base=spec['id_base'] + 1000000)
+                       name=src.get('second') or spec['second'], have_extra=used | {x['id'] for x in players} | (set(taken) if spec.get('strict_ids') else set()), ctry=spec['ctry'], id_base=spec['id_base'] + 1000000,
+                       strict=bool(spec.get('strict_ids')))   # strict_ids (Serbia): no id another league already holds, no namesake with another birth date
     facts = src.get('facts') or {}
     champ = ids.get(facts.get('reigning'))
     return {'league': src.get('league') or spec['league'], 'ctry': spec['ctry'], 'country': spec['country'], 'clubs': out_clubs, 'players': players, 'fixtures': fixtures,
