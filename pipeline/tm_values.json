@@ -1,9 +1,10 @@
 {
- "updated": "2026-11-17",
+ "updated": "2026-11-18",
  "source": [
   "transfermarkt.com 100 most valuable teams in the world (top 25 of each confederation: AFC, CAF, CONCACAF, CONMEBOL, OFC, UEFA)",
   "transfermarkt.com Serie A 26/27 clubs (16.11.2026)",
-  "Transfermarkt LaLiga clubs page, 16.11.2026"
+  "Transfermarkt LaLiga clubs page, 16.11.2026",
+  "Transfermarkt Super liga Srbije 26/27 clubs page, 18.11.2026"
  ],
  "note": "top18 = market value of the 18 most valuable players, EUR millions. Strength on the league's scale: q = a + b * ln(top18), fitted on the Premier League clubs in the list; clubs outside Europe get WORLD_BONUS on top, as their market prices players far below Europe's (fitting the 2025 Club World Cup's 63 results gives about 13; those were played in Europe's off-season, so 10 is used). A club below its confederation's 25th gets 80% of that value.",
  "world_bonus": 10,
@@ -1304,6 +1305,25 @@
     "FC Schalke 04": 74.53,
     "SV 07 Elversberg": 74.25,
     "SC Paderborn 07": 53.88
+   }
+  },
+  "SRB": {
+   "name": "Super liga Srbije",
+   "clubs": {
+    "Red Star Belgrade": 99.8,
+    "FK Partizan Belgrade": 36.4,
+    "FK Vojvodina Novi Sad": 29.3,
+    "OFK Beograd": 19.77,
+    "FK Zeleznicar Pancevo": 17.65,
+    "FK Cukaricki": 14.0,
+    "FK Novi Pazar": 12.7,
+    "FK IMT Belgrad": 12.45,
+    "FK Radnik Surdulica": 10.38,
+    "FK Radnicki Nis": 10.05,
+    "FK Radnicki 1923 Kragujevac": 9.48,
+    "FK Mladost Lucani": 8.45,
+    "FK Macva Sabac": 6.35,
+    "FK Zemun": 5.13
    }
   }
  },
