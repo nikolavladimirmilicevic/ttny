@@ -17,40 +17,222 @@
   "record_champion": "Red Star Belgrade",
   "record_titles": 15,
   "second_champion": "FK Zemun",
-  "promoted": ["FK Zemun"],
+  "promoted": [
+   "FK Zemun"
+  ],
   "promoted_note": "Zemun are named on the page as Prva liga champions 25/26. The propositions say two clubs come up (1st and 2nd of the Prva liga); the second one is not named on either page.",
   "clubs": 14,
   "players": 437,
   "foreigners": 148,
   "foreigners_pct": 33.9,
-  "total_value": 291.90,
+  "total_value": 291.9,
   "avg_value": 0.668,
   "avg_age": 25.3,
-  "uefa_coefficient": {"rank": 30, "points": 19.0},
+  "uefa_coefficient": {
+   "rank": 30,
+   "points": 19.0
+  },
   "cup": "Kup Srbije"
  },
  "clubs": [
-  {"name": "Red Star Belgrade", "tm": "Red Star Belgrade", "squad": 31, "age": 25.7, "foreigners": 18, "avg_value": 3.22, "value": 99.80},
-  {"name": "FK Partizan Belgrade", "tm": "FK Partizan Belgrade", "squad": 34, "age": 24.0, "foreigners": 13, "avg_value": 1.07, "value": 36.40},
-  {"name": "FK Vojvodina Novi Sad", "tm": "FK Vojvodina Novi Sad", "squad": 32, "age": 25.1, "foreigners": 6, "avg_value": 0.9156, "value": 29.30},
-  {"name": "OFK Beograd", "tm": "OFK Beograd", "squad": 32, "age": 25.3, "foreigners": 11, "avg_value": 0.618, "value": 19.77},
-  {"name": "FK Zeleznicar Pancevo", "tm": "FK Zeleznicar Pancevo", "squad": 29, "age": 23.6, "foreigners": 12, "avg_value": 0.6086, "value": 17.65},
-  {"name": "FK Cukaricki", "tm": "FK Cukaricki", "squad": 40, "age": 24.7, "foreigners": 13, "avg_value": 0.350, "value": 14.00},
-  {"name": "FK Novi Pazar", "tm": "FK Novi Pazar", "squad": 31, "age": 24.4, "foreigners": 13, "avg_value": 0.4097, "value": 12.70},
-  {"name": "FK IMT Belgrad", "tm": "FK IMT Belgrad", "squad": 29, "age": 24.2, "foreigners": 16, "avg_value": 0.4293, "value": 12.45},
-  {"name": "FK Radnik Surdulica", "tm": "FK Radnik Surdulica", "squad": 31, "age": 23.9, "foreigners": 12, "avg_value": 0.3347, "value": 10.38},
-  {"name": "FK Radnicki Nis", "tm": "FK Radnicki Nis", "squad": 26, "age": 27.2, "foreigners": 7, "avg_value": 0.3865, "value": 10.05},
-  {"name": "FK Radnicki 1923 Kragujevac", "tm": "FK Radnicki 1923 Kragujevac", "squad": 30, "age": 25.7, "foreigners": 14, "avg_value": 0.3158, "value": 9.48},
-  {"name": "FK Mladost Lucani", "tm": "FK Mladost Lucani", "squad": 32, "age": 28.4, "foreigners": 4, "avg_value": 0.2641, "value": 8.45},
-  {"name": "FK Macva Sabac", "tm": "FK Macva Sabac", "squad": 29, "age": 25.2, "foreigners": 3, "avg_value": 0.219, "value": 6.35},
-  {"name": "FK Zemun", "tm": "FK Zemun", "squad": 31, "age": 26.8, "foreigners": 6, "avg_value": 0.1653, "value": 5.13}
+  {
+   "name": "Red Star Belgrade",
+   "tm": "Red Star Belgrade",
+   "squad": 31,
+   "age": 25.7,
+   "foreigners": 18,
+   "avg_value": 3.22,
+   "value": 99.8,
+   "venue": "Rajko Mitić",
+   "cap": 49167,
+   "coach_now": "Albert Riera",
+   "coach_from": "2026-08-14"
+  },
+  {
+   "name": "FK Partizan Belgrade",
+   "tm": "FK Partizan Belgrade",
+   "squad": 34,
+   "age": 24.0,
+   "foreigners": 13,
+   "avg_value": 1.07,
+   "value": 36.4,
+   "venue": "Partizan Stadium",
+   "cap": 32712,
+   "coach_now": "Aleksandar Stanojevic",
+   "coach_from": "2026-10-26"
+  },
+  {
+   "name": "FK Vojvodina Novi Sad",
+   "tm": "FK Vojvodina Novi Sad",
+   "squad": 32,
+   "age": 25.1,
+   "foreigners": 6,
+   "avg_value": 0.9156,
+   "value": 29.3,
+   "venue": "Stadion Karadjordje",
+   "cap": 14852,
+   "coach_now": "Marko Savic",
+   "coach_from": "2026-07-28"
+  },
+  {
+   "name": "OFK Beograd",
+   "tm": "OFK Beograd",
+   "squad": 32,
+   "age": 25.3,
+   "foreigners": 11,
+   "avg_value": 0.618,
+   "value": 19.77,
+   "venue": "Sportski Centar Stara Pazova",
+   "cap": 3000,
+   "coach_now": "Radoslav Batak",
+   "coach_from": "2026-09-23"
+  },
+  {
+   "name": "FK Zeleznicar Pancevo",
+   "tm": "FK Zeleznicar Pancevo",
+   "squad": 29,
+   "age": 23.6,
+   "foreigners": 12,
+   "avg_value": 0.6086,
+   "value": 17.65,
+   "venue": "SC Mladost Pančevo",
+   "cap": 4000,
+   "coach_now": "Radomir Kokovic",
+   "coach_from": "2025-03-04"
+  },
+  {
+   "name": "FK Cukaricki",
+   "tm": "FK Cukaricki",
+   "squad": 40,
+   "age": 24.7,
+   "foreigners": 13,
+   "avg_value": 0.35,
+   "value": 14.0,
+   "venue": "Stadion Cukaricki",
+   "cap": 4070,
+   "coach_now": "Mihajlo Trajkovic (caretaker)",
+   "coach_from": "2026-10-12"
+  },
+  {
+   "name": "FK Novi Pazar",
+   "tm": "FK Novi Pazar",
+   "squad": 31,
+   "age": 24.4,
+   "foreigners": 13,
+   "avg_value": 0.4097,
+   "value": 12.7,
+   "venue": "Gradski stadion Novi Pazar",
+   "cap": 6900,
+   "coach_now": "Nenad Lalatovic",
+   "coach_from": "2026-10-15"
+  },
+  {
+   "name": "FK IMT Belgrad",
+   "tm": "FK IMT Belgrad",
+   "squad": 29,
+   "age": 24.2,
+   "foreigners": 16,
+   "avg_value": 0.4293,
+   "value": 12.45,
+   "venue": "Stadion Lagator",
+   "cap": 8500,
+   "coach_now": "Zoran Popovic",
+   "coach_from": "2026-06-12"
+  },
+  {
+   "name": "FK Radnik Surdulica",
+   "tm": "FK Radnik Surdulica",
+   "squad": 31,
+   "age": 23.9,
+   "foreigners": 12,
+   "avg_value": 0.3347,
+   "value": 10.38,
+   "venue": "Gradski stadion Surdulica",
+   "cap": 3312,
+   "coach_now": "Zoran Rendulic",
+   "coach_from": "2026-07-02"
+  },
+  {
+   "name": "FK Radnicki Nis",
+   "tm": "FK Radnicki Nis",
+   "squad": 26,
+   "age": 27.2,
+   "foreigners": 7,
+   "avg_value": 0.3865,
+   "value": 10.05,
+   "venue": "Stadion Čair",
+   "cap": 18151,
+   "coach_now": "Nikola Drincic",
+   "coach_from": "2026-10-12"
+  },
+  {
+   "name": "FK Radnicki 1923 Kragujevac",
+   "tm": "FK Radnicki 1923 Kragujevac",
+   "squad": 30,
+   "age": 25.7,
+   "foreigners": 14,
+   "avg_value": 0.3158,
+   "value": 9.48
+  },
+  {
+   "name": "FK Mladost Lucani",
+   "tm": "FK Mladost Lucani",
+   "squad": 32,
+   "age": 28.4,
+   "foreigners": 4,
+   "avg_value": 0.2641,
+   "value": 8.45
+  },
+  {
+   "name": "FK Macva Sabac",
+   "tm": "FK Macva Sabac",
+   "squad": 29,
+   "age": 25.2,
+   "foreigners": 3,
+   "avg_value": 0.219,
+   "value": 6.35
+  },
+  {
+   "name": "FK Zemun",
+   "tm": "FK Zemun",
+   "squad": 31,
+   "age": 26.8,
+   "foreigners": 6,
+   "avg_value": 0.1653,
+   "value": 5.13
+  }
  ],
  "most_valuable": [
-  {"name": "Vasilije Kostov", "club": "Red Star Belgrade", "pos": "Attacking Midfield", "eur": 25.00},
-  {"name": "Bamba Dieng", "club": "Red Star Belgrade", "pos": "Centre-Forward", "eur": 12.00},
-  {"name": "Adem Avdic", "club": "Red Star Belgrade", "pos": "Left-Back", "eur": 10.00},
-  {"name": "Nikola Simic", "club": "FK Partizan Belgrade", "pos": "Centre-Back", "eur": 6.00},
-  {"name": "Tomas Handel", "club": "Red Star Belgrade", "pos": "Defensive Midfield", "eur": 5.00}
+  {
+   "name": "Vasilije Kostov",
+   "club": "Red Star Belgrade",
+   "pos": "Attacking Midfield",
+   "eur": 25.0
+  },
+  {
+   "name": "Bamba Dieng",
+   "club": "Red Star Belgrade",
+   "pos": "Centre-Forward",
+   "eur": 12.0
+  },
+  {
+   "name": "Adem Avdic",
+   "club": "Red Star Belgrade",
+   "pos": "Left-Back",
+   "eur": 10.0
+  },
+  {
+   "name": "Nikola Simic",
+   "club": "FK Partizan Belgrade",
+   "pos": "Centre-Back",
+   "eur": 6.0
+  },
+  {
+   "name": "Tomas Handel",
+   "club": "Red Star Belgrade",
+   "pos": "Defensive Midfield",
+   "eur": 5.0
+  }
  ],
  "window": {
   "arrivals": 305,
@@ -62,31 +244,238 @@
  "rules": {
   "clubs": 14,
   "entry": "12 clubs placed 1st to 12th in the Super liga 2025/26 and the top two of the Prva liga 2025/26 (article 1).",
-  "points": [3, 1, 0],
-  "phases": [
-   {"name": "preliminary", "rounds": 26, "format": "double round robin, every club home and away (article 21)"},
-   {"name": "play-off (group A)", "rounds": 5, "clubs": 6, "from": "places 1 to 6 after the preliminary phase", "format": "one match against each other club, rounds 27 to 31 (articles 23 and 24)"},
-   {"name": "play-out (group B)", "rounds": 7, "clubs": 8, "from": "places 7 to 14 after the preliminary phase", "format": "one match against each other club, rounds 27 to 33 (articles 23 and 24)"}
+  "points": [
+   3,
+   1,
+   0
   ],
-  "total_rounds": {"play_off": 31, "play_out": 33},
+  "phases": [
+   {
+    "name": "preliminary",
+    "rounds": 26,
+    "format": "double round robin, every club home and away (article 21)"
+   },
+   {
+    "name": "play-off (group A)",
+    "rounds": 5,
+    "clubs": 6,
+    "from": "places 1 to 6 after the preliminary phase",
+    "format": "one match against each other club, rounds 27 to 31 (articles 23 and 24)"
+   },
+   {
+    "name": "play-out (group B)",
+    "rounds": 7,
+    "clubs": 8,
+    "from": "places 7 to 14 after the preliminary phase",
+    "format": "one match against each other club, rounds 27 to 33 (articles 23 and 24)"
+   }
+  ],
+  "total_rounds": {
+   "play_off": 31,
+   "play_out": 33
+  },
   "points_carry_over": true,
   "final_pairings": {
    "note": "Article 24, by the club's place after the preliminary phase; the first number is the home club.",
    "A": {
-    "27": [[6, 4], [5, 3], [1, 2]],
-    "28": [[2, 6], [3, 1], [4, 5]],
-    "29": [[6, 5], [1, 4], [2, 3]],
-    "30": [[3, 6], [4, 2], [5, 1]],
-    "31": [[1, 6], [2, 5], [3, 4]]
+    "27": [
+     [
+      6,
+      4
+     ],
+     [
+      5,
+      3
+     ],
+     [
+      1,
+      2
+     ]
+    ],
+    "28": [
+     [
+      2,
+      6
+     ],
+     [
+      3,
+      1
+     ],
+     [
+      4,
+      5
+     ]
+    ],
+    "29": [
+     [
+      6,
+      5
+     ],
+     [
+      1,
+      4
+     ],
+     [
+      2,
+      3
+     ]
+    ],
+    "30": [
+     [
+      3,
+      6
+     ],
+     [
+      4,
+      2
+     ],
+     [
+      5,
+      1
+     ]
+    ],
+    "31": [
+     [
+      1,
+      6
+     ],
+     [
+      2,
+      5
+     ],
+     [
+      3,
+      4
+     ]
+    ]
    },
    "B": {
-    "27": [[7, 12], [8, 11], [9, 14], [10, 13]],
-    "28": [[14, 7], [11, 10], [12, 8], [13, 9]],
-    "29": [[7, 11], [10, 14], [8, 13], [9, 12]],
-    "30": [[10, 7], [8, 9], [12, 13], [14, 11]],
-    "31": [[7, 8], [9, 10], [11, 12], [13, 14]],
-    "32": [[13, 7], [9, 11], [14, 8], [10, 12]],
-    "33": [[7, 9], [11, 13], [8, 10], [12, 14]]
+    "27": [
+     [
+      7,
+      12
+     ],
+     [
+      8,
+      11
+     ],
+     [
+      9,
+      14
+     ],
+     [
+      10,
+      13
+     ]
+    ],
+    "28": [
+     [
+      14,
+      7
+     ],
+     [
+      11,
+      10
+     ],
+     [
+      12,
+      8
+     ],
+     [
+      13,
+      9
+     ]
+    ],
+    "29": [
+     [
+      7,
+      11
+     ],
+     [
+      10,
+      14
+     ],
+     [
+      8,
+      13
+     ],
+     [
+      9,
+      12
+     ]
+    ],
+    "30": [
+     [
+      10,
+      7
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      12,
+      13
+     ],
+     [
+      14,
+      11
+     ]
+    ],
+    "31": [
+     [
+      7,
+      8
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      11,
+      12
+     ],
+     [
+      13,
+      14
+     ]
+    ],
+    "32": [
+     [
+      13,
+      7
+     ],
+     [
+      9,
+      11
+     ],
+     [
+      14,
+      8
+     ],
+     [
+      10,
+      12
+     ]
+    ],
+    "33": [
+     [
+      7,
+      9
+     ],
+     [
+      11,
+      13
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      12,
+      14
+     ]
+    ]
    }
   },
   "final_table": "The play-off group's lowest club cannot finish below 6th and the play-out group's best cannot finish above 7th (article 25). A tie on points in the final table is broken by the place after the preliminary phase (article 26).",
@@ -100,14 +489,27 @@
    "a draw by the competition director"
   ],
   "europe": {
-   "champions_league": [1],
-   "europa_or_conference": [2, 3],
+   "champions_league": [
+    1
+   ],
+   "europa_or_conference": [
+    2,
+    3
+   ],
    "note": "Places follow UEFA's access list for Serbia (article 27). If the cup winner finishes 1st, 2nd or 3rd, the 4th-placed club takes a UEFA place. A club that is refused a licence is replaced by the next licensed club (article 28)."
   },
   "relegation": {
-   "down": [11, 12, 13, 14],
+   "down": [
+    11,
+    12,
+    13,
+    14
+   ],
    "up": 2,
    "note": "Four clubs go down to the Prva liga and the Prva liga's top two come up (articles 29 and 30), so the Super liga drops from 14 clubs to 12 for 2027/28."
   }
- }
+ },
+ "notes": [
+  "venue, cap and the current head coach with his appointment date (coach_now, coach_from) from the club squad pages (18.11.2026); most were appointed after the season began on 17 July, so only Kokovic (Zeleznicar), Popovic (IMT) and Rendulic (Radnik) were in charge from the start"
+ ]
 }
