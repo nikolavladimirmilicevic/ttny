@@ -9,7 +9,8 @@
  "source": [
   "transfermarkt.com Super liga Srbije 26/27 start page (clubs, market values, most valuable players), 18.11.2026",
   "transfermarkt.com Super liga Srbije 26/27 transfers page (every club's arrivals and departures), 18.11.2026",
-  "FSS, Propozicije takmicenja za prvenstvo Super lige Srbije u fudbalu za takmicarsku sezonu 2026/2027 (Fudbal br. 12, 05.06.2026)"
+  "FSS, Propozicije takmicenja za prvenstvo Super lige Srbije u fudbalu za takmicarsku sezonu 2026/2027 (Fudbal br. 12, 05.06.2026)",
+  "16 Prva liga Srbije club squad pages (18.11.2026)"
  ],
  "facts": {
   "reigning": "Red Star Belgrade",
@@ -550,7 +551,9 @@
   }
  },
  "notes": [
-  "venue, cap and the current head coach with his appointment date (coach_now, coach_from) from the club squad pages (18.11.2026); most were appointed after the season began on 17 July, so only Kokovic (Zeleznicar), Popovic (IMT), Rendulic (Radnik), Dudic (Radnicki 1923), Curcic (Mladost) and Glusica (Macva) were in charge from the start"
+  "venue, cap and the current head coach with his appointment date (coach_now, coach_from) from the club squad pages (18.11.2026); most were appointed after the season began on 17 July, so only Kokovic (Zeleznicar), Popovic (IMT), Rendulic (Radnik), Dudic (Radnicki 1923), Curcic (Mladost) and Glusica (Macva) were in charge from the start",
+  "second_clubs: squad size, average age, foreigners, value, venue, cap and current head coach with appointment date (coach_now, coach_from) from the 16 Prva liga club squad pages (18.11.2026); the Prva liga began on 31 July, so Nadj (Dubocica), Krtolica (Borac), Mirjacic (Javor-Matis), Mijailovic (Smederevo), Rakocevic (Vrsac), Brankovic (Vozdovac), Bugarski (Metalac), Milijas (TSC) and Jovanovic (Teleoptik) were in charge from the start; Jedinstvo Ub, Proleter, Bor, Graficar, Loznica, Spartak and Napredak changed coach later. Their squads are in tm_squads.json.",
+  "Savo Radanovic, Matej Strika and Dimitrije Saric appear both in Graficar's squad and in Red Star's (Graficar is Red Star's feeder club); the game keeps them at Red Star, so a Prva liga promotion pool must skip them for Graficar."
  ],
  "second_values": {
   "FK TSC Backa Topola": 9.4,
@@ -569,5 +572,199 @@
   "FK Proleter 023 Zrenjanin": 1.83,
   "FK Teleoptik Zemun": 0.925,
   "FK Metalac Gornji Milanovac": 0.9
- }
+ },
+ "second_clubs": [
+  {
+   "name": "FK Jedinstvo Ub",
+   "tm": "FK Jedinstvo Ub",
+   "squad": 28,
+   "age": 21.7,
+   "foreigners": 9,
+   "value": 2.94,
+   "venue": "Stadion Dragan Dzajic",
+   "cap": 4000,
+   "coach_now": "Milos Obradovic",
+   "coach_from": "2026-09-07"
+  },
+  {
+   "name": "FK Dubocica Leskovac",
+   "tm": "FK Dubocica Leskovac",
+   "squad": 32,
+   "age": 23.8,
+   "foreigners": 8,
+   "value": 2.3,
+   "venue": "Stadion Dubocica",
+   "cap": 8136,
+   "coach_now": "Albert Nadj",
+   "coach_from": "2026-06-22"
+  },
+  {
+   "name": "FK Proleter 023 Zrenjanin",
+   "tm": "FK Proleter 023 Zrenjanin",
+   "squad": 29,
+   "age": 26.1,
+   "foreigners": 6,
+   "value": 1.83,
+   "venue": "Stadion Karadjordjev Park",
+   "cap": 13500,
+   "coach_now": "Igor Savic",
+   "coach_from": "2026-09-07"
+  },
+  {
+   "name": "FK Borac 1926 Cacak",
+   "tm": "FK Borac 1926 Cacak",
+   "squad": 30,
+   "age": 24.9,
+   "foreigners": 7,
+   "value": 2.95,
+   "venue": "Stadion Borca",
+   "cap": 6574,
+   "coach_now": "Nemanja Krtolica",
+   "coach_from": "2026-01-07"
+  },
+  {
+   "name": "FK Bor 1919",
+   "tm": "FK Bor 1919",
+   "squad": 29,
+   "age": 24.9,
+   "foreigners": 8,
+   "value": 2.65,
+   "venue": "Stadion Mladost",
+   "cap": 18000,
+   "coach_now": "Zoran Vasiljevic",
+   "coach_from": "2026-10-02"
+  },
+  {
+   "name": "FK Javor-Matis Ivanjica",
+   "tm": "FK Javor-Matis Ivanjica",
+   "squad": 28,
+   "age": 24.5,
+   "foreigners": 9,
+   "value": 5.83,
+   "venue": "Stadion kraj Moravice",
+   "cap": 3000,
+   "coach_now": "Branko Mirjacic",
+   "coach_from": "2026-06-08"
+  },
+  {
+   "name": "FK Smederevo 1924",
+   "tm": "FK Smederevo 1924",
+   "squad": 31,
+   "age": 24.4,
+   "foreigners": 8,
+   "value": 4.28,
+   "venue": "Stadion FK Smederevo",
+   "cap": 17200,
+   "coach_now": "Nenad Mijailovic",
+   "coach_from": "2026-06-08"
+  },
+  {
+   "name": "Graficar Belgrad",
+   "tm": "Graficar Belgrad",
+   "squad": 30,
+   "age": 22.4,
+   "foreigners": 5,
+   "value": 4.83,
+   "venue": "Stadion Rajko Mitić - Jug",
+   "cap": 1000,
+   "coach_now": "Nikola Trajkovic",
+   "coach_from": "2026-09-03"
+  },
+  {
+   "name": "FK Loznica",
+   "tm": "FK Loznica",
+   "squad": 31,
+   "age": 26.3,
+   "foreigners": 3,
+   "value": 3.73,
+   "venue": "Stadion Lagator",
+   "cap": 8500,
+   "coach_now": "Ivica Milutinovic",
+   "coach_from": "2026-08-24"
+  },
+  {
+   "name": "OFK Vrsac",
+   "tm": "OFK Vrsac",
+   "squad": 27,
+   "age": 22.9,
+   "foreigners": 3,
+   "value": 3.55,
+   "venue": "Gradski stadion Vrsac",
+   "cap": 5000,
+   "coach_now": "Darko Rakocevic",
+   "coach_from": "2026-02-25"
+  },
+  {
+   "name": "FK Vozdovac",
+   "tm": "FK Vozdovac",
+   "squad": 32,
+   "age": 22.7,
+   "foreigners": 8,
+   "value": 3.85,
+   "venue": "Stadion Voždovac",
+   "cap": 5174,
+   "coach_now": "Dejan Brankovic",
+   "coach_from": "2026-03-24"
+  },
+  {
+   "name": "FK Spartak Subotica",
+   "tm": "FK Spartak Subotica",
+   "squad": 30,
+   "age": 24.1,
+   "foreigners": 10,
+   "value": 4.45,
+   "venue": "Gradski stadion Subotica",
+   "cap": 13020,
+   "coach_now": "Dragan Vukmir",
+   "coach_from": "2026-10-08"
+  },
+  {
+   "name": "FK Metalac Gornji Milanovac",
+   "tm": "FK Metalac Gornji Milanovac",
+   "squad": 29,
+   "age": 22.0,
+   "foreigners": 4,
+   "value": 0.9,
+   "venue": "Stadion FK Metalac",
+   "cap": 4500,
+   "coach_now": "Srdjan Bugarski",
+   "coach_from": "2026-06-16"
+  },
+  {
+   "name": "FK Napredak Krusevac",
+   "tm": "FK Napredak Krusevac",
+   "squad": 28,
+   "age": 25.2,
+   "foreigners": 2,
+   "value": 6.96,
+   "venue": "Stadion Mladost",
+   "cap": 10331,
+   "coach_now": "Ivan Stefanovic",
+   "coach_from": "2026-09-25"
+  },
+  {
+   "name": "FK TSC Backa Topola",
+   "tm": "FK TSC Backa Topola",
+   "squad": 30,
+   "age": 24.9,
+   "foreigners": 4,
+   "value": 9.4,
+   "venue": "TSC Arena",
+   "cap": 4500,
+   "coach_now": "Nenad Milijas",
+   "coach_from": "2026-06-05"
+  },
+  {
+   "name": "FK Teleoptik Zemun",
+   "tm": "FK Teleoptik Zemun",
+   "squad": 35,
+   "age": 21.7,
+   "foreigners": 5,
+   "value": 0.925,
+   "venue": "SC Zemunelo",
+   "cap": 2000,
+   "coach_now": "Marko Jovanovic",
+   "coach_from": "2025-11-14"
+  }
+ ]
 }
