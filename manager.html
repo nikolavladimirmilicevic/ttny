@@ -95,9 +95,6 @@ input[type=text]{background:var(--panel-2);border:1px solid var(--line);border-r
 /* the content */
 .pane{background:var(--panel);border-radius:14px;padding:14px;min-height:240px;overflow:auto}
 .ptitle{font:600 15px/1.2 var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin:2px 0 10px}
-select.pick{background:var(--panel-3);border:1px solid var(--line);border-radius:7px;color:var(--muted);font:600 12px/1 var(--body);padding:5px 4px;min-width:62px;max-width:96px}
-select.pick.on{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}select.pick.sub{background:color-mix(in srgb,var(--sky) 30%,var(--panel-3));color:var(--text);border-color:var(--sky)}
-select.pick option,select.pick optgroup{background:var(--panel);color:var(--text)}
 .trmon td{font:600 12px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--gold);padding-top:14px!important;border-bottom:1px solid var(--line)}
 .finch{display:flex;align-items:flex-end;gap:6px;margin-top:6px}.finch>div{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}.finch i{display:block;width:100%;border-radius:4px 4px 0 0}.finch .fv{font-size:11.5px;font-weight:600}.finch .fd{font-size:10.5px;min-height:13px}
 .confh{display:flex;justify-content:space-between;max-width:520px;margin:6px auto 0;font-size:13px;color:var(--muted)}
@@ -225,9 +222,14 @@ tr.me td{background:rgba(79,209,139,.10)}
 .sqbar{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;width:100%}
 .sqseg button .dim{font-size:10.5px;margin-left:2px}.sqseg button.on .dim{color:inherit;opacity:.65}
 .sqsum{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--dim);margin:0 2px 10px}.sqsum b{color:var(--text)}.sqsum .bad b{color:var(--loss)}.sqsum .warn b{color:var(--gold)}
-.sqt table{min-width:760px}.sqt th.srt{cursor:pointer;user-select:none;white-space:nowrap}.sqt th.srt:hover{color:var(--text)}.sqt th.on{color:var(--gold)}.sqt th i{font-style:normal;font-size:9px;margin-left:3px}
+.sqt{container-type:inline-size}.sqt table{width:100%;table-layout:auto}.sqt td.sqb{width:1%;padding-right:2px}.sqt td.sqb .box.wide{min-width:30px}
+.sqt td.sqn b{display:inline-block;max-width:230px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}.sqt td.sqn .lo{display:inline-block;max-width:110px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+/* the squad table never scrolls sideways: by the width it has, the less needed columns step aside (h1 under 760px, h2 under 600px, h3 under 440px) */
+@container (max-width:1000px){.sqt td.sqn .lo{display:none}}@container (max-width:760px){.sqt .h1{display:none}}@container (max-width:600px){.sqt .h2,.sqt td.sqn .lo{display:none}.sqt td,.sqt th{padding-left:4px;padding-right:4px}.sqt td.sqn b{max-width:150px}}
+@container (max-width:440px){.sqt .h3{display:none}.sqt .sqc{display:none}.sqt td,.sqt th{padding-left:3px;padding-right:3px;font-size:12.5px}.sqt td.sqn b{max-width:22cqw}.sqt td.sqn .tag{padding:0 3px;font-size:10px}.sqt th i{display:none}.sqt td.sqn .no{display:none}.sqt .box.wide{min-width:26px;padding:0 3px}}
+.sqt tr[data-pl]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.sqt th.srt{cursor:pointer;user-select:none;white-space:nowrap}.sqt th.srt:hover{color:var(--text)}.sqt th.on{color:var(--gold)}.sqt th i{font-style:normal;font-size:9px;margin-left:3px}
 .sqt td{white-space:nowrap}.sqt td.warn{color:var(--loss);font-weight:700}
-.sqn{position:sticky;left:0;background:var(--panel);z-index:1}.sqn .no{display:inline-block;width:22px;color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums}
+.sqn{background:var(--panel)}.sqn .no{display:inline-block;width:22px;color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums}
 .sqc{display:inline-block;width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.1);margin-right:6px;vertical-align:middle;position:relative;overflow:hidden}.sqc i{position:absolute;inset:0;width:var(--w);background:var(--c)}
 .sqm{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:6px}
 .sqf{display:inline-flex;gap:2px;margin-right:6px;vertical-align:middle}.sqf i{width:6px;height:12px;border-radius:2px}
@@ -1514,8 +1516,26 @@ function trainWeek(wk){
     if (mine && R.phys === 3 && load >= 2.5 && rr() < .004 * (load - 1.5) && !q.injD){ q.injD = 7 + Math.floor(rr() * 14); news('injury', `${p.n} hurt in training`, `${esc(p.n)} picked up a knock in a hard session and is out for about ${Math.ceil(q.injD / 7)} week${q.injD > 7 ? 's' : ''}.`); }
   }
 }
+/* what waits for the manager's answer, and keeps the game from going on until he gives it: a club's bid for one of his
+   players (accept or reject), a club answering his bid (pay what they ask, agree terms, or walk away), and a player who
+   wants a word (a concern, a transfer request, a broken promise: talk to him) */
+function pendingActs(){
+  const out = [], mineP = id => { const p = P.get(id); return p && p.club === me(); };
+  for (const o of S.offers || []) if (o.st === 'open' && mineP(o.id)){ const p = P.get(o.id);
+    out.push({ txt: `${esc(club(o.from).name)} have bid ${cash(o.fee)} for <b>${esc(p.n)}</b>. Accept or reject it.`, btn: 'To his Transfer screen', v: { s: 'player', id: p.id, tab: 'tr' } }); }
+  for (const b of S.bids || []) if (['counter', 'yes'].includes(b.st)){ const p = P.get(b.id); if (!p || p.club === me()){ b.st = 'off'; continue; }
+    out.push({ txt: b.st === 'yes' ? `${esc(club(p.club).name)} have accepted your bid for <b>${esc(p.n)}</b>. Agree his terms or walk away.` : `${esc(club(p.club).name)} want ${cash(b.ask)} for <b>${esc(p.n)}</b>. Pay it or walk away.`, btn: 'To his Transfer screen', v: { s: 'player', id: p.id, tab: 'tr' } }); }
+  for (const [id, d] of Object.entries(S.word || {})){ const p = P.get(+id);
+    if (!p || p.club !== me() || onLoan(p)){ delete S.word[id]; continue; }
+    if (talkWait(p)) continue;   // you spoke to him a few days ago: he waits until he can be seen again
+    out.push({ txt: `<b>${esc(p.n)}</b> wants a word with you.`, btn: 'Talk to him', v: { s: 'player', id: p.id, tab: 'talk' } }); }
+  return out;
+}
+const wantsWord = p => { (S.word = S.word || {})[p.id] = S.date; };
 function onContinue(){
   if (S.done) return;
+  const todo = pendingActs();
+  if (todo.length){ const a = todo[0]; choice('Waiting for your answer', `${todo.length > 1 ? `${todo.length} things need your answer before the game goes on. The first: ` : 'This needs your answer before the game goes on: '}${a.txt}`, [[a.btn, () => go(a.v), 'go']]); return; }
   const ev = events()[0]; if (!ev){ endSeason(); view(); return; }
   if (ev.date > S.date){ passDays(daysBetween(S.date, nextStop(ev.date))); monthly(); save(); view(); return; }
   const tt = readyTactic(me()), missing = tt.xi.filter(x => !x).length, b0 = tt.bench.length,
@@ -2370,38 +2390,68 @@ const valueOf = p => cash(p.val * 1e6);
 let V = { s: 'news' }, HIST = [], FWD = [], PICK = null, SORT = { k: 'pos', d: 1 };
 function go(v, keep){ if (!keep && V && LIVE == null) { HIST.push(V); if (HIST.length > 60) HIST.shift(); FWD = []; } V = v; PICK = null; view(); scrollTo(0, 0); }
 const SCREEN_SET = s => go(s);   // (kept for the calendar code)
-/* every name is a way in: a player's or a club's name, wherever it is written bold (news, tables, reports) and in the
-   plain text of news items, opens that player or club. Built once from the names; ambiguous names stay plain */
+/* every name is a way in: a player's, a club's or a competition's name, wherever it is written (news, tables, reports,
+   screens), opens that player, club or competition. Found word by word in a map of the names (the longest name first,
+   up to seven words: "1. FC Köln", "Radnički 1923", "Brighton & Hove Albion"), so a whole screen is quick to go through.
+   A player's name needs two words or the list form ("Saka, B"), so that a single common word is never a link; ambiguous
+   names stay plain. Inside a row that opens a player or a club, his own name is left to the row */
 let LKN = null;
+function compLinks(){
+  const m = new Map(), add = (n, v) => { if (n && !m.has(n)) m.set(n, v); };
+  add(D.league, 'comp:table'); add(CUP, 'comp:cup'); if (S.lc) add(LC, 'comp:lc'); if (SHIELD && S.shield) add(SHIELD, 'comp:cup');
+  if (D.second && D.second.name) add(D.second.name, 'comp:ov');
+  for (const k of awayKs()){ const L = D.lgs[k]; add(L.league, 'awl:' + k); if (L.second && L.second.name) add(L.second.name, 'awl:' + k); }
+  if (S.eu && S.eu.c) for (const k of Object.keys(S.eu.c)) add(EU_NAME[k], 'eu:' + k);
+  if (S.cwc) add(CWC, 'eu:cwc'); if (S.fic) add(FIC, 'eu:fic'); if (S.usc) add(USC, 'eu:usc');
+  return m;
+}
 function linkIndex(){
-  const all = D.pool || D.players; if (LKN && LKN.n === all.length && LKN.s === S.season) return LKN;
-  const pl = new Map(), dup = new Set(), cl = new Map(), rx = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  for (const p of all) for (const k of new Set([p.n, cmName(p.n)])){ if (pl.has(k) && pl.get(k) !== p.id) dup.add(k); else pl.set(k, p.id); }
-  dup.forEach(k => pl.delete(k));
-  for (const c of D.allClubs || D.clubs){ cl.set(c.name, c.id); if (c.full && !cl.has(c.full)) cl.set(c.full, c.id); }
-  const names = [...cl.keys(), ...[...pl.keys()].filter(k => k.includes(' ') && !k.includes(','))].sort((a, b) => b.length - a.length);
-  LKN = { pl, cl, n: all.length, s: S.season, re: new RegExp(`(^|[^\\p{L}])(${names.map(rx).join('|')})(?![\\p{L}])`, 'gu') };
+  const all = D.pool || D.players, key = `${all.length}|${S.season}|${HOME}|${awayKs().join()}|${!!S.cwc}${!!S.fic}${!!S.usc}`; if (LKN && LKN.key === key) return LKN;
+  // M: names found in running text; B: also a one-word name, when a bold word is exactly it ("Rodri", "Nice")
+  const M = new Map(), B = new Map(), dup = new Set();
+  for (const p of all) for (const k of new Set([p.n, cmName(p.n)])){ const v = 'p:' + p.id; if (B.has(k) && B.get(k) !== v) dup.add(k); else B.set(k, v); }
+  dup.forEach(k => B.delete(k));
+  for (const [k, v] of B) if (/[ ,]/.test(k.trim())) M.set(k, v);
+  const word = new Set(['Nice', 'Athletic', 'Racing', 'Sporting', 'Hearts', 'Inter']);   // a club whose name is also an everyday word
+  for (const c of D.allClubs || D.clubs) for (const n of [c.name, c.full]) if (n){ if (!B.has(n) || B.get(n)[0] === 'p') B.set(n, 'c:' + c.id); if (!word.has(n) && !M.has(n)) M.set(n, 'c:' + c.id); }
+  for (const [n, v] of compLinks()){ M.set(n, 'm:' + v); B.set(n, 'm:' + v); }
+  LKN = { key, M, B };
   return LKN;
 }
+const LK_TOK = /[\p{L}\p{N}]+/gu;
+function linkMatches(txt, M){
+  const st = [], en = []; let m; LK_TOK.lastIndex = 0; while ((m = LK_TOK.exec(txt))){ st.push(m.index); en.push(m.index + m[0].length); }
+  const out = [];
+  for (let i = 0; i < st.length; i++) for (let j = Math.min(st.length - 1, i + 6); j >= i; j--){ const s = txt.slice(st[i], en[j]), v = M.get(s);
+    if (v){ out.push([st[i], en[j], v]); i = j; break; } }
+  return out;
+}
+const LK_SKIP = 'a,button,select,option,input,textarea,label,[data-lp],[data-lc],[data-lm],[data-tp],.mtree,.tok,.tbrow,.strip2,.box,thead,.dghost,.nl,.side,.mdl .tools,.tabs,.seg';
+function lkEl(v, text){ const sp = document.createElement('span'); sp.className = 'lk'; const [t0, ...r] = v.split(':'), x = r.join(':');
+  if (t0 === 'p') sp.dataset.lp = x; else if (t0 === 'c') sp.dataset.lc = x; else sp.dataset.lm = x; sp.textContent = text; return sp; }
+// a row of a player or a club opens him already: his own name stays plain there
+const lkOwn = (n, v) => { const r = n.closest('[data-pl],[data-cv],[data-prof]'); if (!r) return false; return (r.dataset.pl && v === 'p:' + r.dataset.pl) || (r.dataset.prof && v === 'p:' + r.dataset.prof) || (r.dataset.cv && v === 'c:' + r.dataset.cv); };
 function linkify(root){
-  if (!root || !D || !S || LIVE) return; const L = linkIndex();
-  root.querySelectorAll('b, strong').forEach(el => { if (el.children.length || el.closest('[data-pl],[data-cv],[data-lp],[data-lc],a,button,.tok,.tbrow,thead,.mtree,.nl')) return; const t = el.textContent.trim();
-    if (L.pl.has(t)){ el.dataset.lp = L.pl.get(t); el.classList.add('lk'); } else if (L.cl.has(t)){ el.dataset.lc = L.cl.get(t); el.classList.add('lk'); } });
-  root.querySelectorAll('.nmsg p, .lkt').forEach(p => { const w = document.createTreeWalker(p, NodeFilter.SHOW_TEXT), nodes = [];
-    while (w.nextNode()){ const n = w.currentNode; if (!n.parentElement.closest('[data-lp],[data-lc],[data-pl],[data-cv],a,b,button')) nodes.push(n); }
-    for (const n of nodes){ const txt = n.nodeValue; L.re.lastIndex = 0; if (!L.re.test(txt)) continue; L.re.lastIndex = 0;
-      const fr = document.createDocumentFragment(); let last = 0, m;
-      while ((m = L.re.exec(txt))){ const st = m.index + m[1].length; fr.append(txt.slice(last, st)); const sp = document.createElement('span'); sp.className = 'lk';
-        if (L.cl.has(m[2])) sp.dataset.lc = L.cl.get(m[2]); else sp.dataset.lp = L.pl.get(m[2]); sp.textContent = m[2]; fr.append(sp); last = st + m[2].length; }
-      fr.append(txt.slice(last)); n.replaceWith(fr); } });
+  if (!root || !D || !S || LIVE) return; const { M, B } = linkIndex();
+  const scope = [...root.querySelectorAll('.main, .mdl')]; if (!scope.length) return;
+  for (const sc of scope){
+    sc.querySelectorAll('b, strong').forEach(el => { if (el.children.length || el.closest(LK_SKIP)) return; const v = B.get(el.textContent.trim()); if (!v || M.has(el.textContent.trim()) || lkOwn(el, v)) return;
+      const [t0, ...r] = v.split(':'); el.dataset[t0 === 'p' ? 'lp' : t0 === 'c' ? 'lc' : 'lm'] = r.join(':'); el.classList.add('lk'); });
+    const w = document.createTreeWalker(sc, NodeFilter.SHOW_TEXT, { acceptNode: n => !n.nodeValue.trim() || n.parentElement.closest(LK_SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT }), nodes = [];
+    while (w.nextNode()) nodes.push(w.currentNode);
+    for (const n of nodes){ const txt = n.nodeValue, ms = linkMatches(txt, M).filter(([, , v]) => !lkOwn(n.parentElement, v)); if (!ms.length) continue;
+      const fr = document.createDocumentFragment(); let last = 0;
+      for (const [a, b, v] of ms){ fr.append(txt.slice(last, a)); fr.append(lkEl(v, txt.slice(a, b))); last = b; }
+      fr.append(txt.slice(last)); n.replaceWith(fr); } }
 }
 // the click that follows a drag in Pick the side must not also pick or drop someone
 document.addEventListener('click', e => { if (Date.now() - (window.__dragT || 0) < 350){ e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 // a tag beside a name (Ctr, Bid, Wrd, Inj...) opens that player's screen on the page it is about
 document.addEventListener('click', e => { const el = e.target.closest('[data-tp]'); if (!el || LIVE) return; e.stopImmediatePropagation(); e.preventDefault();
   const [id, tab] = el.dataset.tp.split(':'); go({ s: 'player', id: +id, tab: tab === 'talk' && P.get(+id).club !== me() ? 'profile' : tab }); }, true);
-document.addEventListener('click', e => { const el = e.target.closest('[data-lp],[data-lc]'); if (!el || LIVE) return; e.stopPropagation(); e.preventDefault();
-  if (el.dataset.lp) go({ s: 'player', id: +el.dataset.lp }); else go({ s: 'club', cid: +el.dataset.lc, tab: 'ov' }); }, true);
+document.addEventListener('click', e => { const el = e.target.closest('[data-lp],[data-lc],[data-lm]'); if (!el || LIVE) return; e.stopPropagation(); e.preventDefault();
+  if (el.dataset.lp) go({ s: 'player', id: +el.dataset.lp }); else if (el.dataset.lc) go({ s: 'club', cid: +el.dataset.lc, tab: 'ov' });
+  else { const [s, k] = el.dataset.lm.split(':'); go(s === 'comp' ? { s: 'comp', tab: k } : s === 'awl' ? { s: 'awl', k, tab: 'table' } : { s: 'eu', k }); } }, true);
 function view(){
   if (!D) return;
   if (!S || SETUP_OPEN){ viewSetup(); return; }
@@ -2485,6 +2535,7 @@ function frame(o){
       <div class="arrows"><button id="navb" aria-label="Back" ${HIST.length ? '' : 'disabled'}>←</button><button id="navf" aria-label="Forward" ${FWD.length ? '' : 'disabled'}>→</button></div>
       ${S.done ? (S.next ? '<button class="sb go" id="nextseason">Start the Next Season</button>' : S.sacked ? '<button class="sb go" id="findjob">Find a Job</button>' : '') : `<button class="sb go" id="cont">Continue Game</button>`}
       ${menuHTML(o, unread)}
+      ${!S.done && pendingActs().length ? `<button class="sb newsflag" id="needs">Needs Your Answer (${pendingActs().length})</button>` : ''}
       ${unread && V.s !== 'news' ? '<button class="sb newsflag" data-side="news">You Have News</button>' : ''}
     </aside>
     <div class="main">
@@ -2497,7 +2548,7 @@ function frame(o){
   const back = () => { if (!HIST.length) return; FWD.push(V); V = HIST.pop(); PICK = null; view(); };
   on('#navb', back); on('#back', back);
   on('#navf', () => { if (!FWD.length) return; HIST.push(V); V = FWD.pop(); view(); });
-  on('#cont', onContinue);
+  on('#cont', onContinue); on('#needs', () => { const a = pendingActs()[0]; if (a) go(a.v); });
   on('#nextseason', () => { newSeason(); save(); V = { s: 'news' }; view(); });
   on('#findjob', () => go({ s: 'managers', tab: 'jobs' }));
   if (o.next) on('#next', o.next);
@@ -2736,67 +2787,50 @@ function clubSquad(cid, o){
   const nf = mine ? nextFree() : null;
   const box = p => { if (!mine) return ''; const i = t.xi.indexOf(p.id), b = t.bench.indexOf(p.id);
     return i >= 0 ? `<button class="box on wide" data-sel="${p.id}" title="Place ${i + 1}">${slots[i][0]}</button>` : b >= 0 ? `<button class="box sub wide" data-sel="${p.id}" title="Substitute">S${b + 1}</button>` : `<button class="box wide" data-sel="${p.id}" title="${nf ? 'Pick him: ' + nf : ''}"></button>`; };
-  const slotLbl = j => { const [c, x] = slots[j], dup = slots.filter(z => z[0] === c).length > 1; return dup ? `${c} ${x < 42 ? 'L' : x > 58 ? 'R' : 'C'}` : c; };
-  const pick = p => { if (!mine) return ''; const i = t.xi.indexOf(p.id), b = t.bench.indexOf(p.id), cur = i >= 0 ? 'i:' + i : b >= 0 ? 'b:' + b : '';
-    return `<select class="pick ${i >= 0 ? 'on' : b >= 0 ? 'sub' : ''}" data-pick="${p.id}" aria-label="Pick ${esc(cmName(p.n))}"><option value="">-</option><optgroup label="Starting eleven">${slots.map((z, j) => `<option value="i:${j}" ${cur === 'i:' + j ? 'selected' : ''}>${slotLbl(j)}${t.xi[j] && t.xi[j] !== p.id ? ' · ' + esc(surname(P.get(t.xi[j]).n)) : ''}</option>`).join('')}</optgroup><optgroup label="Substitutes">${Array.from({ length: Math.min(BENCH, t.bench.length + (b >= 0 ? 0 : 1)) }, (_, j) => `<option value="b:${j}" ${cur === 'b:' + j ? 'selected' : ''}>S${j + 1}${t.bench[j] && t.bench[j] !== p.id ? ' · ' + esc(surname(P.get(t.bench[j]).n)) : ''}</option>`).join('')}</optgroup></select>`; };
   const th = (k, n, cls = '', tip = '') => `<th class="${cls} ${k ? 'srt' : ''} ${SORT.k === k ? 'on' : ''}" ${k ? `data-sort="${k}"` : ''} ${tip ? `title="${esc(tip)}"` : ''}>${n}${k && SORT.k === k ? `<i>${SORT.d > 0 ? '▲' : '▼'}</i>` : ''}</th>`;
   const rc = v => v >= 7.2 ? 'var(--win)' : v >= 6.5 ? 'var(--gold)' : v >= 5.9 ? 'var(--text)' : 'var(--loss)';
   const condC = c => `<span class="sqc" style="--w:${Math.round(c)}%;--c:${c >= 85 ? 'var(--win)' : c >= 68 ? 'var(--gold)' : 'var(--loss)'}"><i></i></span><span class="small">${Math.round(c)}%</span>`;
   const morC = m => `<span class="sqm" style="--c:${m >= 70 ? 'var(--win)' : m >= 45 ? 'var(--gold)' : 'var(--loss)'}"></span>${morWord(m)}`;
   const formC = q => { const L5 = last5(q); return L5.length ? `<span class="sqf">${L5.map(v => `<i style="background:${rc(v)}" title="${v.toFixed(1)}"></i>`).join('')}</span><b style="color:${rc(form(q))}">${form(q).toFixed(1)}</b>` : '<span class="dim">-</span>'; };
   const nameTd = p => `<td class="sqn ${nameCls(p)}">${p.no ? `<span class="no">${p.no}</span>` : '<span class="no"></span>'}${flag(p.nat)}<b>${esc(cmName(p.n))}</b>${playerFlags(p)}</td>`;
-  const AT = [...Object.keys(ATTR_NAME).filter(k => !GK_KEYS.includes(k)), ...GK_KEYS.filter(k => ATTR_NAME[k])];
+  // the attributes in groups of three to six, so that the table fits the screen without scrolling sideways
+  const AGRP = [['att', 'Attacking', ['oa', 'fi', 'he', 'kp', 'cu', 'pk']], ['tec', 'Technique', ['bc', 'dr', 'tp', 'lp', 'lf']], ['phy', 'Physical', ['sp', 'ac', 'ba', 'ju', 'pc', 'st']], ['def', 'Defending', ['da', 'bw', 'ag']], ['gk', 'Goalkeeping', GK_KEYS]];
+  const ag = AGRP.find(g => g[0] === V.ag) || AGRP[0], AT = ag[2].filter(k => ATTR_NAME[k]);
   let head, row;
-  if (view_ === 'gen'){ head = `${mine ? th('pick', 'Picked') : ''}${th('name', 'Name')}${th('pos', 'Pos')}${th('age', 'Age', 'r')}${th('cond', 'Condition')}${th('mor', 'Morale')}${th('form', 'Form', '', 'Ratings in the last five games')}${th('apps', 'Apps', 'r')}${th('gls', 'Gls', 'r')}${th('ast', 'Ast', 'r')}${th('val', 'Value', 'r')}${th('con', 'Contract', 'r')}`;
-    row = p => { const q = ps(p.id), c = S.con[p.id]; return `${mine ? `<td>${pick(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${cmPos(p.pos)}</b></td><td class="r">${p.age}</td><td>${condC(q.cond)}</td><td class="small">${morC(q.mor)}</td><td>${formC(q)}</td><td class="r">${q.apps}${q.sub ? `<span class="dim small"> (${q.sub})</span>` : ''}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${valueOf(p)}</td><td class="r ${c && c.y <= S.season + 1 ? 'warn' : ''}">${c ? c.y : '-'}</td>`; }; }
-  else if (view_ === 'attr'){ head = `${mine ? th('pick', 'Picked') : ''}${th('name', 'Name')}${th('pos', 'Pos')}${AT.map(k => th('a:' + k, esc((ATTR_NAME[k] || k).split(' ').map(w => w[0]).join('').slice(0, 3)), 'r', ATTR_NAME[k])).join('')}`;
-    row = p => `${mine ? `<td>${pick(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${p.prim}</b></td>${AT.map(k => `<td class="r av ${vcls(A(p, k))}">${showA(p, A(p, k), k)}</td>`).join('')}`; }
-  else if (view_ === 'stats'){ head = `${mine ? th('pick', 'Picked') : ''}${th('name', 'Name')}${th('pos', 'Pos')}${th('apps', 'Apps', 'r')}${th('sub', 'Sub', 'r')}${th('gls', 'Gls', 'r')}${th('ast', 'Ast', 'r')}${th('mom', 'MoM', 'r')}${th('yc', 'Yel', 'r')}<th class="r">Red</th>${th('rt', 'Av R', 'r')}`;
-    row = p => { const q = ps(p.id); return `${mine ? `<td>${pick(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${p.prim}</b></td><td class="r">${q.apps}</td><td class="r">${q.sub}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${q.mom}</td><td class="r">${q.yc}</td><td class="r">${q.rc || 0}</td><td class="r"><b style="color:${rc(+avgRt(q) || 0)}">${avgRt(q)}</b></td>`; }; }
-  else if (view_ === 'con'){ head = `${mine ? th('pick', 'Picked') : ''}${th('name', 'Name')}${th('pos', 'Pos')}${th('age', 'Age', 'r')}${th('val', 'Value', 'r')}${th('wage', 'Wage', 'r')}${th('con', 'Expires', 'r')}<th>Status</th>`;
-    row = p => { const c = S.con[p.id], yrs = c ? c.y - S.season : 9; return `${mine ? `<td>${pick(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${p.prim}</b></td><td class="r">${p.age}</td><td class="r">${valueOf(p)}</td><td class="r">${wage(c.w)}</td><td class="r ${yrs <= 1 ? 'warn' : ''}">30.6.${String(c.y).slice(2)}</td><td class="small">${onLoan(p) ? 'On loan' : yrs <= 1 ? '<span style="color:var(--loss)">Expiring</span>' : yrs <= 2 ? '<span style="color:var(--gold)">Talks soon</span>' : '<span class="dim">Settled</span>'}</td>`; }; }
+  if (view_ === 'gen'){ head = `${mine ? th('pick', 'XI') : ''}${th('name', 'Name')}${th('pos', 'Pos')}${th('age', 'Age', 'r h3')}${th('cond', 'Cond')}${th('mor', 'Morale', 'h2')}${th('form', 'Form', 'h3', 'Ratings in the last five games')}${th('apps', 'Apps', 'r h1')}${th('gls', 'Gls', 'r h2')}${th('ast', 'Ast', 'r h1')}${th('val', 'Value', 'r h2')}${th('con', 'Contract', 'r h1')}`;
+    row = p => { const q = ps(p.id), c = S.con[p.id]; return `${mine ? `<td class="sqb">${box(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${cmPos(p.pos)}</b></td><td class="r h3">${p.age}</td><td>${condC(q.cond)}</td><td class="small h2">${morC(q.mor)}</td><td class="h3">${formC(q)}</td><td class="r h1">${q.apps}${q.sub ? `<span class="dim small"> (${q.sub})</span>` : ''}</td><td class="r h2">${q.g}</td><td class="r h1">${q.a}</td><td class="r h2">${valueOf(p)}</td><td class="r h1 ${c && c.y <= S.season + 1 ? 'warn' : ''}">${c ? c.y : '-'}</td>`; }; }
+  else if (view_ === 'attr'){ head = `${mine ? th('pick', 'XI') : ''}${th('name', 'Name')}${th('pos', 'Pos')}${AT.map(k => th('a:' + k, esc(k.toUpperCase()), 'r', ATTR_NAME[k])).join('')}`;
+    row = p => `${mine ? `<td class="sqb">${box(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${p.prim}</b></td>${AT.map(k => `<td class="r av ${vcls(A(p, k))}">${showA(p, A(p, k), k)}</td>`).join('')}`; }
+  else if (view_ === 'stats'){ head = `${mine ? th('pick', 'XI') : ''}${th('name', 'Name')}${th('pos', 'Pos')}${th('apps', 'Apps', 'r')}${th('sub', 'Sub', 'r h3')}${th('gls', 'Gls', 'r')}${th('ast', 'Ast', 'r')}${th('mom', 'MoM', 'r h3')}${th('yc', 'Yel', 'r h2')}<th class="r h2">Red</th>${th('rt', 'Av R', 'r')}`;
+    row = p => { const q = ps(p.id); return `${mine ? `<td class="sqb">${box(p)}</td>` : ''}${nameTd(p)}<td class="yel"><b>${p.prim}</b></td><td class="r">${q.apps}</td><td class="r h3">${q.sub}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r h3">${q.mom}</td><td class="r h2">${q.yc}</td><td class="r h2">${q.rc || 0}</td><td class="r"><b style="color:${rc(+avgRt(q) || 0)}">${avgRt(q)}</b></td>`; }; }
+  else if (view_ === 'con'){ head = `${mine ? th('pick', 'XI') : ''}${th('name', 'Name')}${th('pos', 'Pos', 'h3')}${th('age', 'Age', 'r h3')}${th('val', 'Value', 'r h3')}${th('wage', 'Wage', 'r')}${th('con', 'Expires', 'r')}<th class="h2">Status</th>`;
+    row = p => { const c = S.con[p.id], yrs = c ? c.y - S.season : 9; return `${mine ? `<td class="sqb">${box(p)}</td>` : ''}${nameTd(p)}<td class="yel h3"><b>${p.prim}</b></td><td class="r h3">${p.age}</td><td class="r h3">${valueOf(p)}</td><td class="r">${wage(c.w)}</td><td class="r ${yrs <= 1 ? 'warn' : ''}">30.6.${String(c.y).slice(2)}</td><td class="small h2">${onLoan(p) ? 'On loan' : yrs <= 1 ? '<span style="color:var(--loss)">Expiring</span>' : yrs <= 2 ? '<span style="color:var(--gold)">Talks soon</span>' : '<span class="dim">Settled</span>'}</td>`; }; }
   let body;
   if (view_ === 'pos'){
     const half = Math.ceil(L.length / 2), rw = p => `<div class="sqr ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${box(p) || '<span></span>'}<span class="nm ${nameCls(p)}">${flag(p.nat)}${esc(cmName(p.n))}${playerFlags(p)}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
     body = `${mine ? slotStrip() : ''}<div class="sq"><div>${L.slice(0, half).map(rw).join('')}</div><div>${L.slice(half).map(rw).join('')}</div></div>`;
-  } else body = `<div class="tw sqt"><table><thead><tr>${head}</tr></thead><tbody>${L.map(p => `<tr class="click ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${row(p)}</tr>`).join('')}</tbody></table></div>`;
+  } else body = `${mine ? slotStrip() : ''}<div class="sqt"><table><thead><tr>${head}</tr></thead><tbody>${L.map(p => `<tr class="click ${avail(p.id) ? '' : 'c-out'}" data-pl="${p.id}">${row(p)}</tr>`).join('')}</tbody></table></div>`;
   // the squad at a glance
   const inj = all.filter(p => !avail(p.id) && !onLoan(p)).length, avgAge = all.length ? (all.reduce((x, p) => x + p.age, 0) / all.length).toFixed(1) : '-', exp = all.filter(p => S.con[p.id] && S.con[p.id].y <= S.season + 1).length;
   const sum = `<div class="sqsum"><span><b>${all.length}</b> players</span><span>average age <b>${avgAge}</b></span><span class="${inj ? 'bad' : ''}"><b>${inj}</b> injured or banned</span><span class="${exp ? 'warn' : ''}"><b>${exp}</b> contracts ending</span>${mine ? `<span>picked <b>${t.xi.filter(Boolean).length}/11</b> + <b>${t.bench.length}/${BENCH}</b></span>` : ''}</div>`;
   const chips = (id, L2, cur) => `<span class="seg sqseg" id="${id}">${L2.map(([k, n]) => `<button data-v="${k}" class="${cur === k ? 'on' : ''}">${n}</button>`).join('')}</span>`;
   const n = k => all.filter({ all: () => true, gk: p => p.prim === 'GK', def: p => GROUP[p.prim] === 'DEF', mid: p => GROUP[p.prim] === 'MID', fwd: p => GROUP[p.prim] === 'FWD', avail: p => avail(p.id), out: p => !avail(p.id), first: p => t.xi.includes(p.id) || t.bench.includes(p.id), exp: p => S.con[p.id] && S.con[p.id].y <= S.season + 1 }[k]).length;
-  o.tools = `<div class="sqbar">${chips('sqv', [['gen', 'General'], ['attr', 'Attributes'], ['stats', 'Stats'], ['con', 'Contracts'], ...(mine ? [['pos', 'Pick the side']] : [])], view_)}${chips('sqt', [['first', 'First Team'], ['res', 'Reserves'], ['all', 'Whole Squad']], team)}</div>
+  o.tools = `<div class="sqbar">${chips('sqv', [['gen', 'General'], ['attr', 'Attributes'], ['stats', 'Stats'], ['con', 'Contracts'], ...(mine ? [['pos', 'Pick the side']] : [])], view_)}${chips('sqt', [['first', 'First Team'], ['res', 'Reserves'], ['all', 'Whole Squad']], team)}</div>${view_ === 'attr' ? `<div class="sqbar">${chips('sqa', AGRP.map(g => [g[0], g[1]]), ag[0])}</div>` : ''}
     <div class="sqbar">${chips('sqf', [['all', 'All'], ['gk', 'GK'], ['def', 'DEF'], ['mid', 'MID'], ['fwd', 'FWD'], ['avail', 'Available'], ['out', 'Out'], ...(mine ? [['first', 'Picked']] : []), ['exp', 'Expiring']].map(([k, x]) => [k, `${x} <span class="dim">${n(k)}</span>`]), filt)}<span style="flex:1"></span>${mine ? '<span class="tgrp clr"><span class="tglbl">Clear</span><button class="btn sm" id="clearb">Bench</button><button class="btn sm" id="clearsq">Everything</button></span><span class="tgrp ask"><span class="tglbl">Assistant</span><button class="btn sm" id="autoxi" title="Empty places and bench spots only; your picks stay">Fill the rest</button></span>' : ''}</div>`;
-  o.body = sum + body + (mine && view_ === 'pos' ? `<p class="small dim" style="margin:8px 2px 0">Tap a box to give that player the next free place in your ${esc(formLabel(t))}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; tap it again to take it back. Or drag a place from the strip onto a player, a player onto a place, or one place onto another to swap them (with a finger, hold the player a moment first).</p>` : '');
+  o.body = sum + body + (mine ? `<p class="small dim" style="margin:8px 2px 0">Tap a box to give that player the next free place in your ${esc(formLabel(t))}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; tap it again to take it back. Or drag a place from the strip onto a player, a player onto a place, or one place onto another to swap them (with a finger, hold the player a moment first).</p>` : '');
   frame(o);
   document.querySelectorAll('#sqv button').forEach(b => b.addEventListener('click', () => { V = { ...V, view: b.dataset.v }; view(); }));
   document.querySelectorAll('#sqt button').forEach(b => b.addEventListener('click', () => { V = { ...V, team: b.dataset.v }; view(); }));
   document.querySelectorAll('#sqf button').forEach(b => b.addEventListener('click', () => { V = { ...V, filt: b.dataset.v }; view(); }));
+  document.querySelectorAll('#sqa button').forEach(b => b.addEventListener('click', () => { V = { ...V, ag: b.dataset.v }; view(); }));
   document.querySelectorAll('[data-tg]').forEach(b => b.addEventListener('click', () => { const v = b.dataset.tg, k = v[0] === 'b' ? v : +v; TARGET = TARGET === k ? null : k; view(); }));
-  if (mine && view_ === 'pos') wireStripDrag();
+  if (mine) wireStripDrag();
   if ($('#clearsq')) $('#clearsq').addEventListener('click', () => { t.xi = Array(11).fill(null); t.bench = []; TARGET = null; save(); view(); });
   if ($('#autoxi')) $('#autoxi').addEventListener('click', () => { fillRest(); save(); view(); });
   if ($('#clearb')) $('#clearb').addEventListener('click', () => { t.bench = []; save(); view(); });
   document.querySelectorAll('[data-sort]').forEach(h => h.addEventListener('click', () => { SORT = { k: h.dataset.sort, d: SORT.k === h.dataset.sort ? -SORT.d : 1 }; view(); }));
-  document.querySelectorAll('[data-pick]').forEach(sl => { sl.addEventListener('click', e => e.stopPropagation()); sl.addEventListener('change', () => { pickAs(+sl.dataset.pick, sl.value); view(); }); });
   document.querySelectorAll('[data-sel]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); toggleSel(+b.dataset.sel); view(); }));
   wirePlayers(L.map(p => p.id));
-}
-// a player straight into a place (or a bench spot) from the squad list; whoever was there takes his old one
-function pickAs(id, val){
-  const t = S.tac[me()], p = P.get(id), sl = slotsOf(t), i0 = t.xi.indexOf(id), b0 = t.bench.indexOf(id);
-  if (val && !avail(id)) return toast(`${cmName(p.n)} is not available.`);
-  const [k, v] = val ? val.split(':') : ['', ''], j = +v;
-  if (i0 >= 0) t.xi[i0] = null; if (b0 >= 0) t.bench.splice(b0, 1, null);
-  const back = occ => { if (!occ) return; const op = P.get(occ);
-    if (i0 >= 0) t.xi[i0] = occ;
-    else if (b0 >= 0) t.bench[b0] = occ;
-    else if (t.bench.filter(Boolean).length < BENCH) t.bench.push(occ); };
-  if (k === 'i'){ const occ = t.xi[j]; t.xi[j] = id; back(occ !== id ? occ : null); if (!canPlay(p, sl[j][0])) toast(`${cmName(p.n)} is out of position at ${sl[j][0]}.`); }
-  else if (k === 'b'){ const occ = t.bench[j]; if (j < t.bench.length) t.bench[j] = id; else t.bench.push(id); back(occ !== id ? occ : null); }
-  t.bench = t.bench.filter(Boolean).slice(0, BENCH);
-  const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, x]) => t.xi.includes(x))); t.set = Object.assign(setPieces(me(), t.xi), keep);
-  save();
 }
 function nextFree(){ const t = S.tac[me()], i = t.xi.indexOf(null); if (i >= 0) return slotsOf(t)[i][0]; return t.bench.length < BENCH ? 'S' + (t.bench.length + 1) : null; }
 // a player into a place (k: slot number, or 'b0'... for the bench). If he already has a place, the two swap; otherwise
@@ -2813,7 +2847,7 @@ function putAt(id, k){
   if (typeof k === 'number' && !canPlay(p, slotsOf(t)[k][0])) toast(`${cmName(p.n)} is out of position at ${slotsOf(t)[k][0]}.`);
   TARGET = null; save();
 }
-// drag in Pick the side: a place in the strip onto a player, a player onto a place, or one place onto another (a swap).
+// drag in the squad (every view): a place in the strip onto a player, a player onto a place, or one place onto another (a swap).
 // With a finger, hold a player for a moment before dragging him, so the list still scrolls
 function wireStripDrag(){
   const t = S.tac[me()], keyOf = el => { const v = el.dataset.tg; return v[0] === 'b' ? v : +v; };
@@ -2823,7 +2857,7 @@ function wireStripDrag(){
   const end = () => { clearTimeout(timer); clearInterval(scr); if (ghost) ghost.remove(); if (over) over.classList.remove('dov'); ghost = over = null; src = null; ready = false; document.removeEventListener('touchmove', stopTouch); };
   const begin = () => { ghost = document.createElement('div'); ghost.className = 'dghost'; ghost.textContent = src.dataset.tg != null ? `${src.textContent}${occ(keyOf(src)) ? ': ' + cmName(P.get(occ(keyOf(src))).n) : ''}` : cmName(P.get(+src.dataset.pl).n); document.body.appendChild(ghost);
     scr = setInterval(() => { if (!ghost) return; if (y0 < 70) scrollBy(0, -14); else if (y0 > innerHeight - 50) scrollBy(0, 14); }, 30); };
-  document.querySelectorAll('.strip2 [data-tg], .sq .sqr[data-pl]').forEach(el => el.addEventListener('pointerdown', e => {
+  document.querySelectorAll('.strip2 [data-tg], .sq .sqr[data-pl], .sqt tr[data-pl]').forEach(el => el.addEventListener('pointerdown', e => {
     if (e.button) return; end(); src = el; x0 = e.clientX; y0 = e.clientY;
     const slot = el.dataset.tg != null;
     if (e.pointerType === 'touch' && !slot){ document.addEventListener('touchmove', stopTouch, { passive: false }); timer = setTimeout(() => { if (src === el){ ready = true; begin(); ghost.style.left = x0 + 'px'; ghost.style.top = y0 + 'px'; if (navigator.vibrate) navigator.vibrate(15); } }, 320); }
@@ -2831,7 +2865,7 @@ function wireStripDrag(){
   const onMove = e => { if (!src) return; const dx = e.clientX - x0, dy = e.clientY - y0;
     if (!ghost){ if (!ready){ if (Math.hypot(dx, dy) > 8){ clearTimeout(timer); src = null; } return; } if (Math.hypot(dx, dy) < 8) return; begin(); }
     x0 = e.clientX; y0 = e.clientY; ghost.style.left = x0 + 'px'; ghost.style.top = y0 + 'px';
-    const at = document.elementFromPoint(x0, y0), tg = at && (at.closest('.strip2 [data-tg]') || at.closest('.sq .sqr[data-pl]'));
+    const at = document.elementFromPoint(x0, y0), tg = at && (at.closest('.strip2 [data-tg]') || at.closest('.sq .sqr[data-pl]') || at.closest('.sqt tr[data-pl]'));
     if (over !== tg){ if (over) over.classList.remove('dov'); over = tg && tg !== src ? tg : null; if (over) over.classList.add('dov'); } };
   const onUp = () => { if (!src) return; const a = src, b = over, dragged = !!ghost; end();
     if (!dragged || !b) return;
@@ -3676,7 +3710,10 @@ function slotStrip(){
 // reserves: the academy (players Transfermarkt's first-team list leaves out, and each year's youth intake) until he is 22
 // or the manager promotes him; anyone picked for the side or the bench counts as first team
 const inRes = p => { const pr = (S.promo || {})[p.id]; return pr === 0 || (pr !== 1 && !!(p.ac || p.yth) && p.age < 22); };
-function firstTeam(cid){ const t = S.tac[cid], L = squadOf(cid), keep = new Set(L.some(p => p.ac) ? L.filter(p => !inRes(p)).map(p => p.id) : L.slice().sort((a, b) => ovrNow(b) - ovrNow(a)).slice(0, 25).map(p => p.id)); for (const id of [...t.xi, ...t.bench]) if (id) keep.add(id); return keep; }
+function firstTeam(cid){ const t = S.tac[cid], L = squadOf(cid), pr = S.promo || {};
+  const keep = new Set(L.some(p => p.ac) ? L.filter(p => !inRes(p)).map(p => p.id) : L.filter(p => pr[p.id] == null).sort((a, b) => ovrNow(b) - ovrNow(a)).slice(0, Math.max(0, 25 - L.filter(p => pr[p.id] === 1).length)).map(p => p.id));
+  for (const p of L){ if (pr[p.id] === 1) keep.add(p.id); else if (pr[p.id] === 0) keep.delete(p.id); }   // the manager's own moves, whatever the squad
+  for (const id of [...t.xi, ...t.bench]) if (id) keep.add(id); return keep; }
 
 /* ---- attribute masking ---- */
 const known = p => !S.mask || p.club === me() || (S.seen || []).includes(p.club) || (S.short || []).some(x => x.id === p.id && daysBetween(x.d, S.date) >= 7);
@@ -4000,7 +4037,7 @@ function unrest(){
   for (const p of squadOf(me())){ const q = ps(p.id);
     if (q.req === S.season && q.mor >= 60){ q.req = null; news('club', `${p.n} is settled`, `<b>${esc(p.n)}</b> has withdrawn his transfer request.`); continue; }
     if (q.req === S.season || squadRank(p) >= 14 || q.apps >= S.round * .3 || q.mor >= 40 || q.injD) continue;
-    q.req = S.season; news('club', `${p.n} wants to leave`, `<b>${esc(p.n)}</b> has handed in a transfer request: he wants first-team football. Other clubs will hear of it.`); }
+    q.req = S.season; wantsWord(p); news('club', `${p.n} wants to leave`, `<b>${esc(p.n)}</b> has handed in a transfer request: he wants first-team football. Other clubs will hear of it.`); }
 }
 /* ---- the dressing room: what is on a player's mind, talks with him, promises, and the role his contract gives him ----
    Concerns: too little football (for a good player, or for less than his contract's role), a wage below his standing,
@@ -4033,7 +4070,7 @@ function dressingRoom(){
   S.cnews = S.cnews || {}; S.prom = S.prom || [];
   for (const p of squadOf(me())){ const q = ps(p.id), cs = concerns(p);
     for (const c of cs){ if (c.k === 'req') continue; q.mor = clamp(q.mor - (c.k === 'amb' ? 1 : 2), 15, 100);
-      const key = `${S.season}-${p.id}-${c.k}`; if (S.cnews[key]) continue; S.cnews[key] = 1;
+      const key = `${S.season}-${p.id}-${c.k}`; if (S.cnews[key]) continue; S.cnews[key] = 1; wantsWord(p);
       news('club', `${p.n} wants a word`, `${esc(p.n)}: ${c.t} Have a talk with him (his Talk screen).`); } }
   for (const pr of S.prom.slice()){ const p = P.get(pr.id); if (!p || p.club !== me()){ S.prom = S.prom.filter(x => x !== pr); continue; }
     const q = ps(p.id);
@@ -4042,6 +4079,7 @@ function dressingRoom(){
     if (kept){ q.mor = clamp(q.mor + 8, 15, 100); S.prom = S.prom.filter(x => x !== pr); news('club', `${p.n} is happy`, `${esc(p.n)} says you kept your word${pr.k === 'time' ? ': he is playing again' : ''}.`); }
     else if (late){ q.mor = clamp(q.mor - 20, 15, 100); S.trust = (S.trust || 0) + 1; S.prom = S.prom.filter(x => x !== pr);
       if (q.req !== S.season && !(pr.k === 'time' && squadRank(p) >= 18)) q.req = S.season;
+      wantsWord(p);
       news('club', `${p.n} feels let down`, `${esc(p.n)} says you broke your promise ${pr.k === 'time' ? 'of first-team football' : 'of a new contract'}.${q.req === S.season ? ' He has handed in a transfer request.' : ''} The rest of the squad noticed too.`);
       for (const o of squadOf(me())) if (o.id !== p.id){ const oq = ps(o.id); oq.mor = clamp(oq.mor - 2, 15, 100); } } }
 }
@@ -4066,7 +4104,7 @@ function talkTo(p, k){
     else if (trust >= 2 && rr < .5){ dm = -2; say = 'He will believe it when he sees it.'; }
     else { dm = 10; say = `He is pleased. He expects an offer by ${fmtDate(day(S.date, 30))}.`; }
     if (dm >= 0) (S.prom = S.prom || []).push({ id: p.id, k: 'pay', by: day(S.date, 30), w0: c.w }); }
-  q.mor = clamp(Math.round(q.mor + dm), 15, 100); (S.talk = S.talk || {})[p.id] = S.date;
+  q.mor = clamp(Math.round(q.mor + dm), 15, 100); (S.talk = S.talk || {})[p.id] = S.date; if (S.word) delete S.word[p.id];
   if (q.req === S.season && q.mor >= 60 && k !== 'crit'){ q.req = null; say += ' He has withdrawn his transfer request.'; }
   return { say, dm };
 }
