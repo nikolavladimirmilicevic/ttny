@@ -1676,7 +1676,7 @@ def game_crests(cmd, cm_model):
         if c['id'] < 900000 or c.get('crest'):
             continue
         k = str(c['id']); old = ids.get(k) or {}
-        if old.get('api') or days_old(old.get('tried')) < 30:
+        if old.get('api') or old.get('manual') or days_old(old.get('tried')) < 30:   # manual: set by hand (a wrong match, or none to be had)
             continue
         country = CTRY_NAME.get(c.get('ctry') or '')
         if not country:
