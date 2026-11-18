@@ -1662,6 +1662,50 @@ def fetch_crests(ids):
     return have
 
 
+CTRY_NAME = {'ENG': 'England', 'FRA': 'France', 'ITA': 'Italy', 'ESP': 'Spain', 'GER': 'Germany', 'SRB': 'Serbia'}
+
+
+def game_crests(cmd, cm_model):
+    """Crests for every club of the manager game. A club with an id of our own (from Transfermarkt pages: Serbia's clubs,
+    Laval) is looked up once in the API by name and country (one call per search term; the answer, or that none was
+    found, kept in data/cache/crest_ids.json and retried after 30 days), and wears that team's crest ('crest' in cm.json).
+    Then the crests of all the game's clubs are saved like the draft game's (fetch_crests)."""
+    ids = load('crest_ids', {})
+    changed = False
+    for c in cm_model.game_clubs(cmd):
+        if c['id'] < 900000 or c.get('crest'):
+            continue
+        k = str(c['id']); old = ids.get(k) or {}
+        if old.get('api') or days_old(old.get('tried')) < 30:
+            continue
+        country = CTRY_NAME.get(c.get('ctry') or '')
+        if not country:
+            continue
+        best, score = None, 0
+        for term in search_terms({'name': c.get('full') or c['name'], 'search': c['name']}):
+            data = api('teams', search=term)
+            for x in data.get('response', []):
+                tm = x['team']
+                if tm.get('national') or norm(tm.get('country')) != norm(country) or not first_team(tm):
+                    continue
+                sc = max(difflib.SequenceMatcher(None, norm(tm['name']), norm(n)).ratio() for n in (c['name'], c.get('full') or c['name'], term))
+                if sc > score:
+                    best, score = tm, sc
+            if best and score >= .8:
+                break
+        changed = True
+        if best and score >= .55:
+            ids[k] = {'api': best['id'], 'api_name': best['name'], 'name': c.get('full') or c['name'], 'score': round(score, 2), 'tried': TODAY.isoformat()}
+            log(f"  crest: {c.get('full') or c['name']} ({country}) -> {best['name']} id {best['id']}")
+        else:
+            ids[k] = {'api': None, 'name': c.get('full') or c['name'], 'tried': TODAY.isoformat()}
+            log(f"  crest: {c.get('full') or c['name']} ({country}) not found in the API")
+    if changed:
+        save('crest_ids', ids)
+        cm_model.apply_crests(cmd)
+    fetch_crests([c.get('crest') or c['id'] for c in cm_model.game_clubs(cmd)])
+
+
 YOUTH_RE = re.compile(r'(\bU\d\d\b|\bII\b|\sB$|Reserves|Youth|^Jong\s)', re.I)
 CLUB_WORDS = {'fc', 'cf', 'sc', 'ac', 'fk', 'sk', 'nk', 'kf', 'af', 'bk', 'afc', 'cfc', 'cd', 'sd', 'ud', 'club', 'de', 'the',
               'united', 'city', 'town', 'calcio'}
@@ -1955,6 +1999,12 @@ def main():
         cmd = cm_model.build(world, people, squads, meta.get('cm') or {}, load('cm_fixtures', {}), kits, alias, current_season(), TODAY.isoformat(), lastseen=seen,
                               fixes=cm_model.load_fixes())
         if cmd and cmd['clubs']:
+            try:
+                game_crests(cmd, cm_model)
+            except OutOfBudget:
+                pass
+            except Exception as e:
+                log(f'  manager game crests: {e!r}')
             with open(os.path.join(ROOT, 'cm.json'), 'w', encoding='utf-8') as f:
                 json.dump(cmd, f, ensure_ascii=False, separators=(',', ':'))
             log(f"  manager game: cm.json with {len(cmd['clubs'])} clubs, {len(cmd['players'])} players, {len(cmd['fixtures'])} fixtures")

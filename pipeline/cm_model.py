@@ -807,8 +807,33 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             extra['cwc'] = _cw
     except Exception:   # the cups are an extra: the league is built whatever happens here
         pass
-    return {'season': season, 'updated': today, 'league': 'Premier League', 'complete': len(clubs) == len(teams) and len(teams) >= 18,
-            'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures, **extra}
+    out = {'season': season, 'updated': today, 'league': 'Premier League', 'complete': len(clubs) == len(teams) and len(teams) >= 18,
+           'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures, **extra}
+    apply_crests(out)
+    return out
+
+
+def game_clubs(cmd):
+    """Every club the manager game shows: the leagues and their second tiers, the European cups, the Club World Cup."""
+    out = list(cmd.get('clubs') or []) + list((cmd.get('second') or {}).get('clubs') or [])
+    for L in (cmd.get('leagues') or {}).values():
+        out += list(L.get('clubs') or []) + list((L.get('second') or {}).get('clubs') or [])
+    out += list((cmd.get('europe') or {}).get('clubs') or []) + list((cmd.get('cwc') or {}).get('clubs') or [])
+    return out
+
+
+def apply_crests(cmd):
+    """A club with an id of our own (one from Transfermarkt pages: Serbia's, Laval) wears the crest of its API team, found
+    once by name and country in the data workflow (data/cache/crest_ids.json): 'crest' is that team's id."""
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'cache', 'crest_ids.json'), encoding='utf-8') as f:
+            ids = json.load(f)
+    except (OSError, ValueError):
+        return
+    for c in game_clubs(cmd):
+        v = (ids.get(str(c['id'])) or {}).get('api')
+        if v:
+            c['crest'] = v
 
 
 # ---- the Championship, played in the background (Transfermarkt squad pages; ratings from value, age and position) ----
