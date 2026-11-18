@@ -2045,7 +2045,8 @@ let HOME = 'ENG';
 const LG_RULES = { ENG: { shield: 'Community Shield', shieldAt: 'Wembley Stadium', lc: true, down: 3, quota: { ucl: 5, uel: 2, uecl: 1 } },
   FRA: { shield: 'Trophée des Champions', lc: false, down: 2, barrage: true, quota: { ucl: 4, uel: 1, uecl: 1 } },
   ITA: { shield: 'Supercoppa Italiana', lc: false, down: 3, po8: true, quota: { ucl: 4, uel: 1, uecl: 1 } },
-  ESP: { shield: 'Supercopa de España', lc: false, down: 3, po2: true, quota: { ucl: 4, uel: 1, uecl: 1 } } };
+  ESP: { shield: 'Supercopa de España', lc: false, down: 3, po2: true, quota: { ucl: 4, uel: 1, uecl: 1 } },
+  GER: { shield: 'DFL-Supercup', lc: false, down: 2, barrage: true, bar3: true, quota: { ucl: 4, uel: 1, uecl: 1 } } };
 const HL = () => D.lgs[HOME];
 const isRes = id => !!(club(id) || {}).res;   // a reserve team (Real Sociedad B, Celta Fortuna): no promotion, no cup
 const theLg = (n, cap) => /^(Premier|Championship)/.test(n || '') ? (cap ? 'The ' : 'the ') + n : n;   // 'the Premier League', but 'Ligue 1', 'Serie A'
@@ -2083,7 +2084,9 @@ function awTick(all, only){
    the bottom three swap with Serie B's top two and the winner of its play-offs (5th v 8th and 6th v 7th in one match at the
    higher club, the winners meet the 3rd and the 4th over two legs, then a two-legged final; a draw goes to the higher club).
    Spain: the bottom three swap with LaLiga2's top two and the winner of its play-offs (3rd v 6th, 4th v 5th, then the final,
-   every round over two legs, a level tie going to the higher club); reserve teams never go up, the next club takes the place */
+   every round over two legs, a level tie going to the higher club); reserve teams never go up, the next club takes the place.
+   Germany: the bottom two swap with the 2. Bundesliga's top two; its 3rd meets the Bundesliga's 16th over two legs (the
+   Bundesliga club at home first) for the last place */
 function promoRel(k, top, sec, r){
   const po = [], R = LG_RULES[k] || LG_RULES.ENG;
   sec = sec.filter(id => !isRes(id));
@@ -2104,7 +2107,7 @@ function promoRel(k, top, sec, r){
     const leg2 = (x, y, fin) => { const l1 = chMatch(y, x, r), l2 = chMatch(x, y, r), gx = l1[1] + l2[0], gy = l1[0] + l2[1], w = gx > gy ? x : gy > gx ? y : hi(x, y); po.push({ x, y, s: `${l1[0]}-${l1[1]}, ${l2[0]}-${l2[1]}`, w, ...(fin ? { fin: 1 } : {}) }); return w; };
     const s1 = leg2(sec[2], sec[5]), s2 = leg2(sec[3], sec[4]), w = leg2(hi(s1, s2), hi(s1, s2) === s1 ? s2 : s1, true);
     up = [sec[0], sec[1], w]; }
-  else if (R.barrage){ const w1 = one(sec[3], sec[4]), w2 = one(sec[2], w1), b = top[top.length - R.down - 1], w = tie(b, w2); po[po.length - 1].bar = 1;
+  else if (R.barrage){ const w2 = R.bar3 ? sec[2] : one(sec[2], one(sec[3], sec[4])), b = top[top.length - R.down - 1], w = R.bar3 ? tie(w2, b) : tie(b, w2); po[po.length - 1].bar = 1;
     up = [sec[0], sec[1]]; if (w !== b){ up.push(w); down = down.concat([b]); } }
   else { const f1 = tie(sec[2], sec[5]), f2 = tie(sec[3], sec[4]), w = one(f1, f2, true); up = [sec[0], sec[1], w]; }
   return { up, down, po };
@@ -2149,6 +2152,7 @@ const YOUTH_NAMES = {
     ['Walker', 'Hughes', 'Bennett', 'Cooper', 'Ward', 'Turner', 'Mills', 'Holt', 'Barker', 'Fletcher', 'Gray', 'Parker', 'Harding', 'Brooks', 'Lowe', 'Shaw', 'Pearce', 'Doyle', 'Okafor', 'Mensah', 'Campbell', 'Francis']],
   France: [['Lucas', 'Noah', 'Rayan', 'Enzo', 'Mathis', 'Yanis', 'Ilyes', 'Nolan'], ['Martin', 'Bernard', 'Diallo', 'Traoré', 'Lefebvre', 'Moreau', 'Camara', 'Girard']],
   Italy: [['Leonardo', 'Francesco', 'Alessandro', 'Lorenzo', 'Mattia', 'Tommaso', 'Gabriele', 'Riccardo', 'Edoardo', 'Matteo'], ['Rossi', 'Russo', 'Ferrari', 'Esposito', 'Bianchi', 'Romano', 'Colombo', 'Ricci', 'Marino', 'Greco', 'Conti', 'De Luca']],
+  Germany: [['Ben', 'Paul', 'Leon', 'Finn', 'Noah', 'Elias', 'Luca', 'Jonas', 'Felix', 'Maximilian', 'Luis', 'Moritz'], ['Müller', 'Schmidt', 'Schneider', 'Fischer', 'Weber', 'Becker', 'Wagner', 'Hoffmann', 'Koch', 'Richter', 'Wolf', 'Neumann']],
   Spain: [['Pablo', 'Hugo', 'Álvaro', 'Mario', 'Iker', 'Marc', 'Pol', 'Unai', 'Adrián', 'Javi', 'Dani', 'Sergio'], ['García', 'López', 'Navarro', 'Romero', 'Torres', 'Ruiz', 'Martínez', 'Sánchez', 'Gómez', 'Díaz', 'Moreno', 'Jiménez']],
   Netherlands: [['Daan', 'Sem', 'Milan', 'Luuk'], ['de Vries', 'Bakker', 'Visser', 'Smit']],
   Ireland: [['Seán', 'Cian', 'Oisín', 'Conor'], ["O'Brien", 'Byrne', 'Kelly', 'Murphy']],
@@ -2175,7 +2179,7 @@ function retireAndIntake(){
       const age = 16 + (rr() < .5 ? 1 : 0), ovr = Math.round(50 + rr() * 10 + (c.q - 75) * .4 + (rr() < .08 ? 8 : 0) + (c.id === me() && (S.fac || {}).youth ? 3 : 0)), drop = t.ovr - ovr;
       const a = {}; for (const [key, v] of Object.entries(t.a)) a[key] = clamp(Math.round(v - drop * (GK_KEYS.includes(key) === (prim === 'GK') ? 1 : .6) + (rr() - .5) * 6), 40, 99);
       const r = {}; for (const [q, v] of Object.entries(t.r || {})) r[q] = clamp(Math.round(v - drop), 30, 99);
-      const own = ({ FRA: 'France', ITA: 'Italy', ESP: 'Spain' })[c.ctry || 'ENG'] || 'England', other = ['England', 'France', 'Italy', 'Spain', 'Netherlands', 'Ireland', 'Scotland', 'Wales'].filter(n => n !== own);
+      const own = ({ FRA: 'France', ITA: 'Italy', ESP: 'Spain', GER: 'Germany' })[c.ctry || 'ENG'] || 'England', other = ['England', 'France', 'Italy', 'Spain', 'Germany', 'Netherlands', 'Ireland', 'Scotland', 'Wales'].filter(n => n !== own);
       const natPool = rr() < .7 ? own : other[Math.floor(rr() * other.length)], NM = YOUTH_NAMES[natPool];
       const nm = `${NM[0][Math.floor(rr() * NM[0].length)]} ${NM[1][Math.floor(rr() * NM[1].length)]}`;
       const used = new Set(squadOf(c.id).map(x => x.no)); let no = 30; while (used.has(no)) no++;
@@ -3559,7 +3563,7 @@ function setupFlow(state, files){
     return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select Nationality', back: 'name', next: NEWG.nat ? () => to('team') : null,
       tools: `<span style="flex:1"></span><select class="dd" id="reg">${[['all', 'Filter: All'], ['EUR', 'Europe'], ['AFR', 'Africa'], ['SAM', 'South America'], ['NAM', 'North & Central America'], ['ASI', 'Asia'], ['OCE', 'Oceania']].map(([k, n]) => `<option value="${k}" ${flt === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`,
       body: `<div class="two">${L.map(n => `<button class="nat ${NEWG.nat === n ? 'on' : ''}" data-nat="${esc(n)}"><b>${esc(n)}</b><span>${REGION[n] || ''}</span></button>`).join('')}</div>` }; }
-  if (state === 'team' || state === 'quick'){ const LGC = { ENG: 'PRM', FRA: 'L1', ITA: 'SA', ESP: 'LL' }, clubs = Object.values(D.lgs).flatMap(L => L.top0.map(id => club(id)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name)).map(c2 => ({ c2, k: L.k })));
+  if (state === 'team' || state === 'quick'){ const LGC = { ENG: 'PRM', FRA: 'L1', ITA: 'SA', ESP: 'LL', GER: 'BL' }, clubs = Object.values(D.lgs).flatMap(L => L.top0.map(id => club(id)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name)).map(c2 => ({ c2, k: L.k })));
     return { title: state === 'quick' ? 'Quick Start Game' : `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select Team', back: state === 'quick' ? 'menu' : 'nat',
       body: `${state === 'quick' ? '<p class="c dim small" style="margin-top:0">Pick a club and go straight to the first match day: the assistant has picked the side.</p>' : ''}<div class="two">${clubs.map(({ c2, k }) => `<button class="nat" data-club="${c2.id}"><b>${esc(c2.name)}</b><span>${k} <em>${LGC[k] || '1'}</em></span></button>`).join('')}</div>` }; }
   if (state === 'preview'){ const sq = squadOf(c.id).slice().sort((a, b) => ({ GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[a.prim]] - { GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[b.prim]]) || ovrNow(b) - ovrNow(a)), half = Math.ceil(sq.length / 2);

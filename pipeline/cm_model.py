@@ -978,10 +978,23 @@ ES_CODE = {'Real Madrid': 'RMA', 'FC Barcelona': 'BAR', 'Atlético de Madrid': '
            'Athletic Bilbao': 'ATH', 'Celta de Vigo': 'CEL', 'Sevilla FC': 'SEV', 'Valencia CF': 'VAL', 'RCD Espanyol Barcelona': 'ESP', 'Getafe CF': 'GET',
            'CA Osasuna': 'OSA', 'Rayo Vallecano': 'RAY', 'Deportivo Alavés': 'ALA', 'Levante UD': 'LEV', 'Elche CF': 'ELC', 'Deportivo A Coruña': 'DEP',
            'Racing Santander': 'RAC', 'Málaga CF': 'MAL'}
+GE_KIT = {'FC Bayern Munich': ['#DC052D', '#FFFFFF'], 'Borussia Dortmund': ['#FDE100', '#111111'], 'Bayer 04 Leverkusen': ['#E32221', '#111111'], 'RB Leipzig': ['#FFFFFF', '#DD0741'],
+          'VfB Stuttgart': ['#FFFFFF', '#E32219'], 'Eintracht Frankfurt': ['#111111', '#E1000F'], 'TSG 1899 Hoffenheim': ['#1C63B7', '#FFFFFF'], 'SC Freiburg': ['#E2001A', '#FFFFFF'],
+          'FC Augsburg': ['#BA3733', '#FFFFFF'], '1.FSV Mainz 05': ['#C3141E', '#FFFFFF'], '1.FC Köln': ['#FFFFFF', '#ED1C24'], 'Hamburger SV': ['#FFFFFF', '#0A3F86'],
+          'Borussia Mönchengladbach': ['#FFFFFF', '#111111'], 'SV Werder Bremen': ['#1D9053', '#FFFFFF'], '1.FC Union Berlin': ['#D4011D', '#FFFFFF'], 'FC Schalke 04': ['#004D9D', '#FFFFFF'],
+          'SV 07 Elversberg': ['#FFFFFF', '#111111'], 'SC Paderborn 07': ['#005CA9', '#111111'], 'VfL Wolfsburg': ['#65B32E', '#FFFFFF'], '1.FC Nuremberg': ['#AD1732', '#FFFFFF'],
+          'FC St. Pauli': ['#5C3A21', '#FFFFFF'], 'Karlsruher SC': ['#00559E', '#FFFFFF'], '1.FC Kaiserslautern': ['#E2001A', '#FFFFFF'], '1.FC Heidenheim 1846': ['#E2001A', '#003D7C'],
+          'Holstein Kiel': ['#00539F', '#FFFFFF'], 'Hertha BSC': ['#005CA9', '#FFFFFF'], 'Hannover 96': ['#C7001E', '#111111'], '1.FC Magdeburg': ['#0059A2', '#FFFFFF'],
+          'VfL Bochum': ['#005CA9', '#FFFFFF'], 'SV Darmstadt 98': ['#004E9E', '#FFFFFF'], 'SpVgg Greuther Fürth': ['#009A44', '#FFFFFF'], 'SG Dynamo Dresden': ['#FFDD00', '#111111'],
+          'Eintracht Braunschweig': ['#FFDD00', '#0047AB'], 'Arminia Bielefeld': ['#005CA9', '#111111'], 'FC Energie Cottbus': ['#E2001A', '#FFFFFF'], 'VfL Osnabrück': ['#5B2C83', '#FFFFFF']}
+GE_CODE = {'FC Bayern Munich': 'FCB', 'Borussia Dortmund': 'BVB', 'Bayer 04 Leverkusen': 'B04', 'RB Leipzig': 'RBL', 'VfB Stuttgart': 'VFB', 'Eintracht Frankfurt': 'SGE',
+           'TSG 1899 Hoffenheim': 'TSG', 'SC Freiburg': 'SCF', 'FC Augsburg': 'FCA', '1.FSV Mainz 05': 'M05', '1.FC Köln': 'KOE', 'Hamburger SV': 'HSV',
+           'Borussia Mönchengladbach': 'BMG', 'SV Werder Bremen': 'SVW', '1.FC Union Berlin': 'FCU', 'FC Schalke 04': 'S04', 'SV 07 Elversberg': 'SVE', 'SC Paderborn 07': 'SCP'}
 # each playable league beside the Premier League: its Transfermarkt file, names, kits and codes, id range for players the API lacks
 LG_SPEC = {'FRA': {'file': 'tm_ligue1.json', 'ctry': 'FRA', 'country': 'France', 'league': 'Ligue 1', 'second': 'Ligue 2', 'kit': FR_KIT, 'code': FR_CODE, 'n': 18, 'id_base': 4000000},
            'ITA': {'file': 'tm_seriea.json', 'ctry': 'ITA', 'country': 'Italy', 'league': 'Serie A', 'second': 'Serie B', 'kit': IT_KIT, 'code': IT_CODE, 'n': 20, 'id_base': 6000000},
-           'ESP': {'file': 'tm_laliga.json', 'ctry': 'ESP', 'country': 'Spain', 'league': 'LaLiga', 'second': 'LaLiga2', 'kit': ES_KIT, 'code': ES_CODE, 'n': 20, 'id_base': 8000000}}
+           'ESP': {'file': 'tm_laliga.json', 'ctry': 'ESP', 'country': 'Spain', 'league': 'LaLiga', 'second': 'LaLiga2', 'kit': ES_KIT, 'code': ES_CODE, 'n': 20, 'id_base': 8000000},
+           'GER': {'file': 'tm_bundesliga.json', 'ctry': 'GER', 'country': 'Germany', 'league': 'Bundesliga', 'second': '2. Bundesliga', 'kit': GE_KIT, 'code': GE_CODE, 'n': 18, 'id_base': 10000000}}
 
 
 def _elo_q(clubs):

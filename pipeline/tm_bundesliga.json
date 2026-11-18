@@ -1,6 +1,6 @@
 {
  "about": "Bundesliga from Transfermarkt pages Nikola supplied (clubs overview and transfers, 17.11.2026): team values, league facts, last season's places from the transfers page order. Not playable yet; no current-season table or results stored.",
- "updated": "2026-11-17",
+ "updated": "2026-11-18",
  "league": "Bundesliga",
  "second": "2. Bundesliga",
  "country": "Germany",
@@ -78,98 +78,195 @@
    "VfL Osnabrück",
    "FC Energie Cottbus"
   ],
-  "second_note": "2. Bundesliga 2026/27: 18 clubs. second_order is the order of the 2025/26 2. Bundesliga clubs that stayed (places 4 to 16, after Schalke, Elversberg and Paderborn went up), from the transfers page; second_promoted came up from the 3. Liga (Osnabrück champions). Holstein Kiel and Hannover appointed their coaches after the season began (Kniat 10.11.2026, Wagner 21.09.2026), so they are left without one. Magdeburg list two managers (Sander and Ibold, both from 03.11.2025)."
+  "second_note": "2. Bundesliga 2026/27: 18 clubs. second_order is the order of the 2025/26 2. Bundesliga clubs that stayed (places 4 to 16, after Schalke, Elversberg and Paderborn went up), from the transfers page; second_promoted came up from the 3. Liga (Osnabrück champions). Holstein Kiel and Hannover appointed their coaches after the season began (Kniat 10.11.2026, Wagner 21.09.2026), so they are left without one. Magdeburg list two managers (Sander and Ibold, both from 03.11.2025).",
+  "record_champion": "FC Bayern Munich",
+  "record_titles": 35,
+  "shield_pair": [
+   "FC Bayern Munich",
+   "Borussia Dortmund"
+  ],
+  "shield_note": "DFL-Supercup 22.08.2026: Borussia Dortmund v FC Bayern Munich (champions and cup winners Bayern meet the runners-up); here played at Bayern before the first match day",
+  "coach_note": "Coaches from the Bundesliga managers page (17.11.2026), kept when installed before the season began; Gladbach's Blessin came in late September, so Gladbach start without one"
  },
  "clubs": {
   "FC Bayern Munich": {
    "value": 1040.0,
    "venue": "Allianz Arena",
-   "cap": 75024
+   "cap": 75024,
+   "tier": 1,
+   "id": 157,
+   "short": "Bayern",
+   "coach": "Vincent Kompany",
+   "last": 1
   },
   "Borussia Dortmund": {
    "value": 587.9,
    "venue": "SIGNAL IDUNA PARK",
-   "cap": 81365
+   "cap": 81365,
+   "tier": 1,
+   "id": 165,
+   "short": "Dortmund",
+   "coach": "Niko Kovac",
+   "last": 2
   },
   "Bayer 04 Leverkusen": {
    "value": 520.45,
    "venue": "BayArena",
-   "cap": 30210
+   "cap": 30210,
+   "tier": 1,
+   "id": 168,
+   "short": "Leverkusen",
+   "coach": "Carles Martínez",
+   "last": 6
   },
   "RB Leipzig": {
    "value": 514.95,
    "venue": "Red Bull Arena",
-   "cap": 47800
+   "cap": 47800,
+   "tier": 1,
+   "id": 173,
+   "short": "Leipzig",
+   "coach": "Martín Demichelis",
+   "last": 3
   },
   "VfB Stuttgart": {
    "value": 399.45,
    "venue": "MHPArena Stuttgart",
-   "cap": 60058
+   "cap": 60058,
+   "tier": 1,
+   "id": 172,
+   "short": "Stuttgart",
+   "coach": "Sebastian Hoeneß",
+   "last": 4
   },
   "Eintracht Frankfurt": {
    "value": 293.15,
    "venue": "Deutsche Bank Park",
-   "cap": 60100
+   "cap": 60100,
+   "tier": 1,
+   "id": 169,
+   "short": "Frankfurt",
+   "coach": "Adi Hütter",
+   "last": 8
   },
   "TSG 1899 Hoffenheim": {
    "value": 287.55,
    "venue": "SNP Arena",
-   "cap": 30150
+   "cap": 30150,
+   "tier": 1,
+   "id": 167,
+   "short": "Hoffenheim",
+   "coach": "Christian Ilzer",
+   "last": 5
   },
   "SC Freiburg": {
    "value": 244.2,
    "venue": "Europa-Park Stadion",
-   "cap": 34700
+   "cap": 34700,
+   "tier": 1,
+   "id": 160,
+   "short": "Freiburg",
+   "coach": "Julian Schuster",
+   "last": 7
   },
   "FC Augsburg": {
    "value": 192.0,
    "venue": "WWK ARENA",
-   "cap": 30660
+   "cap": 30660,
+   "tier": 1,
+   "id": 170,
+   "short": "Augsburg",
+   "coach": "Manuel Baum",
+   "last": 9
   },
   "1.FSV Mainz 05": {
    "value": 159.7,
    "venue": "Mewa Arena",
-   "cap": 33305
+   "cap": 33305,
+   "tier": 1,
+   "id": 164,
+   "short": "Mainz",
+   "coach": "Urs Fischer",
+   "last": 10
   },
   "1.FC Köln": {
    "value": 157.7,
    "venue": "RheinEnergieSTADION",
-   "cap": 50000
+   "cap": 50000,
+   "tier": 1,
+   "id": 192,
+   "short": "Köln",
+   "coach": "René Wagner",
+   "last": 14
   },
   "Hamburger SV": {
    "value": 145.5,
    "venue": "Volksparkstadion",
-   "cap": 57000
+   "cap": 57000,
+   "tier": 1,
+   "id": 175,
+   "short": "Hamburg",
+   "coach": "Merlin Polzin",
+   "last": 13
   },
   "Borussia Mönchengladbach": {
    "value": 134.95,
    "venue": "ista-Borussia-Park",
-   "cap": 54909
+   "cap": 54909,
+   "tier": 1,
+   "id": 163,
+   "short": "Gladbach",
+   "last": 12
   },
   "SV Werder Bremen": {
    "value": 124.25,
    "venue": "Weserstadion",
-   "cap": 42100
+   "cap": 42100,
+   "tier": 1,
+   "id": 162,
+   "short": "Werder Bremen",
+   "coach": "Daniel Thioune",
+   "last": 15
   },
   "1.FC Union Berlin": {
    "value": 111.98,
    "venue": "Stadion An der Alten Försterei",
-   "cap": 22012
+   "cap": 22012,
+   "tier": 1,
+   "id": 182,
+   "short": "Union Berlin",
+   "coach": "Mauro Lustrinelli",
+   "last": 11
   },
   "FC Schalke 04": {
    "value": 74.53,
    "venue": "Veltins-Arena",
-   "cap": 62271
+   "cap": 62271,
+   "tier": 1,
+   "id": 174,
+   "short": "Schalke",
+   "coach": "Miron Muslic",
+   "last": "promoted"
   },
   "SV 07 Elversberg": {
    "value": 74.25,
    "venue": "Ursapharm-Arena an der Kaiserlinde",
-   "cap": 10000
+   "cap": 10000,
+   "tier": 1,
+   "id": 1660,
+   "short": "Elversberg",
+   "coach": "Vincent Wagner",
+   "last": "promoted"
   },
   "SC Paderborn 07": {
    "value": 53.88,
    "venue": "Home Deluxe Arena",
-   "cap": 15000
+   "cap": 15000,
+   "tier": 1,
+   "id": 185,
+   "short": "Paderborn",
+   "coach": "Ralf Kettemann",
+   "last": "promoted"
   },
   "VfL Wolfsburg": {
    "tier": 2,
@@ -351,5 +448,2045 @@
   "Arminia Bielefeld": 20.15,
   "FC Energie Cottbus": 15.0,
   "VfL Osnabrück": 13.0
+ },
+ "fixtures": [
+  [
+   "2026-08-28",
+   1,
+   "FC Bayern Munich",
+   "VfB Stuttgart",
+   "20:30"
+  ],
+  [
+   "2026-08-29",
+   1,
+   "RB Leipzig",
+   "Borussia Mönchengladbach",
+   "15:30"
+  ],
+  [
+   "2026-08-29",
+   1,
+   "1.FSV Mainz 05",
+   "SC Paderborn 07",
+   "15:30"
+  ],
+  [
+   "2026-08-29",
+   1,
+   "1.FC Union Berlin",
+   "Eintracht Frankfurt",
+   "15:30"
+  ],
+  [
+   "2026-08-29",
+   1,
+   "1.FC Köln",
+   "TSG 1899 Hoffenheim",
+   "15:30"
+  ],
+  [
+   "2026-08-29",
+   1,
+   "SV 07 Elversberg",
+   "Bayer 04 Leverkusen",
+   "15:30"
+  ],
+  [
+   "2026-08-29",
+   1,
+   "Borussia Dortmund",
+   "Hamburger SV",
+   "18:30"
+  ],
+  [
+   "2026-08-30",
+   1,
+   "SC Freiburg",
+   "SV Werder Bremen",
+   "15:30"
+  ],
+  [
+   "2026-08-30",
+   1,
+   "FC Augsburg",
+   "FC Schalke 04",
+   "17:30"
+  ],
+  [
+   "2026-09-04",
+   2,
+   "VfB Stuttgart",
+   "1.FC Köln",
+   "20:30"
+  ],
+  [
+   "2026-09-05",
+   2,
+   "TSG 1899 Hoffenheim",
+   "Borussia Dortmund",
+   "15:30"
+  ],
+  [
+   "2026-09-05",
+   2,
+   "Bayer 04 Leverkusen",
+   "1.FC Union Berlin",
+   "15:30"
+  ],
+  [
+   "2026-09-05",
+   2,
+   "Borussia Mönchengladbach",
+   "SV 07 Elversberg",
+   "15:30"
+  ],
+  [
+   "2026-09-05",
+   2,
+   "SV Werder Bremen",
+   "RB Leipzig",
+   "15:30"
+  ],
+  [
+   "2026-09-05",
+   2,
+   "SC Paderborn 07",
+   "SC Freiburg",
+   "15:30"
+  ],
+  [
+   "2026-09-05",
+   2,
+   "FC Schalke 04",
+   "FC Bayern Munich",
+   "18:30"
+  ],
+  [
+   "2026-09-06",
+   2,
+   "Hamburger SV",
+   "1.FSV Mainz 05",
+   "15:30"
+  ],
+  [
+   "2026-09-06",
+   2,
+   "Eintracht Frankfurt",
+   "FC Augsburg",
+   "17:30"
+  ],
+  [
+   "2026-09-11",
+   3,
+   "1.FC Union Berlin",
+   "FC Schalke 04",
+   "20:30"
+  ],
+  [
+   "2026-09-12",
+   3,
+   "Borussia Dortmund",
+   "SC Paderborn 07",
+   "15:30"
+  ],
+  [
+   "2026-09-12",
+   3,
+   "TSG 1899 Hoffenheim",
+   "VfB Stuttgart",
+   "15:30"
+  ],
+  [
+   "2026-09-12",
+   3,
+   "SC Freiburg",
+   "Borussia Mönchengladbach",
+   "15:30"
+  ],
+  [
+   "2026-09-12",
+   3,
+   "FC Augsburg",
+   "Bayer 04 Leverkusen",
+   "15:30"
+  ],
+  [
+   "2026-09-12",
+   3,
+   "1.FSV Mainz 05",
+   "Eintracht Frankfurt",
+   "15:30"
+  ],
+  [
+   "2026-09-12",
+   3,
+   "1.FC Köln",
+   "SV Werder Bremen",
+   "18:30"
+  ],
+  [
+   "2026-09-13",
+   3,
+   "RB Leipzig",
+   "Hamburger SV",
+   "15:30"
+  ],
+  [
+   "2026-09-13",
+   3,
+   "SV 07 Elversberg",
+   "FC Bayern Munich",
+   "17:30"
+  ],
+  [
+   "2026-09-18",
+   4,
+   "FC Bayern Munich",
+   "1.FC Union Berlin",
+   "20:30"
+  ],
+  [
+   "2026-09-19",
+   4,
+   "Eintracht Frankfurt",
+   "SC Freiburg",
+   "15:30"
+  ],
+  [
+   "2026-09-19",
+   4,
+   "Borussia Mönchengladbach",
+   "1.FSV Mainz 05",
+   "15:30"
+  ],
+  [
+   "2026-09-19",
+   4,
+   "Hamburger SV",
+   "1.FC Köln",
+   "15:30"
+  ],
+  [
+   "2026-09-19",
+   4,
+   "SV Werder Bremen",
+   "FC Augsburg",
+   "15:30"
+  ],
+  [
+   "2026-09-19",
+   4,
+   "VfB Stuttgart",
+   "Borussia Dortmund",
+   "18:30"
+  ],
+  [
+   "2026-09-20",
+   4,
+   "Bayer 04 Leverkusen",
+   "RB Leipzig",
+   "15:30"
+  ],
+  [
+   "2026-09-20",
+   4,
+   "FC Schalke 04",
+   "SV 07 Elversberg",
+   "17:30"
+  ],
+  [
+   "2026-09-20",
+   4,
+   "SC Paderborn 07",
+   "TSG 1899 Hoffenheim",
+   "19:30"
+  ],
+  [
+   "2026-10-09",
+   5,
+   "Borussia Dortmund",
+   "SV Werder Bremen",
+   "20:30"
+  ],
+  [
+   "2026-10-10",
+   5,
+   "TSG 1899 Hoffenheim",
+   "Hamburger SV",
+   "15:30"
+  ],
+  [
+   "2026-10-10",
+   5,
+   "FC Augsburg",
+   "FC Bayern Munich",
+   "15:30"
+  ],
+  [
+   "2026-10-10",
+   5,
+   "1.FSV Mainz 05",
+   "Bayer 04 Leverkusen",
+   "15:30"
+  ],
+  [
+   "2026-10-10",
+   5,
+   "1.FC Union Berlin",
+   "SV 07 Elversberg",
+   "15:30"
+  ],
+  [
+   "2026-10-10",
+   5,
+   "SC Paderborn 07",
+   "VfB Stuttgart",
+   "15:30"
+  ],
+  [
+   "2026-10-10",
+   5,
+   "RB Leipzig",
+   "Eintracht Frankfurt",
+   "18:30"
+  ],
+  [
+   "2026-10-11",
+   5,
+   "1.FC Köln",
+   "Borussia Mönchengladbach",
+   "15:30"
+  ],
+  [
+   "2026-10-11",
+   5,
+   "SC Freiburg",
+   "FC Schalke 04",
+   "17:30"
+  ],
+  [
+   "2026-10-16",
+   6,
+   "Eintracht Frankfurt",
+   "1.FC Köln",
+   "20:30"
+  ],
+  [
+   "2026-10-17",
+   6,
+   "1.FC Union Berlin",
+   "Borussia Dortmund",
+   "15:30"
+  ],
+  [
+   "2026-10-17",
+   6,
+   "Hamburger SV",
+   "VfB Stuttgart",
+   "15:30"
+  ],
+  [
+   "2026-10-17",
+   6,
+   "SV Werder Bremen",
+   "SC Paderborn 07",
+   "15:30"
+  ],
+  [
+   "2026-10-17",
+   6,
+   "FC Schalke 04",
+   "1.FSV Mainz 05",
+   "15:30"
+  ],
+  [
+   "2026-10-17",
+   6,
+   "SV 07 Elversberg",
+   "FC Augsburg",
+   "15:30"
+  ],
+  [
+   "2026-10-17",
+   6,
+   "FC Bayern Munich",
+   "RB Leipzig",
+   "18:30"
+  ],
+  [
+   "2026-10-18",
+   6,
+   "Bayer 04 Leverkusen",
+   "SC Freiburg",
+   "15:30"
+  ],
+  [
+   "2026-10-18",
+   6,
+   "Borussia Mönchengladbach",
+   "TSG 1899 Hoffenheim",
+   "17:30"
+  ],
+  [
+   "2026-10-23",
+   7,
+   "VfB Stuttgart",
+   "Borussia Mönchengladbach",
+   "20:30"
+  ],
+  [
+   "2026-10-24",
+   7,
+   "RB Leipzig",
+   "SV 07 Elversberg",
+   "15:30"
+  ],
+  [
+   "2026-10-24",
+   7,
+   "FC Augsburg",
+   "1.FC Union Berlin",
+   "15:30"
+  ],
+  [
+   "2026-10-24",
+   7,
+   "1.FSV Mainz 05",
+   "SV Werder Bremen",
+   "15:30"
+  ],
+  [
+   "2026-10-24",
+   7,
+   "1.FC Köln",
+   "FC Schalke 04",
+   "15:30"
+  ],
+  [
+   "2026-10-24",
+   7,
+   "SC Paderborn 07",
+   "Hamburger SV",
+   "15:30"
+  ],
+  [
+   "2026-10-24",
+   7,
+   "Borussia Dortmund",
+   "Eintracht Frankfurt",
+   "18:30"
+  ],
+  [
+   "2026-10-25",
+   7,
+   "TSG 1899 Hoffenheim",
+   "Bayer 04 Leverkusen",
+   "15:30"
+  ],
+  [
+   "2026-10-25",
+   7,
+   "SC Freiburg",
+   "FC Bayern Munich",
+   "17:30"
+  ],
+  [
+   "2026-10-30",
+   8,
+   "SV 07 Elversberg",
+   "1.FSV Mainz 05",
+   "20:30"
+  ],
+  [
+   "2026-10-31",
+   8,
+   "Bayer 04 Leverkusen",
+   "VfB Stuttgart",
+   "15:30"
+  ],
+  [
+   "2026-10-31",
+   8,
+   "FC Augsburg",
+   "SC Freiburg",
+   "15:30"
+  ],
+  [
+   "2026-10-31",
+   8,
+   "Borussia Mönchengladbach",
+   "SC Paderborn 07",
+   "15:30"
+  ],
+  [
+   "2026-10-31",
+   8,
+   "SV Werder Bremen",
+   "TSG 1899 Hoffenheim",
+   "15:30"
+  ],
+  [
+   "2026-10-31",
+   8,
+   "FC Schalke 04",
+   "RB Leipzig",
+   "15:30"
+  ],
+  [
+   "2026-10-31",
+   8,
+   "FC Bayern Munich",
+   "Borussia Dortmund",
+   "18:30"
+  ],
+  [
+   "2026-11-01",
+   8,
+   "1.FC Union Berlin",
+   "1.FC Köln",
+   "15:30"
+  ],
+  [
+   "2026-11-01",
+   8,
+   "Eintracht Frankfurt",
+   "Hamburger SV",
+   "17:30"
+  ],
+  [
+   "2026-11-06",
+   9,
+   "Hamburger SV",
+   "Borussia Mönchengladbach",
+   "20:30"
+  ],
+  [
+   "2026-11-07",
+   9,
+   "Borussia Dortmund",
+   "SV 07 Elversberg",
+   "15:30"
+  ],
+  [
+   "2026-11-07",
+   9,
+   "RB Leipzig",
+   "FC Augsburg",
+   "15:30"
+  ],
+  [
+   "2026-11-07",
+   9,
+   "1.FSV Mainz 05",
+   "FC Bayern Munich",
+   "15:30"
+  ],
+  [
+   "2026-11-07",
+   9,
+   "SC Paderborn 07",
+   "Eintracht Frankfurt",
+   "15:30"
+  ],
+  [
+   "2026-11-07",
+   9,
+   "VfB Stuttgart",
+   "SV Werder Bremen",
+   "18:30"
+  ],
+  [
+   "2026-11-08",
+   9,
+   "1.FC Köln",
+   "Bayer 04 Leverkusen",
+   "15:30"
+  ],
+  [
+   "2026-11-08",
+   9,
+   "SC Freiburg",
+   "1.FC Union Berlin",
+   "17:30"
+  ],
+  [
+   "2026-11-08",
+   9,
+   "TSG 1899 Hoffenheim",
+   "FC Schalke 04",
+   "19:30"
+  ],
+  [
+   "2026-11-20",
+   10,
+   "FC Bayern Munich",
+   "1.FC Köln",
+   "20:30"
+  ],
+  [
+   "2026-11-21",
+   10,
+   "Bayer 04 Leverkusen",
+   "SC Paderborn 07",
+   "15:30"
+  ],
+  [
+   "2026-11-21",
+   10,
+   "Eintracht Frankfurt",
+   "TSG 1899 Hoffenheim",
+   "15:30"
+  ],
+  [
+   "2026-11-21",
+   10,
+   "1.FC Union Berlin",
+   "RB Leipzig",
+   "15:30"
+  ],
+  [
+   "2026-11-21",
+   10,
+   "Borussia Mönchengladbach",
+   "Borussia Dortmund",
+   "15:30"
+  ],
+  [
+   "2026-11-21",
+   10,
+   "SV 07 Elversberg",
+   "SC Freiburg",
+   "15:30"
+  ],
+  [
+   "2026-11-21",
+   10,
+   "FC Schalke 04",
+   "VfB Stuttgart",
+   "18:30"
+  ],
+  [
+   "2026-11-22",
+   10,
+   "FC Augsburg",
+   "1.FSV Mainz 05",
+   "15:30"
+  ],
+  [
+   "2026-11-22",
+   10,
+   "SV Werder Bremen",
+   "Hamburger SV",
+   "17:30"
+  ],
+  [
+   "2026-11-27",
+   11,
+   "SV Werder Bremen",
+   "Borussia Mönchengladbach",
+   "20:30"
+  ],
+  [
+   "2026-11-28",
+   11,
+   "1.FSV Mainz 05",
+   "1.FC Union Berlin",
+   "15:30"
+  ],
+  [
+   "2026-11-28",
+   11,
+   "Hamburger SV",
+   "FC Bayern Munich",
+   "15:30"
+  ],
+  [
+   "2026-11-28",
+   11,
+   "1.FC Köln",
+   "SV 07 Elversberg",
+   "15:30"
+  ],
+  [
+   "2026-11-28",
+   11,
+   "SC Paderborn 07",
+   "FC Schalke 04",
+   "15:30"
+  ],
+  [
+   "2026-11-28",
+   11,
+   "VfB Stuttgart",
+   "Eintracht Frankfurt",
+   "18:30"
+  ],
+  [
+   "2026-11-29",
+   11,
+   "SC Freiburg",
+   "RB Leipzig",
+   "15:30"
+  ],
+  [
+   "2026-11-29",
+   11,
+   "TSG 1899 Hoffenheim",
+   "FC Augsburg",
+   "17:30"
+  ],
+  [
+   "2026-11-29",
+   11,
+   "Borussia Dortmund",
+   "Bayer 04 Leverkusen",
+   "19:30"
+  ],
+  [
+   "2026-12-04",
+   12,
+   "FC Bayern Munich",
+   "SC Paderborn 07",
+   "20:30"
+  ],
+  [
+   "2026-12-05",
+   12,
+   "RB Leipzig",
+   "1.FSV Mainz 05",
+   "15:30"
+  ],
+  [
+   "2026-12-05",
+   12,
+   "Bayer 04 Leverkusen",
+   "Borussia Mönchengladbach",
+   "15:30"
+  ],
+  [
+   "2026-12-05",
+   12,
+   "SC Freiburg",
+   "TSG 1899 Hoffenheim",
+   "15:30"
+  ],
+  [
+   "2026-12-05",
+   12,
+   "FC Augsburg",
+   "1.FC Köln",
+   "15:30"
+  ],
+  [
+   "2026-12-05",
+   12,
+   "1.FC Union Berlin",
+   "Hamburger SV",
+   "15:30"
+  ],
+  [
+   "2026-12-05",
+   12,
+   "Eintracht Frankfurt",
+   "SV Werder Bremen",
+   "18:30"
+  ],
+  [
+   "2026-12-06",
+   12,
+   "FC Schalke 04",
+   "Borussia Dortmund",
+   "15:30"
+  ],
+  [
+   "2026-12-06",
+   12,
+   "SV 07 Elversberg",
+   "VfB Stuttgart",
+   "17:30"
+  ],
+  [
+   "2026-12-11",
+   13,
+   "Hamburger SV",
+   "FC Schalke 04",
+   "20:30"
+  ],
+  [
+   "2026-12-12",
+   13,
+   "Borussia Dortmund",
+   "FC Augsburg",
+   "15:30"
+  ],
+  [
+   "2026-12-12",
+   13,
+   "VfB Stuttgart",
+   "1.FC Union Berlin",
+   "15:30"
+  ],
+  [
+   "2026-12-12",
+   13,
+   "1.FC Köln",
+   "RB Leipzig",
+   "15:30"
+  ],
+  [
+   "2026-12-12",
+   13,
+   "SC Paderborn 07",
+   "SV 07 Elversberg",
+   "15:30"
+  ],
+  [
+   "2026-12-12",
+   13,
+   "Borussia Mönchengladbach",
+   "Eintracht Frankfurt",
+   "18:30"
+  ],
+  [
+   "2026-12-13",
+   13,
+   "1.FSV Mainz 05",
+   "SC Freiburg",
+   "15:30"
+  ],
+  [
+   "2026-12-13",
+   13,
+   "TSG 1899 Hoffenheim",
+   "FC Bayern Munich",
+   "17:30"
+  ],
+  [
+   "2026-12-13",
+   13,
+   "SV Werder Bremen",
+   "Bayer 04 Leverkusen",
+   "19:30"
+  ],
+  [
+   "2026-12-18",
+   14,
+   "FC Bayern Munich",
+   "SV Werder Bremen",
+   "20:30"
+  ],
+  [
+   "2026-12-19",
+   14,
+   "Bayer 04 Leverkusen",
+   "Eintracht Frankfurt",
+   "15:30"
+  ],
+  [
+   "2026-12-19",
+   14,
+   "FC Augsburg",
+   "SC Paderborn 07",
+   "15:30"
+  ],
+  [
+   "2026-12-19",
+   14,
+   "1.FSV Mainz 05",
+   "1.FC Köln",
+   "15:30"
+  ],
+  [
+   "2026-12-19",
+   14,
+   "SV 07 Elversberg",
+   "Hamburger SV",
+   "15:30"
+  ],
+  [
+   "2026-12-19",
+   14,
+   "RB Leipzig",
+   "Borussia Dortmund",
+   "18:30"
+  ],
+  [
+   "2026-12-20",
+   14,
+   "SC Freiburg",
+   "VfB Stuttgart",
+   "15:30"
+  ],
+  [
+   "2026-12-20",
+   14,
+   "1.FC Union Berlin",
+   "TSG 1899 Hoffenheim",
+   "17:30"
+  ],
+  [
+   "2026-12-20",
+   14,
+   "FC Schalke 04",
+   "Borussia Mönchengladbach",
+   "19:30"
+  ],
+  [
+   "2027-01-08",
+   15,
+   "Borussia Dortmund",
+   "1.FSV Mainz 05",
+   "20:30"
+  ],
+  [
+   "2027-01-09",
+   15,
+   "VfB Stuttgart",
+   "FC Augsburg",
+   "15:30"
+  ],
+  [
+   "2027-01-09",
+   15,
+   "TSG 1899 Hoffenheim",
+   "SV 07 Elversberg",
+   "15:30"
+  ],
+  [
+   "2027-01-09",
+   15,
+   "Eintracht Frankfurt",
+   "FC Schalke 04",
+   "15:30"
+  ],
+  [
+   "2027-01-09",
+   15,
+   "1.FC Köln",
+   "SC Freiburg",
+   "15:30"
+  ],
+  [
+   "2027-01-09",
+   15,
+   "SC Paderborn 07",
+   "RB Leipzig",
+   "15:30"
+  ],
+  [
+   "2027-01-09",
+   15,
+   "Borussia Mönchengladbach",
+   "FC Bayern Munich",
+   "18:30"
+  ],
+  [
+   "2027-01-10",
+   15,
+   "SV Werder Bremen",
+   "1.FC Union Berlin",
+   "15:30"
+  ],
+  [
+   "2027-01-10",
+   15,
+   "Hamburger SV",
+   "Bayer 04 Leverkusen",
+   "17:30"
+  ],
+  [
+   "2027-01-12",
+   16,
+   "RB Leipzig",
+   "VfB Stuttgart",
+   "18:30"
+  ],
+  [
+   "2027-01-12",
+   16,
+   "FC Augsburg",
+   "Borussia Mönchengladbach",
+   "20:30"
+  ],
+  [
+   "2027-01-12",
+   16,
+   "1.FSV Mainz 05",
+   "TSG 1899 Hoffenheim",
+   "20:30"
+  ],
+  [
+   "2027-01-12",
+   16,
+   "1.FC Köln",
+   "Borussia Dortmund",
+   "20:30"
+  ],
+  [
+   "2027-01-13",
+   16,
+   "SV 07 Elversberg",
+   "Eintracht Frankfurt",
+   "18:30"
+  ],
+  [
+   "2027-01-13",
+   16,
+   "FC Bayern Munich",
+   "Bayer 04 Leverkusen",
+   "20:30"
+  ],
+  [
+   "2027-01-13",
+   16,
+   "SC Freiburg",
+   "Hamburger SV",
+   "20:30"
+  ],
+  [
+   "2027-01-13",
+   16,
+   "1.FC Union Berlin",
+   "SC Paderborn 07",
+   "20:30"
+  ],
+  [
+   "2027-01-14",
+   16,
+   "FC Schalke 04",
+   "SV Werder Bremen",
+   "20:30"
+  ],
+  [
+   "2027-01-15",
+   17,
+   "VfB Stuttgart",
+   "1.FSV Mainz 05",
+   "20:30"
+  ],
+  [
+   "2027-01-16",
+   17,
+   "Borussia Dortmund",
+   "SC Freiburg",
+   "15:30"
+  ],
+  [
+   "2027-01-16",
+   17,
+   "TSG 1899 Hoffenheim",
+   "RB Leipzig",
+   "15:30"
+  ],
+  [
+   "2027-01-16",
+   17,
+   "Borussia Mönchengladbach",
+   "1.FC Union Berlin",
+   "15:30"
+  ],
+  [
+   "2027-01-16",
+   17,
+   "Hamburger SV",
+   "FC Augsburg",
+   "15:30"
+  ],
+  [
+   "2027-01-16",
+   17,
+   "SC Paderborn 07",
+   "1.FC Köln",
+   "15:30"
+  ],
+  [
+   "2027-01-16",
+   17,
+   "Eintracht Frankfurt",
+   "FC Bayern Munich",
+   "18:30"
+  ],
+  [
+   "2027-01-17",
+   17,
+   "SV Werder Bremen",
+   "SV 07 Elversberg",
+   "15:30"
+  ],
+  [
+   "2027-01-17",
+   17,
+   "Bayer 04 Leverkusen",
+   "FC Schalke 04",
+   "17:30"
+  ],
+  [
+   "2027-01-22",
+   18,
+   "SV Werder Bremen",
+   "SC Freiburg",
+   "20:30"
+  ],
+  [
+   "2027-01-23",
+   18,
+   "VfB Stuttgart",
+   "FC Bayern Munich",
+   "15:30"
+  ],
+  [
+   "2027-01-23",
+   18,
+   "Borussia Mönchengladbach",
+   "RB Leipzig",
+   "15:30"
+  ],
+  [
+   "2027-01-23",
+   18,
+   "FC Schalke 04",
+   "FC Augsburg",
+   "15:30"
+  ],
+  [
+   "2027-01-23",
+   18,
+   "SC Paderborn 07",
+   "1.FSV Mainz 05",
+   "15:30"
+  ],
+  [
+   "2027-01-23",
+   18,
+   "Hamburger SV",
+   "Borussia Dortmund",
+   "18:30"
+  ],
+  [
+   "2027-01-24",
+   18,
+   "Eintracht Frankfurt",
+   "1.FC Union Berlin",
+   "15:30"
+  ],
+  [
+   "2027-01-24",
+   18,
+   "Bayer 04 Leverkusen",
+   "SV 07 Elversberg",
+   "17:30"
+  ],
+  [
+   "2027-01-24",
+   18,
+   "TSG 1899 Hoffenheim",
+   "1.FC Köln",
+   "19:30"
+  ],
+  [
+   "2027-01-30",
+   19,
+   "FC Bayern Munich",
+   "FC Schalke 04"
+  ],
+  [
+   "2027-01-30",
+   19,
+   "Borussia Dortmund",
+   "TSG 1899 Hoffenheim"
+  ],
+  [
+   "2027-01-30",
+   19,
+   "RB Leipzig",
+   "SV Werder Bremen"
+  ],
+  [
+   "2027-01-30",
+   19,
+   "SC Freiburg",
+   "SC Paderborn 07"
+  ],
+  [
+   "2027-01-30",
+   19,
+   "FC Augsburg",
+   "Eintracht Frankfurt"
+  ],
+  [
+   "2027-01-30",
+   19,
+   "1.FSV Mainz 05",
+   "Hamburger SV"
+  ],
+  [
+   "2027-01-30",
+   19,
+   "1.FC Union Berlin",
+   "Bayer 04 Leverkusen"
+  ],
+  [
+   "2027-01-30",
+   19,
+   "1.FC Köln",
+   "VfB Stuttgart"
+  ],
+  [
+   "2027-01-30",
+   19,
+   "SV 07 Elversberg",
+   "Borussia Mönchengladbach"
+  ],
+  [
+   "2027-02-06",
+   20,
+   "FC Bayern Munich",
+   "SV 07 Elversberg"
+  ],
+  [
+   "2027-02-06",
+   20,
+   "VfB Stuttgart",
+   "TSG 1899 Hoffenheim"
+  ],
+  [
+   "2027-02-06",
+   20,
+   "Bayer 04 Leverkusen",
+   "FC Augsburg"
+  ],
+  [
+   "2027-02-06",
+   20,
+   "Eintracht Frankfurt",
+   "1.FSV Mainz 05"
+  ],
+  [
+   "2027-02-06",
+   20,
+   "Borussia Mönchengladbach",
+   "SC Freiburg"
+  ],
+  [
+   "2027-02-06",
+   20,
+   "Hamburger SV",
+   "RB Leipzig"
+  ],
+  [
+   "2027-02-06",
+   20,
+   "SV Werder Bremen",
+   "1.FC Köln"
+  ],
+  [
+   "2027-02-06",
+   20,
+   "FC Schalke 04",
+   "1.FC Union Berlin"
+  ],
+  [
+   "2027-02-06",
+   20,
+   "SC Paderborn 07",
+   "Borussia Dortmund"
+  ],
+  [
+   "2027-02-13",
+   21,
+   "Borussia Dortmund",
+   "VfB Stuttgart"
+  ],
+  [
+   "2027-02-13",
+   21,
+   "RB Leipzig",
+   "Bayer 04 Leverkusen"
+  ],
+  [
+   "2027-02-13",
+   21,
+   "TSG 1899 Hoffenheim",
+   "SC Paderborn 07"
+  ],
+  [
+   "2027-02-13",
+   21,
+   "SC Freiburg",
+   "Eintracht Frankfurt"
+  ],
+  [
+   "2027-02-13",
+   21,
+   "FC Augsburg",
+   "SV Werder Bremen"
+  ],
+  [
+   "2027-02-13",
+   21,
+   "1.FSV Mainz 05",
+   "Borussia Mönchengladbach"
+  ],
+  [
+   "2027-02-13",
+   21,
+   "1.FC Union Berlin",
+   "FC Bayern Munich"
+  ],
+  [
+   "2027-02-13",
+   21,
+   "1.FC Köln",
+   "Hamburger SV"
+  ],
+  [
+   "2027-02-13",
+   21,
+   "SV 07 Elversberg",
+   "FC Schalke 04"
+  ],
+  [
+   "2027-02-20",
+   22,
+   "FC Bayern Munich",
+   "FC Augsburg"
+  ],
+  [
+   "2027-02-20",
+   22,
+   "VfB Stuttgart",
+   "SC Paderborn 07"
+  ],
+  [
+   "2027-02-20",
+   22,
+   "Bayer 04 Leverkusen",
+   "1.FSV Mainz 05"
+  ],
+  [
+   "2027-02-20",
+   22,
+   "Eintracht Frankfurt",
+   "RB Leipzig"
+  ],
+  [
+   "2027-02-20",
+   22,
+   "Borussia Mönchengladbach",
+   "1.FC Köln"
+  ],
+  [
+   "2027-02-20",
+   22,
+   "Hamburger SV",
+   "TSG 1899 Hoffenheim"
+  ],
+  [
+   "2027-02-20",
+   22,
+   "SV Werder Bremen",
+   "Borussia Dortmund"
+  ],
+  [
+   "2027-02-20",
+   22,
+   "FC Schalke 04",
+   "SC Freiburg"
+  ],
+  [
+   "2027-02-20",
+   22,
+   "SV 07 Elversberg",
+   "1.FC Union Berlin"
+  ],
+  [
+   "2027-02-27",
+   23,
+   "Borussia Dortmund",
+   "1.FC Union Berlin"
+  ],
+  [
+   "2027-02-27",
+   23,
+   "RB Leipzig",
+   "FC Bayern Munich"
+  ],
+  [
+   "2027-02-27",
+   23,
+   "VfB Stuttgart",
+   "Hamburger SV"
+  ],
+  [
+   "2027-02-27",
+   23,
+   "TSG 1899 Hoffenheim",
+   "Borussia Mönchengladbach"
+  ],
+  [
+   "2027-02-27",
+   23,
+   "SC Freiburg",
+   "Bayer 04 Leverkusen"
+  ],
+  [
+   "2027-02-27",
+   23,
+   "FC Augsburg",
+   "SV 07 Elversberg"
+  ],
+  [
+   "2027-02-27",
+   23,
+   "1.FSV Mainz 05",
+   "FC Schalke 04"
+  ],
+  [
+   "2027-02-27",
+   23,
+   "1.FC Köln",
+   "Eintracht Frankfurt"
+  ],
+  [
+   "2027-02-27",
+   23,
+   "SC Paderborn 07",
+   "SV Werder Bremen"
+  ],
+  [
+   "2027-03-03",
+   24,
+   "FC Bayern Munich",
+   "SC Freiburg"
+  ],
+  [
+   "2027-03-03",
+   24,
+   "Bayer 04 Leverkusen",
+   "TSG 1899 Hoffenheim"
+  ],
+  [
+   "2027-03-03",
+   24,
+   "Eintracht Frankfurt",
+   "Borussia Dortmund"
+  ],
+  [
+   "2027-03-03",
+   24,
+   "1.FC Union Berlin",
+   "FC Augsburg"
+  ],
+  [
+   "2027-03-03",
+   24,
+   "Borussia Mönchengladbach",
+   "VfB Stuttgart"
+  ],
+  [
+   "2027-03-03",
+   24,
+   "Hamburger SV",
+   "SC Paderborn 07"
+  ],
+  [
+   "2027-03-03",
+   24,
+   "SV Werder Bremen",
+   "1.FSV Mainz 05"
+  ],
+  [
+   "2027-03-03",
+   24,
+   "FC Schalke 04",
+   "1.FC Köln"
+  ],
+  [
+   "2027-03-03",
+   24,
+   "SV 07 Elversberg",
+   "RB Leipzig"
+  ],
+  [
+   "2027-03-06",
+   25,
+   "Borussia Dortmund",
+   "FC Bayern Munich"
+  ],
+  [
+   "2027-03-06",
+   25,
+   "RB Leipzig",
+   "FC Schalke 04"
+  ],
+  [
+   "2027-03-06",
+   25,
+   "VfB Stuttgart",
+   "Bayer 04 Leverkusen"
+  ],
+  [
+   "2027-03-06",
+   25,
+   "TSG 1899 Hoffenheim",
+   "SV Werder Bremen"
+  ],
+  [
+   "2027-03-06",
+   25,
+   "SC Freiburg",
+   "FC Augsburg"
+  ],
+  [
+   "2027-03-06",
+   25,
+   "1.FSV Mainz 05",
+   "SV 07 Elversberg"
+  ],
+  [
+   "2027-03-06",
+   25,
+   "Hamburger SV",
+   "Eintracht Frankfurt"
+  ],
+  [
+   "2027-03-06",
+   25,
+   "1.FC Köln",
+   "1.FC Union Berlin"
+  ],
+  [
+   "2027-03-06",
+   25,
+   "SC Paderborn 07",
+   "Borussia Mönchengladbach"
+  ],
+  [
+   "2027-03-13",
+   26,
+   "FC Bayern Munich",
+   "1.FSV Mainz 05"
+  ],
+  [
+   "2027-03-13",
+   26,
+   "Bayer 04 Leverkusen",
+   "1.FC Köln"
+  ],
+  [
+   "2027-03-13",
+   26,
+   "Eintracht Frankfurt",
+   "SC Paderborn 07"
+  ],
+  [
+   "2027-03-13",
+   26,
+   "FC Augsburg",
+   "RB Leipzig"
+  ],
+  [
+   "2027-03-13",
+   26,
+   "1.FC Union Berlin",
+   "SC Freiburg"
+  ],
+  [
+   "2027-03-13",
+   26,
+   "Borussia Mönchengladbach",
+   "Hamburger SV"
+  ],
+  [
+   "2027-03-13",
+   26,
+   "SV Werder Bremen",
+   "VfB Stuttgart"
+  ],
+  [
+   "2027-03-13",
+   26,
+   "FC Schalke 04",
+   "TSG 1899 Hoffenheim"
+  ],
+  [
+   "2027-03-13",
+   26,
+   "SV 07 Elversberg",
+   "Borussia Dortmund"
+  ],
+  [
+   "2027-03-20",
+   27,
+   "Borussia Dortmund",
+   "Borussia Mönchengladbach"
+  ],
+  [
+   "2027-03-20",
+   27,
+   "RB Leipzig",
+   "1.FC Union Berlin"
+  ],
+  [
+   "2027-03-20",
+   27,
+   "VfB Stuttgart",
+   "FC Schalke 04"
+  ],
+  [
+   "2027-03-20",
+   27,
+   "TSG 1899 Hoffenheim",
+   "Eintracht Frankfurt"
+  ],
+  [
+   "2027-03-20",
+   27,
+   "SC Freiburg",
+   "SV 07 Elversberg"
+  ],
+  [
+   "2027-03-20",
+   27,
+   "1.FSV Mainz 05",
+   "FC Augsburg"
+  ],
+  [
+   "2027-03-20",
+   27,
+   "Hamburger SV",
+   "SV Werder Bremen"
+  ],
+  [
+   "2027-03-20",
+   27,
+   "1.FC Köln",
+   "FC Bayern Munich"
+  ],
+  [
+   "2027-03-20",
+   27,
+   "SC Paderborn 07",
+   "Bayer 04 Leverkusen"
+  ],
+  [
+   "2027-04-03",
+   28,
+   "FC Bayern Munich",
+   "Hamburger SV"
+  ],
+  [
+   "2027-04-03",
+   28,
+   "RB Leipzig",
+   "SC Freiburg"
+  ],
+  [
+   "2027-04-03",
+   28,
+   "Bayer 04 Leverkusen",
+   "Borussia Dortmund"
+  ],
+  [
+   "2027-04-03",
+   28,
+   "Eintracht Frankfurt",
+   "VfB Stuttgart"
+  ],
+  [
+   "2027-04-03",
+   28,
+   "FC Augsburg",
+   "TSG 1899 Hoffenheim"
+  ],
+  [
+   "2027-04-03",
+   28,
+   "1.FC Union Berlin",
+   "1.FSV Mainz 05"
+  ],
+  [
+   "2027-04-03",
+   28,
+   "Borussia Mönchengladbach",
+   "SV Werder Bremen"
+  ],
+  [
+   "2027-04-03",
+   28,
+   "FC Schalke 04",
+   "SC Paderborn 07"
+  ],
+  [
+   "2027-04-03",
+   28,
+   "SV 07 Elversberg",
+   "1.FC Köln"
+  ],
+  [
+   "2027-04-10",
+   29,
+   "Borussia Dortmund",
+   "FC Schalke 04"
+  ],
+  [
+   "2027-04-10",
+   29,
+   "VfB Stuttgart",
+   "SV 07 Elversberg"
+  ],
+  [
+   "2027-04-10",
+   29,
+   "TSG 1899 Hoffenheim",
+   "SC Freiburg"
+  ],
+  [
+   "2027-04-10",
+   29,
+   "1.FSV Mainz 05",
+   "RB Leipzig"
+  ],
+  [
+   "2027-04-10",
+   29,
+   "Borussia Mönchengladbach",
+   "Bayer 04 Leverkusen"
+  ],
+  [
+   "2027-04-10",
+   29,
+   "Hamburger SV",
+   "1.FC Union Berlin"
+  ],
+  [
+   "2027-04-10",
+   29,
+   "1.FC Köln",
+   "FC Augsburg"
+  ],
+  [
+   "2027-04-10",
+   29,
+   "SV Werder Bremen",
+   "Eintracht Frankfurt"
+  ],
+  [
+   "2027-04-10",
+   29,
+   "SC Paderborn 07",
+   "FC Bayern Munich"
+  ],
+  [
+   "2027-04-17",
+   30,
+   "FC Bayern Munich",
+   "TSG 1899 Hoffenheim"
+  ],
+  [
+   "2027-04-17",
+   30,
+   "RB Leipzig",
+   "1.FC Köln"
+  ],
+  [
+   "2027-04-17",
+   30,
+   "Bayer 04 Leverkusen",
+   "SV Werder Bremen"
+  ],
+  [
+   "2027-04-17",
+   30,
+   "SC Freiburg",
+   "1.FSV Mainz 05"
+  ],
+  [
+   "2027-04-17",
+   30,
+   "Eintracht Frankfurt",
+   "Borussia Mönchengladbach"
+  ],
+  [
+   "2027-04-17",
+   30,
+   "FC Augsburg",
+   "Borussia Dortmund"
+  ],
+  [
+   "2027-04-17",
+   30,
+   "1.FC Union Berlin",
+   "VfB Stuttgart"
+  ],
+  [
+   "2027-04-17",
+   30,
+   "FC Schalke 04",
+   "Hamburger SV"
+  ],
+  [
+   "2027-04-17",
+   30,
+   "SV 07 Elversberg",
+   "SC Paderborn 07"
+  ],
+  [
+   "2027-04-24",
+   31,
+   "Borussia Dortmund",
+   "RB Leipzig"
+  ],
+  [
+   "2027-04-24",
+   31,
+   "VfB Stuttgart",
+   "SC Freiburg"
+  ],
+  [
+   "2027-04-24",
+   31,
+   "TSG 1899 Hoffenheim",
+   "1.FC Union Berlin"
+  ],
+  [
+   "2027-04-24",
+   31,
+   "Eintracht Frankfurt",
+   "Bayer 04 Leverkusen"
+  ],
+  [
+   "2027-04-24",
+   31,
+   "Borussia Mönchengladbach",
+   "FC Schalke 04"
+  ],
+  [
+   "2027-04-24",
+   31,
+   "Hamburger SV",
+   "SV 07 Elversberg"
+  ],
+  [
+   "2027-04-24",
+   31,
+   "1.FC Köln",
+   "1.FSV Mainz 05"
+  ],
+  [
+   "2027-04-24",
+   31,
+   "SV Werder Bremen",
+   "FC Bayern Munich"
+  ],
+  [
+   "2027-04-24",
+   31,
+   "SC Paderborn 07",
+   "FC Augsburg"
+  ],
+  [
+   "2027-05-08",
+   32,
+   "FC Bayern Munich",
+   "Borussia Mönchengladbach"
+  ],
+  [
+   "2027-05-08",
+   32,
+   "RB Leipzig",
+   "SC Paderborn 07"
+  ],
+  [
+   "2027-05-08",
+   32,
+   "Bayer 04 Leverkusen",
+   "Hamburger SV"
+  ],
+  [
+   "2027-05-08",
+   32,
+   "SC Freiburg",
+   "1.FC Köln"
+  ],
+  [
+   "2027-05-08",
+   32,
+   "FC Augsburg",
+   "VfB Stuttgart"
+  ],
+  [
+   "2027-05-08",
+   32,
+   "1.FSV Mainz 05",
+   "Borussia Dortmund"
+  ],
+  [
+   "2027-05-08",
+   32,
+   "1.FC Union Berlin",
+   "SV Werder Bremen"
+  ],
+  [
+   "2027-05-08",
+   32,
+   "FC Schalke 04",
+   "Eintracht Frankfurt"
+  ],
+  [
+   "2027-05-08",
+   32,
+   "SV 07 Elversberg",
+   "TSG 1899 Hoffenheim"
+  ],
+  [
+   "2027-05-15",
+   33,
+   "Borussia Dortmund",
+   "1.FC Köln"
+  ],
+  [
+   "2027-05-15",
+   33,
+   "VfB Stuttgart",
+   "RB Leipzig"
+  ],
+  [
+   "2027-05-15",
+   33,
+   "TSG 1899 Hoffenheim",
+   "1.FSV Mainz 05"
+  ],
+  [
+   "2027-05-15",
+   33,
+   "Bayer 04 Leverkusen",
+   "FC Bayern Munich"
+  ],
+  [
+   "2027-05-15",
+   33,
+   "Eintracht Frankfurt",
+   "SV 07 Elversberg"
+  ],
+  [
+   "2027-05-15",
+   33,
+   "Borussia Mönchengladbach",
+   "FC Augsburg"
+  ],
+  [
+   "2027-05-15",
+   33,
+   "Hamburger SV",
+   "SC Freiburg"
+  ],
+  [
+   "2027-05-15",
+   33,
+   "SV Werder Bremen",
+   "FC Schalke 04"
+  ],
+  [
+   "2027-05-15",
+   33,
+   "SC Paderborn 07",
+   "1.FC Union Berlin"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "FC Bayern Munich",
+   "Eintracht Frankfurt",
+   "15:30"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "RB Leipzig",
+   "TSG 1899 Hoffenheim",
+   "15:30"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "SC Freiburg",
+   "Borussia Dortmund",
+   "15:30"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "FC Augsburg",
+   "Hamburger SV",
+   "15:30"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "1.FSV Mainz 05",
+   "VfB Stuttgart",
+   "15:30"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "1.FC Union Berlin",
+   "Borussia Mönchengladbach",
+   "15:30"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "1.FC Köln",
+   "SC Paderborn 07",
+   "15:30"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "FC Schalke 04",
+   "Bayer 04 Leverkusen",
+   "15:30"
+  ],
+  [
+   "2027-05-22",
+   34,
+   "SV 07 Elversberg",
+   "SV Werder Bremen",
+   "15:30"
+  ]
+ ],
+ "season": 2026,
+ "cup": {
+  "name": "DFB-Pokal",
+  "rounds": [
+   [
+    "First round",
+    "2026-08-23"
+   ],
+   [
+    "Second round",
+    "2026-10-27"
+   ],
+   [
+    "Round of 16",
+    "2026-12-01"
+   ],
+   [
+    "Quarter-finals",
+    "2027-02-02"
+   ],
+   [
+    "Semi-finals",
+    "2027-04-20"
+   ],
+   [
+    "Final",
+    "2027-05-29"
+   ]
+  ],
+  "note": "2026/27 dates from the club pages (first round 21 to 24 August, Bayern and Dortmund on 1 and 2 September after the Supercup; second round 27/28 October; round of 16 1/2 December) and the DFB Rahmentermine (quarter-finals 2/3 and 9/10 February 2027, semi-finals 20/21 April, final 29 May 2027 at the Olympiastadion Berlin). 64 clubs in reality, the two Bundesligas here."
  }
 }
