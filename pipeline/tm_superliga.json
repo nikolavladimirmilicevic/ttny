@@ -18,9 +18,10 @@
   "record_titles": 15,
   "second_champion": "FK Zemun",
   "promoted": [
-   "FK Zemun"
+   "FK Zemun",
+   "FK Macva Sabac"
   ],
-  "promoted_note": "Zemun are named on the page as Prva liga champions 25/26. The propositions say two clubs come up (1st and 2nd of the Prva liga); the second one is not named on either page.",
+  "promoted_note": "Zemun are named as Prva liga champions 25/26 on the start page; Mačva's squad page shows them in the Prva liga's 2025/26 championship round and in the Super liga now, so they are the second club up.",
   "clubs": 14,
   "players": 437,
   "foreigners": 148,
@@ -32,7 +33,30 @@
    "rank": 30,
    "points": 19.0
   },
-  "cup": "Kup Srbije"
+  "cup": "Kup Srbije",
+  "relegated": [
+   "FK TSC Backa Topola",
+   "FK Javor-Matis Ivanjica",
+   "FK Spartak Subotica",
+   "FK Napredak Krusevac"
+  ],
+  "second_order": [
+   "FK Vozdovac",
+   "FK Loznica",
+   "OFK Vrsac",
+   "FK Jedinstvo Ub",
+   "FK Smederevo 1924",
+   "FK Dubocica Leskovac",
+   "FK Borac 1926 Cacak",
+   "Graficar Belgrad",
+   "FK Teleoptik Zemun"
+  ],
+  "second_promoted": [
+   "FK Proleter 023 Zrenjanin",
+   "FK Metalac Gornji Milanovac",
+   "FK Bor 1919"
+  ],
+  "second_note": "Prva liga Srbije 2026/27: 16 clubs, 61.35 million on the start page (the clubs' rounded values add up to 61.375) (start page and transfers page, 18.11.2026). The transfers page lists clubs by last season's final place: first the four relegated from the Super liga in that order (relegated), then the nine that stayed (second_order), then the three up from the third tier (second_promoted)."
  },
  "clubs": [
   {
@@ -527,5 +551,23 @@
  },
  "notes": [
   "venue, cap and the current head coach with his appointment date (coach_now, coach_from) from the club squad pages (18.11.2026); most were appointed after the season began on 17 July, so only Kokovic (Zeleznicar), Popovic (IMT), Rendulic (Radnik), Dudic (Radnicki 1923), Curcic (Mladost) and Glusica (Macva) were in charge from the start"
- ]
+ ],
+ "second_values": {
+  "FK TSC Backa Topola": 9.4,
+  "FK Napredak Krusevac": 6.96,
+  "FK Javor-Matis Ivanjica": 5.83,
+  "Graficar Belgrad": 4.83,
+  "FK Spartak Subotica": 4.45,
+  "FK Smederevo 1924": 4.28,
+  "FK Vozdovac": 3.85,
+  "FK Loznica": 3.73,
+  "OFK Vrsac": 3.55,
+  "FK Borac 1926 Cacak": 2.95,
+  "FK Jedinstvo Ub": 2.94,
+  "FK Bor 1919": 2.65,
+  "FK Dubocica Leskovac": 2.3,
+  "FK Proleter 023 Zrenjanin": 1.83,
+  "FK Teleoptik Zemun": 0.925,
+  "FK Metalac Gornji Milanovac": 0.9
+ }
 }
