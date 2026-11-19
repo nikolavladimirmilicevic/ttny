@@ -4685,19 +4685,43 @@ function teamTalk(k){
   const t = HT_TALKS.find(x => x[0] === k), how = k === 'none' ? 'The dressing room is quiet.' : v >= .02 ? 'The players look fired up.' : v >= .008 ? 'The players respond well.' : v > -.005 ? 'The players look unmoved.' : 'Some of the players look unhappy.';
   say(M, us, v >= .008 ? 'yel' : 'minor', `Half-time team talk: "${t[2]}" ${how}`);
   // their morale moves a little with it
-  us.on.forEach(x => { const q = ps(x.id); q.mor = clamp((q.mor || 70) + Math.round(v * 120), 0, 100); });
-  liveSave(true); viewMatch();
+  us.on.forEach(x => { const q = ps(x.id); q.mor = clamp((q.mor || 70) + Math.round(v * 120), 15, 100); });
+  save(); liveSave(true); viewMatch();
 }
 function talkPanel(){
   const L = LIVE, M = L.M; if (!L.atHT || M.over || M.talk || M.half > 2) return '';
   const us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, d = us.goals - them.goals;
   return `<div class="talk"><div class="ovh"><span>Half-time team talk</span><span class="small dim">${d > 0 ? `${d} up at the break` : d < 0 ? `${-d} down at the break` : 'level at the break'}</span></div><div class="talkb">${HT_TALKS.map(([k, n, q]) => `<button data-talk="${k}"><b>${n}</b><span>"${q}"</span></button>`).join('')}</div></div>`;
 }
+// how the result stood against what was expected of it (the board's view and the full-time talk's)
+function ftExp(M){
+  const us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, home = us === M.H, gf = us.goals, ga = them.goals;
+  const won = gf > ga || (M.pens && (home ? M.pens[0] > M.pens[1] : M.pens[1] > M.pens[0])), drew = gf === ga && !M.pens;
+  const exp = clamp(.5 + (club(me()).q - club(them.cid).q) / 14 + (home ? .08 : -.08), .1, .9), got = won ? 1 : drew ? .45 : 0;
+  return { exp, got, d: got - exp, won, drew };
+}
+/* the full-time team talk: what you tell them now stays with them to the next match, in their morale. Praise after a
+   result above what was expected, criticism after one well below it; the wrong word costs */
+const FT_TALKS = [['praise', 'Praise them', 'That was excellent, be proud.'], ['crit', 'Criticise them', 'That was unacceptable.'], ['move', 'Move on', 'Forget it, the next one matters.'], ['none', 'Say nothing', 'Not a word, they can go home.']];
+function ftTalk(k){
+  const L = LIVE, M = L.M; if (M.ftTalk) return; const us = M.h === me() ? M.H : M.A, { d, won } = ftExp(M);
+  const base = { praise: d > .1 ? 5 : d > -.1 ? (won ? 3 : 1) : -3, crit: d < -.3 ? 3 : d < -.1 ? 1 : won ? -6 : -3, move: d < -.1 ? 2 : 1, none: 0 }[k];
+  const ids = [...new Set([...us.on.map(x => x.id), ...us.subbed.map(x => x[1])])];
+  ids.forEach(id => { const q = ps(id), r = us.rate[id] || 6.5, own = k === 'praise' && r < 6 ? -1 : k === 'crit' && r >= 7.5 ? -2 : 0; q.mor = clamp(q.mor + base + own + Math.round((rng(`ft-${S.date}-${id}`)() - .5) * 2), 15, 100); });
+  M.ftTalk = { k, v: base };
+  const t = FT_TALKS.find(x => x[0] === k); say(M, us, base > 0 ? 'yel' : 'minor', `Full-time team talk: "${t[2]}" ${k === 'none' ? 'The players leave in silence.' : base >= 4 ? 'The players are delighted.' : base > 0 ? 'The players take it well.' : base === 0 ? 'It makes no difference.' : 'The players do not agree with you.'}`);
+  save(); liveSave(true); viewMatch();
+}
+function ftTalkPanel(M){
+  if (M.ftTalk){ const t = FT_TALKS.find(x => x[0] === M.ftTalk.k), v = M.ftTalk.v;
+    return `<div class="talk done"><div class="ovh"><span>Full-time team talk</span><span class="small ${v > 0 ? 'win' : v < 0 ? 'loss' : 'dim'}">${v >= 4 ? 'Morale well up' : v > 0 ? 'Morale up' : v < 0 ? 'Morale down' : 'No change'}</span></div><p class="small" style="margin:4px 0 0">You told them: <i>"${t[2]}"</i></p></div>`; }
+  return `<div class="talk"><div class="ovh"><span>Full-time team talk</span><span class="small dim">what you say stays with them to the next match</span></div><div class="talkb">${FT_TALKS.map(([k, n, q]) => `<button data-fttalk="${k}"><b>${n}</b><span>"${q}"</span></button>`).join('')}</div></div>`;
+}
 function ftPanel(){
   const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, home = us === M.H;
   const gf = us.goals, ga = them.goals, won = gf > ga || (M.pens && (home ? M.pens[0] > M.pens[1] : M.pens[1] > M.pens[0])), drew = gf === ga && !M.pens;
   const sc = side => scorerLine(M.hs, side);
-  const exp = clamp(.5 + (club(me()).q - club(them.cid).q) / 14 + (home ? .08 : -.08), .1, .9), got = won ? 1 : drew ? .45 : 0, d = got - exp;
+  const { exp, d } = ftExp(M);
   const board = d > .25 ? ['win', 'The board are delighted: few expected that.'] : d > 0 ? ['win', 'The board are pleased with the result.'] : d > -.25 ? ['draw', exp > .6 && !won ? 'The board expected more, but they understand.' : 'About what the board expected.'] : ['loss', 'The board are disappointed: they expected a win here.'];
   const mom = M.mom && P.get(M.mom), rt = id => M.over ? (us.rate[id] || 0) : 0;
   const mine = [...new Set([...us.on.map(x => x.id), ...us.subbed.flatMap(x => [x[0], x[1]])])].map(id => ({ id, p: P.get(id), r: us.rate[id] || 0, ev: us.ev[id] || {}, x: us.on.find(y => y.id === id), out: us.subbed.find(z => z[0] === id), inj: us.inj.find(j => j.id === id) })).filter(o => o.p).sort((a, b) => b.r - a.r);
@@ -4708,6 +4732,7 @@ function ftPanel(){
     <div class="ft-hero ${won ? 'win' : drew ? 'draw' : 'loss'}"><div class="ft-r">${won ? 'Victory' : drew ? 'Draw' : 'Defeat'}</div><div class="ft-s"><span>${esc(club(M.h).name)}</span><b>${M.H.goals} - ${M.A.goals}</b><span>${esc(club(M.a).name)}</span></div>
       ${M.pens ? `<div class="small">${M.pens[0]}-${M.pens[1]} on penalties</div>` : ''}<div class="ft-g"><span>${sc('h')}</span><span></span><span>${sc('a')}</span></div>
       ${mom ? `<div class="ft-mom">★ Man of the match: <b>${esc(mom.n)}</b> <span class="dim">${esc(club(mom.club).name)}</span></div>` : ''}<div class="ft-b ${board[0]}">${board[1]}</div></div>
+    <div style="margin-top:10px">${ftTalkPanel(M)}</div>
     ${momentum(M)}
     <div class="ft-g3"><div><div class="ptitle">Your players</div><table class="ftp"><tbody>${mine.map(o => `<tr><td><span class="yel small">${o.x ? o.x.pos : o.out ? 'off' : ''}</span></td><td><b>${esc(cmName(o.p.n))}</b>${o.ev.g ? ' ' + '⚽'.repeat(Math.min(4, o.ev.g)) : ''}${o.ev.a ? ` <span class="small dim">${o.ev.a} ast</span>` : ''}${o.ev.yc ? ' 🟨' : ''}${o.ev.rc ? ' 🟥' : ''}${o.inj ? ` <span class="tag inj">out ${Math.max(1, Math.round(o.inj.d / 7))}w</span>` : ''}${o.out ? ` <span class="small dim">off ${o.out[2]}'</span>` : ''}</td><td class="r small dim">${o.x ? Math.round(o.x.e) + '%' : ''}</td><td class="r"><b style="color:${rc(o.r)}">${o.r.toFixed(1)}</b></td></tr>`).join('')}</tbody></table></div>
       <div><div class="ptitle">Key moments</div><div class="ftms">${moments || '<p class="dim small">A quiet one.</p>'}</div>
@@ -4762,6 +4787,7 @@ function wireMatchPanel(){
   const L = LIVE; if (!L) return; const M = L.M, us = M.h === me() ? M.H : M.A;
   if (MTAB === 'tactics') boardWire(boardLive());
   document.querySelectorAll('[data-talk]').forEach(b => b.addEventListener('click', () => teamTalk(b.dataset.talk)));
+  document.querySelectorAll('[data-fttalk]').forEach(b => b.addEventListener('click', () => ftTalk(b.dataset.fttalk)));
   document.querySelectorAll('.seg[data-mk] button').forEach(b => b.addEventListener('click', () => { const k = b.parentElement.dataset.mk; us.t[k] = +b.dataset.v; if (!M.over) say(M, us, 'minor', `${esc(club(us.cid).name)} change their ${k === 'men' ? 'approach: ' + MENT[us.t.men].toLowerCase() : k === 'pass' ? 'passing: ' + PASS[us.t.pass].toLowerCase() : 'tackling: ' + TACK[us.t.tack].toLowerCase()}.`); viewMatch(); }));
   document.querySelectorAll('[data-mt2]').forEach(b => b.addEventListener('click', () => { us.t[b.dataset.mt2] = !us.t[b.dataset.mt2]; viewMatch(); }));
   document.querySelectorAll('[data-off]').forEach(b => b.addEventListener('click', () => { L.sel = { off: +b.dataset.off, on: L.sel && L.sel.on }; trySub(); }));
