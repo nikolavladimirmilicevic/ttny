@@ -1529,7 +1529,7 @@ def build_cwc(out_players, today, clubs_lg=None):
             continue
         rows = []
         for p in sq:
-            rr = random.Random(p[0]); age = p[2] or 26
+            rr = random.Random(p[0]); age = p[2] if p[2] and 15 <= p[2] <= 45 else 26   # the API now and then gives a year for an age (Tawfik Mohamed: 2025)
             rel = (rr.random() - .5) * 6 + min(4, starts(p) * .5) + (1.5 if 24 <= age <= 30 else -1 if age < 21 or age > 33 else 0)   # regulars stronger
             rows.append((p, rel, rr))
         top = statistics.mean(sorted((x[1] for x in rows), reverse=True)[:14])
@@ -1544,7 +1544,7 @@ def build_cwc(out_players, today, clubs_lg=None):
             tpl = min(pool, key=lambda x: (abs(x['ovr'] - ovr), x['id'])); drop = tpl['ovr'] - ovr
             a = {kk: max(40, min(99, int(round(v - drop * (1 if (kk in GK_KEYS) == gk else .6) + (rr.random() - .5) * 6)))) for kk, v in tpl['a'].items()}
             rp = {kk: max(30, min(99, v - drop)) for kk, v in tpl['r'].items()}; rp[prim] = ovr
-            age = age_of({'bd': d[1]}, today) if d[1] else (p[2] or 26)
+            age = age_of({'bd': d[1]}, today) if d[1] else (p[2] if p[2] and 15 <= p[2] <= 45 else 26)
             # the squad list's name ('Alex Sandro'); for an initial, the first name from the player pages ('E. Pulgar' -> 'Erick Pulgar')
             nm = (d[3].split(' ')[0] + ' ' + re.sub(r'^\w\.\s*', '', p[1])) if d[3] and re.match(r'^\w\.', p[1] or '') else (p[1] or d[3])
             players.append({'id': p[0], 'n': nm, 'nat': d[0], 'age': age, **({'bd': d[1]} if d[1] else {}), **({'ht': d[2]} if d[2] else {}), 'no': p[3], 'club': e['id'], 'prim': prim, 'pos': [prim] + also, 'ovr': ovr,

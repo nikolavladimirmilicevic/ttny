@@ -1726,7 +1726,8 @@ function euApply(){
     dv.set(p.id, v); }
   const act = [];
   for (const c of D.eu.clubs){ const sq = D.euAll.filter(p => p.club === c.id && dv.has(p.id));
-    let keep = sq.filter(p => p._b.age + yrs <= 36); if (keep.length < 18) keep = sq.slice().sort((a, b) => a._b.age - b._b.age).slice(0, Math.max(18, keep.length));
+    // past 36 a man goes at the end of a season: in the first one everyone in the data plays (Messi, Suárez, Sommer)
+    let keep = sq.filter(p => !yrs || p._b.age + yrs <= 36); if (keep.length < 18) keep = sq.slice().sort((a, b) => a._b.age - b._b.age).slice(0, Math.max(18, keep.length));
     const top = keep.map(p => p._b.ovr + dv.get(p.id)).sort((a, b) => b - a).slice(0, 14), mean = top.reduce((t, v) => t + v, 0) / Math.max(1, top.length), shift = yrs ? (c._q - mean) * .8 : 0;
     for (const p of keep){ const d = Math.round(dv.get(p.id) + shift); p.age = p._b.age + yrs; p.ovr = clamp(p._b.ovr + d, 40, 95); const dd = p.ovr - p._b.ovr;
       for (const k in p.a) p.a[k] = clamp(p._b.a[k] + dd, 40, 99); for (const k in p.r) p.r[k] = clamp(p._b.r[k] + dd, 30, 99); p.val = +Math.max(.3, 2 ** ((p.ovr - 70) / 4) * (p.age <= 23 ? 1.4 : p.age >= 31 ? .6 : 1)).toFixed(1); act.push(p); }
