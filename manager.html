@@ -103,7 +103,19 @@ input[type=text]{background:var(--panel-2);border:1px solid var(--line);border-r
 .askw{position:relative}.askm{position:absolute;right:0;top:calc(100% + 6px);z-index:60;width:320px;max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
 .askm button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:7px 9px;color:var(--text);cursor:pointer}.askm button:hover,.askm button:focus-visible{background:var(--panel-2)}.askm b{display:block;font-size:13px}.askm span{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
 @media(max-width:700px){.tgrp{flex-wrap:wrap}.askm{right:auto;left:0;width:min(320px,90vw)}}
-.mov{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr) minmax(0,1fr);gap:12px;margin-top:12px;align-items:start}
+.mov{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr) minmax(0,1fr);gap:10px;margin-top:10px;align-items:stretch}
+.mnow{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:10px;margin:10px 0 0}.mnow .big{margin:0;max-width:none;min-height:96px}
+.mrec{display:flex;flex-direction:column;gap:4px;min-width:0}.mrec p{margin:0;display:grid;grid-template-columns:38px 1fr;gap:6px;align-items:center;padding:5px 9px;border-radius:8px;background:var(--panel-2);font-size:12.5px;color:var(--muted);box-shadow:inset 3px 0 0 var(--k1,transparent);flex:1}
+.mrec p .m{color:var(--gold);font-weight:700;font-variant-numeric:tabular-nums}.mrec p.ccard{box-shadow:inset 3px 0 0 #F2C94C}.mrec p.cred{box-shadow:inset 3px 0 0 #E5484D}.mrec p.cinj{box-shadow:inset 3px 0 0 #fff}
+.mstrip{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;margin-top:8px}.mstrip .l5{margin:0;max-width:none}.mstrip .minfo{margin:0;gap:14px;justify-content:flex-end}.minfo b{color:var(--text);font-weight:600}
+.mmom{background:var(--panel-2);border-radius:12px;padding:8px 10px 6px;margin-top:10px}.mmbars{position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px;height:64px}
+.mmb{position:relative;display:flex;flex-direction:column;height:100%}.mmb .hu,.mmb .hd{height:50%;display:flex}.mmb .hu{align-items:flex-end}.mmb .hd{align-items:flex-start}.mmb i{display:block;width:100%;border-radius:2px}
+.mmb.fut{opacity:.25}.mmb b{position:absolute;left:50%;transform:translateX(-50%);font-size:9px;line-height:1}.mmb .gu{top:-1px}.mmb .gd{bottom:-1px}
+.mmbars .ht{position:absolute;top:0;bottom:0;width:1px;background:#ffffff33}.mmbars::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:#ffffff22}
+.mmax{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-top:2px}
+.mov-p{display:flex;flex-direction:column}.mben{margin-top:8px;border-top:1px solid #ffffff14;padding-top:6px}.mbl{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px}.mbx{font-size:12px;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbx .pos{display:inline-block;width:34px;color:var(--muted);font-size:10.5px;font-weight:700}.mbc{margin-top:4px;color:var(--muted)}.mbc .mbx{font-size:11.5px}
+@media(max-width:760px){.mnow,.mstrip{grid-template-columns:1fr}.mstrip .minfo{justify-content:space-between}}
 .mov>div{background:var(--panel-2);border-radius:12px;padding:8px 10px;min-width:0}.mov .pitch.mini{max-width:none}
 .mov .sbar{grid-template-columns:30px 1fr 30px;margin:4px 0}.mov-sc{width:100%;font-size:12.5px}.mov-sc td{padding:3px 2px}
 .dot.rtd{background:var(--rc)!important;color:#0b1626!important;font-weight:700}
@@ -705,7 +717,18 @@ const packS = s => JSON.stringify(s, function (k, v){ if (this === s && (k === '
 const unpackPl = s => { const K = PACK_KEYS(); for (const q of Object.values(s.pl || {})) for (const f of ['d', 'r']) if (q[f] && Array.isArray(q[f]._)){ const o = {}; q[f]._.forEach((v, i) => { if (v) o[K[i]] = v; }); q[f] = o; } };
 const loadSave = () => { try { const last = localStorage.getItem('ttny.manager.last'); if (last){ const s = JSON.parse(localStorage.getItem(slotKey(last)) || 'null'); if (s) return s; } return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } };
 const club = id => C.get(id) || { id, name: '?', kit: ['#888', '#fff'], q: 70 };
-const kitOf = id => (club(id).kit || ['#8899AA', '#FFFFFF']);
+const kit0 = id => ((club(id) || {}).kit || ['#8899AA', '#FFFFFF']);
+const hexRGB = c => { const s = String(c || '#888').replace('#', ''), f = s.length === 3 ? s.split('').map(x => x + x).join('') : s.padEnd(6, '0'); return [0, 2, 4].map(i => parseInt(f.slice(i, i + 2), 16) || 0); };
+const colDist = (a, b) => { const [r1, g1, b1] = hexRGB(a), [r2, g2, b2] = hexRGB(b), rm = (r1 + r2) / 2; return Math.sqrt((2 + rm / 256) * (r1 - r2) ** 2 + 4 * (g1 - g2) ** 2 + (2 + (255 - rm) / 256) * (b1 - b2) ** 2); };
+/* the away side's colours against the home side's: when the two are alike (Zvezda and Arsenal both red) the away side
+   changes, to its own colours turned round or to a plain change kit, whichever stands apart */
+function kitVs(a, h){
+  const ka = kit0(a), kh = kit0(h); if (colDist(ka[0], kh[0]) >= 190) return ka;
+  const alt = [[ka[1], ka[0]], ['#F4F4F4', ka[0]], ['#16202E', '#FFFFFF'], ['#F2C94C', '#111111']].find(k => colDist(k[0], kh[0]) >= 190 && colDist(k[0], k[1]) >= 150);
+  return alt || ['#16202E', '#FFFFFF'];
+}
+// in a match the away side wears what kitVs gives it, everywhere on the match screens
+const kitOf = id => { const M = typeof LIVE !== 'undefined' && LIVE && LIVE.M; return M && id === M.a && M.h !== id ? kitVs(id, M.h) : kit0(id); };
 const me = () => S && S.club;
 // a player's running state this season: condition, morale, injury days, ban, bookings, the season's numbers, training deltas
 const ps = id => S.pl[id] || (S.pl[id] = { cond: 100, mor: 65, injD: 0, light: 0, sus: 0, yc: 0, apps: 0, sub: 0, g: 0, a: 0, rt: [], mom: 0, d: {} });
@@ -3193,9 +3216,9 @@ function clubLast(cid, o){
   frame(o);
 }
 function statBars(st, h, a){
-  const [kh] = kitOf(h), [ka] = kitOf(a), L = [['Possession %', st.poss], ['Shots', st.sh], ['On target', st.sot], ['Corners', st.cor], ['Fouls', st.fou], ['Offsides', st.off || [0, 0]], ['Bookings', st.yc], ['Sendings off', st.rc]];
+  const [kh] = kitOf(h), [ka] = kitVs(a, h), L = [['Possession %', st.poss], ['Shots', st.sh], ['On target', st.sot], ['Corners', st.cor], ['Fouls', st.fou], ['Offsides', st.off || [0, 0]], ['Bookings', st.yc], ['Sendings off', st.rc]];
   if (st.pas) L.splice(1, 0, ['Passes completed %', st.pas]);
-  return L.map(([n, [x, y]]) => { const t = Math.max(1, x + y); return `<div class="sbar"><span class="l">${n}</span><b class="num">${x}</b><span class="b"><i style="width:${100 * x / t}%;background:${kh}"></i><i style="width:${100 * y / t}%;background:${ka === kh ? '#ccc' : ka}"></i></span><b class="num r">${y}</b></div>`; }).join('');
+  return L.map(([n, [x, y]]) => { const t = Math.max(1, x + y); return `<div class="sbar"><span class="l">${n}</span><b class="num">${x}</b><span class="b"><i style="width:${100 * x / t}%;background:${kh}"></i><i style="width:${100 * y / t}%;background:${ka}"></i></span><b class="num r">${y}</b></div>`; }).join('');
 }
 const TR_PRESETS = [
   ['balanced', 'Balanced', 'The season: a bit of everything.', { out: { phys: 2, tac: 2, kick: 1, tech: 2 }, gk: { phys: 2, tac: 1, kick: 0, tech: 1, gk: 3 } }],
@@ -4526,7 +4549,23 @@ function viewPre(){
 }
 // the overview during a match: both sides as they stand with ratings and legs left, the main numbers, the other scores
 function livePitch(M, side){ const [k1, k2] = kitOf(side.cid), rc = v => v >= 7.5 ? 'var(--win)' : v >= 6.5 ? 'var(--gold)' : v >= 5.8 ? '#dfe6ef' : 'var(--loss)';
-  return `<div class="mov-p"><div class="ovh"><span>${esc(club(side.cid).name)}</span><span class="small dim">${esc(formLabel(side.t, side.on))} · subs ${side.subs || 0}/5</span></div><div class="pitch mini" style="--k1:${k1};--k2:${k2}"><div class="bx t"></div><div class="bx"></div>${livePlaces(M, side).map(pl => `<div class="tok ro" data-dp="${pl.p.id}" style="left:${pl.x}%;top:${pl.y}%" title="${esc(pl.p.n)} · ${pl.code} · energy ${Math.round(pl.e)}%"><span class="dot rtd" style="--rc:${rc(pl.rt)}">${pl.rt.toFixed(1)}</span><span class="nm">${pl.g ? '⚽' : ''}${pl.yc ? '🟨' : ''}${esc(surname(pl.p.n))}</span><i class="cb" style="--w:${Math.round(pl.e)}%;--c:${pl.e >= 80 ? 'var(--win)' : pl.e >= 62 ? 'var(--gold)' : 'var(--loss)'}"></i></div>`).join('')}</div></div>`; }
+  return `<div class="mov-p"><div class="ovh"><span>${esc(club(side.cid).name)}</span><span class="small dim">${esc(formLabel(side.t, side.on))} · subs ${side.subs || 0}/5</span></div><div class="pitch mini" style="--k1:${k1};--k2:${k2}"><div class="bx t"></div><div class="bx"></div>${livePlaces(M, side).map(pl => `<div class="tok ro" data-dp="${pl.p.id}" style="left:${pl.x}%;top:${pl.y}%" title="${esc(pl.p.n)} · ${pl.code} · energy ${Math.round(pl.e)}%"><span class="dot rtd" style="--rc:${rc(pl.rt)}">${pl.rt.toFixed(1)}</span><span class="nm">${pl.g ? '⚽' : ''}${pl.yc ? '🟨' : ''}${esc(surname(pl.p.n))}</span><i class="cb" style="--w:${Math.round(pl.e)}%;--c:${pl.e >= 80 ? 'var(--win)' : pl.e >= 62 ? 'var(--gold)' : 'var(--loss)'}"></i></div>`).join('')}</div>${liveBench(M, side)}</div>`; }
+/* the match's momentum, five minutes a bar: up for the home side's attacks, down for the away side's, each in its colours;
+   a ball where a goal went in */
+function momentum(M){
+  const n = M.half > 2 ? 24 : 18, H = Array(n).fill(0), A_ = Array(n).fill(0), cap = h => h === 1 ? 45 : h === 2 ? 90 : h === 3 ? 105 : 120;
+  for (const [m, h, z] of M.zones || []){ const t = Math.min(m, cap(h)), b = Math.min(n - 1, Math.max(0, Math.floor((t - 1) / 5))); if (z === 2) H[b]++; else if (z === 0) A_[b]++; }
+  const top = Math.max(3, ...H, ...A_), [kh] = kitOf(M.h), [ka] = kitOf(M.a), now = Math.min(n, Math.ceil(Math.min(M.min, cap(M.half)) / 5));
+  const gm = side => (M.hs || []).filter(g => g.side === side).map(g => Math.min(n - 1, Math.floor((Math.min(parseInt(g.l, 10) || 1, 120) - 1) / 5)));
+  const gh = gm('h'), ga = gm('a');
+  const bars = H.map((v, i) => `<div class="mmb ${i >= now && !M.over ? 'fut' : ''}" title="${i * 5}-${i * 5 + 5}'"><span class="hu"><i style="height:${92 * v / top}%;background:${kh}"></i></span><span class="hd"><i style="height:${92 * A_[i] / top}%;background:${ka}"></i></span>${gh.includes(i) ? '<b class="gu">⚽</b>' : ''}${ga.includes(i) ? '<b class="gd">⚽</b>' : ''}</div>`).join('');
+  return `<div class="mmom"><div class="ovh"><span>Momentum</span><span class="small dim">attacks, five minutes a bar</span></div><div class="mmbars" style="--n:${n}">${bars}<span class="ht" style="left:${100 * 9 / n}%"></span></div><div class="mmax"><span>0'</span><span>45'</span><span>${n > 18 ? "90'" : "90'"}</span>${n > 18 ? "<span>120'</span>" : ''}</div></div>`;
+}
+// under a side's pitch: who is left on the bench, and the changes made
+function liveBench(M, side){
+  const left = side.bench.map(id => P.get(id)).filter(Boolean), done = (side.subbed || []).map(([o, i, m]) => `<div class="mbx"><span class="win">▲</span> ${esc(surname(P.get(i).n))} <span class="dim">for</span> ${esc(surname(P.get(o).n))} <span class="dim">${m}'</span></div>`);
+  return `<div class="mben"><div class="ovh"><span>Bench</span><span class="small dim">${left.length} left</span></div><div class="mbl">${left.map(p => `<div class="mbx" data-dp="${p.id}"><span class="pos">${esc(p.prim)}</span>${esc(surname(p.n))}${avail(p.id) ? '' : ' <span class="loss">+</span>'}</div>`).join('') || '<div class="mbx dim">Nobody left.</div>'}</div>${done.length ? `<div class="mbc">${done.join('')}</div>` : ''}</div>`;
+}
 function liveMid(M){ const L = LIVE, pct = Math.round(100 * M.H.poss / Math.max(1, M.H.poss + M.A.poss));
   const st = { poss: [pct, 100 - pct], sh: [M.H.sh, M.A.sh], sot: [M.H.sot, M.A.sot], cor: [M.H.corners, M.A.corners], fou: [M.H.fouls, M.A.fouls], off: [M.H.off, M.A.off], yc: [M.H.yc, M.A.yc], rc: [M.H.rc, M.A.rc] };
   const others = OPT.bg === 'off' ? '' : L.others.length ? `<div class="ovh" style="margin-top:12px"><span>Latest scores</span><button class="lnk" data-mt="scores">All</button></div><table class="mov-sc"><tbody>${L.others.slice(0, 6).map(o => `<tr><td class="r">${esc(club(o.h).name)}</td><td class="c"><span class="pill">${o.H.goals} - ${o.A.goals}</span></td><td>${esc(club(o.a).name)}</td><td class="small yel r">${o.over ? 'FT' : o.min ? label(o) + "'" : ''}</td></tr>`).join('')}</tbody></table>` : '';
@@ -4551,9 +4590,11 @@ function viewMatch(){
   let panelBody = '';
   if (MTAB === 'overview' && M.over) panelBody = ftPanel();
   else if (MTAB === 'overview') panelBody = `<div class="msc"><div class="h">${incLines(M, 'h')}</div><div>${incLines(M, 'a')}</div></div>
-    <div class="big ${bigCls} ${last.c === 'goal' ? 'gcol' : ''} ${fresh ? 'gfl' : ''}" style="${gst || comSt(last)}${fresh ? fd : ''}" id="now">${last.m ? `${last.m}' &nbsp;` : ''}${last.t}</div>
-    <div class="l5"><span>Last 5 Mins</span><span class="bar"><i style="width:${p5}%;background:${kh};color:${kh2};text-shadow:none">${p5}%</i><i style="width:${100 - p5}%;background:${ka === kh ? '#888' : ka};color:${ka === kh ? '#fff' : ka2};text-shadow:none">${100 - p5}%</i></span></div>
-    <div class="minfo"><span>Referee - ${esc(M.ref.n)}</span><span>Attendance - ${(M.att || 0).toLocaleString('en-GB')}</span><span>Weather - ${esc(M.weather)}, ${M.temp}°C</span></div>
+    <div class="mnow"><div class="big ${bigCls} ${last.c === 'goal' ? 'gcol' : ''} ${fresh ? 'gfl' : ''}" style="${gst || comSt(last)}${fresh ? fd : ''}" id="now">${last.m ? `${last.m}' &nbsp;` : ''}${last.t}</div>
+    <div class="mrec">${M.feed.slice(-4, -1).reverse().map(f => `<p class="${comCls(f)}" style="${comSt(f) || (f.cid != null && f.c === 'goal' ? `--k1:${kitOf(f.cid)[0]}` : '')}"><span class="m">${f.m ? f.m + "'" : ''}</span><span>${f.t}</span></p>`).join('') || '<p class="calm"><span class="m"></span><span class="dim">The commentary runs here.</span></p>'}</div></div>
+    <div class="mstrip"><div class="l5"><span>Last 5 Mins</span><span class="bar"><i style="width:${p5}%;background:${kh};color:${kh2};text-shadow:none">${p5}%</i><i style="width:${100 - p5}%;background:${ka};color:${ka2};text-shadow:none">${100 - p5}%</i></span></div>
+    <div class="minfo"><span>Referee <b>${esc(M.ref.n)}</b></span><span>Attendance <b>${(M.att || 0).toLocaleString('en-GB')}</b></span><span>${esc(M.weather)}, <b>${M.temp}°C</b></span></div></div>
+    ${momentum(M)}
     <div class="mov">${livePitch(M, M.H)}${liveMid(M)}${livePitch(M, M.A)}</div>`;
   else panelBody = mPanel();
   // away from the overview the commentary carries on in a slim bar
