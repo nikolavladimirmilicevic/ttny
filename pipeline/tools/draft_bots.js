@@ -1,6 +1,6 @@
 // Draft bots for calibrating difficulty (easy-CL, medium-EL, hard-ECL): node draft_bots.js <runs> [{"lift":{cl,el,ecl},"chem":n} or null]; game served on 127.0.0.1:8830
 const { chromium } = require('playwright');
-(async () => { const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }); const pg = await b.newPage(); const errs = []; pg.on('pageerror', e => errs.push(e.message)); await pg.route(/fonts/, r => r.abort());
+(async () => { const b = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {}); const pg = await b.newPage(); const errs = []; pg.on('pageerror', e => errs.push(e.message)); await pg.route(/fonts/, r => r.abort());
  await pg.goto('http://127.0.0.1:8830/index.html'); await pg.waitForSelector('[data-act=start]');
  const res = await pg.evaluate(([N, YB]) => { window.__YB = YB; const W = window.__ttny.W;
    const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
