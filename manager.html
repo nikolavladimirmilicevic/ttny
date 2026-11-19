@@ -307,7 +307,14 @@ tr.me td{background:rgba(79,209,139,.10)}
 .mteams .t{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;font:600 22px/1.1 var(--display);text-transform:uppercase;border-radius:14px}
 .mteams .t b{font:700 34px/1 var(--display);background:rgba(0,0,0,.2);padding:2px 10px;border-radius:8px}
 @media(max-width:600px){.mteams .t{font-size:15px;padding:8px 10px}.mteams .t b{font-size:24px}}
-.msc{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:start;font-size:13px;min-height:20px}
+.msc{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;font-size:13px;min-height:20px}.msc .h .mevs{justify-content:flex-end}
+.sg{white-space:nowrap}.mevs{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:3px;color:var(--muted);font-size:12.5px}.mev{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.cd{display:inline-block;width:9px;height:12px;border-radius:2px;flex:0 0 9px}.cd.y{background:#F2C94C}.cd.r{background:#E5484D}.cd.i{width:12px;height:12px;flex-basis:12px;border-radius:50%;background:#fff;color:#E5484D;font:900 11px/12px var(--body);text-align:center;font-style:normal}
+.mtabs{flex-wrap:nowrap}.mtabs button{min-width:0;flex:1 1 0;padding:7px 6px;font-size:13px}@media (max-width:560px){.mtabs{padding:3px;gap:1px}.mtabs button{padding:6px 2px;font-size:11px;letter-spacing:0}}
+.big.cclub,.mcom.cclub{background:linear-gradient(90deg,color-mix(in srgb,var(--k1) 42%,var(--night)),var(--night) 70%);border-color:var(--k1);box-shadow:inset 6px 0 0 var(--k1)}.big.chi,.mcom.chi{font-weight:700}
+.big.ccard,.mcom.ccard{background:linear-gradient(90deg,rgba(242,201,76,.42),var(--night) 75%);border-color:#F2C94C;box-shadow:inset 6px 0 0 #F2C94C}
+.big.cred,.mcom.cred{background:linear-gradient(90deg,rgba(229,72,77,.5),var(--night) 75%);border-color:#E5484D;box-shadow:inset 6px 0 0 #E5484D;font-weight:700}
+.big.cinj,.mcom.cinj{background:linear-gradient(90deg,rgba(255,255,255,.18),var(--night) 75%);border-color:#ddd;box-shadow:inset 6px 0 0 #E5484D}
 .msc .h{text-align:right}.msc .mid{color:var(--gold);font:600 13px/1.4 var(--display);letter-spacing:.06em;text-transform:uppercase}
 .big{margin:12px auto;max-width:680px;min-height:90px;display:grid;place-items:center;text-align:center;padding:16px 18px;background:var(--night);border:1px solid var(--line);border-radius:14px;font:500 19px/1.4 var(--body)}
 .big.goal{background:linear-gradient(180deg,rgba(79,209,139,.28),var(--night));font-weight:700;font-size:22px;border-color:var(--gold)}
@@ -321,7 +328,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .feed{max-height:320px;overflow-y:auto}
 .feed p{margin:0;padding:4px 6px;border-bottom:1px solid rgba(41,64,96,.5);font-size:13px}
 .feed p .m{display:inline-block;width:42px;color:var(--dim)}
-.feed p.goal{color:var(--gold);font-weight:700}.feed p.goal.them{color:var(--loss)}.feed p.yel{color:var(--yel)}.feed p.red{color:#FF8A7A;font-weight:700}.feed p.minor{color:var(--muted)}
+.feed p.goal{color:var(--gold);font-weight:700}.feed p.goal.them{color:var(--loss)}.feed p.yel,.feed p.card{color:var(--yel)}.feed p.inj{color:#FF8A7A}.feed p.red{color:#FF8A7A;font-weight:700}.feed p.minor{color:var(--muted)}
 .sbar{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;margin:6px 0;font-size:13px}
 .sbar .l{grid-column:1/-1;text-align:center;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:-4px}
 .sbar .b{display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--panel-3)}
@@ -800,7 +807,15 @@ function setAims(){ const n = (D.clubs || []).length, R = (D.lgs || {})[HOME];
     { name: 'Respectable league position', pos: mid, text: R.split ? `They want a place in the top ${mid}, and the title group after the split.` : AIMS20[2].text },
     { name: 'Stay clear of relegation', pos: n - dn - 1, text: AIMS20[3].text }, { name: 'Battle bravely against relegation', pos: n - dn, text: AIMS20[4].text }]; }
 const aimFor = (rank, n = (D.clubs || []).length) => { const r = n && n < 18 ? rank * 20 / n : rank; return r <= 2 ? 0 : r <= 6 ? 1 : r <= 11 ? 2 : r <= 16 ? 3 : 4; };
-// fictional referees, each with his own strictness
+// fictional referees, each with his own strictness; every country its own (a Serbian league is refereed by Serbs)
+const REF_NAMES = {
+  SRB: [['Milorad', 'Dragan', 'Srđan', 'Nenad', 'Zoran', 'Dejan', 'Marko', 'Uroš', 'Bojan', 'Nikola', 'Vladimir', 'Goran', 'Aleksandar', 'Ivan', 'Miloš', 'Predrag'], ['Radulović', 'Stevanović', 'Kostić', 'Lazarević', 'Milovanović', 'Đorđević', 'Bogdanović', 'Pantić', 'Vasiljević', 'Tomić', 'Rakić', 'Živković', 'Nedeljković', 'Ilić', 'Marinković', 'Savić']],
+  FRA: [['Julien', 'Mathieu', 'Nicolas', 'Benoît', 'Thomas', 'Clément', 'Antoine', 'Guillaume', 'Romain', 'Sébastien', 'Laurent', 'Olivier', 'Pierre', 'Hugo', 'Fabien', 'Cédric'], ['Morvan', 'Lacombe', 'Fournel', 'Delmas', 'Bréval', 'Castagnet', 'Roussin', 'Vallat', 'Peyrol', 'Guérard', 'Daunay', 'Lefranc', 'Bourdil', 'Chatel', 'Taillade', 'Maréchal']],
+  ITA: [['Marco', 'Luca', 'Davide', 'Fabio', 'Simone', 'Andrea', 'Matteo', 'Federico', 'Daniele', 'Paolo', 'Gianluca', 'Stefano', 'Riccardo', 'Alessio', 'Lorenzo', 'Antonio'], ['Ferrandi', 'Calcagno', 'Bellotti', 'Gargano', 'Sartori', 'Zanetta', 'Pellizzari', 'Bonvicini', 'Carrara', 'Tedeschi', 'Lombardo', 'Ruggeri', 'Vianello', 'Gualtieri', 'Rinaldi', 'Ferraresi']],
+  ESP: [['Javier', 'Carlos', 'Alberto', 'Jesús', 'Pablo', 'Alejandro', 'Miguel', 'Ricardo', 'José', 'David', 'Sergio', 'Raúl', 'Adrián', 'Iñigo', 'Fernando', 'Víctor'], ['Ortuño', 'Valcárcel', 'Bermejo', 'Saldaña', 'Lozano', 'Iturbe', 'Cabrera', 'Peñalver', 'Garrido', 'Montoya', 'Arroyo', 'Escudero', 'Villalba', 'Quintana', 'Rubio', 'Salcedo']],
+  GER: [['Florian', 'Tobias', 'Sascha', 'Markus', 'Jan', 'Stefan', 'Benjamin', 'Christian', 'Patrick', 'Daniel', 'Matthias', 'Felix', 'Robert', 'Sven', 'Timo', 'Lars'], ['Brennecke', 'Hollmann', 'Kessler', 'Dörfler', 'Wendt', 'Zimmerling', 'Laubach', 'Rehberg', 'Steinbrück', 'Vogler', 'Albrecht', 'Kranz', 'Seidler', 'Hufnagel', 'Pfeiffer', 'Ostermann']],
+  NED: [['Bas', 'Jeroen', 'Ruud', 'Sander', 'Dennis', 'Kevin', 'Pieter', 'Joost', 'Martijn', 'Thijs', 'Erik', 'Niels', 'Wouter', 'Hans', 'Rick', 'Stijn'], ['Verhoef', 'Dekkers', 'Brouwer', 'Kuijpers', 'Van Dalen', 'Hoekstra', 'Molenaar', 'Rietveld', 'Van Loon', 'Schouten', 'Bakker', 'Postma', 'Jonkers', 'Visscher', 'Timmer', 'Van Wijk']],
+  POR: [['João', 'Tiago', 'Rui', 'Nuno', 'Pedro', 'Hugo', 'Bruno', 'Ricardo', 'Fábio', 'Luís', 'André', 'Miguel', 'Vasco', 'Diogo', 'Carlos', 'Gonçalo'], ['Albuquerque', 'Tavares', 'Moniz', 'Correia', 'Barreto', 'Quintela', 'Seixas', 'Antunes', 'Brandão', 'Valente', 'Mesquita', 'Rebelo', 'Simões', 'Fontes', 'Pinheiro', 'Calado']] };
 const REF_FIRST = ['Martin', 'Simon', 'Paul', 'Andrew', 'Chris', 'David', 'Robert', 'Gavin', 'Tony', 'Darren', 'Stuart', 'Michael', 'Craig', 'Jarred', 'Lee', 'Tim'];
 const REF_LAST = ['Harlow', 'Pemberton', 'Ashby', 'Kendrick', 'Moorcroft', 'Ellison', 'Brannigan', 'Hollis', 'Whitcombe', 'Danvers', 'Featherby', 'Garside', 'Lowther', 'Ormerod', 'Pickering', 'Rendall'];
 // where the board expect a club to finish: the squad's strength counts most, last season's place too (promoted: 18th)
@@ -825,12 +840,24 @@ function schedule(ids, seed, season, n = 5){
   }
   return { rounds, cupDates };
 }
+// sixteen referees of a country (England's are the old list): names only, their strictness is the game's
+function refNames(k){ const [F, Lst] = REF_NAMES[k] || [REF_FIRST, REF_LAST]; return F.map((f, i) => `${f} ${Lst[(i * 7 + 3) % Lst.length]}`); }
+const REFS_OF = {};
+function refsOf(k){ if (k === (S.home || 'ENG')) return S.refs; return REFS_OF[k] = REFS_OF[k] || refNames(k).map((n, i) => ({ n, s: 5 + Math.floor(rng(`ref-${k}-${i}`)() * 12) })); }
+/* who referees: a league or cup match, a man of the clubs' own country; two countries (the European cups, the Club World
+   Cup), a man of a third */
+function refFor(h, a, r0){
+  const ch = (club(h) || {}).ctry || 'ENG', ca = (club(a) || {}).ctry || 'ENG';
+  if (ch === ca && (REF_NAMES[ch] || ch === 'ENG')) { const R = refsOf(ch); return R[Math.floor(r0() * R.length)]; }
+  const K = ['ENG', ...Object.keys(REF_NAMES)].filter(k => k !== ch && k !== ca), k = K[Math.floor(r0() * K.length)], R = refsOf(k);
+  return R[Math.floor(r0() * R.length)];
+}
 function newGame(cid, manager){
   S = null; setHome(club(cid).ctry || 'ENG'); rebuildPlayers(); setLeagues(null);
   const ids = D.clubs.map(c => c.id), seed = `${D.season}-${cid}-${Date.now()}`, r0 = rng(seed);
   const cn = cupStages(), { rounds, cupDates } = schedule(ids, seed, D.season, cn);
   const rank = expRank(cid), aim = aimFor(rank);
-  const refs = REF_FIRST.map((f, i) => ({ n: `${f} ${REF_LAST[(i * 7 + 3) % REF_LAST.length]}`, s: 5 + Math.floor(r0() * 12) }));
+  const refs = refNames(HOME).map(n => ({ n, s: 5 + Math.floor(r0() * 12) }));
   const q = club(cid).q;
   S = { v: 2, lines: 8, club: cid, manager: manager || 'The manager', season: D.season, seed, rounds, round: 0, cupDates, cup: { stage: 0, alive: cupEntrants(cn), log: [], n: cn },
     date: day(rounds[0].date, -6), pl: {}, tac: {}, table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])),
@@ -1055,7 +1082,7 @@ function matchConditions(h, a, date){
   const r0 = rng(`${S.seed}-${date}-${h}-${a}`), m = +date.slice(5, 7);
   const L = m >= 11 || m <= 2 ? [0, 1, 1, 2, 2, 3, 4, 4, 7] : m === 8 ? [0, 0, 0, 1, 6, 6, 2] : [0, 0, 1, 1, 2, 3, 3];
   const w = WEATHER[L[Math.floor(r0() * L.length)]];
-  return { weather: w[0], wk: w[1], ref: S.refs[Math.floor(r0() * S.refs.length)], temp: m >= 11 || m <= 2 ? 1 + Math.floor(r0() * 8) : m === 8 ? 20 + Math.floor(r0() * 10) : 9 + Math.floor(r0() * 10) };
+  return { weather: w[0], wk: w[1], ref: refFor(h, a, r0), temp: m >= 11 || m <= 2 ? 1 + Math.floor(r0() * 8) : m === 8 ? 20 + Math.floor(r0() * 10) : 9 + Math.floor(r0() * 10) };
 }
 function sideOf(cid, home){
   const t = readyTactic(cid), slots = slotsOf(t);
@@ -1187,12 +1214,12 @@ function foul(M, S1, S2){
   const x = who(S1, 'foul', 'ag'), v = who(S2, 'dribble', 'dr'), strict = (M.ref ? M.ref.s : 10) / 10.5;
   S1.fouls++;
   const ag = A(x.p, 'ag'), r = Math.random(), hard = piOf(S1.t, x.id, 'tack', S1.t.tack);
-  if (r < (.0015 + .001 * (ag - 60) / 20) * strict * [.6, 1, 1.6][hard]){ S1.rc++; evAdd(S1, x, 'rc'); S1.ev[x.id].straight = 1; rateAdd(S1, x, -1.5); say(M, S1, 'red', T([`RED CARD! ${nm(x)} is sent off for a reckless challenge on ${nm(v)}.`, `RED CARD! ${nm(x)} goes in two-footed on ${nm(v)} and is off.`, `RED CARD! ${nm(x)} denies ${nm(v)} a clear chance and is sent off.`])); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', t: surname(x.p.n) }); off(S1, x); return; }
+  if (r < (.0015 + .001 * (ag - 60) / 20) * strict * [.6, 1, 1.6][hard]){ S1.rc++; evAdd(S1, x, 'rc'); S1.ev[x.id].straight = 1; rateAdd(S1, x, -1.5); say(M, S1, 'red', T([`RED CARD! ${nm(x)} is sent off for a reckless challenge on ${nm(v)}.`, `RED CARD! ${nm(x)} goes in two-footed on ${nm(v)} and is off.`, `RED CARD! ${nm(x)} denies ${nm(v)} a clear chance and is sent off.`])); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', id: x.p.id, t: surname(x.p.n) }); off(S1, x); return; }
   if (r < (.12 + .05 * (ag - 60) / 20) * strict * [.7, 1, 1.4][hard]){
     const already = (S1.ev[x.id] || {}).yc;
     S1.yc++; evAdd(S1, x, 'yc'); rateAdd(S1, x, -.25);
-    if (already){ S1.rc++; evAdd(S1, x, 'rc'); say(M, S1, 'red', `Second yellow card for ${nm(x)}, and ${esc(club(S1.cid).name)} are down to ${S1.on.length - 1}.`); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', t: surname(x.p.n) + ' (2nd yellow)' }); off(S1, x); return; }
-    { const rf = M.ref ? esc(M.ref.n.split(' ')[1]) : 'The referee'; say(M, S1, 'yel', T([`${rf} books ${nm(x)} for a late tackle on ${nm(v)}.`, `Yellow card for ${nm(x)}, who caught ${nm(v)} late.`, `${nm(x)} goes into the book for a cynical foul on ${nm(v)}.`, `${rf} has seen enough: ${nm(x)} is booked for pulling back ${nm(v)}.`, `${nm(x)} is cautioned after a reckless lunge at ${nm(v)}.`, `A yellow for ${nm(x)}, stopping ${nm(v)} on the break.`, `${nm(x)} complains, but ${rf} shows him the yellow card.`])); } M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'yel', t: surname(x.p.n) });
+    if (already){ S1.rc++; evAdd(S1, x, 'rc'); say(M, S1, 'red', `Second yellow card for ${nm(x)}, and ${esc(club(S1.cid).name)} are down to ${S1.on.length - 1}.`); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', id: x.p.id, t: surname(x.p.n) + ' (2nd yellow)' }); off(S1, x); return; }
+    { const rf = M.ref ? esc(M.ref.n.split(' ').slice(1).join(' ')) : 'The referee'; say(M, S1, 'card', T([`${rf} books ${nm(x)} for a late tackle on ${nm(v)}.`, `Yellow card for ${nm(x)}, who caught ${nm(v)} late.`, `${nm(x)} goes into the book for a cynical foul on ${nm(v)}.`, `${rf} has seen enough: ${nm(x)} is booked for pulling back ${nm(v)}.`, `${nm(x)} is cautioned after a reckless lunge at ${nm(v)}.`, `A yellow for ${nm(x)}, stopping ${nm(v)} on the break.`, `${nm(x)} complains, but ${rf} shows him the yellow card.`])); } M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'yel', id: x.p.id, t: surname(x.p.n) });
   } else if (M.live && Math.random() < .2) say(M, S1, 'minor', T([`Free kick: ${nm(x)} brings down ${nm(v)}.`, `${nm(x)} trips ${nm(v)}; free kick.`, `${nm(v)} goes down under ${nm(x)}'s challenge.`, `${nm(x)} is penalised for a push on ${nm(v)}.`, `Foul by ${nm(x)}, ${nm(v)} wins the free kick.`, `${nm(x)} clatters into ${nm(v)}. Free kick.`]));
   if (hard === 2 && Math.random() < .012) injure(M, S2, v);
   if (Math.random() < .09){ const u2 = units(S2, M), u1 = units(S1, M); const k = S2.on.find(y => y.id === (S2.t.set || {}).fk) || who(S2, 'pass', 'pk'); say(M, S2, '', T([`Free kick in a dangerous position. ${nm(k)} stands over it…`, `A free kick just outside the box. ${nm(k)} lines it up…`, `${nm(k)} places the ball, the wall lines up…`, `Free kick on the edge of the area; ${nm(k)} fancies this…`])); shot(M, S2, S1, u2, u1, 'fk', k); }
@@ -1205,7 +1232,7 @@ function injure(M, side, who_){
   if (who_ && side.on.includes(who_)) x = who_;
   const days = 3 + Math.floor(Math.random() * Math.random() * 50) + (Math.random() < .07 ? 40 : 0);
   side.inj.push({ id: x.id, d: Math.round(days * ([.85, 1, 1.2][(x.p.inj || 2) - 1] || 1)) });
-  say(M, side, 'yel', `${nm(x)} is down injured. He can't carry on.`); M.inc.push({ l: label(M), side: sideKey(M, side), k: 'inj', t: surname(x.p.n) });
+  say(M, side, 'inj', `${nm(x)} is down injured. He can't carry on.`); M.inc.push({ l: label(M), side: sideKey(M, side), k: 'inj', id: x.p.id, t: surname(x.p.n) });
   if (!substitute(M, side, x, true)) off(side, x);
 }
 function substitute(M, side, out, forced, inId){
@@ -2677,6 +2704,8 @@ function adopt(s){
   if (s && s.v === 2) setLeagues(s.lg);
   if (!(s && s.v === 2 && C.has(s.club) && Object.keys(s.table).length === D.clubs.length && Object.keys(s.table).every(id => LG.has(+id)))){ setHome((S && S.home) || 'ENG'); setLeagues(S && S.lg); return false; }
   S = s; unpackPl(S); rebuildPlayers(); ensureStaff();
+  // a career abroad begun with England's referees: they get their country's names (each keeps his strictness)
+  if (REF_NAMES[HOME] && (S.refs || []).length && REF_FIRST.includes(S.refs[0].n.split(' ')[0])){ const nn = refNames(HOME); S.refs.forEach((r, i) => r.n = nn[i % nn.length]); }
   for (const q of Object.values(S.pl || {})) if (q.d) for (const k in q.d) q.d[k] = Math.round(q.d[k] * 100) / 100;
   for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x));
     // a shape from before the PES presets: the club's best preset, the same players placed by the rules
@@ -4514,29 +4543,28 @@ function viewMatch(){
   if (last.c === 'goal' && L.flashed !== M.feed.length){ L.flashed = M.feed.length; L.flashT = Date.now(); }
   const fel = Date.now() - (L.flashT || 0), fresh = last.c === 'goal' && OPT.flash === 'on' && fel < 3200, fd = `;animation-delay:-${fel}ms`;   // the flash runs on through re-renders
   const gk = last.c === 'goal' && last.cid != null ? kitOf(last.cid) : null, gst = gk ? `--g1:${gk[0]};--g2:${gk[1]}` : '';
-  const bigCls = last.c === 'goal' ? (last.side === 'them' ? 'goal them' : 'goal') : last.c === 'yel' ? 'yel' : last.c === 'red' ? '' : last.c === 'minor' || !last.c ? 'calm' : 'calm';
+  const bigCls = last.c === 'goal' ? (last.side === 'them' ? 'goal them' : 'goal') : comCls(last);
   const half = M.over ? 'Full Time' : !L.started ? 'Kick Off' : L.atHT ? 'Half Time' : M.half === 1 ? 'First Half' : 'Second Half';
   const us = M.h === me() ? M.H : M.A;
-  const tabs = [['overview', 'Match Overview'], ['stats', 'Match Stats'], ['zones', 'Action Zones'], ['report', 'Match Report']];
-  const tabs2 = [['ratings', 'Player Ratings'], ['scores', 'Latest Scores'], ['table', M.cup || L.cup ? 'Table / Bracket' : 'Live Table']];
+  // every page of the match in one row on top
+  const tabs = [['overview', 'Overview'], ['stats', 'Stats'], ['zones', 'Zones'], ['report', 'Report'], ['ratings', 'Ratings'], ['scores', 'Scores'], ['table', M.cup || L.cup ? 'Bracket' : 'Table']];
   let panelBody = '';
   if (MTAB === 'overview' && M.over) panelBody = ftPanel();
-  else if (MTAB === 'overview') panelBody = `<div class="msc"><div class="h">${scorers('h')}</div><div class="mid">${half}</div><div>${scorers('a')}</div></div>
-    <div class="big ${bigCls} ${last.c === 'goal' ? 'gcol' : ''} ${fresh ? 'gfl' : ''}" style="${gst}${fresh ? fd : ''}" id="now">${last.m ? `${last.m}' &nbsp;` : ''}${last.t}</div>
+  else if (MTAB === 'overview') panelBody = `<div class="msc"><div class="h">${incLines(M, 'h')}</div><div>${incLines(M, 'a')}</div></div>
+    <div class="big ${bigCls} ${last.c === 'goal' ? 'gcol' : ''} ${fresh ? 'gfl' : ''}" style="${gst || comSt(last)}${fresh ? fd : ''}" id="now">${last.m ? `${last.m}' &nbsp;` : ''}${last.t}</div>
     <div class="l5"><span>Last 5 Mins</span><span class="bar"><i style="width:${p5}%;background:${kh};color:${kh2};text-shadow:none">${p5}%</i><i style="width:${100 - p5}%;background:${ka === kh ? '#888' : ka};color:${ka === kh ? '#fff' : ka2};text-shadow:none">${100 - p5}%</i></span></div>
     <div class="minfo"><span>Referee - ${esc(M.ref.n)}</span><span>Attendance - ${(M.att || 0).toLocaleString('en-GB')}</span><span>Weather - ${esc(M.weather)}, ${M.temp}°C</span></div>
     <div class="mov">${livePitch(M, M.H)}${liveMid(M)}${livePitch(M, M.A)}</div>`;
   else panelBody = mPanel();
   // away from the overview the commentary carries on in a slim bar
-  if (MTAB !== 'overview' && !M.over && L.started) panelBody = `<div class="mcom ${last.c === 'goal' ? 'gcol' : last.c === 'yel' ? 'yel' : last.c === 'red' ? 'red' : ''} ${fresh ? 'gfl' : ''}" style="${gst}${fresh ? fd : ''}"><span class="m">${last.m ? last.m + "'" : ''}</span><span>${last.t}</span></div>` + panelBody;
+  if (MTAB !== 'overview' && !M.over && L.started) panelBody = `<div class="mcom ${last.c === 'goal' ? 'gcol' : comCls(last)} ${fresh ? 'gfl' : ''}" style="${gst || comSt(last)}${fresh ? fd : ''}"><span class="m">${last.m ? last.m + "'" : ''}</span><span>${last.t}</span></div>` + panelBody;
   const side = `<div class="mclock">${clock}</div>${M.over ? `<button class="sb go" id="done">Continue Game</button>` : L.started && !L.paused ? '<button class="sb go" id="pause">Pause</button>' : `<button class="sb go" id="play">${!L.started ? 'Kick Off' : L.atHT ? 'Second Half' : 'Resume Match'}</button>`}
     ${M.over ? '' : '<button class="sb" id="skip">To Full Time</button>'}<button class="sb" data-mt="tactics">${esc(club(me()).name)} Tactics</button>
     <div class="date" style="margin-top:6px"><span class="small"><span class="mh">Commentary </span>Speed</span></div>${SPEEDS.map(([, n], i) => `<button class="sb ${SPEED === i ? 'on' : ''}" data-spd="${i}" style="padding:5px 3px;font-size:11.5px">${n.replace('Very ', '<span class="mh">Very </span><i class="moi">V. </i>')}</button>`).join('')}`;
   mframe(side, `<div class="mteams"><div class="t ${fresh && last.cid === M.h ? 'gfl2' : ''}" style="background:${kh};color:${kh2}${fresh ? fd : ''}">${crest(M.h, 'mcr')}<span>${esc(club(M.h).name)}</span><b>${M.H.goals}</b></div><div class="t ${fresh && last.cid === M.a ? 'gfl2' : ''}" style="background:${ka};color:${ka2}${fresh ? fd : ''}">${crest(M.a, 'mcr')}<span>${esc(club(M.a).name)}</span><b>${M.A.goals}</b></div></div>
     ${M.pens ? `<p class="c yel" style="margin:2px 0"><b>Penalties: ${M.pens[0]}-${M.pens[1]}</b></p>` : ''}
-    <nav class="tabs">${tabs.map(([k, n]) => `<button data-mt="${k}" class="${MTAB === k ? 'on' : ''}">${n}</button>`).join('')}</nav>
-    <section class="pane" id="mpanel">${panelBody}</section>
-    <nav class="tabs">${tabs2.map(([k, n]) => `<button data-mt="${k}" class="${MTAB === k ? 'on' : ''}">${n}</button>`).join('')}</nav>`);
+    <nav class="tabs mtabs">${tabs.map(([k, n]) => `<button data-mt="${k}" class="${MTAB === k ? 'on' : ''}">${n}</button>`).join('')}</nav>
+    <section class="pane" id="mpanel">${panelBody}</section>`);
   const on = (id, f) => { const el = $('#' + id); if (el) el.addEventListener('click', f); };
   on('play', () => { L.started = true; L.paused = false; L.atHT = false; run(); });
   on('pause', () => { L.paused = true; clearTimeout(TIMER); viewMatch(); });
@@ -4550,9 +4578,20 @@ function viewMatch(){
 function openMatchTac(){ const L = LIVE; if (!L) return; L.wasRun = L.started && !L.paused && !L.M.over; if (L.wasRun){ L.paused = true; clearTimeout(TIMER); } L.tabBack = MTAB === 'tactics' ? 'overview' : MTAB; MTAB = 'tactics'; TB.sel = null; TB.tab = 'squad'; TB.view = 'us'; viewMatch(); }
 function closeMatchTac(){ const L = LIVE; if (!L) return; L.why = null; MTAB = L.tabBack || 'overview'; TB.sel = null; if (L.wasRun){ L.wasRun = false; L.paused = false; viewMatch(); run(); } else viewMatch(); }
 /* the scorers of one side, a man once with all his minutes: "Marquinhos 12', 40' (pen)"; his name opens him (by his id) */
+// the commentary's colour: a card yellow or red, an injury the physio's, any other line about a club in that club's colours
+const comCls = x => x.c === 'card' ? 'ccard' : x.c === 'red' ? 'cred' : x.c === 'inj' ? 'cinj' : x.cid != null ? 'cclub' + (x.c === 'yel' ? ' chi' : '') : 'calm';
+const comSt = x => { if (x.cid == null || ['card', 'red', 'inj', 'goal'].includes(x.c)) return ''; const [k1, k2] = kitOf(x.cid); return `--k1:${k1};--k2:${k2}`; };
+// under the score, each side's goals, then its cards and injuries ("<yellow> Kostić 23'"), names opening the men
+function incLines(M, side){
+  const g = scorerLine(M.hs, side), by = new Map();
+  for (const x of M.inc || []) if (x.side === side && (x.k === 'yel' || x.k === 'red' || x.k === 'inj')){ const key = x.k + (x.id || x.t); if (!by.has(key)) by.set(key, { ...x, m: [] }); by.get(key).m.push(`${x.l}'`); }
+  const ic = { yel: '<i class="cd y" title="Yellow card"></i>', red: '<i class="cd r" title="Red card"></i>', inj: '<i class="cd i" title="Injured">+</i>' };
+  const ev = [...by.values()].map(x => `<span class="mev">${ic[x.k]}${x.id ? `<span class="lk" data-lp="${x.id}">${esc(surname(P.get(x.id) ? P.get(x.id).n : x.t))}</span>` : esc(x.t)} ${x.m.join(', ')}${/2nd yellow/.test(x.t) ? ' <span class="dim">(2nd yellow)</span>' : ''}</span>`);
+  return `${g ? `<div class="mgl">${g}</div>` : ''}${ev.length ? `<div class="mevs">${ev.join('')}</div>` : ''}`;
+}
 function scorerLine(hs, side){
   const by = new Map(); for (const g of hs || []) if (g.side === side){ if (!by.has(g.id)) by.set(g.id, []); by.get(g.id).push(`${g.l}'${g.how === 'pen' ? ' (pen)' : g.how === 'og' ? ' (og)' : ''}`); }
-  return [...by].map(([id, m]) => { const p = P.get(id); return `<span class="lk" data-lp="${id}">${esc(p ? surname(p.n) : '?')}</span> ${m.join(', ')}`; }).join('; ');
+  return [...by].map(([id, m]) => { const p = P.get(id); return `<span class="sg"><span class="lk" data-lp="${id}">${esc(p ? surname(p.n) : '?')}</span> ${m.join(', ')}</span>`; }).join('; ');
 }
 function viewMatchTac(){
   const L = LIVE, M = L.M, [kh, kh2] = kitOf(M.h), [ka, ka2] = kitOf(M.a), clock = M.over ? 'FT' : !L.started ? '0' : L.atHT ? 'HT' : label(M);
