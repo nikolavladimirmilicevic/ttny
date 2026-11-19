@@ -219,6 +219,10 @@ tr.me td{background:rgba(79,209,139,.10)}
 .mpv-w{list-style:none;margin:0;padding:0;display:grid;gap:5px;font-size:13px}.mpv-w li{padding:6px 9px;border-radius:7px;background:rgba(255,255,255,.04);border-left:3px solid var(--gold)}.mpv-w li.bad{border-left-color:var(--loss)}
 .instr.tbq{grid-template-columns:minmax(0,1fr);gap:4px}.instr.tbq>span.yel{margin-top:6px;font-size:12.5px}.instr.tbq .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%}.instr.tbq .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px}
 .ft{display:grid;gap:14px}
+.talk{background:linear-gradient(90deg,color-mix(in srgb,var(--gold) 16%,var(--panel-2)),var(--panel-2));border-radius:12px;padding:9px 10px 10px;margin-bottom:10px;box-shadow:inset 3px 0 0 var(--gold)}
+.talkb{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:6px}.talkb button{display:flex;flex-direction:column;gap:3px;text-align:left;padding:9px 10px;border-radius:9px;border:1px solid #ffffff1f;background:var(--night);color:var(--text);cursor:pointer}
+.talkb button:hover{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 10%,var(--night))}.talkb b{font-size:13px}.talkb span{font-size:11.5px;color:var(--muted);font-style:italic}
+@media(max-width:620px){.talkb{grid-template-columns:1fr 1fr}}
 .ft-hero{text-align:center;padding:16px 14px 14px;border-radius:14px;background:rgba(255,255,255,.035);border-top:4px solid var(--draw,#888)}
 .ft-hero.win{border-top-color:var(--win)}.ft-hero.loss{border-top-color:var(--loss)}
 .ft-r{font:600 13px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}.ft-hero.win .ft-r{color:var(--win)}.ft-hero.loss .ft-r{color:var(--loss)}
@@ -1116,6 +1120,7 @@ function eff(side, x){
   const q = ps(x.id);
   let v = (fitIn(x.p, x.pos) / Math.max(40, ovrNow(x.p))) * (0.72 + 0.28 * x.e / 100) * (0.85 + 0.15 * q.cond / 100) * (0.96 + 0.08 * q.mor / 100);
   if (q.light) v *= .93;   // back from injury, not yet sharp
+  if (side.talk) v *= 1 + side.talk;   // the half-time team talk, for better or worse
   return v;
 }
 function units(side, M){
@@ -4612,7 +4617,7 @@ function viewMatch(){
   const tabs = [['overview', 'Overview'], ['stats', 'Stats'], ['zones', 'Zones'], ['report', 'Report'], ['ratings', 'Ratings'], ['scores', 'Scores'], ['table', M.cup || L.cup ? 'Bracket' : 'Table']];
   let panelBody = '';
   if (MTAB === 'overview' && M.over) panelBody = ftPanel();
-  else if (MTAB === 'overview') panelBody = `<div class="msc"><div class="h">${incLines(M, 'h')}</div><div>${incLines(M, 'a')}</div></div>
+  else if (MTAB === 'overview') panelBody = `${talkPanel()}<div class="msc"><div class="h">${incLines(M, 'h')}</div><div>${incLines(M, 'a')}</div></div>
     <div class="mnow"><div class="big ${bigCls} ${last.c === 'goal' ? 'gcol' : ''} ${fresh ? 'gfl' : ''}" style="${gst || comSt(last)}${fresh ? fd : ''}" id="now">${last.m ? `${last.m}' &nbsp;` : ''}${last.t}</div>
     <div class="mrec">${M.feed.slice(-4, -1).reverse().map(f => `<p class="${comCls(f)}" style="${comSt(f) || (f.cid != null && f.c === 'goal' ? `--k1:${kitOf(f.cid)[0]}` : '')}"><span class="m">${f.m ? f.m + "'" : ''}</span><span>${f.t}</span></p>`).join('') || '<p class="calm"><span class="m"></span><span class="dim">The commentary runs here.</span></p>'}</div></div>
     <div class="mstrip"><div class="l5"><span>Last 5 Mins</span><span class="bar"><i style="width:${p5}%;background:${kh};color:${kh2};text-shadow:none">${p5}%</i><i style="width:${100 - p5}%;background:${ka};color:${ka2};text-shadow:none">${100 - p5}%</i></span></div>
@@ -4668,6 +4673,26 @@ function viewMatchTac(){
 }
 /* full time: the result as a page, the scorers, what the board will make of it, the moments that mattered, the main
    numbers, how each of your players did, and the other results */
+/* the half-time team talk: four things to say, and how it lands depends on the score and on how the side has played.
+   Praise a side that is ahead, demand more of one behind; the wrong word at the wrong moment costs a little */
+const HT_TALKS = [['praise', 'Praise them', 'Well done, more of the same.'], ['demand', 'Demand more', 'That was not good enough.'], ['calm', 'Keep calm', 'Stay focused, stick to the plan.'], ['none', 'Say nothing', 'Let them sit and think.']];
+function teamTalk(k){
+  const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, d = us.goals - them.goals;
+  const avg = us.on.length ? us.on.reduce((t, x) => t + (us.rate[x.id] || 0), 0) / us.on.length : 0, poor = avg < -.15, good = avg > .25;
+  let v = { praise: d > 0 ? .03 : d === 0 ? (good ? .02 : -.005) : (good ? .005 : -.02), demand: d < 0 ? .03 : d === 0 ? (poor ? .025 : .01) : (good ? -.02 : .005), calm: .012, none: 0 }[k];
+  v += (rng(`talk-${S.date}-${k}`)() - .5) * .012;
+  us.talk = Math.round(v * 1000) / 1000; M.talk = k;
+  const t = HT_TALKS.find(x => x[0] === k), how = k === 'none' ? 'The dressing room is quiet.' : v >= .02 ? 'The players look fired up.' : v >= .008 ? 'The players respond well.' : v > -.005 ? 'The players look unmoved.' : 'Some of the players look unhappy.';
+  say(M, us, v >= .008 ? 'yel' : 'minor', `Half-time team talk: "${t[2]}" ${how}`);
+  // their morale moves a little with it
+  us.on.forEach(x => { const q = ps(x.id); q.mor = clamp((q.mor || 70) + Math.round(v * 120), 0, 100); });
+  liveSave(true); viewMatch();
+}
+function talkPanel(){
+  const L = LIVE, M = L.M; if (!L.atHT || M.over || M.talk || M.half > 2) return '';
+  const us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, d = us.goals - them.goals;
+  return `<div class="talk"><div class="ovh"><span>Half-time team talk</span><span class="small dim">${d > 0 ? `${d} up at the break` : d < 0 ? `${-d} down at the break` : 'level at the break'}</span></div><div class="talkb">${HT_TALKS.map(([k, n, q]) => `<button data-talk="${k}"><b>${n}</b><span>"${q}"</span></button>`).join('')}</div></div>`;
+}
 function ftPanel(){
   const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, home = us === M.H;
   const gf = us.goals, ga = them.goals, won = gf > ga || (M.pens && (home ? M.pens[0] > M.pens[1] : M.pens[1] > M.pens[0])), drew = gf === ga && !M.pens;
@@ -4683,6 +4708,7 @@ function ftPanel(){
     <div class="ft-hero ${won ? 'win' : drew ? 'draw' : 'loss'}"><div class="ft-r">${won ? 'Victory' : drew ? 'Draw' : 'Defeat'}</div><div class="ft-s"><span>${esc(club(M.h).name)}</span><b>${M.H.goals} - ${M.A.goals}</b><span>${esc(club(M.a).name)}</span></div>
       ${M.pens ? `<div class="small">${M.pens[0]}-${M.pens[1]} on penalties</div>` : ''}<div class="ft-g"><span>${sc('h')}</span><span></span><span>${sc('a')}</span></div>
       ${mom ? `<div class="ft-mom">★ Man of the match: <b>${esc(mom.n)}</b> <span class="dim">${esc(club(mom.club).name)}</span></div>` : ''}<div class="ft-b ${board[0]}">${board[1]}</div></div>
+    ${momentum(M)}
     <div class="ft-g3"><div><div class="ptitle">Your players</div><table class="ftp"><tbody>${mine.map(o => `<tr><td><span class="yel small">${o.x ? o.x.pos : o.out ? 'off' : ''}</span></td><td><b>${esc(cmName(o.p.n))}</b>${o.ev.g ? ' ' + '⚽'.repeat(Math.min(4, o.ev.g)) : ''}${o.ev.a ? ` <span class="small dim">${o.ev.a} ast</span>` : ''}${o.ev.yc ? ' 🟨' : ''}${o.ev.rc ? ' 🟥' : ''}${o.inj ? ` <span class="tag inj">out ${Math.max(1, Math.round(o.inj.d / 7))}w</span>` : ''}${o.out ? ` <span class="small dim">off ${o.out[2]}'</span>` : ''}</td><td class="r small dim">${o.x ? Math.round(o.x.e) + '%' : ''}</td><td class="r"><b style="color:${rc(o.r)}">${o.r.toFixed(1)}</b></td></tr>`).join('')}</tbody></table></div>
       <div><div class="ptitle">Key moments</div><div class="ftms">${moments || '<p class="dim small">A quiet one.</p>'}</div>
         <div class="ptitle">The numbers</div>${statBars({ poss: [pct, 100 - pct], sh: [M.H.sh, M.A.sh], sot: [M.H.sot, M.A.sot], cor: [M.H.corners, M.A.corners], fou: [M.H.fouls, M.A.fouls], yc: [M.H.yc, M.A.yc], rc: [M.H.rc, M.A.rc] }, M.h, M.a)}</div>
@@ -4716,7 +4742,7 @@ function cupPanel(L, M){
 function mPanel(){
   const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A;
   const pct = Math.round(100 * M.H.poss / Math.max(1, M.H.poss + M.A.poss));
-  if (MTAB === 'report') return `<div class="cols2"><div><div class="ptitle">Incidents</div><div class="inc">${M.inc.map(x => `<div class="h">${x.side === 'h' ? icon(x.k) + esc(x.t) : ''}</div><div class="m">${x.l}'</div><div>${x.side === 'a' ? icon(x.k) + esc(x.t) : ''}</div>`).join('') || '<div></div><div class="m">-</div><div></div>'}</div></div><div><div class="ptitle">Commentary</div><div class="feed">${M.feed.slice().reverse().map(f => `<p class="${f.c} ${f.side === 'them' ? 'them' : ''}"><span class="m">${f.m ? f.m + "'" : ''}</span>${f.t}</p>`).join('')}</div></div></div>`;
+  if (MTAB === 'report') return `${momentum(M)}<div class="cols2" style="margin-top:10px"><div><div class="ptitle">Incidents</div><div class="inc">${M.inc.map(x => `<div class="h">${x.side === 'h' ? icon(x.k) + esc(x.t) : ''}</div><div class="m">${x.l}'</div><div>${x.side === 'a' ? icon(x.k) + esc(x.t) : ''}</div>`).join('') || '<div></div><div class="m">-</div><div></div>'}</div></div><div><div class="ptitle">Commentary</div><div class="feed">${M.feed.slice().reverse().map(f => `<p class="${f.c} ${f.side === 'them' ? 'them' : ''}"><span class="m">${f.m ? f.m + "'" : ''}</span>${f.t}</p>`).join('')}</div></div></div>`;
   if (MTAB === 'stats') return statBars({ poss: [pct, 100 - pct], pas: [Math.round(100 * M.H.pc / Math.max(1, M.H.pa)), Math.round(100 * M.A.pc / Math.max(1, M.A.pa))], sh: [M.H.sh, M.A.sh], sot: [M.H.sot, M.A.sot], cor: [M.H.corners, M.A.corners], fou: [M.H.fouls, M.A.fouls], off: [M.H.off, M.A.off], yc: [M.H.yc, M.A.yc], rc: [M.H.rc, M.A.rc] }, M.h, M.a);
   if (MTAB === 'ratings'){ const col = s => { const ids = [...s.on.map(x => x.id), ...s.subbed.map(x => x[0])].filter((id, i, a) => a.indexOf(id) === i); return ids.map(id => { const v = M.over ? s.rate[id] : clamp(6.3 + (s.rate[id] || 0), 1, 10), x = s.on.find(y => y.id === id); return `<div class="arow" data-dp="${id}"><span>${esc(cmName(P.get(id).n))} <span class="small yel">${x ? x.pos : 'off'}</span>${id === M.mom ? ' ★' : ''}</span><span class="av">${v.toFixed(1)}</span></div>`; }).join(''); };
     return `<div class="cols2"><div><div class="ptitle">${esc(club(M.h).name)}</div>${col(M.H)}</div><div><div class="ptitle">${esc(club(M.a).name)}</div>${col(M.A)}</div></div>`; }
@@ -4735,6 +4761,7 @@ function mPanel(){
 function wireMatchPanel(){
   const L = LIVE; if (!L) return; const M = L.M, us = M.h === me() ? M.H : M.A;
   if (MTAB === 'tactics') boardWire(boardLive());
+  document.querySelectorAll('[data-talk]').forEach(b => b.addEventListener('click', () => teamTalk(b.dataset.talk)));
   document.querySelectorAll('.seg[data-mk] button').forEach(b => b.addEventListener('click', () => { const k = b.parentElement.dataset.mk; us.t[k] = +b.dataset.v; if (!M.over) say(M, us, 'minor', `${esc(club(us.cid).name)} change their ${k === 'men' ? 'approach: ' + MENT[us.t.men].toLowerCase() : k === 'pass' ? 'passing: ' + PASS[us.t.pass].toLowerCase() : 'tackling: ' + TACK[us.t.tack].toLowerCase()}.`); viewMatch(); }));
   document.querySelectorAll('[data-mt2]').forEach(b => b.addEventListener('click', () => { us.t[b.dataset.mt2] = !us.t[b.dataset.mt2]; viewMatch(); }));
   document.querySelectorAll('[data-off]').forEach(b => b.addEventListener('click', () => { L.sel = { off: +b.dataset.off, on: L.sel && L.sel.on }; trySub(); }));
