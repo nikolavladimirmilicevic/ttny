@@ -3279,7 +3279,8 @@ function boardLive(){
       return substitute(M, us, out, false, id) || false; },
     swap(i, j){ const a = us.on[i], b = us.on[j]; if (!a || !b) return;
       if (!canPlay(a.p, b.pos)) toast(`${cmName(a.p.n)} is out of position at ${b.pos}.`); else if (!canPlay(b.p, a.pos)) toast(`${cmName(b.p.n)} is out of position at ${a.pos}.`);
-      [a.pos, b.pos] = [b.pos, a.pos]; [a.xy, b.xy] = [b.xy, a.xy]; say(M, us, 'minor', `${nm(a)} and ${nm(b)} swap places.`); return true; },
+      // the places follow the order of the men on the pitch, so they change places in it too (two central midfielders kept their spots before)
+      [a.pos, b.pos] = [b.pos, a.pos]; [a.xy, b.xy] = [b.xy, a.xy]; [us.on[i], us.on[j]] = [b, a]; say(M, us, 'minor', `${nm(a)} and ${nm(b)} swap places.`); return true; },
     toBench(){ return toast('Bring someone on instead: drag a substitute onto him.'); }, toRest(){ return false; },
     moveTo(i, x, y){ const p = us.on[i]; if (!p) return; if (p.pos === 'GK') return toast('The goal stays where it is: to put someone else there, drop him onto the keeper.');
       y = Math.min(82, Math.max(6, y)); x = Math.min(95, Math.max(5, x)); const code = posAt(x, y), was = p.pos;
