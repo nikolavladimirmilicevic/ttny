@@ -2029,7 +2029,7 @@ function afterMatchday(res, kind, stage){
   if (mine){ S.seen = S.seen || []; const opp = mine.h === me() ? mine.a : mine.h; if (!S.seen.includes(opp)) S.seen.push(opp); }
   if (mine){
     const us = mine.h === me(), opp = club(us ? mine.a : mine.h), won = mine.w === me(), drew = mine.w == null;
-    const sc = mine.hs.filter(g => (g.side === 'h') === us).map(g => surname(P.get(g.id).n));
+    const sc0 = mine.hs.filter(g => (g.side === 'h') === us).map(g => g.id), sc = [...new Set(sc0)].map(id => { const k = sc0.filter(x => x === id).length; return surname(P.get(id).n) + (k > 1 ? ` (${k})` : ''); });
     news('match', `${kind === 'cup' || kind === 'eu' ? stage + ': ' : ''}${won ? 'Win' : drew ? 'Draw' : 'Defeat'} ${us ? 'v' : 'at'} ${opp.name}`, `${esc(club(mine.h).name)} ${mine.s[0]}-${mine.s[1]} ${esc(club(mine.a).name)}${mine.p ? ` (${mine.p[0]}-${mine.p[1]} on penalties)` : ''}. ${sc.length ? 'Scorers: ' + esc(sc.join(', ')) + '.' : ''}${mine.mom ? ` Man of the match: ${esc(P.get(mine.mom).n)}.` : ''}`);
     // the board's confidence: the result against what it promised, and the league position against the target
     const exp = clamp(.5 + (club(me()).q - opp.q) / 14 + (us ? .08 : -.08), .1, .9), got = won ? 1 : drew ? .45 : 0;
@@ -2416,16 +2416,18 @@ function compLinks(){
   return m;
 }
 function linkIndex(){
-  const all = D.pool || D.players, key = `${all.length}|${S.season}|${HOME}|${awayKs().join()}|${!!S.cwc}${!!S.fic}${!!S.usc}`; if (LKN && LKN.key === key) return LKN;
+  // every player the game knows, the foreign clubs' too: a name two of them share links to neither unless the row says which
+  const all = [...new Map([...(D.pool || D.players), ...(D.euAll || [])].map(p => [p.id, p])).values()], key = `${all.length}|${S.season}|${HOME}|${awayKs().join()}|${!!S.cwc}${!!S.fic}${!!S.usc}`; if (LKN && LKN.key === key) return LKN;
   // M: names found in running text; B: also a one-word name, when a bold word is exactly it ("Rodri", "Nice")
-  const M = new Map(), B = new Map(), dup = new Set();
-  for (const p of all) for (const k of new Set([p.n, cmName(p.n)])){ const v = 'p:' + p.id; if (B.has(k) && B.get(k) !== v) dup.add(k); else B.set(k, v); }
-  dup.forEach(k => B.delete(k));
+  const M = new Map(), B = new Map(), dup = new Set(), AMB = new Map();
+  for (const p of all) for (const k of new Set([p.n, cmName(p.n)])){ const v = 'p:' + p.id; (AMB.get(k) || AMB.set(k, new Set()).get(k)).add(p.id); if (B.has(k) && B.get(k) !== v) dup.add(k); else B.set(k, v); }
+  dup.forEach(k => { B.delete(k); if (/[ ,]/.test(k.trim())) M.set(k, 'd:' + k); });
   for (const [k, v] of B) if (/[ ,]/.test(k.trim())) M.set(k, v);
+  for (const k of [...AMB.keys()]) if (!dup.has(k)) AMB.delete(k);
   const word = new Set(['Nice', 'Athletic', 'Racing', 'Sporting', 'Hearts', 'Inter']);   // a club whose name is also an everyday word
   for (const c of everyClub()) for (const n of [c.name, c.full]) if (n){ if (!B.has(n) || B.get(n)[0] === 'p') B.set(n, 'c:' + c.id); if (!word.has(n) && !M.has(n)) M.set(n, 'c:' + c.id); }
   for (const [n, v] of compLinks()){ M.set(n, 'm:' + v); B.set(n, 'm:' + v); }
-  LKN = { key, M, B };
+  LKN = { key, M, B, AMB };
   return LKN;
 }
 const LK_TOK = /[\p{L}\p{N}]+/gu;
@@ -2439,6 +2441,16 @@ function linkMatches(txt, M){
 const LK_SKIP = 'a,button,select,option,input,textarea,label,[data-lp],[data-lc],[data-lm],[data-tp],.mtree,.tok,.tbrow,.strip2,.box,thead,.dghost,.nl,.side,.mdl .tools,.tabs,.seg';
 function lkEl(v, text){ const sp = document.createElement('span'); sp.className = 'lk'; const [t0, ...r] = v.split(':'), x = r.join(':');
   if (t0 === 'p') sp.dataset.lp = x; else if (t0 === 'c') sp.dataset.lc = x; else sp.dataset.lm = x; sp.textContent = text; return sp; }
+/* a name two players share ("Riquelme, R": Rodrigo of Betis, Ramon of Miami): the row it stands in decides, by the player
+   the row is (his data-pl) or by a club named in it; with nothing to go on it stays plain */
+function lkResolve(el, v, text){
+  if (v[0] !== 'd') return v;
+  const ids = [...(LKN.AMB.get(v.slice(2)) || [])], r = el.closest('[data-pl],[data-prof],[data-dp]');
+  const own = r && +(r.dataset.pl || r.dataset.prof || r.dataset.dp); if (own && ids.includes(own)) return 'p:' + own;
+  const row = el.closest('tr,li,.ftm,.card,.ovchips,p,div'), t = row ? row.textContent : '', cl = el.closest('[data-cv]'), cid = cl && +cl.dataset.cv;
+  const hit = ids.filter(id => { const p = P.get(id); if (!p) return false; const c = club(p.club); return (cid && p.club === cid) || (c && t.includes(c.name)); });
+  return hit.length === 1 ? 'p:' + hit[0] : null;
+}
 // a row of a player or a club opens him already: his own name stays plain there
 const lkOwn = (n, v) => { const r = n.closest('[data-pl],[data-cv],[data-prof]'); if (!r) return false; return (r.dataset.pl && v === 'p:' + r.dataset.pl) || (r.dataset.prof && v === 'p:' + r.dataset.prof) || (r.dataset.cv && v === 'c:' + r.dataset.cv); };
 function linkify(root){
@@ -2449,7 +2461,7 @@ function linkify(root){
       const [t0, ...r] = v.split(':'); el.dataset[t0 === 'p' ? 'lp' : t0 === 'c' ? 'lc' : 'lm'] = r.join(':'); el.classList.add('lk'); });
     const w = document.createTreeWalker(sc, NodeFilter.SHOW_TEXT, { acceptNode: n => !n.nodeValue.trim() || n.parentElement.closest(LK_SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT }), nodes = [];
     while (w.nextNode()) nodes.push(w.currentNode);
-    for (const n of nodes){ const txt = n.nodeValue, ms = linkMatches(txt, M).filter(([, , v]) => !lkOwn(n.parentElement, v)); if (!ms.length) continue;
+    for (const n of nodes){ const txt = n.nodeValue, ms = linkMatches(txt, M).map(([a, b, v]) => [a, b, lkResolve(n.parentElement, v, txt.slice(a, b))]).filter(([, , v]) => v && !lkOwn(n.parentElement, v)); if (!ms.length) continue;
       const fr = document.createDocumentFragment(); let last = 0;
       for (const [a, b, v] of ms){ fr.append(txt.slice(last, a)); fr.append(lkEl(v, txt.slice(a, b))); last = b; }
       fr.append(txt.slice(last)); n.replaceWith(fr); } }
@@ -4494,7 +4506,7 @@ function viewMatch(){
   if (MTAB === 'tactics'){ viewMatchTac(); return; }
   const clock = M.over ? 'FT' : !L.started ? '0' : L.atHT ? 'HT' : label(M);
   const last = M.feed[M.feed.length - 1] || { t: 'The teams are out.', c: '' };
-  const scorers = side => M.hs.filter(g => g.side === side).map(g => `${esc(surname(P.get(g.id).n))} ${g.l}`).join(', ');
+  const scorers = side => scorerLine(M.hs, side);
   const pct = (from) => { const Z = M.zones.filter(([m, h]) => (h - 1) * 100 + m > from); const hp = Z.length ? Z.filter(z => z[2] === 2).length + Z.filter(z => z[2] === 1).length / 2 : 0; return Z.length ? Math.round(100 * hp / Z.length) : 50; };
   const cur = (M.half - 1) * 100 + M.min, p5 = pct(cur - 5);
   if (last.c === 'goal' && L.flashed !== M.feed.length){ L.flashed = M.feed.length; L.flashT = Date.now(); }
@@ -4534,10 +4546,15 @@ function viewMatch(){
 }
 // your tactics during a match: over the whole screen, the match waiting; leaving them, a match that was running runs on
 function openMatchTac(){ const L = LIVE; if (!L) return; L.wasRun = L.started && !L.paused && !L.M.over; if (L.wasRun){ L.paused = true; clearTimeout(TIMER); } L.tabBack = MTAB === 'tactics' ? 'overview' : MTAB; MTAB = 'tactics'; TB.sel = null; TB.tab = 'squad'; TB.view = 'us'; viewMatch(); }
-function closeMatchTac(){ const L = LIVE; if (!L) return; MTAB = L.tabBack || 'overview'; TB.sel = null; if (L.wasRun){ L.wasRun = false; L.paused = false; viewMatch(); run(); } else viewMatch(); }
+function closeMatchTac(){ const L = LIVE; if (!L) return; L.why = null; MTAB = L.tabBack || 'overview'; TB.sel = null; if (L.wasRun){ L.wasRun = false; L.paused = false; viewMatch(); run(); } else viewMatch(); }
+/* the scorers of one side, a man once with all his minutes: "Marquinhos 12', 40' (pen)"; his name opens him (by his id) */
+function scorerLine(hs, side){
+  const by = new Map(); for (const g of hs || []) if (g.side === side){ if (!by.has(g.id)) by.set(g.id, []); by.get(g.id).push(`${g.l}'${g.how === 'pen' ? ' (pen)' : g.how === 'og' ? ' (og)' : ''}`); }
+  return [...by].map(([id, m]) => { const p = P.get(id); return `<span class="lk" data-lp="${id}">${esc(p ? surname(p.n) : '?')}</span> ${m.join(', ')}`; }).join('; ');
+}
 function viewMatchTac(){
   const L = LIVE, M = L.M, [kh, kh2] = kitOf(M.h), [ka, ka2] = kitOf(M.a), clock = M.over ? 'FT' : !L.started ? '0' : L.atHT ? 'HT' : label(M);
-  mframe(`<div class="mclock">${clock}</div><button class="sb go" id="tacback">${L.wasRun ? 'Back to the Match (it runs on)' : 'Back to the Match'}</button><p class="small dim" style="margin:8px 6px">The match waits while you are here.</p>`,
+  mframe(`<div class="mclock">${clock}</div><button class="sb go" id="tacback">${L.wasRun ? 'Back to the Match (it runs on)' : 'Back to the Match'}</button>${L.why ? `<p class="small yel" style="margin:8px 6px"><b>${L.why}</b></p>` : ''}<p class="small dim" style="margin:8px 6px">The match waits while you are here.</p>`,
     `<div class="mteams"><div class="t" style="background:${kh};color:${kh2}">${crest(M.h, 'mcr')}<span>${esc(club(M.h).name)}</span><b>${M.H.goals}</b></div><div class="t" style="background:${ka};color:${ka2}">${crest(M.a, 'mcr')}<span>${esc(club(M.a).name)}</span><b>${M.A.goals}</b></div></div>
     <div class="banner"><span></span><h1>${esc(club(me()).name)} Tactics<span class="sub">${clock === '0' ? 'Before kick-off' : clock === 'HT' ? 'Half time' : clock === 'FT' ? 'Full time' : `${clock}'`}</span></h1><span></span></div>
     <section class="pane mtacfull" id="mpanel">${mPanel()}</section>`);
@@ -4549,7 +4566,7 @@ function viewMatchTac(){
 function ftPanel(){
   const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, home = us === M.H;
   const gf = us.goals, ga = them.goals, won = gf > ga || (M.pens && (home ? M.pens[0] > M.pens[1] : M.pens[1] > M.pens[0])), drew = gf === ga && !M.pens;
-  const sc = side => M.hs.filter(g => g.side === side).map(g => `${esc(surname(P.get(g.id).n))} ${g.l}'${g.how === 'pen' ? ' (pen)' : ''}`).join(', ');
+  const sc = side => scorerLine(M.hs, side);
   const exp = clamp(.5 + (club(me()).q - club(them.cid).q) / 14 + (home ? .08 : -.08), .1, .9), got = won ? 1 : drew ? .45 : 0, d = got - exp;
   const board = d > .25 ? ['win', 'The board are delighted: few expected that.'] : d > 0 ? ['win', 'The board are pleased with the result.'] : d > -.25 ? ['draw', exp > .6 && !won ? 'The board expected more, but they understand.' : 'About what the board expected.'] : ['loss', 'The board are disappointed: they expected a win here.'];
   const mom = M.mom && P.get(M.mom), rt = id => M.over ? (us.rate[id] || 0) : 0;
@@ -4622,10 +4639,14 @@ function trySub(){ const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A; if (L
 function run(){
   clearTimeout(TIMER);
   const L = LIVE; if (!L || L.paused) return;
-  const M = L.M, n0 = M.feed.length, g0 = M.H.goals + M.A.goals;
+  const M = L.M, n0 = M.feed.length, g0 = M.H.goals + M.A.goals, i0 = M.inc.length;
   const going = step(M); L.others.forEach(o => { if (!going || o.half < M.half || (o.half === M.half && o.min < M.min)) step(o); });
   if (!going){ L.others.forEach(o => playOut(o)); L.paused = true; viewMatch(); return; }
   if (M.ht){ M.ht = false; L.paused = true; L.atHT = true; L.others.forEach(o => { while (!o.over && o.half === 1) step(o); o.ht = false; }); viewMatch(); return; }
+  /* an injury or a red card of ours, or a red card for them: the match stops and the tactics open, so you can make the
+     change (as CM's "pause on incidents") */
+  if (going && MTAB !== 'tactics'){ const us = M.h === me() ? 'h' : 'a', ev = M.inc.slice(i0).find(x => (x.k === 'inj' || x.k === 'red') && x.side === us || x.k === 'red' && x.side !== us);
+    if (ev){ L.why = `${ev.l}': ${ev.k === 'inj' ? `${esc(ev.t)} is injured` : ev.side === us ? `${esc(ev.t)} is sent off` : `${esc(club(ev.side === 'h' ? M.h : M.a).name)} are down to ten (${esc(ev.t)} sent off)`}.`; openMatchTac(); return; } }
   if (M.feed.length !== n0 || M.min % 5 === 0 || (MTAB !== 'overview' && MTAB !== 'tactics')) viewMatch();
   else { const c = document.querySelector('.mclock'); if (c) c.textContent = label(M); }
   TIMER = setTimeout(run, SPEEDS[SPEED][0] * (M.H.goals + M.A.goals > g0 ? 3 : 1));
