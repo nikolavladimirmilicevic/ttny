@@ -36,12 +36,20 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 /* the frame */
 .cm{display:grid;grid-template-columns:200px 1fr;gap:12px;max-width:1180px;margin:0 auto;padding:0 16px 30px}
 .side{background:var(--panel);border-radius:14px;display:flex;flex-direction:column;align-items:stretch;padding:10px 8px;gap:4px;align-self:start;position:sticky;top:10px}
-.dstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-bottom:10px}
-.dday{background:var(--panel);border:1px solid #ffffff12;border-radius:9px;padding:5px 7px 6px;min-width:0;height:64px;overflow:hidden;font-size:11.5px;line-height:1.35}
+.dstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;max-width:1180px;margin:0 auto 10px;padding:0 16px;box-sizing:border-box;overflow:hidden}
+.dday{background:var(--panel);border:1px solid #ffffff12;border-radius:9px;padding:6px 8px 7px;min-width:0;min-height:66px;font-size:11.5px;line-height:1.3}
 .dday.past{opacity:.72}.dday.fx{cursor:pointer}.dday.fx:hover{border-color:#ffffff40}.dday.today{background:color-mix(in srgb,var(--gold) 13%,var(--panel));border-color:var(--gold)}
-.dday .dh{display:flex;justify-content:space-between;font:700 10.5px/1.3 var(--display);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}.dday.today .dh{color:var(--gold)}
-.dday .de{display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;min-width:0}.dday .dn{overflow:hidden;text-overflow:ellipsis;font-weight:600;min-width:0}.dday .dc{overflow:hidden;text-overflow:ellipsis;min-width:0;font-size:10.5px}
-.dday .dn,.dday .dn *{color:var(--text)}.dday .dcr{width:14px;height:14px;flex:0 0 14px;object-fit:contain}.dday .form span{width:15px;height:15px;line-height:15px;font-size:10px}
+.dday .dh{display:flex;justify-content:space-between;font:700 10.5px/1.3 var(--display);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}.dday.today .dh{color:var(--gold)}
+.dday .ampm{color:var(--night);background:var(--gold);border-radius:4px;padding:0 4px;margin-left:3px;font-size:9.5px}
+.dday .de{display:flex;align-items:flex-start;gap:4px;min-width:0;overflow-wrap:anywhere}.dday .dn{font-weight:600;min-width:0}.dday .dc{font-size:10.5px;overflow-wrap:anywhere}
+.dday .dn,.dday .dn *{color:var(--text)}.dday .dn .dim{color:var(--muted)}.dday .dcr{width:14px;height:14px;flex:0 0 14px;object-fit:contain;margin-top:1px}.dday .form span{width:15px;height:15px;line-height:15px;font-size:10px}
+.dstrip.moved .dday{animation:dslide .55s cubic-bezier(.2,.8,.2,1) both}.dstrip.moved .dday:nth-child(2){animation-delay:.03s}.dstrip.moved .dday:nth-child(3){animation-delay:.06s}.dstrip.moved .dday:nth-child(4){animation-delay:.09s}.dstrip.moved .dday:nth-child(5){animation-delay:.12s}.dstrip.moved .dday:nth-child(6){animation-delay:.15s}.dstrip.moved .dday:nth-child(7){animation-delay:.18s}
+@keyframes dslide{from{transform:translateX(calc(var(--shift,1) * (100% + 6px)));opacity:.15}to{transform:none}}
+.dstrip.moved .dday.today{animation:dslide .55s cubic-bezier(.2,.8,.2,1) .09s both,dglow 1.4s ease .5s}
+@keyframes dglow{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--gold) 70%,transparent)}40%{box-shadow:0 0 0 6px color-mix(in srgb,var(--gold) 25%,transparent)}100%{box-shadow:0 0 0 0 transparent}}
+.sure{position:fixed;inset:0;background:#0008;display:grid;place-items:center;z-index:999;animation:sfade .15s ease}.surebox{background:var(--panel);border:1px solid #ffffff22;border-radius:14px;padding:18px 20px;max-width:380px;width:calc(100% - 40px);box-shadow:0 20px 50px #0009}
+.surebox h3{margin:0 0 6px;font:700 17px/1.3 var(--display)}.surebox p{margin:0 0 14px;color:var(--muted);font-size:13.5px}.surebt{display:flex;justify-content:flex-end;gap:8px}@keyframes sfade{from{opacity:0}}
+@media (prefers-reduced-motion:reduce){.dstrip.moved .dday{animation:none}}
 @media(max-width:700px){.dstrip{grid-template-columns:repeat(5,minmax(0,1fr))}.dday.o3{display:none}}@media(max-width:430px){.dstrip{grid-template-columns:repeat(3,minmax(0,1fr))}.dday.o2{display:none}}
 @media(max-width:760px){.mnow .big{height:96px;min-height:0;overflow:hidden}.mrec p{height:38px;overflow:hidden;padding:3px 9px;line-height:1.25}.mrec p>span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}@media(min-width:761px){.mnow{height:132px}.mnow .big{height:100%;min-height:0;overflow:hidden}.mrec{height:100%}.mrec p{flex:1 1 0;min-height:0;overflow:hidden;padding:3px 9px;line-height:1.25}.mrec p>span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
 .date{background:var(--panel-2);border-radius:10px;text-align:center;padding:8px 4px;font:600 15px/1.25 var(--display);letter-spacing:.04em;text-transform:uppercase}
@@ -2668,12 +2676,28 @@ function dayStrip(){
       if (x.rr && !x.rr.bg && x.rr.s){ const r = x.rr.w === cid ? 'W' : x.rr.w == null ? 'D' : 'L'; tail = `<span class="form"><span class="${r}">${r}</span></span> ${x.rr.s[0]}-${x.rr.s[1]}`; }
       else if (live){ tail = `<b class="win">${LIVE.M.over ? 'FT' : label(LIVE.M) + "'"}</b> ${LIVE.M.H.goals}-${LIVE.M.A.goals}`; }
       else tail = `<span class="dim">${(x.m && x.m.ko) || (wd === 0 || wd === 6 ? '15:00' : '19:45')}</span>`;
-      it.push(`<div class="de" title="${esc(comp)}">${crest(opp, 'dcr')}<span class="dn">${esc(club(opp) ? club(opp).name : '?')}</span> <span class="dim">${ha}</span></div><div class="de">${tail} <span class="dim dc">${esc(comp)}</span></div>`); }
+      it.push(`<div class="de">${crest(opp, 'dcr')}<span class="dn">${esc(club(opp) ? club(opp).name : '?')} <span class="dim">(${ha})</span></span></div><div class="de">${tail}</div><div class="dc dim">${esc(comp)}</div>`); }
     for (const [a, b] of W){ if (d === a) it.push('<div class="de yel">Transfer window opens</div>'); if (d === b) it.push('<div class="de yel">Deadline day</div>'); }
     if (!it.length) it.push(`<div class="de dim">${o < 0 ? '' : 'No match'}</div>`);
     const fx = rows.some(r => r.date === d && r.m);
-    return `<div class="dday ${o === 0 ? 'today' : o < 0 ? 'past' : ''} ${fx ? 'fx' : ''} o${Math.abs(o)}" ${fx ? 'data-dayfx="1"' : ''}><div class="dh"><span>${WD[wd].slice(0, 3)}</span><span>${shortDate(d)}</span></div>${it.slice(0, 2).join('')}</div>`; };
+    const ampm = o === 0 ? `<b class="ampm">${(events()[0] || {}).date === S.date || LIVE ? 'PM' : 'AM'}</b>` : '';
+    return `<div class="dday ${o === 0 ? 'today' : o < 0 ? 'past' : ''} ${fx ? 'fx' : ''} o${Math.abs(o)}" ${fx ? 'data-dayfx="1"' : ''}><div class="dh"><span>${WD[wd].slice(0, 3)} ${ampm}</span><span>${shortDate(d)}</span></div>${it.slice(0, 2).join('')}</div>`; };
   return `<div class="dstrip">${[-3, -2, -1, 0, 1, 2, 3].map(cell).join('')}</div>`;
+}
+// a question before something that cannot be taken back: a small box over the screen, Cancel and the action
+function sureBox(title, text, yes, onYes){
+  const d = document.createElement('div'); d.className = 'sure';
+  d.innerHTML = `<div class="surebox" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="surebt"><button class="btn" data-no>Cancel</button><button class="btn go" data-yes>${esc(yes)}</button></div></div>`;
+  const close = () => d.remove(); d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-no]')) close(); else if (e.target.closest('[data-yes]')) { close(); onYes(); } });
+  document.body.appendChild(d); d.querySelector('[data-yes]').focus();
+}
+let STRIP_LAST = null;
+function stripAnim(){
+  const el = document.querySelector('.dstrip'); if (!el || !S) return;
+  const n = STRIP_LAST ? daysBetween(STRIP_LAST, S.date) : 0; STRIP_LAST = S.date;
+  if (n <= 0) return;
+  el.style.setProperty('--shift', Math.min(n, 7)); el.classList.remove('moved'); void el.offsetWidth; el.classList.add('moved');
+  const t = el.querySelector('.dday.today'); if (t) { t.classList.add('flip'); }
 }
 function wireStrip(){ document.querySelectorAll('[data-dayfx]').forEach(el => el.addEventListener('click', () => { if (LIVE) return; go({ s: 'club', cid: me(), tab: 'fix' }); })); }
 function frame(o){
@@ -2681,7 +2705,7 @@ function frame(o){
   const unread = S.news.filter(n => n.n).length, ev = events()[0], today = ev && ev.date === S.date;
   const dt = new Date(S.date + 'T12:00:00Z');
   const tabs = (L, on, id) => L && L.length ? `<nav class="tabs" id="${id}">${L.map(([k, n, dis]) => `<button data-t="${k}" class="${on === k ? 'on' : ''}" ${dis ? 'disabled' : ''}>${n}</button>`).join('')}</nav>` : '';
-  $('#app').innerHTML = `${header()}<div class="cm">
+  $('#app').innerHTML = `${header()}${dayStrip()}<div class="cm">
     <aside class="side">
       <div class="arrows"><button id="navb" aria-label="Back" ${HIST.length ? '' : 'disabled'}>←</button><button id="navf" aria-label="Forward" ${FWD.length ? '' : 'disabled'}>→</button></div>
       ${LIVE ? '<button class="sb go" id="backm">Back to Match</button>' : S.done ? (S.next ? '<button class="sb go" id="nextseason">Start the Next Season</button>' : S.sacked ? '<button class="sb go" id="findjob">Find a Job</button>' : '') : `<button class="sb go" id="cont">Continue Game</button>`}
@@ -2689,7 +2713,7 @@ function frame(o){
       ${!S.done && pendingActs().length ? `<button class="sb newsflag" id="needs">Needs Your Answer (${pendingActs().length})</button>` : ''}
       ${unread && V.s !== 'news' ? '<button class="sb newsflag" data-side="news">You Have News</button>' : ''}
     </aside>
-    <div class="main">${dayStrip()}
+    <div class="main">
       <div class="banner ${o.crest ? 'wc' : ''} ${o.nav ? 'hn' : ''}" style="--k1:${o.k1 || '#2A44D0'};--k2:${o.k2 || '#fff'}"><span class="bcr">${o.nav ? `<span class="bnav"><button id="bprev" aria-label="Previous ${o.nav.what}" title="Previous ${o.nav.what}">‹</button><button id="bnext" aria-label="Next ${o.nav.what}" title="Next ${o.nav.what}">›</button></span>` : ''}${o.crest ? crest(o.crest, 'bigcr') : ''}</span><h1>${o.title}${o.sub ? `<span class="sub">${o.sub}</span>` : ''}${o.info ? `<span class="binfo">${o.info}</span>` : ''}</h1><span class="act">${o.act || ''}</span></div>
       ${o.tools ? `<div class="tools">${o.tools}</div>` : ''}
       <section class="pane">${o.body}</section>
@@ -2699,7 +2723,7 @@ function frame(o){
   const back = () => { if (!HIST.length) return; FWD.push(V); V = HIST.pop(); PICK = null; view(); };
   on('#navb', back); on('#back', back);
   on('#navf', () => { if (!FWD.length) return; HIST.push(V); V = FWD.pop(); view(); });
-  wireStrip(); on('#cont', onContinue); on('#backm', backToMatch); on('#needs', () => { const a = pendingActs()[0]; if (a) go(a.v); });
+  wireStrip(); stripAnim(); on('#cont', onContinue); on('#backm', backToMatch); on('#needs', () => { const a = pendingActs()[0]; if (a) go(a.v); });
   on('#nextseason', () => { newSeason(); save(); V = { s: 'news' }; view(); });
   on('#findjob', () => go({ s: 'managers', tab: 'jobs' }));
   if (o.next) on('#next', o.next);
@@ -4592,7 +4616,8 @@ addEventListener('pagehide', () => liveSave(true)); document.addEventListener('v
 const icon = k => ({ goal: '⚽ ', red: '🟥 ', yel: '🟨 ', inj: '✚ ', sub: '⇄ ' })[k] || '';
 function mframe(side, body){
   const L = LIVE, M = L.M;
-  $('#app').innerHTML = `${header()}<div class="cm"><aside class="side">${side}</aside><div class="main">${dayStrip()}${body}</div></div>`;
+  $('#app').innerHTML = `${header()}${dayStrip()}<div class="cm"><aside class="side">${side}</aside><div class="main">${body}</div></div>`;
+  stripAnim();
 }
 function viewPre(){
   const L = LIVE, M = L.M, opp = M.h === me() ? M.a : M.h, st = standings(), [kh, kh2] = kitOf(M.h), [ka, ka2] = kitOf(M.a);
@@ -4673,7 +4698,8 @@ function viewMatch(){
   const on = (id, f) => { const el = $('#' + id); if (el) el.addEventListener('click', f); };
   on('play', () => { L.started = true; L.paused = false; L.atHT = false; run(); });
   on('pause', () => { L.paused = true; clearTimeout(TIMER); liveSave(true); viewMatch(); });
-  on('skip', () => { clearTimeout(TIMER); L.started = true; L.paused = true; L.atHT = false; M.auto = true; while (step(M)) L.others.forEach(o => step(o)); L.others.forEach(o => playOut(o)); liveSave(true); viewMatch(); });
+  on('skip', () => sureBox('Play the rest of the match at once?', 'You will not be able to make changes before the final whistle.', 'To Full Time', skipToFT));
+  function skipToFT(){ clearTimeout(TIMER); L.started = true; L.paused = true; L.atHT = false; M.auto = true; while (step(M)) L.others.forEach(o => step(o)); L.others.forEach(o => playOut(o)); liveSave(true); viewMatch(); }
   on('done', () => { LIVE = null; liveDrop(); if (L.shield) finishShield(M); else if (L.lc) finishLC(M, L.others); else if (L.usc) finishUSC(M); else if (L.fic) finishFIC(M); else if (L.cwc) finishCWC(M, L.others); else if (L.eu) finishEU(L.eu, M, L.others); else if (L.cup) finishCup(M, L.others); else finishLeague(M, L.others); passDays(1); save(); HIST.push(V); V = { s: 'news', i: 0 }; view(); scrollTo(0, 0); });
   document.querySelectorAll('[data-spd]').forEach(b => b.addEventListener('click', () => { SPEED = +b.dataset.spd; OPT.spd = SPEED; saveOpt(); viewMatch(); }));
   document.querySelectorAll('[data-mt]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.mt; if (k === 'tactics'){ openMatchTac(); return; } MTAB = k; TB.sel = null; viewMatch(); }));

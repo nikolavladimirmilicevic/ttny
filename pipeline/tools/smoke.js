@@ -55,7 +55,7 @@ const fail = m => { console.error('SMOKE FAILED: ' + m); process.exit(1); };
         await m.waitForTimeout(200);
       }
       for (let i = 0; i < 40 && !(await m.$('#tomatch')); i++){ await m.click('#cont'); await m.waitForTimeout(150); }
-      await m.click('#tomatch'); await m.waitForSelector('#skip', { timeout: 10000 }); await m.click('#skip'); await m.waitForSelector('#done', { timeout: 10000 }); await m.click('#done');
+      await m.click('#tomatch'); await m.waitForSelector('#skip', { timeout: 10000 }); await m.click('#skip'); await m.click('.sure [data-yes]'); await m.waitForSelector('#done', { timeout: 10000 }); await m.click('#done');
       await m.waitForSelector('#cont', { timeout: 10000 });
     }
   } catch (e) { errs.push(e.message); }
