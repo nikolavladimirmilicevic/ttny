@@ -603,7 +603,7 @@ Serie A pages (16.11.2026). From the Serie A clubs and transfers pages:
 - **Nationalities, rounds, the menu, sorting (19.11.2026):**
   - *A player with no nationality in the data* (155, mostly in the Championship) takes his club's country at the start (Wales for Cardiff, Swansea, Wrexham and Newport).
   - *Fixtures* give a league match's round ("Premier League, round 1"), as the cups give their rounds.
-  - *Rest of the World* holds only clubs from outside Europe (by confederation); Europe's Club World Cup clubs are under Europe.
+  - *Rest of Europe and Rest of the World* (under Clubs) hold only clubs of countries not listed above them (by code and by name): Europe's clubs (by confederation) in the first, the others in the second.
   - *Every table sorts:* a table with a header and no sorting of its own sorts by any column on a click on its head, again for the other way, numbers as numbers (money, places, dates too); the order stays while the screen is redrawn.
   - *The menu:* a long list with one item open (a league's clubs when you are on one of them) shows only that one and "Show all N", so what you are on stays near the top; on a club's screen the menu went from about a hundred lines to eighteen.
 - **Club overview, clubs abroad (19.11.2026):**

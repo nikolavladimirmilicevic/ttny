@@ -2529,9 +2529,10 @@ function menuTree(o, unread){
         return { id: 'clk.' + k, label: esc(D.lgs[k].country), v: { s: 'clubs', lg: k }, kids: [...byName(top.map(id => club(id))).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: otherKids(c.id) })),
           ...(sec.length ? [{ id: 'clk2.' + k, label: 'Other Clubs', v: { s: 'clubs', lg: k + '2' }, kids: byName(sec).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: otherKids(c.id) })) }] : [])] }; }),
       // the clubs of leagues not played: Europe's (the European cups) and the rest of the world's (the Club World Cup)
-      ...(() => { const lgCtry = new Set(Object.keys(D.lgs || {})), rest = everyClub().filter(c => !lgCtry.has(c.ctry || 'ENG') && !LG.has(c.id)), eu = rest.filter(c => c.conf ? c.conf === 'UEFA' : true), w = rest.filter(c => !eu.includes(c));
+      // only clubs of countries not listed above (by code or by name), as for the rest of the world
+      ...(() => { const lgCtry = new Set(Object.keys(D.lgs || {})), lgName = new Set(Object.values(D.lgs || {}).map(L => L.country)), rest = everyClub().filter(c => !lgCtry.has(c.ctry || 'ENG') && !lgName.has(ctryName(c)) && !LG.has(c.id)), eu = rest.filter(c => c.conf ? c.conf === 'UEFA' : true), w = rest.filter(c => !eu.includes(c));
         const item = c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: otherKids(c.id) });
-        return [...(eu.length ? [{ id: 'cleu', label: 'Europe', v: { s: 'find', tab: 'fclubs' }, kids: byName(eu).map(item) }] : []), ...(w.length ? [{ id: 'clw', label: 'Rest of the World', v: { s: 'find', tab: 'fclubs' }, kids: byName(w).map(item) }] : [])]; })()] },
+        return [...(eu.length ? [{ id: 'cleu', label: 'Rest of Europe', v: { s: 'find', tab: 'fclubs' }, kids: byName(eu).map(item) }] : []), ...(w.length ? [{ id: 'clw', label: 'Rest of the World', v: { s: 'find', tab: 'fclubs' }, kids: byName(w).map(item) }] : [])]; })()] },
     { id: 'find', label: 'Search', v: { s: 'find', tab: 'search' }, kids: FIND_TABS.map(([t, n]) => ({ id: 'f.' + t, label: n, v: { s: 'find', tab: t } })) },
     { id: 'opt', label: 'Options', v: { s: 'options' } }];
   // the deepest item that is this screen; a screen the tree does not hold (a player, a comparison) gets its own entry
