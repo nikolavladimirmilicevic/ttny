@@ -2826,7 +2826,7 @@ function viewSetup(){
       localStorage.removeItem(slotKey(f.name)); try { localStorage.setItem(SLOTS, JSON.stringify(slotList().filter(x => x.name !== f.name))); } catch (e) {}
       if (S && S.slot === f.name){ S = null; LIVE = null; try { localStorage.removeItem('ttny.manager.last'); } catch (e) {} }
       FILE = ''; if (!setupHas()) SETUP = 'menu'; viewSetup(); return; }
-    LIVE = null;
+    LIVE = null; liveDrop();
     if (!adopt(raw)){ toast('That save no longer fits the league as it is today.'); return; }
     save(); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'news' }; view(); });
   // settings
@@ -3832,7 +3832,7 @@ function renderFlow(F){
 const to = k => { SETUP = k; FILE = ''; viewSetup(); scrollTo(0, 0); };
 function startNewGame(){
   const name = `${NEWG.first} ${NEWG.last}`.trim() || 'The manager';
-  LIVE = null; newGame(NEWG.club, name);
+  LIVE = null; liveDrop(); newGame(NEWG.club, name);
   Object.assign(S, { mask: NEWG.mask, nat: NEWG.nat, slot: NEWG.file || name, seen: [], short: [], fac: {}, hist: [{ d: S.date, c: S.club, t: `Hired as ${club(S.club).name} manager` }] });
   news('comp', `${D.season}/${String((D.season + 1) % 100).padStart(2, '0')} ${D.league} fixture list decided`, `The fixtures for the new season are out. ${esc(club(S.club).name)} start ${matchLine(S.rounds[0].m.find(m => m.h === S.club || m.a === S.club))}.`);
   save(); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'news' }; view();
@@ -4525,6 +4525,29 @@ function startLive(h, a, opts){
   LIVE.args = [h, a, opts]; LIVE.side = JSON.stringify([S.tac[me()].xi, S.tac[me()].bench]);
   MTAB = 'overview'; view(); scrollTo(0, 0);
 }
+/* a match under way is kept in the browser as it goes (each minute, at a pause, when the page is left): closed or
+   reloaded, the game opens it again where it stopped, paused. The save itself is the day's, from before the match */
+const LIVE_KEY = 'ttny.manager.live';
+let LIVE_SAVED = null;
+function liveSave(force){
+  const L = LIVE; if (!L || !L.started || !S) return;
+  const mark = `${L.M.half}-${L.M.min}-${L.M.over}-${L.paused}`; if (!force && mark === LIVE_SAVED) return; LIVE_SAVED = mark;
+  const all = [L.M, ...L.others]; all.forEach(m => [m.H, m.A].forEach(s => { s._ts = s.t === S.tac[s.cid]; }));
+  try { localStorage.setItem(LIVE_KEY, JSON.stringify({ v: 1, club: me(), date: S.date, season: S.season, slot: S.slot || '', tab: MTAB === 'tactics' ? (L.tabBack || 'overview') : MTAB,
+    L: { ...L, args: null, peek: false, wasRun: false, why: null } }, (k, v) => typeof v === 'function' ? undefined : k === 'p' && v && typeof v === 'object' && v.id != null ? undefined : v)); } catch (e) {}
+}
+const liveDrop = () => { LIVE_SAVED = null; try { localStorage.removeItem(LIVE_KEY); } catch (e) {} };
+function liveLoad(){
+  let o = null; try { o = JSON.parse(localStorage.getItem(LIVE_KEY) || 'null'); } catch (e) {}
+  if (!o || o.v !== 1 || !S || o.club !== me() || o.date !== S.date || o.season !== S.season || (o.slot || '') !== (S.slot || '')) { if (o) liveDrop(); return false; }
+  const L = o.L; for (const m of [L.M, ...(L.others || [])]) for (const s of [m.H, m.A]){
+    s.on.forEach(x => { x.p = P.get(x.id); }); if (s.on.some(x => !x.p)) { liveDrop(); return false; }
+    if (s._ts && S.tac[s.cid]){ Object.assign(S.tac[s.cid], s.t); s.t = S.tac[s.cid]; } delete s._ts; }
+  L.paused = true; L.pre = false; LIVE = L; MTAB = o.tab || 'overview';
+  toast(L.M.over ? 'The match you left is over: the result is waiting.' : `The match picks up where it stopped: ${label(L.M)}'.`);
+  return true;
+}
+addEventListener('pagehide', () => liveSave(true)); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') liveSave(true); });
 const icon = k => ({ goal: '⚽ ', red: '🟥 ', yel: '🟨 ', inj: '✚ ', sub: '⇄ ' })[k] || '';
 function mframe(side, body){
   const L = LIVE, M = L.M;
@@ -4608,9 +4631,9 @@ function viewMatch(){
     <section class="pane" id="mpanel">${panelBody}</section>`);
   const on = (id, f) => { const el = $('#' + id); if (el) el.addEventListener('click', f); };
   on('play', () => { L.started = true; L.paused = false; L.atHT = false; run(); });
-  on('pause', () => { L.paused = true; clearTimeout(TIMER); viewMatch(); });
-  on('skip', () => { clearTimeout(TIMER); L.started = true; L.paused = true; L.atHT = false; M.auto = true; while (step(M)) L.others.forEach(o => step(o)); L.others.forEach(o => playOut(o)); viewMatch(); });
-  on('done', () => { LIVE = null; if (L.shield) finishShield(M); else if (L.lc) finishLC(M, L.others); else if (L.usc) finishUSC(M); else if (L.fic) finishFIC(M); else if (L.cwc) finishCWC(M, L.others); else if (L.eu) finishEU(L.eu, M, L.others); else if (L.cup) finishCup(M, L.others); else finishLeague(M, L.others); passDays(1); save(); HIST.push(V); V = { s: 'news', i: 0 }; view(); scrollTo(0, 0); });
+  on('pause', () => { L.paused = true; clearTimeout(TIMER); liveSave(true); viewMatch(); });
+  on('skip', () => { clearTimeout(TIMER); L.started = true; L.paused = true; L.atHT = false; M.auto = true; while (step(M)) L.others.forEach(o => step(o)); L.others.forEach(o => playOut(o)); liveSave(true); viewMatch(); });
+  on('done', () => { LIVE = null; liveDrop(); if (L.shield) finishShield(M); else if (L.lc) finishLC(M, L.others); else if (L.usc) finishUSC(M); else if (L.fic) finishFIC(M); else if (L.cwc) finishCWC(M, L.others); else if (L.eu) finishEU(L.eu, M, L.others); else if (L.cup) finishCup(M, L.others); else finishLeague(M, L.others); passDays(1); save(); HIST.push(V); V = { s: 'news', i: 0 }; view(); scrollTo(0, 0); });
   document.querySelectorAll('[data-spd]').forEach(b => b.addEventListener('click', () => { SPEED = +b.dataset.spd; OPT.spd = SPEED; saveOpt(); viewMatch(); }));
   document.querySelectorAll('[data-mt]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.mt; if (k === 'tactics'){ openMatchTac(); return; } MTAB = k; TB.sel = null; viewMatch(); }));
   wireMatchPanel();
@@ -4723,12 +4746,13 @@ function run(){
   const L = LIVE; if (!L || L.paused) return;
   const M = L.M, n0 = M.feed.length, g0 = M.H.goals + M.A.goals, i0 = M.inc.length;
   const going = step(M); L.others.forEach(o => { if (!going || o.half < M.half || (o.half === M.half && o.min < M.min)) step(o); });
-  if (!going){ L.others.forEach(o => playOut(o)); L.paused = true; viewMatch(); return; }
-  if (M.ht){ M.ht = false; L.paused = true; L.atHT = true; L.others.forEach(o => { while (!o.over && o.half === 1) step(o); o.ht = false; }); viewMatch(); return; }
+  if (!going){ L.others.forEach(o => playOut(o)); L.paused = true; liveSave(true); viewMatch(); return; }
+  if (M.ht){ M.ht = false; L.paused = true; L.atHT = true; L.others.forEach(o => { while (!o.over && o.half === 1) step(o); o.ht = false; }); liveSave(true); viewMatch(); return; }
   /* an injury or a red card of ours, or a red card for them: the match stops and the tactics open, so you can make the
      change (as CM's "pause on incidents") */
   if (going && MTAB !== 'tactics'){ const us = M.h === me() ? 'h' : 'a', ev = M.inc.slice(i0).find(x => (x.k === 'inj' || x.k === 'red') && x.side === us || x.k === 'red' && x.side !== us);
     if (ev){ L.why = `${ev.l}': ${ev.k === 'inj' ? `${esc(ev.t)} is injured` : ev.side === us ? `${esc(ev.t)} is sent off` : `${esc(club(ev.side === 'h' ? M.h : M.a).name)} are down to ten (${esc(ev.t)} sent off)`}.`; openMatchTac(); return; } }
+  liveSave();
   if (M.feed.length !== n0 || M.min % 5 === 0 || (MTAB !== 'overview' && MTAB !== 'tactics')) viewMatch();
   else { const c = document.querySelector('.mclock'); if (c) c.textContent = label(M); }
   TIMER = setTimeout(run, SPEEDS[SPEED][0] * (M.H.goals + M.A.goals > g0 ? 3 : 1));
@@ -4760,6 +4784,7 @@ function run(){
   if (D.cup && (D.cup.rounds || []).length >= 5){ CUP_NAMES = D.cup.rounds.slice(-6).map(r => r[0]); CUP = D.cup.name || 'Cup'; }
   if (D.rules && D.rules.bench) BENCH = D.rules.bench;
   adopt(loadSave());
+  if (S) liveLoad();
   view();
 })();
 
