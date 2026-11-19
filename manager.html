@@ -47,7 +47,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .sb.go:hover{filter:brightness(1.08)}
 .sb.mgr,.sb.myclub{color:var(--text);font-weight:700}
 .sb.on{background:var(--panel-3);color:var(--text);box-shadow:inset 3px 0 0 var(--gold)}
-.mtree{display:flex;flex-direction:column;gap:1px;margin-top:2px}
+.mtree{display:flex;flex-direction:column;gap:1px;margin-top:2px}th.asrt{cursor:pointer;user-select:none}th.asrt:hover{color:var(--sky)}th.asrt[data-arr]:not([data-arr=""])::after{content:' ' attr(data-arr);font-size:10px}.mi.more span{color:var(--sky);font-style:italic}
 .mi{display:flex;align-items:center;gap:5px;width:100%;text-align:left;background:none;border:0;border-radius:7px;color:var(--muted);font-weight:500;font-size:13px;padding:6px 8px 6px calc(8px + var(--d) * 11px);line-height:1.2}
 .mi.d0{font-size:14px;font-weight:600;color:var(--text);padding-top:8px;padding-bottom:8px}
 .mi.mgr,.mi.myclub{font-weight:700}
@@ -1702,12 +1702,16 @@ let EU = new Set(), EUP = new Set();
 const euOn = () => !!(S && S.eu && S.eu.c);
 const ctryOf = id => club(id).ctry || (LG.has(id) ? HOME : '?');
 const euLabel = (k, d) => d.st == null ? `${EU_NAME[k]} matchday ${d.md}` : `${EU_NAME[k]} ${EU_STAGE[d.st]}${d.st < 4 ? (d.leg ? ', 2nd leg' : ', 1st leg') : ''}`;
+// a player the data gives no nationality takes his club's country (Wales for the Welsh clubs in the English leagues)
+const WELSH = new Set(['Cardiff City', 'Swansea City', 'Wrexham', 'Newport County']);
+function natFill(L){ for (const p of L || []){ if (p.nat) continue; const c = C.get(p.club); if (!c) continue; p.nat = WELSH.has(c.name) ? 'Wales' : ctryName(c); } }
 function euLoad(){
   const E = D.europe; D.eu = null; EU = new Set(); EUP = new Set();
   if (!E || !Array.isArray(E.comps) || !E.comps.length || !Array.isArray(E.clubs)) return;
   if (D.cwc && !E._cw){ E._cw = 1; E.clubs.push(...(D.cwc.clubs || [])); E.players.push(...(D.cwc.players || [])); }   // the Club World Cup's clubs from outside Europe live with the foreign clubs
   D.eu = E; D.euAll = E.players.slice();
   for (const c of E.clubs){ C.set(c.id, c); EU.add(c.id); c._q = c.q; }
+  natFill(E.players);
   for (const p of E.players){ P.set(p.id, p); EUP.add(p.id); p._b = { age: p.age, ovr: p.ovr, a: { ...p.a }, r: { ...p.r } }; }
 }
 /* the foreign players in this game's season: a year older for every season played, better while young and worse with
@@ -2472,10 +2476,28 @@ function view(){
   if (!S || SETUP_OPEN){ viewSetup(); return; }
   if (LIVE && !LIVE.peek){ viewMatch(); return; }
   ({ nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
-  linkify(document.body);
+  linkify(document.body); autoSort();
+}
+/* every table sorts: a table with a header and no sorting of its own sorts by any column on a click on its head (again
+   for the other way), numbers as numbers (money, places, dates too); the order stays while the screen is redrawn */
+const ASORT = {}, MON = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+function cellKey(td){ const s = (td ? td.innerText : '').trim().replace(/\s+/g, ' ');
+  let m = s.match(/^(?:[A-Z][a-z]{2} )?(\d{1,2}) ([A-Z][a-z]{2})\b/); if (m && MON.includes(m[2])) return MON.indexOf(m[2]) * 40 + +m[1];
+  m = s.match(/^[-+−]?[£€$]?\s?(\d[\d,]*(?:\.\d+)?)\s?([KkMm]?)/); if (m){ let v = parseFloat(m[1].replace(/,/g, '')) * ({ k: 1e3, m: 1e6 }[m[2].toLowerCase()] || 1); if (/^[-−]/.test(s)) v = -v; return v; }
+  return s ? s.toLowerCase() : '\uffff'; }
+function autoSort(){
+  document.querySelectorAll('.main table, .mdl table').forEach((tb, ti) => {
+    const ths = tb.tHead ? [...tb.tHead.rows[tb.tHead.rows.length - 1].cells] : [], body = tb.tBodies[0];
+    if (!ths.length || !body || body.rows.length < 2 || tb.classList.contains('restbl') || ths.some(h => h.matches('[data-srt],[data-tk],[data-sk],[data-sq],.srt')) || [...body.querySelectorAll('td')].some(td => td.colSpan > 1 || td.rowSpan > 1)) return;
+    const key = `${V.s}|${V.tab || ''}|${V.k || ''}|${ti}`, apply = () => { const st = ASORT[key]; if (!st) return; const rows = [...body.rows];
+      rows.sort((a, b) => { const x = cellKey(a.cells[st.c]), y = cellKey(b.cells[st.c]); return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y))) * st.d; }); rows.forEach(r => body.appendChild(r));
+      ths.forEach((h, i) => { h.classList.toggle('on', i === st.c); h.dataset.arr = i === st.c ? (st.d > 0 ? '▲' : '▼') : ''; }); };
+    ths.forEach((h, i) => { if (!h.innerText.trim()) return; h.classList.add('asrt'); h.addEventListener('click', () => { const st = ASORT[key];
+      const first = cellKey(body.rows[0] && body.rows[0].cells[i]); ASORT[key] = { c: i, d: st && st.c === i ? -st.d : (typeof first === 'number' ? -1 : 1) }; apply(); }); });
+    apply(); });
 }
 // the left menu: every screen and every tab, opening in a cascade (CM's menus without hunting for tabs on the page)
-let MOPEN = new Set(), MSHUT = new Set(), MITEMS = {}, MOB_OPEN = false;
+let MOPEN = new Set(), MSHUT = new Set(), MITEMS = {}, MOB_OPEN = false, MALL = new Set();
 const MDEF = { news: { f: 'all' }, club: { tab: 'ov', team: 'first' }, comp: { tab: 'ov' }, find: { tab: 'search' }, managers: { tab: 'rep' }, manager: { tab: 'hist' } };
 const vEq = v => v && Object.keys(v).every(k => (V[k] != null ? V[k] : k === 'cid' && V.s === 'club' ? me() : (MDEF[V.s] || {})[k]) === v[k]);
 function menuTree(o, unread){
@@ -2507,7 +2529,7 @@ function menuTree(o, unread){
         return { id: 'clk.' + k, label: esc(D.lgs[k].country), v: { s: 'clubs', lg: k }, kids: [...byName(top.map(id => club(id))).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: otherKids(c.id) })),
           ...(sec.length ? [{ id: 'clk2.' + k, label: 'Other Clubs', v: { s: 'clubs', lg: k + '2' }, kids: byName(sec).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: otherKids(c.id) })) }] : [])] }; }),
       // the clubs of leagues not played: Europe's (the European cups) and the rest of the world's (the Club World Cup)
-      ...(() => { const lgCtry = new Set(Object.keys(D.lgs || {})), rest = everyClub().filter(c => !lgCtry.has(c.ctry || 'ENG') && !LG.has(c.id)), eu = rest.filter(c => !c.cwc && NAT3[c.ctry]), w = rest.filter(c => !eu.includes(c));
+      ...(() => { const lgCtry = new Set(Object.keys(D.lgs || {})), rest = everyClub().filter(c => !lgCtry.has(c.ctry || 'ENG') && !LG.has(c.id)), eu = rest.filter(c => c.conf ? c.conf === 'UEFA' : true), w = rest.filter(c => !eu.includes(c));
         const item = c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: otherKids(c.id) });
         return [...(eu.length ? [{ id: 'cleu', label: 'Europe', v: { s: 'find', tab: 'fclubs' }, kids: byName(eu).map(item) }] : []), ...(w.length ? [{ id: 'clw', label: 'Rest of the World', v: { s: 'find', tab: 'fclubs' }, kids: byName(w).map(item) }] : [])]; })()] },
     { id: 'find', label: 'Search', v: { s: 'find', tab: 'search' }, kids: FIND_TABS.map(([t, n]) => ({ id: 'f.' + t, label: n, v: { s: 'find', tab: t } })) },
@@ -2527,8 +2549,12 @@ function menuTree(o, unread){
 function menuHTML(o, unread){
   const { T, path, hit } = menuTree(o, unread); MITEMS = {};
   const isOpen = it => it.kids && it.kids.length && ((MOPEN.has(it.id) || path.has(it.id)) && !MSHUT.has(it.id) || it.id === 'ctx');
+  /* a long list (a league's clubs) with one of its items open shows only that one, and "Show all": what you are on stays
+     near the top instead of below twenty others */
   const row = (it, d) => { MITEMS[it.id] = it; const op = isOpen(it);
-    return `<button class="mi d${d} ${it.cls || ''} ${it === hit ? 'on' : path.has(it.id) ? 'path' : ''}" data-mi="${it.id}" style="--d:${d}">${it.kids && it.kids.length && it.id !== 'ctx' ? `<i class="car">${op ? '▾' : '▸'}</i>` : ''}<span>${it.label}</span></button>${op ? `<div class="msub">${it.kids.map(k => row(k, d + 1)).join('')}</div>` : ''}`; };
+    const kids = op ? it.kids : [], onK = kids.filter(k => path.has(k.id)), fold = kids.length > 8 && onK.length && !MALL.has(it.id) && it.id !== 'ctx';
+    const sub = op ? (fold ? onK.map(k => row(k, d + 1)).join('') + `<button class="mi more d${d + 1}" data-mall="${it.id}" style="--d:${d + 1}"><span>Show all ${kids.length}…</span></button>` : it.kids.map(k => row(k, d + 1)).join('') + (MALL.has(it.id) && kids.length > 8 ? `<button class="mi more d${d + 1}" data-mless="${it.id}" style="--d:${d + 1}"><span>Show fewer</span></button>` : '')) : '';
+    return `<button class="mi d${d} ${it.cls || ''} ${it === hit ? 'on' : path.has(it.id) ? 'path' : ''}" data-mi="${it.id}" style="--d:${d}">${it.kids && it.kids.length && it.id !== 'ctx' ? `<i class="car">${op ? '▾' : '▸'}</i>` : ''}<span>${it.label}</span></button>${op ? `<div class="msub">${sub}</div>` : ''}`; };
   const tree = T.map(it => row(it, 0)).join('');
   const crumb = [...path].filter(id => id && MITEMS[id]).map(id => MITEMS[id].label.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&')).slice(-2).map(esc).join(' › ');
   return `<button class="mtog" id="mtog" aria-expanded="${MOB_OPEN}">☰ Menu<span class="crumb">${crumb}</span>${MOB_OPEN ? '▴' : '▾'}</button><nav class="mtree" aria-label="Menu">${tree}</nav>`;
@@ -2536,11 +2562,13 @@ function menuHTML(o, unread){
 function wireMenu(){
   const side = document.querySelector('.mtree') && document.querySelector('.mtree').closest('.side'); if (side) side.classList.toggle('mopen', MOB_OPEN);
   const tg = $('#mtog'); if (tg) tg.addEventListener('click', () => { MOB_OPEN = !MOB_OPEN; view(); });
+  document.querySelectorAll('[data-mall]').forEach(b => b.addEventListener('click', () => { MALL.add(b.dataset.mall); view(); }));
+  document.querySelectorAll('[data-mless]').forEach(b => b.addEventListener('click', () => { MALL.delete(b.dataset.mless); view(); }));
   document.querySelectorAll('[data-mi]').forEach(b => b.addEventListener('click', () => {
     const it = MITEMS[b.dataset.mi]; if (!it) return;
     const onPath = b.classList.contains('on') || b.classList.contains('path'), open = !!b.nextElementSibling && b.nextElementSibling.classList.contains('msub');
     if (it.kids && it.kids.length && open && onPath && it.id !== 'ctx'){ MSHUT.add(it.id); MOPEN.delete(it.id); view(); return; }
-    MSHUT.delete(it.id); MOPEN = new Set([...(it.up || []), it.id]); if (!(it.kids && it.kids.length)) MOB_OPEN = false;
+    MSHUT.delete(it.id); MOPEN = new Set([...(it.up || []), it.id]); MALL = new Set([...MALL].filter(x => x === it.id || (it.up || []).includes(x))); if (!(it.kids && it.kids.length)) MOB_OPEN = false;
     if (it.act) it.act(); else if (it.v && !onPath) go(it.v); else if (it.v && !vEq(it.v)) go(it.v); else view();
   }));
   const on = document.querySelector('.mtree .on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
@@ -3069,7 +3097,7 @@ function clubNext(cid, o){
 const allResults = () => [...S.results.flatMap(x => x.res.map(r => ({ ...r, comp: 'League', date: x.date }))), ...S.cup.log.flatMap(l => l.res.filter(r => !r.bg).map(r => ({ ...r, comp: 'Cup', date: l.date })))];
 function clubFixtures(cid, o){
   const rows = [];
-  S.rounds.forEach((r, i) => { const m = r.m.find(x => x.h === cid || x.a === cid); if (m){ const res = S.results.find(x => x.n === i + 1); rows.push({ date: r.date, comp: 'League', m, rr: res && res.res.find(x => x.h === m.h && x.a === m.a) }); } });
+  S.rounds.forEach((r, i) => { const m = r.m.find(x => x.h === cid || x.a === cid); if (m){ const res = S.results.find(x => x.n === i + 1); rows.push({ date: r.date, comp: 'League', rd: i + 1, m, rr: res && res.res.find(x => x.h === m.h && x.a === m.a) }); } });
   // the next round's draw is known as soon as the round before is over (the draws are seeded): the opponents show from then
   const isM = x => x.h === cid || x.a === cid;
   const cupNext = S.cup.stage < CN() && S.cup.alive.includes(cid) ? (() => { const dr = cupDraw(); return { m: dr.ties.find(isM), bye: (dr.bye || []).includes(cid) }; })() : null;
@@ -3089,8 +3117,8 @@ function clubFixtures(cid, o){
   rows.sort((a, b) => a.date < b.date ? -1 : 1);
   const cl = c => c === 'League' ? esc(D.league) : c;   // the league by its name (a link, as every competition)
   const res = rr => { if (!rr) return ''; const r = rr.w === cid ? 'W' : rr.w == null ? 'D' : 'L'; return `<span class="form"><span class="${r}">${r}</span></span> ${rr.s[0]}-${rr.s[1]}${rr.p ? ` (${rr.p[0]}-${rr.p[1]} p)` : ''}`; };
-  o.body = `<div class="tw"><table><thead><tr><th>Date</th><th class="mh">Competition</th><th>Opponents</th><th class="mh">Venue</th><th>Result</th></tr></thead><tbody>${rows.map(x => !x.m ? `<tr><td>${fmtDate(x.date)}<span class="mo small dim">${cl(x.comp)}</span></td><td class="mh">${cl(x.comp)}</td><td colspan="3" class="dim">${x.bye ? 'A bye: through to the next round without playing' : 'Drawn when the round before is over'}</td></tr>`
-    : `<tr class="${x.rr && !x.nr ? 'click' : ''}" ${x.eur ? `data-eur="${x.eur}"` : x.rr && !x.nr ? `data-rep="${x.m.h}|${x.m.a}|${x.comp === 'League' ? 'League' : 'Cup'}"` : ''}><td>${fmtDate(x.date)}<span class="mo small dim">${cl(x.comp)}</span></td><td class="mh">${cl(x.comp)}</td><td><b>${esc(club(x.m.h === cid ? x.m.a : x.m.h).name)}</b><span class="mo small dim">${x.comp === SHIELD || x.comp === LC + ' Final' ? 'Wembley' : x.neutral ? 'Neutral' : x.m.h === cid ? 'Home' : 'Away'}</span></td><td class="mh">${x.comp === SHIELD || x.comp === LC + ' Final' ? 'Wembley' : x.neutral ? 'Neutral' : x.m.h === cid ? 'Home' : 'Away'}</td><td>${res(x.rr)}</td></tr>`).join('')}</tbody></table></div>`;
+  o.body = `<div class="tw"><table><thead><tr><th>Date</th><th class="mh">Competition</th><th>Opponents</th><th class="mh">Venue</th><th>Result</th></tr></thead><tbody>${rows.map(x => !x.m ? `<tr><td>${fmtDate(x.date)}<span class="mo small dim">${cl(x.comp)}${x.rd ? `, round ${x.rd}` : ''}</span></td><td class="mh">${cl(x.comp)}${x.rd ? `<span class="dim">, round ${x.rd}</span>` : ''}</td><td colspan="3" class="dim">${x.bye ? 'A bye: through to the next round without playing' : 'Drawn when the round before is over'}</td></tr>`
+    : `<tr class="${x.rr && !x.nr ? 'click' : ''}" ${x.eur ? `data-eur="${x.eur}"` : x.rr && !x.nr ? `data-rep="${x.m.h}|${x.m.a}|${x.comp === 'League' ? 'League' : 'Cup'}"` : ''}><td>${fmtDate(x.date)}<span class="mo small dim">${cl(x.comp)}${x.rd ? `, round ${x.rd}` : ''}</span></td><td class="mh">${cl(x.comp)}${x.rd ? `<span class="dim">, round ${x.rd}</span>` : ''}</td><td><b>${esc(club(x.m.h === cid ? x.m.a : x.m.h).name)}</b><span class="mo small dim">${x.comp === SHIELD || x.comp === LC + ' Final' ? 'Wembley' : x.neutral ? 'Neutral' : x.m.h === cid ? 'Home' : 'Away'}</span></td><td class="mh">${x.comp === SHIELD || x.comp === LC + ' Final' ? 'Wembley' : x.neutral ? 'Neutral' : x.m.h === cid ? 'Home' : 'Away'}</td><td>${res(x.rr)}</td></tr>`).join('')}</tbody></table></div>`;
   frame(o);
   document.querySelectorAll('[data-eur]').forEach(r => r.addEventListener('click', () => { const [k, di, i] = r.dataset.eur.split('|'), rr = k === 'fic' ? ficStep(+di).res : k === 'usc' ? S.usc.res : k === 'cwc' ? S.cwc.days[+di].res[+i] : S.eu.c[k].days[+di].res[+i]; go({ s: 'club', cid, tab: 'last', rr }); }));
   document.querySelectorAll('[data-rep]').forEach(r => r.addEventListener('click', () => { const [h, a, comp] = r.dataset.rep.split('|'); const rr = allResults().find(x => x.h === +h && x.a === +a && x.comp === comp); if (rr) go({ s: 'club', cid, tab: 'last', rr }); }));
@@ -4618,7 +4646,8 @@ function run(){
   D.allClubs = D.clubs.concat(D.second ? D.second.clubs : [], xc);
   if (D.second) D.players = D.players.concat(D.second.players);
   D.players = D.players.concat(xp);
-  D.players.forEach(p => { P.set(p.id, p); p._c0 = p.club; p._n0 = p.no; }); D.all = D.players.slice(); D.allClubs.forEach(c => C.set(c.id, c));
+  D.allClubs.forEach(c => C.set(c.id, c)); natFill(D.players);
+  D.players.forEach(p => { P.set(p.id, p); p._c0 = p.club; p._n0 = p.no; }); D.all = D.players.slice();
   D.pool = D.all.slice(); setLeagues(null); euLoad();
   if (D.cup && (D.cup.rounds || []).length >= 5){ CUP_NAMES = D.cup.rounds.slice(-6).map(r => r[0]); CUP = D.cup.name || 'Cup'; }
   if (D.rules && D.rules.bench) BENCH = D.rules.bench;
