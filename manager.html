@@ -48,14 +48,14 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .sb.mgr,.sb.myclub{color:var(--text);font-weight:700}
 .sb.on{background:var(--panel-3);color:var(--text);box-shadow:inset 3px 0 0 var(--gold)}
 .mtree{display:flex;flex-direction:column;gap:1px;margin-top:2px}th.asrt{cursor:pointer;user-select:none}th.asrt:hover{color:var(--sky)}th.asrt[data-arr]:not([data-arr=""])::after{content:' ' attr(data-arr);font-size:10px}.mi.more span{color:var(--sky);font-style:italic}
-.mi{display:flex;align-items:center;gap:5px;width:100%;text-align:left;background:none;border:0;border-radius:7px;color:var(--muted);font-weight:500;font-size:13px;padding:6px 8px 6px calc(8px + var(--d) * 11px);line-height:1.2}
-.mi.d0{font-size:14px;font-weight:600;color:var(--text);padding-top:8px;padding-bottom:8px}
+.mi{display:flex;align-items:center;gap:6px;width:100%;text-align:left;background:none;border:0;border-radius:6px;color:var(--muted);font-weight:500;font-size:13px;padding:5px 8px 5px calc(10px + var(--d) * 12px);line-height:1.2}
+.mi.d0{font-size:14px;font-weight:600;color:var(--text);padding:8px 10px}.msec{background:var(--panel-2);border-radius:8px;padding:0 0 5px;margin:3px 0;box-shadow:inset 3px 0 0 var(--gold)}.msec>.mi.d0{color:var(--gold)}.msec>.mi.d0.on{background:none;box-shadow:none}.mi.d1{font-size:13px}.mi.d2{font-size:12.5px}.mi.mrec{color:var(--muted);font-size:12.5px}.mi.mclub{color:var(--text);font-weight:600}.mi.msep{margin-top:4px;border-top:1px solid #ffffff1a;border-radius:0 0 6px 6px;padding-top:7px}.msub .msub{border-left:1px solid var(--line, #ffffff22);margin-left:20px}.msub .msub .mi{padding-left:10px}
 .mi.mgr,.mi.myclub{font-weight:700}
 .mi:hover{background:var(--panel-2);color:var(--text)}
 .mi.path{color:var(--text)}
 .mi.on{background:var(--panel-3);color:var(--text);box-shadow:inset 3px 0 0 var(--gold)}
 .mi.ctx{color:var(--gold)}.mi.ctx>span{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
-.mi .car{font-style:normal;font-size:10px;width:10px;flex:0 0 10px;color:var(--muted)}
+.mi .car{font-style:normal;font-size:13px;margin-left:auto;color:var(--muted)}
 .mi span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mi .mcr{width:14px;height:14px;object-fit:contain;vertical-align:-2px;margin-right:5px}
 .msub{display:flex;flex-direction:column;gap:1px}
@@ -2497,10 +2497,19 @@ function autoSort(){
     apply(); });
 }
 // the left menu: every screen and every tab, opening in a cascade (CM's menus without hunting for tabs on the page)
-let MOPEN = new Set(), MSHUT = new Set(), MITEMS = {}, MOB_OPEN = false, MALL = new Set();
+let MITEMS = {}, MOB_OPEN = false, MRECENT = [];
 const MDEF = { news: { f: 'all' }, club: { tab: 'ov', team: 'first' }, comp: { tab: 'ov' }, find: { tab: 'search' }, managers: { tab: 'rep' }, manager: { tab: 'hist' } };
 const vEq = v => v && Object.keys(v).every(k => (V[k] != null ? V[k] : k === 'cid' && V.s === 'club' ? me() : (MDEF[V.s] || {})[k]) === v[k]);
+/* clubs of countries whose leagues are not in the game: Europe's (the European cups) and the rest of the world's (the
+   Club World Cup); a country listed above, by code or by name, keeps its own */
+function restClubs(){
+  const lgCtry = new Set(Object.keys(D.lgs || {})), lgName = new Set(Object.values(D.lgs || {}).map(L => L.country)),
+    rest = everyClub().filter(c => !lgCtry.has(c.ctry || 'ENG') && !lgName.has(ctryName(c)) && !LG.has(c.id)),
+    eu = rest.filter(c => c.conf ? c.conf === 'UEFA' : true), w = rest.filter(c => !eu.includes(c));
+  return { eu, w };
+}
 function menuTree(o, unread){
+  if (V.s === 'club' && V.cid && V.cid !== me()) MRECENT = [V.cid, ...MRECENT.filter(x => x !== V.cid)].slice(0, 6);
   const mine = me(), cv = (cid, tab) => ({ s: 'club', cid, tab });
   // your club in the order of a week's work: the side, the plan, the games, then the business; other clubs as a scout sees them
   const clubKids = cid => (cid === mine
@@ -2522,17 +2531,16 @@ function menuTree(o, unread){
     ...(euOn() ? [{ id: 'eu', label: 'Europe', v: { s: 'eu', k: euMine() }, kids: [...EU_KEYS.filter(k => S.eu.c[k]).map(k => ({ id: 'eu.' + k, label: EU_NAME[k], v: { s: 'eu', k } })), ...(S.usc ? [{ id: 'eu.usc', label: USC, v: { s: 'eu', k: 'usc' } }] : [])] }] : []),
     // the cups between the continents, apart from Europe's
     ...(S.fic || S.cwc ? [{ id: 'wd', label: 'Intercontinental', v: { s: 'eu', k: S.fic ? 'fic' : 'cwc' }, kids: [...(S.fic ? [{ id: 'eu.fic', label: FIC, v: { s: 'eu', k: 'fic' } }] : []), ...(S.cwc ? [{ id: 'eu.cwc', label: CWC, v: { s: 'eu', k: 'cwc' } }] : [])] }] : []),
+    // the club lists are browsed on the Clubs screen; the menu holds the countries, the club you are looking at and the last few you saw
     { id: 'clubs', label: 'Clubs', v: { s: 'clubs' }, kids: [
-      ...byName(D.clubs).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: clubKids(c.id) })),
-      ...(hasCh() ? [{ id: 'engch', label: 'Other Clubs', v: { s: 'clubs', lg: 'ch' }, kids: byName(D.second.clubs).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: otherKids(c.id) })) }] : []),
-      ...awayKs().map(k => { const top = topOf(k), sec = ctryClubs(k).filter(c => !top.includes(c.id));
-        return { id: 'clk.' + k, label: esc(D.lgs[k].country), v: { s: 'clubs', lg: k }, kids: [...byName(top.map(id => club(id))).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: otherKids(c.id) })),
-          ...(sec.length ? [{ id: 'clk2.' + k, label: 'Other Clubs', v: { s: 'clubs', lg: k + '2' }, kids: byName(sec).map(c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: otherKids(c.id) })) }] : [])] }; }),
-      // the clubs of leagues not played: Europe's (the European cups) and the rest of the world's (the Club World Cup)
-      // only clubs of countries not listed above (by code or by name), as for the rest of the world
-      ...(() => { const lgCtry = new Set(Object.keys(D.lgs || {})), lgName = new Set(Object.values(D.lgs || {}).map(L => L.country)), rest = everyClub().filter(c => !lgCtry.has(c.ctry || 'ENG') && !lgName.has(ctryName(c)) && !LG.has(c.id)), eu = rest.filter(c => c.conf ? c.conf === 'UEFA' : true), w = rest.filter(c => !eu.includes(c));
-        const item = c => ({ id: 'cl' + c.id, label: `${crest(c.id, 'mcr')}${esc(c.name)}`, v: cv(c.id, 'ov'), kids: otherKids(c.id) });
-        return [...(eu.length ? [{ id: 'cleu', label: 'Rest of Europe', v: { s: 'find', tab: 'fclubs' }, kids: byName(eu).map(item) }] : []), ...(w.length ? [{ id: 'clw', label: 'Rest of the World', v: { s: 'find', tab: 'fclubs' }, kids: byName(w).map(item) }] : [])]; })()] },
+      ...(V.s === 'club' && V.cid && V.cid !== mine && club(V.cid) ? [{ id: 'cl' + V.cid, cls: 'mclub', label: `${crest(V.cid, 'mcr')}${esc(club(V.cid).name)}`, v: cv(V.cid, 'ov'), kids: (D.clubs.some(c => c.id === V.cid) ? clubKids : otherKids)(V.cid) }] : []),
+      ...MRECENT.filter(id => id !== mine && id !== V.cid && club(id)).slice(0, 4).map(id => ({ id: 'rc' + id, cls: 'mrec', label: `${crest(id, 'mcr')}${esc(club(id).name)}`, v: cv(id, 'ov') })),
+      // the countries only on the Clubs screen itself (it has them as tabs too)
+      ...(V.s !== 'clubs' ? [] : [
+      { id: 'clk.' + HOME, cls: 'msep', label: esc(D.lgs[HOME] ? D.lgs[HOME].country : 'England'), v: { s: 'clubs' } },
+      ...awayKs().map(k => ({ id: 'clk.' + k, label: esc(D.lgs[k].country), v: { s: 'clubs', lg: k } })),
+      ...(restClubs().eu.length ? [{ id: 'cleu', label: 'Rest of Europe', v: { s: 'clubs', lg: 'eu' } }] : []),
+      ...(restClubs().w.length ? [{ id: 'clw', label: 'Rest of the World', v: { s: 'clubs', lg: 'w' } }] : [])])] },
     { id: 'find', label: 'Search', v: { s: 'find', tab: 'search' }, kids: FIND_TABS.map(([t, n]) => ({ id: 'f.' + t, label: n, v: { s: 'find', tab: t } })) },
     { id: 'opt', label: 'Options', v: { s: 'options' } }];
   // the deepest item that is this screen; a screen the tree does not hold (a player, a comparison) gets its own entry
@@ -2547,30 +2555,24 @@ function menuTree(o, unread){
   }
   return { T, path: new Set([...(hit ? hit.up : []), hit && hit.id]), hit };
 }
+/* the menu, as CM 01/02's: the sections always in view, one line each; only the section you are in opens, and inside it
+   only the branch you are on, so nothing ever pushes what matters off the screen */
 function menuHTML(o, unread){
   const { T, path, hit } = menuTree(o, unread); MITEMS = {};
-  const isOpen = it => it.kids && it.kids.length && ((MOPEN.has(it.id) || path.has(it.id)) && !MSHUT.has(it.id) || it.id === 'ctx');
-  /* a long list (a league's clubs) with one of its items open shows only that one, and "Show all": what you are on stays
-     near the top instead of below twenty others */
-  const row = (it, d) => { MITEMS[it.id] = it; const op = isOpen(it);
-    const kids = op ? it.kids : [], onK = kids.filter(k => path.has(k.id)), fold = kids.length > 8 && onK.length && !MALL.has(it.id) && it.id !== 'ctx';
-    const sub = op ? (fold ? onK.map(k => row(k, d + 1)).join('') + `<button class="mi more d${d + 1}" data-mall="${it.id}" style="--d:${d + 1}"><span>Show all ${kids.length}…</span></button>` : it.kids.map(k => row(k, d + 1)).join('') + (MALL.has(it.id) && kids.length > 8 ? `<button class="mi more d${d + 1}" data-mless="${it.id}" style="--d:${d + 1}"><span>Show fewer</span></button>` : '')) : '';
-    return `<button class="mi d${d} ${it.cls || ''} ${it === hit ? 'on' : path.has(it.id) ? 'path' : ''}" data-mi="${it.id}" style="--d:${d}">${it.kids && it.kids.length && it.id !== 'ctx' ? `<i class="car">${op ? '▾' : '▸'}</i>` : ''}<span>${it.label}</span></button>${op ? `<div class="msub">${sub}</div>` : ''}`; };
-  const tree = T.map(it => row(it, 0)).join('');
+  const sec = T.find(it => path.has(it.id));
+  const row = (it, d) => { MITEMS[it.id] = it; const op = it.kids && it.kids.length && (path.has(it.id) || it.id === 'ctx');
+    return `<button class="mi d${d} ${it.cls || ''} ${it === hit ? 'on' : path.has(it.id) ? 'path' : ''}" data-mi="${it.id}" style="--d:${d}"><span>${it.label}</span>${d && it.kids && it.kids.length && !op ? '<i class="car">›</i>' : ''}</button>${op ? `<div class="msub">${it.kids.map(k => row(k, d + 1)).join('')}</div>` : ''}`; };
+  const tree = T.map(it => it === sec ? `<div class="msec">${row(it, 0)}</div>` : row(it, 0)).join('');
   const crumb = [...path].filter(id => id && MITEMS[id]).map(id => MITEMS[id].label.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&')).slice(-2).map(esc).join(' › ');
   return `<button class="mtog" id="mtog" aria-expanded="${MOB_OPEN}">☰ Menu<span class="crumb">${crumb}</span>${MOB_OPEN ? '▴' : '▾'}</button><nav class="mtree" aria-label="Menu">${tree}</nav>`;
 }
 function wireMenu(){
   const side = document.querySelector('.mtree') && document.querySelector('.mtree').closest('.side'); if (side) side.classList.toggle('mopen', MOB_OPEN);
   const tg = $('#mtog'); if (tg) tg.addEventListener('click', () => { MOB_OPEN = !MOB_OPEN; view(); });
-  document.querySelectorAll('[data-mall]').forEach(b => b.addEventListener('click', () => { MALL.add(b.dataset.mall); view(); }));
-  document.querySelectorAll('[data-mless]').forEach(b => b.addEventListener('click', () => { MALL.delete(b.dataset.mless); view(); }));
   document.querySelectorAll('[data-mi]').forEach(b => b.addEventListener('click', () => {
     const it = MITEMS[b.dataset.mi]; if (!it) return;
-    const onPath = b.classList.contains('on') || b.classList.contains('path'), open = !!b.nextElementSibling && b.nextElementSibling.classList.contains('msub');
-    if (it.kids && it.kids.length && open && onPath && it.id !== 'ctx'){ MSHUT.add(it.id); MOPEN.delete(it.id); view(); return; }
-    MSHUT.delete(it.id); MOPEN = new Set([...(it.up || []), it.id]); MALL = new Set([...MALL].filter(x => x === it.id || (it.up || []).includes(x))); if (!(it.kids && it.kids.length)) MOB_OPEN = false;
-    if (it.act) it.act(); else if (it.v && !onPath) go(it.v); else if (it.v && !vEq(it.v)) go(it.v); else view();
+    if (!(it.kids && it.kids.length)) MOB_OPEN = false;
+    if (it.act) it.act(); else if (it.v && !vEq(it.v)) go(it.v); else view();
   }));
   const on = document.querySelector('.mtree .on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
 }
@@ -3634,13 +3636,15 @@ function scrAway(){
 /* ---- nations & clubs, find, the manager, game options ---- */
 function scrClubs(){
   const grid = L => `<div class="clubs">${L.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<button data-cv="${c.id}" style="--k1:${(c.kit || ['#888'])[0]}"><span class="sw">${crest(c.id, 'swc')}</span><span><b>${esc(c.name)}</b><small>${esc(c.city || c.venue || '')}</small></span></button>`).join('')}</div>`;
-  const lk = String(V.lg || '').replace(/2$/, ''), k = D.lgs[lk] && lk !== HOME ? lk : HOME;
+  const lk = String(V.lg || '').replace(/2$/, ''), R = restClubs(), k = (lk === 'eu' || lk === 'w') && R[lk].length ? lk : D.lgs[lk] && lk !== HOME ? lk : HOME;
   let body;
-  if (k === HOME){ const pl = `<div class="ptitle">${esc(D.league)}</div>${grid(D.clubs)}`, ch = hasCh() ? `<div class="ptitle">Other Clubs</div>${grid(D.second.clubs)}` : '';
+  if (k === 'eu' || k === 'w'){ const by = {}; R[k].forEach(c => { const n = String(ctryName(c) || 'Other').split(',')[0].replace(/-/g, ' '); (by[n] = by[n] || []).push(c); });
+    body = Object.keys(by).sort((a, b) => a.localeCompare(b)).map(n => `<div class="ptitle">${esc(n)}</div>${grid(by[n])}`).join(''); }
+  else if (k === HOME){ const pl = `<div class="ptitle">${esc(D.league)}</div>${grid(D.clubs)}`, ch = hasCh() ? `<div class="ptitle">Other Clubs</div>${grid(D.second.clubs)}` : '';
     body = V.lg === 'ch' ? ch + pl : pl + ch; }
   else { const top = topOf(k), sec = ctryClubs(k).filter(c => !top.includes(c.id)), a = `<div class="ptitle">${esc(D.lgs[k].league)}</div>${grid(top.map(id => club(id)))}`, b = sec.length ? `<div class="ptitle">Other Clubs</div>${grid(sec)}` : '';
     body = /2$/.test(V.lg) ? b + a : a + b; }
-  const tabs = [[HOME, D.lgs[HOME].country], ...awayKs().map(x => [x, D.lgs[x].country])];
+  const tabs = [[HOME, D.lgs[HOME].country], ...awayKs().map(x => [x, D.lgs[x].country]), ...(R.eu.length ? [['eu', 'Rest of Europe']] : []), ...(R.w.length ? [['w', 'Rest of the World']] : [])];
   frame({ title: 'Clubs', top: tabs, topOn: k, onTab: t => { V = { s: 'clubs', lg: t === HOME ? null : t }; view(); }, body });
   document.querySelectorAll('[data-cv]').forEach(b => b.addEventListener('click', () => go({ s: 'club', cid: +b.dataset.cv, tab: 'ov' })));
 }

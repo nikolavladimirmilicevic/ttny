@@ -600,6 +600,11 @@ Serie A pages (16.11.2026). From the Serie A clubs and transfers pages:
 - **Flags (18.11.2026):** Transfermarkt's spellings now have flags too: The Gambia, Korea, South, Bosnia-Herzegovina, Cote d'Ivoire, Curacao and St. Kitts & Nevis (draft game and manager). Every nationality in the data has a flag.
 - **Crests for every club of the manager game (18.11.2026):** 33 of its clubs had none: Serbia's 21 and Laval (ids of our own, from Transfermarkt pages), and Paris FC, Córdoba, Celta Fortuna and eight Club World Cup clubs (API ids, but the workflow only saved the draft game's and the careers' crests). The data workflow now saves the crests of all the game's clubs (`update.game_crests`, `cm_model.game_clubs`), and looks up a club with an id of our own once in the API by name and country (`data/cache/crest_ids.json`, retried after 30 days when not found); `cm_model.apply_crests` puts the API team's id on the club as `crest`, which the game's crest uses.
   - *First run (18.11.2026):* the workflow found and saved 31 of the 33. Set by hand (`manual` in `crest_ids.json`, never looked up again): Bolton (the search found Mulbarton Wanderers; the API's Bolton, 68), Wrexham (1837), Proleter Zrenjanin (the search found Proleter Novi Sad, another club: no crest). The API has no Spartak Subotica and no Smederevo 1924, so those two stay without one.
+- **The menu, redone (19.11.2026):**
+  - The sections are always in view, one line each: manager, your club, Competitions, Europe, Intercontinental, Clubs, Search, Options.
+  - Only the section you are in opens, and inside it only the branch you are on. The open section is a panel with a gold edge.
+  - No club lists in the menu: Clubs holds the club you are looking at (with its pages) and the last four you saw. The countries show only on the Clubs screen.
+  - The Clubs screen gains Rest of Europe and Rest of the World, grouped by country.
 - **Nationalities, rounds, the menu, sorting (19.11.2026):**
   - *A player with no nationality in the data* (155, mostly in the Championship) takes his club's country at the start (Wales for Cardiff, Swansea, Wrexham and Newport).
   - *Fixtures* give a league match's round ("Premier League, round 1"), as the cups give their rounds.
