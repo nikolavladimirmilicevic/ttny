@@ -36,6 +36,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 /* the frame */
 .cm{display:grid;grid-template-columns:200px 1fr;gap:12px;max-width:1180px;margin:0 auto;padding:0 16px 30px}
 .side{background:var(--panel);border-radius:14px;display:flex;flex-direction:column;align-items:stretch;padding:10px 8px;gap:4px;align-self:start;position:sticky;top:10px}
+.nact{display:flex;align-items:center;justify-content:space-between;gap:10px;background:color-mix(in srgb,var(--loss) 14%,var(--panel-2));border:1px solid color-mix(in srgb,var(--loss) 45%,transparent);border-radius:10px;padding:7px 10px;margin:4px 0 10px}.nact span{color:var(--loss);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
 .dstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;max-width:1180px;margin:0 auto 10px;padding:0 16px;box-sizing:border-box;overflow:hidden}
 .dday{background:var(--panel);border:1px solid #ffffff12;border-radius:9px;padding:6px 8px 7px;min-width:0;min-height:66px;font-size:11.5px;line-height:1.3}
 .dday.past{opacity:.72}.dday.fx{cursor:pointer}.dday.fx:hover{border-color:#ffffff40}.dday.today{background:color-mix(in srgb,var(--gold) 13%,var(--panel));border-color:var(--gold)}
@@ -939,7 +940,8 @@ function longInjured(){
 // a contract: until the year Transfermarkt gives (cy) when we have it, otherwise one to four more seasons
 function contractFor(p){ const rr = rng(`c-${p.id}`); return { y: p.cy || D.season + 1 + (p.lo ? 1 : 0) + Math.floor(rr() * (p.lo ? 3 : 4)), w: Math.round(Math.max(8, p.val * (1.3 + rr() * .6)) * 1000 / 5) * 5 }; }
 const matchLine = m => m ? `${esc(club(m.h).name)} v ${esc(club(m.a).name)}` : 'a rest';
-function news(cat, title, body){ S.news.unshift({ c: cat, t: title, b: body, d: S.date, n: 1 }); S.news = S.news.slice(0, 120); }
+// a: what the message asks of you ({ id: a player's id }), while it stays unanswered the game will not go on from it
+function news(cat, title, body, a){ S.news.unshift({ c: cat, t: title, b: body, d: S.date, n: 1, ...(a ? { a } : {}) }); S.news = S.news.slice(0, 120); }
 
 /* =====================================================================================================================
    tactics: a formation, the eleven in its slots, nine substitutes, team instructions, player instructions, set pieces
@@ -1620,6 +1622,12 @@ function sideCheck(ok){
 }
 function onContinue(){
   if (S.done) return;
+  // a message on the screen that asks something: answered before anything else
+  const na = newsAct(newsNow());
+  if (na){ choice('Waiting for your answer', `This message needs your answer before the game goes on: ${na.txt}`, [[na.btn, () => go(na.v), 'go']]); return; }
+  // unread messages: Continue reads them one by one, the oldest first, before the day moves on
+  const un = S.news.map((n, i) => n.n ? i : -1).filter(i => i >= 0).pop();
+  if (un != null){ if (V.s === 'news' && (V.f || 'all') === 'all') V = { ...V, i: un }; else go({ s: 'news', f: 'all', i: un }); view(); return; }
   const todo = pendingActs();
   if (todo.length){ const a = todo[0]; choice('Waiting for your answer', `${todo.length > 1 ? `${todo.length} things need your answer before the game goes on. The first: ` : 'This needs your answer before the game goes on: '}${a.txt}`, [[a.btn, () => go(a.v), 'go']]); return; }
   const ev = events()[0]; if (!ev){ endSeason(); view(); return; }
@@ -2905,8 +2913,12 @@ function settingsBody(){
 function wireSettings(again){ document.querySelectorAll('[data-o] button').forEach(b => b.addEventListener('click', () => { const k = b.parentElement.dataset.o; OPT[k] = k === 'spd' ? +b.dataset.v : b.dataset.v; if (k === 'spd') SPEED = OPT.spd; saveOpt(); again(); })); }
 
 /* ---- the manager's news ---- */
+const NEWS_CATS = { all: null, club: ['club', 'board', 'scout'], comp: ['match'], inj: ['injury', 'discipline'] };
+// the message on the screen now, and what it still asks of you (the open answer about its player)
+function newsNow(){ if (V.s !== 'news') return null; const F = V.f || 'all', L = S.news.filter(n => !NEWS_CATS[F] || NEWS_CATS[F].includes(n.c)); return L[V.i == null ? 0 : Math.min(V.i, L.length - 1)] || null; }
+function newsAct(n){ if (!n || !n.a) return null; return pendingActs().find(x => x.v && x.v.id === n.a.id) || null; }
 function scrNews(){
-  const F = V.f || 'all', cats = { all: null, club: ['club', 'board', 'scout'], comp: ['match'], inj: ['injury', 'discipline'] };
+  const F = V.f || 'all', cats = NEWS_CATS;
   const L = S.news.filter(n => !cats[F] || cats[F].includes(n.c));
   let i = V.i == null ? 0 : Math.min(V.i, L.length - 1); const cur = L[i];
   if (cur && cur.n){ cur.n = 0; save(); }
@@ -2916,9 +2928,10 @@ function scrNews(){
     bottom: [['media', 'Contracts and Media'], ['trans', 'Transfers'], ['jobs', 'Jobs'], ['rec', 'Records']],
     tools: `<span style="flex:1"></span><button class="btn sm" id="nextun" ${S.news.some(n => n.n) ? '' : 'disabled'}>Next Unread</button>`,
     body: L.length ? `<div class="nl">${L.map((n, j) => `<div data-i="${j}" class="${j === i ? 'on' : ''} ${n.n ? 'new' : ''}"><span>${WD[new Date(n.d + 'T12:00:00Z').getUTCDay()].slice(0, 3)} ${shortDate(n.d)}</span><span>${slot(n)}</span><b>${esc(n.t)}</b></div>`).join('')}</div>
-      <div class="nmsg"><h2>${esc(cur.t)}</h2>${String(cur.b).split(/(?<=\.)\s+(?=[A-Z])/).reduce((a, s, k) => { if (k % 2 === 0) a.push(s); else a[a.length - 1] += ' ' + s; return a; }, []).map(p => `<p>${p}</p>`).join('')}</div>` : '<p class="empty">No news.</p>',
+      <div class="nmsg"><h2>${esc(cur.t)}</h2>${newsAct(cur) ? `<div class="nact"><span>Needs your answer</span><button class="btn sm go" id="nact">${newsAct(cur).btn}</button></div>` : ''}${String(cur.b).split(/(?<=\.)\s+(?=[A-Z])/).reduce((a, s, k) => { if (k % 2 === 0) a.push(s); else a[a.length - 1] += ' ' + s; return a; }, []).map(p => `<p>${p}</p>`).join('')}</div>` : '<p class="empty">No news.</p>',
     next: i < L.length - 1 ? () => { V = { ...V, i: i + 1 }; view(); } : null });
   document.querySelectorAll('.nl [data-i]').forEach(d => d.addEventListener('click', () => { V = { ...V, i: +d.dataset.i }; view(); }));
+  const na = $('#nact'); if (na) na.addEventListener('click', () => { const a = newsAct(cur); if (a) go(a.v); });
   const nu = $('#nextun'); if (nu) nu.addEventListener('click', () => { const j = L.findIndex(n => n.n); if (j >= 0){ V = { ...V, i: j }; view(); } else { const k = S.news.findIndex(n => n.n); if (k >= 0){ V = { s: 'news', f: 'all', i: k }; view(); } } });
   const on = document.querySelector('.nl .on'); if (on) on.scrollIntoView({ block: 'nearest' });
 }
@@ -4017,8 +4030,8 @@ function transferTick(){
     if (b.st !== 'wait' || daysBetween(b.d, S.date) < 1) continue;
     const ask = askingPrice(p), c = club(p.club);
     if (squadOf(p.club).length <= 18){ b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} will not sell <b>${esc(p.n)}</b>: their squad is too thin as it is.`); }
-    else if (b.fee >= ask){ b.st = 'yes'; b.w = wageDemand(p); news('club', `${c.name} accept your bid`, `${esc(c.name)} have accepted your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b>. Agree personal terms with him on his Transfer screen.`); }
-    else if (b.fee >= ask * .8){ b.st = 'counter'; b.ask = ask; news('club', `${c.name} want more for ${p.n}`, `${esc(c.name)} turn down ${cash(b.fee)} for <b>${esc(p.n)}</b> but would sell for ${cash(ask)}.`); }
+    else if (b.fee >= ask){ b.st = 'yes'; b.w = wageDemand(p); news('club', `${c.name} accept your bid`, `${esc(c.name)} have accepted your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b>. Agree personal terms with him on his Transfer screen.`, { id: p.id }); }
+    else if (b.fee >= ask * .8){ b.st = 'counter'; b.ask = ask; news('club', `${c.name} want more for ${p.n}`, `${esc(c.name)} turn down ${cash(b.fee)} for <b>${esc(p.n)}</b> but would sell for ${cash(ask)}.`, { id: p.id }); }
     else { b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} have rejected your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b> out of hand.`); }
   }
   // other clubs' bids for your players, open a week
@@ -4033,7 +4046,7 @@ function transferTick(){
       const buyers = !p ? [] : D.allClubs.filter(c => c.id !== me() && LG.has(c.id) ? c.q >= ovrNow(p) - 6 : c.id !== me() && c.q >= ovrNow(p) - 3 && c.q <= ovrNow(p) + 4);
       if (p && buyers.length){ const c = buyers[Math.floor(Math.random() * buyers.length)], fee = roundFee(p.val * 1e6 * (.85 + Math.random() * .45));
         S.offers.push({ id: p.id, from: c.id, fee, d: S.date, st: 'open' });
-        news('club', `${c.name} bid for ${p.n}`, `${esc(c.name)} have offered ${cash(fee)} for <b>${esc(p.n)}</b>. Accept or turn it down on his Transfer screen within a week.`); }
+        news('club', `${c.name} bid for ${p.n}`, `${esc(c.name)} have offered ${cash(fee)} for <b>${esc(p.n)}</b>. Accept or turn it down on his Transfer screen within a week.`, { id: p.id }); }
     }
     // the other clubs' business: a player who would be a regular for the buyer and is not one for the seller
     if (Math.random() < .22){
@@ -4332,7 +4345,7 @@ function unrest(){
   for (const p of squadOf(me())){ const q = ps(p.id);
     if (q.req === S.season && q.mor >= 60){ q.req = null; news('club', `${p.n} is settled`, `<b>${esc(p.n)}</b> has withdrawn his transfer request.`); continue; }
     if (q.req === S.season || squadRank(p) >= 14 || q.apps >= S.round * .3 || q.mor >= 40 || q.injD) continue;
-    q.req = S.season; wantsWord(p); news('club', `${p.n} wants to leave`, `<b>${esc(p.n)}</b> has handed in a transfer request: he wants first-team football. Other clubs will hear of it.`); }
+    q.req = S.season; wantsWord(p); news('club', `${p.n} wants to leave`, `<b>${esc(p.n)}</b> has handed in a transfer request: he wants first-team football. Other clubs will hear of it.`, { id: p.id }); }
 }
 /* ---- the dressing room: what is on a player's mind, talks with him, promises, and the role his contract gives him ----
    Concerns: too little football (for a good player, or for less than his contract's role), a wage below his standing,
@@ -4366,7 +4379,7 @@ function dressingRoom(){
   for (const p of squadOf(me())){ const q = ps(p.id), cs = concerns(p);
     for (const c of cs){ if (c.k === 'req') continue; q.mor = clamp(q.mor - (c.k === 'amb' ? 1 : 2), 15, 100);
       const key = `${S.season}-${p.id}-${c.k}`; if (S.cnews[key]) continue; S.cnews[key] = 1; wantsWord(p);
-      news('club', `${p.n} wants a word`, `${esc(p.n)}: ${c.t} Have a talk with him (his Talk screen).`); } }
+      news('club', `${p.n} wants a word`, `${esc(p.n)}: ${c.t} Have a talk with him (his Talk screen).`, { id: p.id }); } }
   for (const pr of S.prom.slice()){ const p = P.get(pr.id); if (!p || p.club !== me()){ S.prom = S.prom.filter(x => x !== pr); continue; }
     const q = ps(p.id);
     const kept = pr.k === 'time' ? q.apps - pr.a0 >= 3 : (S.renew || {})[p.id] === S.season && S.con[p.id].w > pr.w0;
@@ -4375,7 +4388,7 @@ function dressingRoom(){
     else if (late){ q.mor = clamp(q.mor - 20, 15, 100); S.trust = (S.trust || 0) + 1; S.prom = S.prom.filter(x => x !== pr);
       if (q.req !== S.season && !(pr.k === 'time' && squadRank(p) >= 18)) q.req = S.season;
       wantsWord(p);
-      news('club', `${p.n} feels let down`, `${esc(p.n)} says you broke your promise ${pr.k === 'time' ? 'of first-team football' : 'of a new contract'}.${q.req === S.season ? ' He has handed in a transfer request.' : ''} The rest of the squad noticed too.`);
+      news('club', `${p.n} feels let down`, `${esc(p.n)} says you broke your promise ${pr.k === 'time' ? 'of first-team football' : 'of a new contract'}.${q.req === S.season ? ' He has handed in a transfer request.' : ''} The rest of the squad noticed too.`, { id: p.id });
       for (const o of squadOf(me())) if (o.id !== p.id){ const oq = ps(o.id); oq.mor = clamp(oq.mor - 2, 15, 100); } } }
 }
 const TALKS = [['praise', 'Praise his form'], ['crit', 'Tell him to do better'], ['calm', 'Tell him he is part of the plans'], ['time', 'Promise him more first-team football'], ['pay', 'Promise him a new contract soon']];
