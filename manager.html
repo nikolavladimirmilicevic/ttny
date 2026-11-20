@@ -206,6 +206,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .aup,.adn{font-size:8.5px;opacity:.7;margin-right:3px;vertical-align:1px}.aup{color:var(--win)}.adn{color:var(--loss)}.dn{color:var(--loss);font-size:10px}
 .born{color:var(--gold);font:600 16px/1.3 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0 0 12px}
 .strip{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
+.sline{display:block;width:100%;max-width:620px;margin:0 auto;height:auto}
 .fspark{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:end;margin:-4px 0 12px;background:var(--panel-2);border-radius:10px;padding:8px 12px}.fsb{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:5px;height:58px}
 .fsb>div{display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;min-width:0}.fsb i{display:block;border-radius:3px 3px 0 0;min-height:4px}.fsb span{font-size:10px;text-align:center;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
 .strip div{background:var(--panel-2);border-radius:10px;text-align:center;padding:6px 0;color:var(--muted);font-size:12px}
@@ -1834,6 +1835,8 @@ function finishLeague(myM, others){
   try { teamOfWeek(Ms, S.round + 1); } catch (e) {}
   S.results.push({ k: 'league', n: S.round + 1, date: r.date, res });
   S.round++; splitCheck(); afterMatchday(res, 'league');
+  // the season round by round: your place and the board's confidence after it (the Board page draws them)
+  (S.posH = S.posH || []).push({ s: S.season, r: S.round, p: standings().findIndex(x => x.id === me()) + 1, c: Math.round(S.conf) }); if (S.posH.length > 400) S.posH.splice(0, S.posH.length - 400);
   if (S.round >= S.rounds.length && S.cup.stage >= CN() && euDone() && cwcDone()) endSeason();
   save();
 }
@@ -4084,6 +4087,22 @@ const REQS = [
   { k: 'ground', n: 'More seats in the ground', cost: 9e6, txt: 'A bigger crowd, and more money on the gate.' },
   { k: 'youth', n: 'More money for the youth set-up', cost: 3e6, txt: 'The young players in your squad will develop faster.' },
 ];
+// the season's line: the league place round by round (1st at the top) and the board's confidence, on one small chart
+function seasonLine(){
+  const L = (S.posH || []).filter(x => x.s === S.season); if (L.length < 2) return '';
+  const n = D.clubs.length, W = 560, H = 150, pl = 30, pr = 34, pt = 10, pb = 22, iw = W - pl - pr, ih = H - pt - pb, R = Math.max(L[L.length - 1].r, S.rounds.length);
+  const x = r => pl + (r - 1) / Math.max(1, R - 1) * iw, yp = p => pt + (p - 1) / Math.max(1, n - 1) * ih, yc = c => pt + (100 - c) / 100 * ih;
+  const path = (f, k) => L.map((e, i) => `${i ? 'L' : 'M'}${x(e.r).toFixed(1)},${f(e[k]).toFixed(1)}`).join(' ');
+  const last = L[L.length - 1], ticks = [1, Math.ceil(n / 4), Math.ceil(n / 2), Math.ceil(3 * n / 4), n].filter((v, i, a) => a.indexOf(v) === i);
+  return `<div class="ptitle" style="margin-top:14px">The season so far</div><svg viewBox="0 0 ${W} ${H}" class="sline" role="img" aria-label="League place and board confidence by round">
+    ${ticks.map(t => `<line x1="${pl}" x2="${W - pr}" y1="${yp(t)}" y2="${yp(t)}" stroke="#ffffff14"/><text x="${pl - 6}" y="${yp(t) + 3}" text-anchor="end" font-size="9" fill="var(--muted)">${ordinal(t)}</text>`).join('')}
+    ${[0, 50, 100].map(c => `<text x="${W - pr + 6}" y="${yc(c) + 3}" font-size="9" fill="#C9A0FF">${c}%</text>`).join('')}
+    <path d="${path(yc, 'c')}" fill="none" stroke="#C9A0FF" stroke-width="1.6" stroke-dasharray="4 3"/>
+    <path d="${path(yp, 'p')}" fill="none" stroke="#3FBF7F" stroke-width="2.4" stroke-linejoin="round"/>
+    <circle cx="${x(last.r)}" cy="${yp(last.p)}" r="3.5" fill="#3FBF7F"/>
+    <text x="${pl}" y="${H - 6}" font-size="9" fill="var(--muted)">Round 1</text><text x="${W - pr}" y="${H - 6}" font-size="9" fill="var(--muted)" text-anchor="end">Round ${R}</text></svg>
+    <p class="small dim c" style="margin-top:2px"><span style="color:#3FBF7F">━</span> league place &nbsp; <span style="color:#C9A0FF">┅</span> board confidence</p>`;
+}
 function clubBoard(cid, o){
   const aim = AIMS[S.aim], c = S.conf, pos = standings().findIndex(r => r.id === me()) + 1, col = c >= 62 ? 'var(--ok)' : c >= 40 ? 'var(--warn)' : 'var(--hot)';
   const sub = V.sub || 'conf', month = S.date.slice(0, 7), asked = (S.req || {}).m === month, fac = S.fac || {};
@@ -4091,7 +4110,7 @@ function clubBoard(cid, o){
   let body;
   const cw = c >= 80 ? 'Delighted' : c >= 62 ? 'Pleased' : c >= 45 ? 'Satisfied' : c >= 28 ? 'Concerned' : 'Very unhappy';
   if (sub === 'conf') body = `<div class="confh"><span>Board confidence</span><b style="color:${col}">${cw} · ${Math.round(c)}%</b></div><div class="meter" style="max-width:520px;margin:4px auto 14px"><i style="width:${c}%;background:${col}"></i></div><p style="font-size:17px;line-height:1.5">${S.round ? words : `The ${esc(club(me()).name)} directors are looking forward to a long and successful era under your management.`}</p>${S.ultimatum ? '<p style="color:var(--hot);font-weight:700">The board have issued an ultimatum. Results must improve.</p>' : ''}
-    <dl class="kv" style="margin-top:12px"><dt>Expectation</dt><dd><b>${aim.name}</b>: ${aim.text}</dd><dt>Position</dt><dd>${S.round ? ordinal(pos) : 'the season has not started'}</dd><dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
+    <dl class="kv" style="margin-top:12px"><dt>Expectation</dt><dd><b>${aim.name}</b>: ${aim.text}</dd><dt>Position</dt><dd>${S.round ? ordinal(pos) : 'the season has not started'}</dd><dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>${seasonLine()}`;
   else body = `<p>Ask the board for something. They decide on your standing with them and on the money: ${cash(S.fin.bal)} in the bank. One request a month.</p>
     <div class="lg">${REQS.map(r => `<div><b>${r.n}</b><span>${cash(r.cost)}</span><span class="dim small">${r.txt}</span><span>${fac[r.k] ? '<span class="yel">Done</span>' : `<button class="btn sm" data-req="${r.k}" ${asked ? 'disabled' : ''}>Ask</button>`}</span></div>`).join('')}</div>
     ${asked ? `<p class="small dim">You have asked the board this month: ${esc(S.req.r)}</p>` : ''}`;
