@@ -236,6 +236,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .mpv-w{list-style:none;margin:0;padding:0;display:grid;gap:5px;font-size:13px}.mpv-w li{padding:6px 9px;border-radius:7px;background:rgba(255,255,255,.04);border-left:3px solid var(--gold)}.mpv-w li.bad{border-left-color:var(--loss)}
 .instr.tbq{grid-template-columns:minmax(0,1fr);gap:4px}.instr.tbq>span.yel{margin-top:6px;font-size:12.5px}.instr.tbq .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%}.instr.tbq .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px}
 .ft{display:grid;gap:14px}
+.asst{background:var(--panel-2);border-radius:12px;padding:8px 12px;margin-bottom:8px;box-shadow:inset 3px 0 0 #6CABDD}.asst ul{margin:4px 0 0;padding-left:18px;font-size:13px;line-height:1.45}.asst li{margin:2px 0}
 .talk{background:linear-gradient(90deg,color-mix(in srgb,var(--gold) 16%,var(--panel-2)),var(--panel-2));border-radius:12px;padding:9px 10px 10px;margin-bottom:10px;box-shadow:inset 3px 0 0 var(--gold)}
 .talkb{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:6px}.talkb button{display:flex;flex-direction:column;gap:3px;text-align:left;padding:9px 10px;border-radius:9px;border:1px solid #ffffff1f;background:var(--night);color:var(--text);cursor:pointer}
 .talkb button:hover{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 10%,var(--night))}.talkb b{font-size:13px}.talkb span{font-size:11.5px;color:var(--muted);font-style:italic}
@@ -4763,10 +4764,38 @@ function teamTalk(k){
   us.on.forEach(x => { const q = ps(x.id); q.mor = clamp((q.mor || 70) + Math.round(v * 120), 15, 100); });
   save(); liveSave(true); viewMatch();
 }
+/* the assistant's word at half-time: what he sees in the first half, the better his Judging Ability the more he sees
+   (two notes from a poor judge, four from a good one); a pointer, never an order */
+function asstNotes(M){
+  const a = (S.staff || []).find(x => x.role === 'ass'), ju = a ? a.ju || 8 : 8, us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, d = us.goals - them.goals;
+  const rt = (s, id) => clamp(6.3 + (s.rate[id] || 0), 1, 10), nm = id => esc(surname(P.get(id).n)), out = [];
+  const tot = (us.poss + them.poss) || 1, pos = Math.round(100 * us.poss / tot);
+  // the game as a whole
+  if (d < 0 && us.sh <= them.sh) out.push([5, `We are behind and not creating enough (${us.sh} shots to their ${them.sh}). A more attacking approach could help.`]);
+  else if (d < 0) out.push([4, `We have had the chances (${us.sh} shots to their ${them.sh}), the goals will come if we keep at it.`]);
+  else if (d > 0 && them.sh > us.sh + 3) out.push([5, `We are ahead, but they are pushing (${them.sh} shots to our ${us.sh}). Tighten up, or we give it away.`]);
+  else if (d > 0) out.push([3, `Good half. Keep it simple and the game is ours.`]);
+  else out.push([2, `An even half. Small things will decide it.`]);
+  if (pos <= 42) out.push([d > 0 ? 4 : 3, `They are keeping the ball (${100 - pos}%). We need to press higher or close down more${d > 0 ? ', or sit deep and hit them on the break' : ''}.`]);
+  else if (pos >= 58 && d <= 0) out.push([3, `We have the ball (${pos}%), but need more cutting edge in the final third.`]);
+  // ours: the poorest, the tired, the booked
+  const on = us.on.filter(x => !x.off), worst = on.filter(x => x.pos !== 'GK').sort((x, y) => rt(us, x.id) - rt(us, y.id))[0];
+  if (worst && rt(us, worst.id) < 6.2) out.push([4, `${nm(worst.id)} is having a poor game (${rt(us, worst.id).toFixed(1)}). Worth thinking about a change.`]);
+  const tired = on.filter(x => x.e < 68).sort((x, y) => x.e - y.e)[0];
+  if (tired) out.push([3 + (tired.e < 58 ? 1 : 0), `${nm(tired.id)} is tiring (${Math.round(tired.e)}% condition).`]);
+  const bk = on.filter(x => (M.inc || []).some(i => i.k === 'yel' && i.id === x.id && i.side === (us === M.H ? 'h' : 'a')) && x.pos !== 'GK');
+  if (bk.length) out.push([3, `${bk.map(x => nm(x.id)).join(' and ')} ${bk.length > 1 ? 'are' : 'is'} on a yellow card: one more mistimed tackle and we are down to ten.`]);
+  // theirs: the man hurting us
+  const star = them.on.filter(x => !x.off).sort((x, y) => rt(them, y.id) - rt(them, x.id))[0];
+  if (star && rt(them, star.id) >= 7.2) out.push([4, `Their ${nm(star.id)} is causing us problems (${rt(them, star.id).toFixed(1)}). Keep a closer eye on him.`]);
+  const n = 2 + Math.floor(ju / 8);
+  return { who: a ? a.n : 'Your assistant', notes: out.sort((x, y) => y[0] - x[0]).slice(0, n).map(x => x[1]) };
+}
 function talkPanel(){
   const L = LIVE, M = L.M; if (!L.atHT || M.over || M.talk || M.half > 2) return '';
   const us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, d = us.goals - them.goals;
-  return `<div class="talk"><div class="ovh"><span>Half-time team talk</span><span class="small dim">${d > 0 ? `${d} up at the break` : d < 0 ? `${-d} down at the break` : 'level at the break'}</span></div><div class="talkb">${HT_TALKS.map(([k, n, q]) => `<button data-talk="${k}"><b>${n}</b><span>"${q}"</span></button>`).join('')}</div></div>`;
+  const an = asstNotes(M);
+  return `<div class="asst"><div class="ovh"><span>Assistant's view</span><span class="small dim">${esc(an.who)}</span></div><ul>${an.notes.map(t => `<li>${t}</li>`).join('')}</ul></div><div class="talk"><div class="ovh"><span>Half-time team talk</span><span class="small dim">${d > 0 ? `${d} up at the break` : d < 0 ? `${-d} down at the break` : 'level at the break'}</span></div><div class="talkb">${HT_TALKS.map(([k, n, q]) => `<button data-talk="${k}"><b>${n}</b><span>"${q}"</span></button>`).join('')}</div></div>`;
 }
 // how the result stood against what was expected of it (the board's view and the full-time talk's)
 function ftExp(M){
