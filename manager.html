@@ -206,6 +206,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .aup,.adn{font-size:8.5px;opacity:.7;margin-right:3px;vertical-align:1px}.aup{color:var(--win)}.adn{color:var(--loss)}.dn{color:var(--loss);font-size:10px}
 .born{color:var(--gold);font:600 16px/1.3 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0 0 12px}
 .strip{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
+.race{display:block;width:100%;height:auto}
 .sline{display:block;width:100%;max-width:620px;margin:0 auto;height:auto}
 .fspark{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:end;margin:-4px 0 12px;background:var(--panel-2);border-radius:10px;padding:8px 12px}.fsb{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:5px;height:58px}
 .fsb>div{display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;min-width:0}.fsb i{display:block;border-radius:3px 3px 0 0;min-height:4px}.fsb span{font-size:10px;text-align:center;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
@@ -2626,7 +2627,7 @@ function linkMatches(txt, M){
     if (v){ out.push([st[i], en[j], v]); i = j; break; } }
   return out;
 }
-const LK_SKIP = 'a,button,select,option,input,textarea,label,[data-lp],[data-lc],[data-lm],[data-tp],.mtree,.tok,.tbrow,.strip2,.box,thead,.dghost,.nl,.side,.mdl .tools,.tabs,.seg';
+const LK_SKIP = 'a,button,select,option,input,textarea,label,[data-lp],[data-lc],[data-lm],[data-tp],.mtree,.tok,.tbrow,.strip2,.box,thead,.dghost,.nl,.side,.mdl .tools,.tabs,.seg,svg';
 function lkEl(v, text){ const sp = document.createElement('span'); sp.className = 'lk'; const [t0, ...r] = v.split(':'), x = r.join(':');
   if (t0 === 'p') sp.dataset.lp = x; else if (t0 === 'c') sp.dataset.lc = x; else sp.dataset.lm = x; sp.textContent = text; return sp; }
 /* a name two players share ("Riquelme, R": Rodrigo of Betis, Ramon of Miami): the row it stands in decides, by the player
@@ -3807,6 +3808,26 @@ function playerStats(){ const all = D.players.filter(p => LG.has(p.club)).map(p 
   return { all, rt, top }; }
 const leadRows = (L, f, fmt = v => v) => L.map((x, i) => `<tr class="click ${x.p.club === me() ? 'me' : ''}" data-pl="${x.p.id}"><td class="dim" style="width:18px">${i + 1}</td><td>${flag(x.p.nat)}<b>${esc(cmName(x.p.n))}</b> <span class="small dim">${crest(x.p.club)}${esc(club(x.p.club).name)}</span></td><td class="r yel"><b>${fmt(f(x))}</b></td></tr>`).join('') || '<tr><td class="dim">None yet</td></tr>';
 const teamRows = (L, f, fmt = v => v) => L.map((x, i) => `<tr class="click ${x.id === me() ? 'me' : ''}" data-cv="${x.id}"><td class="dim" style="width:18px">${i + 1}</td><td>${crest(x.id)}<b>${esc(club(x.id).name)}</b></td><td class="r yel"><b>${fmt(f(x))}</b></td></tr>`).join('') || '<tr><td class="dim">None yet</td></tr>';
+/* the race: points round by round for the top six and you, each club in its colours, from the season's results
+   (the title race up top, and where you are in it) */
+function raceChart(){
+  const R = S.results.filter(r => r.k === 'league' || r.k == null); if (R.length < 2) return '';
+  const st = standings(), ids = [...new Set([...st.slice(0, 6).map(r => r.id), me()])].filter(id => LG.has(id));
+  const pts = Object.fromEntries(ids.map(id => [id, [0]]));
+  for (const r of R){ for (const id of ids){ const m = r.res.find(x => x.h === id || x.a === id), prev = pts[id][pts[id].length - 1];
+    pts[id].push(prev + (!m ? 0 : m.w === id ? 3 : m.w == null ? 1 : 0)); } }
+  const W = 620, H = 210, pl = 28, pr = 110, pt = 10, pb = 20, iw = W - pl - pr, ih = H - pt - pb, n = R.length, top = Math.max(3, ...ids.map(id => pts[id][n]));
+  const x = i => pl + i / n * iw, y = v => pt + (1 - v / top) * ih;
+  // the club's colour, lifted towards white when it is too dark to read on the page (claret, navy)
+  const col = id => { const k = kit0(id), [r, g, b] = hexRGB(k[0]), lum = (.299 * r + .587 * g + .114 * b) / 255, f = lum < .45 ? (.45 - lum) / .45 * .7 + .15 : 0;
+    return '#' + [r, g, b].map(v => Math.round(v + (255 - v) * f).toString(16).padStart(2, '0')).join(''); };
+  const ends = ids.map(id => ({ id, v: pts[id][n] })).sort((a, b) => b.v - a.v); let lastY = -99; for (const e of ends){ e.ly = Math.max(y(e.v) + 3, lastY + 11); lastY = e.ly; }
+  return `<div class="ovsec">The race</div><div class="ovc" style="padding:8px 10px"><svg viewBox="0 0 ${W} ${H}" class="race" role="img" aria-label="Points by round for the leading clubs">
+    ${[0, .25, .5, .75, 1].map(f => Math.round(top * f)).map(v => `<line x1="${pl}" x2="${pl + iw}" y1="${y(v)}" y2="${y(v)}" stroke="#ffffff12"/><text x="${pl - 5}" y="${y(v) + 3}" text-anchor="end" font-size="9" fill="var(--muted)">${v}</text>`).join('')}
+    ${ids.map(id => `<path d="${pts[id].map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}" fill="none" stroke="${col(id)}" stroke-width="${id === me() ? 3 : 1.8}" stroke-linejoin="round" opacity="${id === me() ? 1 : .85}"/>`).join('')}
+    ${ends.map(e => `<text x="${pl + iw + 6}" y="${e.ly}" font-size="10" fill="${col(e.id)}" font-weight="${e.id === me() ? 700 : 500}">${esc(club(e.id).name)} ${e.v}</text>`).join('')}
+    <text x="${pl}" y="${H - 5}" font-size="9" fill="var(--muted)">Round 0</text><text x="${pl + iw}" y="${H - 5}" font-size="9" fill="var(--muted)" text-anchor="end">Round ${n}</text></svg></div>`;
+}
 function compOverview(){
   const st = standings(), n = st.length, PS = playerStats(), T = teamStats(), card = (t, rows, more) => `<div class="ovc"><div class="ovh"><span>${t}</span>${more ? `<button class="lnk" data-ctab="${more}">All</button>` : ''}</div><table><tbody>${rows}</tbody></table></div>`;
   const tsort = (f, asc) => T.filter(x => x.p).sort((a, b) => asc ? f(a) - f(b) : f(b) - f(a)).slice(0, 5);
@@ -3816,7 +3837,7 @@ function compOverview(){
     ${lr ? `<div class="ovc"><div class="ovh"><span>Round ${lr.n} results</span><button class="lnk" data-ctab="results">Results</button></div><table><tbody>${lr.res.map(x => `<tr class="click ${x.h === me() || x.a === me() ? 'me' : ''}" data-rr="${lr.n}|${x.h}|${x.a}"><td class="r" style="width:42%">${x.w === x.h ? '<b>' : ''}${esc(club(x.h).name)}${x.w === x.h ? '</b>' : ''}</td><td class="c"><span class="pill">${x.s[0]} - ${x.s[1]}</span></td><td style="width:42%">${x.w === x.a ? '<b>' : ''}${esc(club(x.a).name)}${x.w === x.a ? '</b>' : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
   const players = `<div class="ovsec">Players</div><div class="ovg">${card('Top scorers', leadRows(PS.top(x => x.q.lg || 0, 5), x => x.q.lg || 0), 'pstats')}${card('Assists', leadRows(PS.top(x => x.q.la || 0, 5), x => x.q.la || 0), 'pstats')}${card('Average rating', leadRows(PS.top(PS.rt, 5), PS.rt, v => v.toFixed(2)), 'pstats')}${card('Clean sheets', leadRows(PS.top(x => x.q.cs || 0, 5), x => x.q.cs || 0), 'pstats')}${card('Man of the match', leadRows(PS.top(x => x.q.mom, 5), x => x.q.mom), 'pstats')}${card('Bookings', leadRows(PS.top(x => x.q.yc + 3 * (x.q.rc || 0), 5), x => x.q.yc + (x.q.rc ? ` + ${x.q.rc} red` : '')), 'pstats')}</div>`;
   const teams = `<div class="ovsec">Clubs</div><div class="ovg">${card('Most goals', teamRows(tsort(x => x.gf), x => x.gf), 'tstats')}${card('Fewest conceded', teamRows(tsort(x => x.ga / x.p, true), x => x.ga), 'tstats')}${card('Clean sheets', teamRows(tsort(x => x.cs), x => x.cs), 'tstats')}${card('Possession', teamRows(tsort(x => x.poss / x.p), x => Math.round(x.poss / x.p) + '%'), 'tstats')}${card('Shots a game', teamRows(tsort(x => x.sh / x.p), x => (x.sh / x.p).toFixed(1)), 'tstats')}${card('Bookings', teamRows(tsort(x => x.yc + 3 * x.rc), x => x.yc + (x.rc ? ` + ${x.rc} red` : '')), 'tstats')}</div>`;
-  return `<div class="ovtop">${table}<div class="ovside">${games}</div></div>${S.results.length ? players + teams : '<p class="empty">Player and club numbers appear once the season starts.</p>'}`;
+  return `<div class="ovtop">${table}<div class="ovside">${games}</div></div>${raceChart()}${S.results.length ? players + teams : '<p class="empty">Player and club numbers appear once the season starts.</p>'}`;
 }
 const euMine = () => EU_KEYS.find(k => S.eu.c[k] && S.eu.c[k].teams.includes(me())) || EU_KEYS.find(k => S.eu.c[k]);
 function euRow(x, i){ const b = (id, s) => x.w === id ? `<b>${s}</b>` : s;
