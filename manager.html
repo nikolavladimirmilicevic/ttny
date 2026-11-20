@@ -4141,6 +4141,25 @@ function moveP(p, to, fee, note){
   if (from === me()){ S.fin.bal += fee; S.fin.budget += fee; }
   if (to === me()){ S.fin.bal -= fee; S.fin.budget = Math.max(0, S.fin.budget - fee); }
 }
+/* the rumour mill, once a week or so (more often in a window): a man of yours in form, or one of your most valuable, is
+   said to be watched by a bigger club. Nothing more, until it is: that club is the likelier to bid for him. A rival's
+   interest is the papers' favourite */
+function rumours(open){
+  S.rum = (S.rum || []).filter(x => daysBetween(x.d, S.date) <= 60);
+  if (S.lastRum && daysBetween(S.lastRum, S.date) < (open ? 5 : 9)) return;
+  if (Math.random() > (open ? .55 : .3)) { S.lastRum = S.date; return; }
+  S.lastRum = S.date;
+  const myq = club(me()).q, avg = q => { const L = q.rt.slice(-5); return L.length >= 3 ? L.reduce((t, v) => t + v, 0) / L.length : 0; };
+  const pool = squadOf(me()).filter(p => !onLoan(p) && !S.rum.some(x => x.id === p.id)).map(p => ({ p, w: Math.max(0, avg(ps(p.id)) - 6.6) * 3 + p.val / 40 })).filter(x => x.w > .25).sort((a, b) => b.w - a.w).slice(0, 8);
+  if (!pool.length) return;
+  const x = pool[Math.floor(Math.pow(Math.random(), 1.5) * pool.length)].p;
+  const big = everyClub().filter(c => c.id !== me() && (c.q || 0) >= Math.max(myq + .5, ovrNow(x) - 2) && !(c.cwc && !c.conf));
+  if (!big.length) return;
+  const c = big.sort((a, b) => (b.q || 0) - (a.q || 0)).slice(0, 12)[Math.floor(Math.random() * Math.min(12, big.length))];
+  S.rum.push({ id: x.id, c: c.id, d: S.date });
+  const riv = derbyOf(me(), c.id), lines = [`${esc(c.name)} are said to be watching <b>${esc(x.n)}</b> closely.`, `Reports claim <b>${esc(x.n)}</b> is on ${esc(c.name)}'s shortlist.`, `${esc(c.name)} sent scouts to see <b>${esc(x.n)}</b>, the papers say.`];
+  news('club', `Rumour: ${c.name} watching ${x.n}`, `${lines[Math.floor(Math.random() * lines.length)]}${riv ? ` A move to a rival would not go down well with the fans.` : ''} Nothing has been offered yet.`);
+}
 function transferTick(){
   if (!S.fin) return;
   S.bids = S.bids || []; S.offers = S.offers || [];
@@ -4159,14 +4178,18 @@ function transferTick(){
   }
   // other clubs' bids for your players, open a week
   for (const o of S.offers) if (o.st === 'open' && (daysBetween(o.d, S.date) > 7 || !open)){ o.st = 'gone'; }
+  rumours(open);
   if (!open) return;
   const days = Math.max(1, Math.min(14, daysBetween(S.lastTr || S.date, S.date))); S.lastTr = S.date;
   for (let k = 0; k < days; k++){
     if (Math.random() < .07){
       const mine = squadOf(me()).filter(p => !(S.loans || {})[p.id] && !S.offers.some(o => o.id === p.id && o.st === 'open')).sort((a, b) => b.val - a.val).slice(0, 18);
       const wants = squadOf(me()).filter(x => !(S.loans || {})[x.id] && ps(x.id).req === S.season && !S.offers.some(o => o.id === x.id && o.st === 'open'));
-      const p = wants.length && Math.random() < .6 ? wants[Math.floor(Math.random() * wants.length)] : mine[Math.floor(Math.pow(Math.random(), 1.6) * mine.length)];
-      const buyers = !p ? [] : D.allClubs.filter(c => c.id !== me() && LG.has(c.id) ? c.q >= ovrNow(p) - 6 : c.id !== me() && c.q >= ovrNow(p) - 3 && c.q <= ovrNow(p) + 4);
+      // a man the papers have linked with a club is the likelier to draw a bid, and from that club
+      const rum = (S.rum || []).filter(x => daysBetween(x.d, S.date) <= 45 && mine.some(p => p.id === x.id));
+      const rx = rum.length && Math.random() < .45 ? rum[Math.floor(Math.random() * rum.length)] : null;
+      const p = rx ? P.get(rx.id) : wants.length && Math.random() < .6 ? wants[Math.floor(Math.random() * wants.length)] : mine[Math.floor(Math.pow(Math.random(), 1.6) * mine.length)];
+      const buyers = !p ? [] : rx && club(rx.c) ? [club(rx.c)] : D.allClubs.filter(c => c.id !== me() && LG.has(c.id) ? c.q >= ovrNow(p) - 6 : c.id !== me() && c.q >= ovrNow(p) - 3 && c.q <= ovrNow(p) + 4);
       if (p && buyers.length){ const c = buyers[Math.floor(Math.random() * buyers.length)], fee = roundFee(p.val * 1e6 * (.85 + Math.random() * .45));
         S.offers.push({ id: p.id, from: c.id, fee, d: S.date, st: 'open' });
         news('club', `${c.name} bid for ${p.n}`, `${esc(c.name)} have offered ${cash(fee)} for <b>${esc(p.n)}</b>. Accept or turn it down on his Transfer screen within a week.`, { id: p.id }); }
