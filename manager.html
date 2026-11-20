@@ -2780,9 +2780,11 @@ function dayStrip(){
       it.push(`<div class="de">${crest(opp, 'dcr')}<span class="dn">${esc(club(opp) ? club(opp).name : '?')} <span class="dim">(${ha})</span></span></div><div class="de">${tail}</div><div class="dc dim">${esc(comp)}</div>${derbyOf(x.m.h, x.m.a) ? `<div class="dc dtagt">${esc(derbyOf(x.m.h, x.m.a))}</div>` : ''}`); }
     for (const [a, b] of W){ if (d === a) it.push('<div class="de yel">Transfer window opens</div>'); if (d === b) it.push('<div class="de yel">Deadline day</div>'); }
     if (!it.length) it.push(`<div class="de dim">${o < 0 ? '' : 'No match'}</div>`);
-    const fx = rows.some(r => r.date === d && r.m);
+    // a click: a match played opens its report, the next match its preview, any other the Fixtures
+    const fr = rows.find(r => r.date === d && r.m), fx = !!fr, nextD = (rows.find(r => r.m && !r.rr && r.date >= S.date) || {}).date;
+    const act = !fr ? '' : fr.rr && !fr.rr.bg && !fr.nr ? `rep|${fr.m.h}|${fr.m.a}|${d}` : d === nextD ? 'next' : 'fix';
     const ampm = o === 0 ? `<b class="ampm">${(events()[0] || {}).date === S.date || LIVE ? 'PM' : 'AM'}</b>` : '';
-    return `<div class="dday ${o === 0 ? 'today' : o < 0 ? 'past' : ''} ${fx ? 'fx' : ''} o${Math.abs(o)}" ${fx ? 'data-dayfx="1"' : ''}><div class="dh"><span>${WD[wd].slice(0, 3)} ${ampm}</span><span>${shortDate(d)}</span></div>${it.slice(0, 2).join('')}</div>`; };
+    return `<div class="dday ${o === 0 ? 'today' : o < 0 ? 'past' : ''} ${fx ? 'fx' : ''} o${Math.abs(o)}" ${fx ? `data-dayfx="${act}" title="${act === 'next' ? 'The preview' : act === 'fix' ? 'Fixtures' : 'The match report'}"` : ''}><div class="dh"><span>${WD[wd].slice(0, 3)} ${ampm}</span><span>${shortDate(d)}</span></div>${it.slice(0, 2).join('')}</div>`; };
   return `<div class="dstrip">${[-3, -2, -1, 0, 1, 2, 3].map(cell).join('')}</div>`;
 }
 // a question before something that cannot be taken back: a small box over the screen, Cancel and the action
@@ -2800,7 +2802,9 @@ function stripAnim(){
   el.style.setProperty('--shift', Math.min(n, 7)); el.classList.remove('moved'); void el.offsetWidth; el.classList.add('moved');
   const t = el.querySelector('.dday.today'); if (t) { t.classList.add('flip'); }
 }
-function wireStrip(){ document.querySelectorAll('[data-dayfx]').forEach(el => el.addEventListener('click', () => { if (LIVE) return; go({ s: 'club', cid: me(), tab: 'fix' }); })); }
+function wireStrip(){ document.querySelectorAll('[data-dayfx]').forEach(el => el.addEventListener('click', () => { if (LIVE) return; const [k, hh, aa, dd] = el.dataset.dayfx.split('|');
+  if (k === 'rep'){ const rr = allResults().find(x => x.h === +hh && x.a === +aa && x.date === dd); if (rr){ go({ s: 'club', cid: me(), tab: 'last', rr }); return; } }
+  go({ s: 'club', cid: me(), tab: k === 'next' ? 'next' : 'fix' }); })); }
 function frame(o){
   // o: { title, sub, k1, k2, top: [[key,label,disabled]], topOn, bottom, bottomOn, tools, body, next, act }
   const unread = S.news.filter(n => n.n).length, ev = events()[0], today = ev && ev.date === S.date;
@@ -4146,11 +4150,12 @@ function transferTick(){
     const p = P.get(b.id); if (!p) { b.st = 'off'; continue; }
     if (['wait', 'counter', 'yes'].includes(b.st) && !open){ b.st = 'off'; news('club', `Bid for ${p.n} lapses`, `The transfer window has closed before the deal for <b>${esc(p.n)}</b> could be done.`); continue; }
     if (b.st !== 'wait' || daysBetween(b.d, S.date) < 1) continue;
-    const ask = askingPrice(p), c = club(p.club);
+    // a rival (a derby of yours) sells to you only at a premium, and says so
+    const riv = derbyOf(me(), p.club), ask = Math.round(askingPrice(p) * (riv ? 1.4 : 1)), c = club(p.club);
     if (squadOf(p.club).length <= 18){ b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} will not sell <b>${esc(p.n)}</b>: their squad is too thin as it is.`); }
     else if (b.fee >= ask){ b.st = 'yes'; b.w = wageDemand(p); news('club', `${c.name} accept your bid`, `${esc(c.name)} have accepted your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b>. Agree personal terms with him on his Transfer screen.`, { id: p.id }); }
-    else if (b.fee >= ask * .8){ b.st = 'counter'; b.ask = ask; news('club', `${c.name} want more for ${p.n}`, `${esc(c.name)} turn down ${cash(b.fee)} for <b>${esc(p.n)}</b> but would sell for ${cash(ask)}.`, { id: p.id }); }
-    else { b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} have rejected your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b> out of hand.`); }
+    else if (b.fee >= ask * .8){ b.st = 'counter'; b.ask = ask; news('club', `${c.name} want more for ${p.n}`, `${esc(c.name)} turn down ${cash(b.fee)} for <b>${esc(p.n)}</b> but would sell for ${cash(ask)}${riv ? `: selling to a rival (the ${esc(riv)}) comes at a price` : ''}.`, { id: p.id }); }
+    else { b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} have rejected your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b> out of hand${riv ? `: they do not sell cheaply to a rival (the ${esc(riv)})` : ''}.`); }
   }
   // other clubs' bids for your players, open a week
   for (const o of S.offers) if (o.st === 'open' && (daysBetween(o.d, S.date) > 7 || !open)){ o.st = 'gone'; }
