@@ -1764,6 +1764,22 @@ function seasonAwards(){
   const lines = [];
   for (const [k, x, why] of A2) if (x){ S.awards.push({ s: S.season, k, id: x.p.id, c: x.p.club, why: why(x) }); lines.push(`<b>${k}</b>: ${esc(x.p.n)} (${esc(club(x.p.club).name)}), ${why(x)}`); }
   if (lines.length) news('club', 'The season\'s awards', lines.join('<br>'));
+  teamOfSeason(L, avg);
+}
+/* the Team of the Season: the league's men with half the games or more, by their average rating against the rest of
+   their line, in whichever shape holds the best of them (as the Team of the Week); with how often each made that */
+function teamOfSeason(L, avg){
+  const half = Math.max(8, Math.floor(S.round / 2)), tw = {}; for (const t of (S.totw || []).filter(t => t.s === S.season)) for (const id of t.xi) tw[id] = (tw[id] || 0) + 1;
+  const C2 = L.filter(x => LG.has(x.p.club) && x.q.rt.length >= half).map(x => { const ln = lineOf(x.p.prim); return { id: x.p.id, c: x.p.club, r: avg(x), ln: ln === 0 ? 0 : ln === 1 ? 1 : ln === 5 ? 3 : 2 }; });
+  const B = [0, 1, 2, 3].map(k => C2.filter(x => x.ln === k).sort((a, b) => b.r - a.r)), m = B.map(L2 => L2.length ? L2.reduce((t, x) => t + x.r, 0) / L2.length : 0);
+  const sum = (L2, k, i) => L2.slice(0, k).reduce((t, x) => t + x.r - m[i], 0), tot = s => sum(B[1], s[0], 1) + sum(B[2], s[1], 2) + sum(B[3], s[2], 3);
+  const shapes = [[4, 4, 2], [4, 3, 3], [3, 5, 2], [3, 4, 3], [4, 5, 1], [5, 3, 2], [5, 4, 1]].filter(([d, mm, f]) => B[1].length >= d && B[2].length >= mm && B[3].length >= f);
+  if (!B[0].length || !shapes.length) return;
+  const sh = shapes.reduce((a, s) => tot(s) > tot(a) + 1e-9 ? s : a), xi = [B[0].slice(0, 1), B[1].slice(0, sh[0]), B[2].slice(0, sh[1]), B[3].slice(0, sh[2])];
+  for (const x of xi.flat()) S.awards.push({ s: S.season, k: 'Team of the Season', id: x.id, c: x.c, why: `average rating ${x.r.toFixed(2)}` });
+  const line = L2 => L2.map(x => `${esc(cmName(P.get(x.id).n))} <span class="dim">(${esc(club(x.c).name)}, ${x.r.toFixed(2)}${tw[x.id] ? `, ${tw[x.id]}× in the Team of the Week` : ''})</span>`).join(', ');
+  const mine = xi.flat().filter(x => x.c === me());
+  news('match', `Team of the Season`, `<b>Shape:</b> ${sh.join('-')}.<br><b>Goalkeeper:</b> ${line(xi[0])}.<br><b>Defence:</b> ${line(xi[1])}.<br><b>Midfield:</b> ${line(xi[2])}.<br><b>Attack:</b> ${line(xi[3])}.${mine.length ? `<br>${mine.length === 1 ? `<b>${esc(P.get(mine[0].id).n)}</b> of yours makes it.` : `${mine.length} of yours make it.`}` : ''}`);
 }
 function cupDraw(){
   const alive = S.cup.alive.slice(), r0 = rng(`${S.seed}-cup-${S.season}-${S.cup.stage}`);
