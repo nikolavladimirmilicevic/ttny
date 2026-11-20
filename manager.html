@@ -37,6 +37,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .cm{display:grid;grid-template-columns:200px 1fr;gap:12px;max-width:1180px;margin:0 auto;padding:0 16px 30px}
 .side{background:var(--panel);border-radius:14px;display:flex;flex-direction:column;align-items:stretch;padding:10px 8px;gap:4px;align-self:start;position:sticky;top:10px}
 .nact{display:flex;align-items:center;justify-content:space-between;gap:10px;background:color-mix(in srgb,var(--loss) 14%,var(--panel-2));border:1px solid color-mix(in srgb,var(--loss) 45%,transparent);border-radius:10px;padding:7px 10px;margin:4px 0 10px}.nact span{color:var(--loss);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.dtag{background:linear-gradient(90deg,#E5484D,#F2994A);color:#fff;font-weight:800;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:5px}.dtagt{color:#F2994A;font-weight:700}
 .dstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;max-width:1180px;margin:0 auto 10px;padding:0 16px;box-sizing:border-box;overflow:hidden}
 .dday{background:var(--panel);border:1px solid #ffffff12;border-radius:9px;padding:6px 8px 7px;min-width:0;min-height:66px;font-size:11.5px;line-height:1.3}
 .dday.past{opacity:.72}.dday.fx{cursor:pointer}.dday.fx:hover{border-color:#ffffff40}.dday.today{background:color-mix(in srgb,var(--gold) 13%,var(--panel));border-color:var(--gold)}
@@ -1204,10 +1205,37 @@ const nm = x => esc(surname(x.p.n));
 const T_RECENT = [];
 const T = L => { const keyOf = i => L.length + ':' + i + ':' + L[0].length; const fresh = L.map((_, i) => i).filter(i => !T_RECENT.includes(keyOf(i)));
   const i = (fresh.length ? fresh : L.map((_, k) => k))[Math.floor(Math.random() * (fresh.length || L.length))]; T_RECENT.push(keyOf(i)); if (T_RECENT.length > 40) T_RECENT.shift(); return L[i]; };
+/* derbies and the great rivalries: by the clubs' names as the game has them. A derby fills the ground, is played with
+   more edge (more fouls, the referee quicker to his pocket), and its result stays with the squad and the fans */
+const DERBIES = [
+  ['Arsenal', 'Tottenham', 'North London derby'], ['Liverpool', 'Everton', 'Merseyside derby'], ['Man City', 'Man Utd', 'Manchester derby'], ['Liverpool', 'Man Utd', 'North-West derby'],
+  ['Newcastle', 'Sunderland', 'Tyne-Wear derby'], ['Arsenal', 'Chelsea', 'London derby'], ['Chelsea', 'Tottenham', 'London derby'], ['Chelsea', 'Fulham', 'West London derby'], ['Fulham', 'Brentford', 'West London derby'],
+  ['Brentford', 'QPR', 'West London derby'], ['Crystal Palace', 'Brighton', 'M23 derby'], ['Ipswich', 'Norwich City', 'East Anglian derby'], ['Aston Villa', 'Birmingham City', 'Second City derby'],
+  ["Nott'm Forest", 'Derby County', 'East Midlands derby'], ['Southampton', 'Portsmouth', 'South Coast derby'], ['Wolves', 'West Brom', 'Black Country derby'], ['Cardiff City', 'Swansea City', 'South Wales derby'],
+  ['Bristol City', 'Cardiff City', 'Severnside derby'], ['Blackburn Rovers', 'Burnley', 'East Lancashire derby'], ['Leeds', 'Man Utd', 'Roses rivalry'], ['West Ham United', 'Millwall', 'Dockers derby'],
+  ['West Ham United', 'Tottenham', 'London derby'], ['Sheffield Utd', 'Leeds', 'Yorkshire derby'], ['Coventry', 'Aston Villa', 'Midlands derby'], ['Hull City', 'Leeds', 'Yorkshire derby'],
+  ['Paris SG', 'Marseille', 'Le Classique'], ['Lille', 'Lens', 'Derby du Nord'], ['Lyon', 'Saint-Étienne', 'Derby rhodanien'], ['Lyon', 'Marseille', 'Choc des Olympiques'], ['Nice', 'Monaco', 'Derby de la Côte d\'Azur'],
+  ['Rennes', 'Nantes', 'Derby breton'], ['Brest', 'Lorient', 'Derby breton'], ['Rennes', 'Brest', 'Derby breton'], ['Paris SG', 'Paris FC', 'Derby parisien'],
+  ['Milan', 'Inter', 'Derby della Madonnina'], ['Roma', 'Lazio', 'Derby della Capitale'], ['Juventus', 'Torino', 'Derby della Mole'], ['Inter', 'Juventus', 'Derby d\'Italia'], ['Napoli', 'Roma', 'Derby del Sole'],
+  ['Genoa', 'Sampdoria', 'Derby della Lanterna'], ['Milan', 'Juventus', 'Italian classic'], ['Fiorentina', 'Juventus', 'Fiorentina v Juventus'],
+  ['Real Madrid', 'Barcelona', 'El Clásico'], ['Real Madrid', 'Atlético', 'Derbi madrileño'], ['Sevilla', 'Betis', 'Derbi sevillano'], ['Barcelona', 'Espanyol', 'Derbi barceloní'],
+  ['Athletic', 'Real Sociedad', 'Derbi vasco'], ['Celta', 'Deportivo', 'Derbi gallego'], ['Valencia', 'Villarreal', 'Derbi de la Comunitat'], ['Valencia', 'Levante', 'Derbi valenciano'], ['Atlético', 'Getafe', 'Madrid derby'], ['Rayo', 'Atlético', 'Madrid derby'],
+  ['Bayern', 'Dortmund', 'Der Klassiker'], ['Dortmund', 'Schalke', 'Revierderby'], ['Hamburg', 'Werder Bremen', 'Nordderby'], ['Köln', 'Gladbach', 'Rheinderby'], ['Union Berlin', 'Hertha', 'Berlin derby'],
+  ['Hamburg', 'St. Pauli', 'Hamburg derby'], ['Frankfurt', 'Mainz', 'Rhein-Main derby'], ['Stuttgart', 'Karlsruhe', 'Baden-Württemberg derby'], ['Bayern', 'Nuremberg', 'Bavarian derby'],
+  ['Crvena Zvezda', 'Partizan', 'Večiti derbi'], ['Crvena Zvezda', 'Vojvodina', 'Zvezda v Vojvodina'], ['Partizan', 'Vojvodina', 'Partizan v Vojvodina'], ['OFK Beograd', 'Čukarički', 'Belgrade derby'], ['Radnički Niš', 'Dubočica', 'Južni derbi'],
+  ['Benfica', 'Sporting CP', 'Derby de Lisboa'], ['Porto', 'Benfica', 'O Clássico'], ['Ajax', 'Feyenoord', 'De Klassieker'], ['Ajax', 'PSV', 'De Topper'], ['Olympiacos', 'Panathinaikos', 'Derby of the eternal enemies'],
+  ['Fenerbahçe', 'Galatasaray', 'Intercontinental derby'], ['Galatasaray', 'Beşiktaş', 'Istanbul derby'], ['Slavia Praha', 'Sparta Praha', 'Prague derby'], ['GNK Dinamo', 'Hajduk Split', 'Eternal derby'],
+  ['Levski Sofia', 'CSKA Sofia', 'Eternal derby'], ['Celtic', 'Hearts', 'Celtic v Hearts']];
+let DERBY_IX = null;
+function derbyOf(h, a){
+  if (!DERBY_IX && C.size){ DERBY_IX = new Map(); const byName = new Map(everyClub().map(c => [c.name, c.id])); for (const [x, y, n] of DERBIES){ const i = byName.get(x), j = byName.get(y); if (i != null && j != null){ DERBY_IX.set(i + '-' + j, n); DERBY_IX.set(j + '-' + i, n); } } }
+  return (DERBY_IX && DERBY_IX.get(h + '-' + a)) || null;
+}
 function newMatch(h, a, opts = {}){
   const cond = opts.cond || matchConditions(h, a, opts.date || S.date);
   const M = { h, a, min: 0, add1: 1 + Math.floor(Math.random() * 3), add2: 2 + Math.floor(Math.random() * 4), half: 1, feed: [], over: false, live: !!opts.live, cup: opts.cup || null, noPens: !!opts.noPens, agg: opts.agg || null, neutral: !!opts.neutral, mom: null, hs: [], zones: [], inc: [], ...cond };
   M.H = sideOf(h, true); M.A = sideOf(a, false);
+  M.derby = derbyOf(h, a);
   return M;
 }
 const label = M => M.half === 1 && M.min > 45 ? `45+${M.min - 45}` : M.half === 2 && M.min > 90 ? `90+${M.min - 90}` : String(M.min);
@@ -1258,7 +1286,7 @@ function corner(M, S1, S2, u1, u2){
   else if (M.live && Math.random() < .25) say(M, S1, 'minor', T([`${nm(taker)}'s corner is cleared.`, `${nm(taker)}'s corner is headed away.`, `The keeper comes and punches ${nm(taker)}'s corner clear.`, `${nm(taker)} overhits the corner and it goes out.`, `${nm(taker)}'s corner is short and comes to nothing.`]));
 }
 function foul(M, S1, S2){
-  const x = who(S1, 'foul', 'ag'), v = who(S2, 'dribble', 'dr'), strict = (M.ref ? M.ref.s : 10) / 10.5;
+  const x = who(S1, 'foul', 'ag'), v = who(S2, 'dribble', 'dr'), strict = (M.ref ? M.ref.s : 10) / 10.5 * (M.derby ? 1.12 : 1);
   S1.fouls++;
   const ag = A(x.p, 'ag'), r = Math.random(), hard = piOf(S1.t, x.id, 'tack', S1.t.tack);
   if (r < (.0015 + .001 * (ag - 60) / 20) * strict * [.6, 1, 1.6][hard]){ S1.rc++; evAdd(S1, x, 'rc'); S1.ev[x.id].straight = 1; rateAdd(S1, x, -1.5); say(M, S1, 'red', T([`RED CARD! ${nm(x)} is sent off for a reckless challenge on ${nm(v)}.`, `RED CARD! ${nm(x)} goes in two-footed on ${nm(v)} and is off.`, `RED CARD! ${nm(x)} denies ${nm(v)} a clear chance and is sent off.`])); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', id: x.p.id, t: surname(x.p.n) }); off(S1, x); return; }
@@ -1357,13 +1385,14 @@ function minute(M){
         say(M, att, 'minor', T([`${nm(p2)} looks for an opening, but ${nm(t2)} reads it.`, `Good challenge from ${nm(t2)} to stop ${nm(p2)}.`, `${nm(p2)} tries to thread it through, ${nm(t2)} intercepts.`, `${esc(club(att.cid).name)} keep it, ${nm(p2)} probing.`, `${nm(t2)} steps in and nicks it off ${nm(p2)}.`, `${nm(p2)} plays it square; ${esc(club(att.cid).name)} are patient.`, `${nm(t2)} slides in to win it from ${nm(p2)}.`, `${nm(p2)} switches play, but ${nm(t2)} is there.`, `${esc(club(att.cid).name)} move it from side to side, looking for a gap.`]));
       }
     }
-  } else if (r < .72) foul(M, def, att);
+  } else if (r < (M.derby ? .755 : .72)) foul(M, def, att);
   M.zones.push([M.min, M.half, zone]);
   if (Math.random() < .0016) injure(M, Math.random() < .5 ? H : Aw);
   aiManage(M, H); aiManage(M, Aw);
 }
 function step(M){
   if (M.over) return false;
+  if (M.min === 0 && M.half === 1 && M.derby) say(M, null, 'yel', T([`It's the ${esc(M.derby)}! A packed house and a fierce atmosphere.`, `${esc(M.derby)} day. The noise is deafening as the teams come out.`, `The ${esc(M.derby)}: bragging rights are on the line.`]));
   if (M.min === 0 && M.half === 1) say(M, null, '', `${M.ref ? esc(M.ref.n) + ' gets the game under way' : 'Kick-off'} at ${esc(club(M.h).venue || club(M.h).name)}. ${esc(M.weather)}, ${M.temp}°C.`);
   M.min++;
   if (M.half === 1 && M.min > 45 + M.add1){ M.half = 2; M.min = 45; M.ht = true; say(M, null, '', `Half-time: ${esc(club(M.h).name)} ${M.H.goals}-${M.A.goals} ${esc(club(M.a).name)}.`); for (const s of [M.H, M.A]) for (const y of s.on) y.e = Math.min(100, y.e + 5); return true; }
@@ -1422,7 +1451,14 @@ function apply(M, kind){
     const home = M.h === me(), c = club(me()), fill = clamp(.82 + (S.conf - 50) / 400 + Math.random() * .08, .6, 1), price = 38 + (c.q - 70) * 2.2;
     const gate = home ? Math.round((c.cap || 30000) * ((S.fac || {}).ground ? 1.08 : 1) * fill * price) : 0, tv = kind === 'eu' ? 0 : 1.9e6 + (kind === 'cup' ? .5e6 : 0);
     S.fin.gate += gate; S.fin.tv += tv; S.fin.bal += gate + tv;
-    M.att = Math.round((club(M.h).cap || 30000) * (home ? fill : clamp(fill, .75, 1)));
+    M.att = Math.round((club(M.h).cap || 30000) * (M.derby ? Math.max(fill, .985) : home ? fill : clamp(fill, .75, 1)));
+    // a derby of yours: the result stays with the squad and the fans
+    if (M.derby && !M.derbyDone){ M.derbyDone = 1; const us = home ? M.H : M.A, th = home ? M.A : M.H, w = us.goals > th.goals || (M.pens && (home ? M.pens[0] > M.pens[1] : M.pens[1] > M.pens[0])), d = us.goals === th.goals && !M.pens;
+      const k = [me(), home ? M.a : M.h].sort().join('-'), rec = (S.derbies = S.derbies || {})[k] = S.derbies[k] || { w: 0, d: 0, l: 0 }; rec[w ? 'w' : d ? 'd' : 'l']++;
+      if (!d) for (const p of squadOf(me())){ const q = ps(p.id); q.mor = clamp(q.mor + (w ? 4 : -4), 15, 100); }
+      S.conf = clamp((S.conf || 50) + (w ? 3 : d ? 0 : -3), 0, 100);
+      const opp = club(home ? M.a : M.h).name;
+      news('match', w ? `${M.derby}: the fans are delighted` : d ? `${M.derby}: honours even` : `${M.derby}: the fans are hurting`, w ? `Beating ${esc(opp)} means more than three points: the supporters will talk about it for weeks, and the squad is buzzing.` : d ? `A draw with ${esc(opp)}. Nobody gets the bragging rights this time.` : `Losing to ${esc(opp)} hurts. The supporters are unhappy and the dressing room is quiet.`); }
   }
 }
 
@@ -2706,7 +2742,7 @@ function dayStrip(){
       if (x.rr && !x.rr.bg && x.rr.s){ const r = x.rr.w === cid ? 'W' : x.rr.w == null ? 'D' : 'L'; tail = `<span class="form"><span class="${r}">${r}</span></span> ${x.rr.s[0]}-${x.rr.s[1]}`; }
       else if (live){ tail = `<b class="win">${LIVE.M.over ? 'FT' : label(LIVE.M) + "'"}</b> ${LIVE.M.H.goals}-${LIVE.M.A.goals}`; }
       else tail = `<span class="dim">${(x.m && x.m.ko) || (wd === 0 || wd === 6 ? '15:00' : '19:45')}</span>`;
-      it.push(`<div class="de">${crest(opp, 'dcr')}<span class="dn">${esc(club(opp) ? club(opp).name : '?')} <span class="dim">(${ha})</span></span></div><div class="de">${tail}</div><div class="dc dim">${esc(comp)}</div>`); }
+      it.push(`<div class="de">${crest(opp, 'dcr')}<span class="dn">${esc(club(opp) ? club(opp).name : '?')} <span class="dim">(${ha})</span></span></div><div class="de">${tail}</div><div class="dc dim">${esc(comp)}</div>${derbyOf(x.m.h, x.m.a) ? `<div class="dc dtagt">${esc(derbyOf(x.m.h, x.m.a))}</div>` : ''}`); }
     for (const [a, b] of W){ if (d === a) it.push('<div class="de yel">Transfer window opens</div>'); if (d === b) it.push('<div class="de yel">Deadline day</div>'); }
     if (!it.length) it.push(`<div class="de dim">${o < 0 ? '' : 'No match'}</div>`);
     const fx = rows.some(r => r.date === d && r.m);
@@ -3155,7 +3191,8 @@ function previewHTML(h, a, o){
     <tr><td class="dim">Style</td><td>${MENT[ot.men]}, ${PASS[ot.pass].toLowerCase()} passing${ot.press ? ', pressing' : ''}${ot.counter ? ', on the counter' : ''}${ot.mbb ? ', men behind the ball' : ''}</td></tr>
     ${tb ? `<tr><td class="dim">Record</td><td>W${tb.w} D${tb.d} L${tb.l}, goals ${tb.gf}-${tb.ga}</td></tr>` : ''}
     <tr><td class="dim">Dangermen</td><td>${danger.map(x => `<a class="sky" data-pl="${x.id}" style="cursor:pointer">${esc(cmName(x.p.n))}</a> <span class="small yel">${x.code}</span>`).join(', ')}</td></tr></tbody></table>`;
-  const facts = `<div class="mpv-f">${[o.comp && `<b>${o.comp}</b>`, fmtDate(o.date, true) + (o.ko ? `, ${o.ko}` : ''), o.tv && `<span class="pill">${esc(o.tv)}</span>`, esc(o.venue || ''), `Referee ${esc(o.ref.n)} <span class="dim">(${o.ref.s >= 13 ? 'strict' : o.ref.s <= 7 ? 'lenient' : 'fair'})</span>`, `${esc(o.weather)}, ${o.temp}°C${o.wxNote ? ` <span class="dim">${o.wxNote}</span>` : ''}`].filter(Boolean).join('<span class="sep">·</span>')}</div>`;
+  const dby = derbyOf(h, a), drec = dby && mine && (S.derbies || {})[[h, a].sort().join('-')];
+  const facts = `<div class="mpv-f">${[dby && `<span class="dtag">${esc(dby)}</span>${drec ? ` <span class="small dim">your record: W${drec.w} D${drec.d} L${drec.l}</span>` : ''}`, o.comp && `<b>${o.comp}</b>`, fmtDate(o.date, true) + (o.ko ? `, ${o.ko}` : ''), o.tv && `<span class="pill">${esc(o.tv)}</span>`, esc(o.venue || ''), `Referee ${esc(o.ref.n)} <span class="dim">(${o.ref.s >= 13 ? 'strict' : o.ref.s <= 7 ? 'lenient' : 'fair'})</span>`, `${esc(o.weather)}, ${o.temp}°C${o.wxNote ? ` <span class="dim">${o.wxNote}</span>` : ''}`].filter(Boolean).join('<span class="sep">·</span>')}</div>`;
   return `<div class="mpv"><div class="mpv-h">${head(h)}<span class="mpv-v">v</span>${head(a)}</div>${facts}
     <div class="mpv-g">${mini(h)}${mini(a)}<div class="mpv-s">${quick}${dossier}</div></div></div>`;
 }
@@ -4620,7 +4657,7 @@ function startLive(h, a, opts){
   const mo = m => (opts.mo ? opts.mo(m) : {});
   const M = newMatch(h, a, { live: true, cup: opts.cup, date: S.date, ...mo({ h, a }) });
   const others = (opts.others || []).map(m => newMatch(m.h, m.a, { cup: opts.cup, date: S.date, ...mo(m) }));
-  M.att = opts.shield || (opts.lc && opts.cup === 'Final') ? 80000 + Math.round(Math.random() * 7000) : Math.round((club(h).cap || 30000) * clamp(.86 + (S.conf - 50) / 400 + Math.random() * .08, .65, 1));
+  M.att = M.derby && !opts.neutral ? Math.round((club(h).cap || 30000) * (.985 + Math.random() * .015)) : opts.shield || (opts.lc && opts.cup === 'Final') ? 80000 + Math.round(Math.random() * 7000) : Math.round((club(h).cap || 30000) * clamp(.86 + (S.conf - 50) / 400 + Math.random() * .08, .65, 1));
   LIVE = { M, others, cup: opts.cup, shield: !!opts.shield, lc: !!opts.lc, eu: opts.eu || null, usc: !!opts.usc, cwc: !!opts.cwc, fic: !!opts.fic, started: false, paused: true, sel: null, pre: true, atHT: false };
   LIVE.args = [h, a, opts]; LIVE.side = JSON.stringify([S.tac[me()].xi, S.tac[me()].bench]);
   MTAB = 'overview'; view(); scrollTo(0, 0);
