@@ -1726,21 +1726,25 @@ function cupDraw(){
     for (let i = 0; i + 1 < alive.length; i += 2) ties.push({ h: alive[i], a: alive[i + 1] }); }
   return { ties, bye };
 }
-/* the league's Team of the Week after each round (4-3-3): the best match rating in each line, where the man played
-   that day; a man of yours in it is told so */
+/* the league's Team of the Week after each round: the best match ratings, each man where he played that day, in
+   whichever shape holds the best of them (3-4-3 to 5-4-1: the one whose men stood furthest above the rest of their line); a man of yours is told so */
 function teamOfWeek(Ms, n){
   const cand = [];
   for (const M of Ms) for (const s of [M.H, M.A]) for (const x of s.on){ const r = s.rate[x.id]; if (!r || !P.get(x.id)) continue;
     const ln = lineOf(x.pos), g = (s.ev[x.id] || {}).g || 0; cand.push({ id: x.id, c: s.cid, r: Math.round(r * 10) / 10, g, ln: ln === 0 ? 0 : ln === 1 ? 1 : ln === 5 ? 3 : 2 }); }
   const best = new Map(); for (const x of cand) if (!best.has(x.id) || best.get(x.id).r < x.r) best.set(x.id, x);
   const by = k => [...best.values()].filter(x => x.ln === k).sort((a, b) => b.r - a.r || b.g - a.g);
-  const xi = [by(0).slice(0, 1), by(1).slice(0, 4), by(2).slice(0, 3), by(3).slice(0, 3)];
-  if (xi.flat().length < 11) return;
+  // each man against his own line's day (forwards score and rate higher): how far above the others in his line he was
+  const B = [by(0), by(1), by(2), by(3)], avg = B.map(L => L.length ? L.reduce((t, x) => t + x.r, 0) / L.length : 0), sum = (L, k, i) => L.slice(0, k).reduce((t, x) => t + x.r - avg[i], 0);
+  const shapes = [[4, 4, 2], [4, 3, 3], [3, 5, 2], [3, 4, 3], [4, 5, 1], [5, 3, 2], [5, 4, 1]].filter(([d, m, f]) => B[1].length >= d && B[2].length >= m && B[3].length >= f);
+  if (!B[0].length || !shapes.length) return;
+  const tot = s => sum(B[1], s[0], 1) + sum(B[2], s[1], 2) + sum(B[3], s[2], 3), sh = shapes.reduce((a, s) => tot(s) > tot(a) + 1e-9 ? s : a);
+  const xi = [B[0].slice(0, 1), B[1].slice(0, sh[0]), B[2].slice(0, sh[1]), B[3].slice(0, sh[2])];
   const line = L => L.map(x => `${esc(cmName(P.get(x.id).n))} <span class="dim">(${esc(club(x.c).name)}, ${x.r.toFixed(1)}${x.g ? `, ${x.g} goal${x.g > 1 ? 's' : ''}` : ''})</span>`).join(', ');
   const mine = xi.flat().filter(x => x.c === me()), star = xi.flat().sort((a, b) => b.r - a.r)[0];
-  (S.totw = S.totw || []).push({ s: S.season, n, xi: xi.flat().map(x => x.id) });
+  (S.totw = S.totw || []).push({ s: S.season, n, f: sh.join('-'), xi: xi.flat().map(x => x.id) });
   for (const x of mine){ const q = ps(x.id); q.mor = clamp(q.mor + 2, 15, 100); q.totw = (q.totw || 0) + 1; }
-  news('match', `Team of the Week: round ${n}`, `<b>Goalkeeper:</b> ${line(xi[0])}.<br><b>Defence:</b> ${line(xi[1])}.<br><b>Midfield:</b> ${line(xi[2])}.<br><b>Attack:</b> ${line(xi[3])}.<br>Star man: <b>${esc(P.get(star.id).n)}</b>, ${star.r.toFixed(1)}.${mine.length ? ` ${mine.length === 1 ? `<b>${esc(P.get(mine[0].id).n)}</b> of yours makes the side.` : `${mine.length} of yours make the side.`}` : ''}`);
+  news('match', `Team of the Week: round ${n}`, `<b>Shape:</b> ${sh.join('-')}.<br><b>Goalkeeper:</b> ${line(xi[0])}.<br><b>Defence:</b> ${line(xi[1])}.<br><b>Midfield:</b> ${line(xi[2])}.<br><b>Attack:</b> ${line(xi[3])}.<br>Star man: <b>${esc(P.get(star.id).n)}</b>, ${star.r.toFixed(1)}.${mine.length ? ` ${mine.length === 1 ? `<b>${esc(P.get(mine[0].id).n)}</b> of yours makes the side.` : `${mine.length} of yours make the side.`}` : ''}`);
 }
 function finishLeague(myM, others){
   const r = S.rounds[S.round], res = [], Ms = [];
