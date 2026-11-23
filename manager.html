@@ -2404,7 +2404,7 @@ function events(){
   if (S.usc && !S.usc.res) L.push({ k: 'usc', date: S.usc.date });
   L.push(...ficEvents());
   if (S.cwc && S.cwc.cur >= 0 && S.cwc.cur < S.cwc.days.length) L.push({ k: 'cwc', date: S.cwc.days[S.cwc.cur].d });
-  L.push(...ntEvents());
+  L.push(...ntEvents(), ...euqEvents(), ...frEvents());
   return L.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.k === 'league' ? -1 : 1);
 }
 function passDays(n){
@@ -2527,6 +2527,9 @@ function onContinue(){
   const ev = events()[0]; if (!ev){ endSeason(); view(); return; }
   if (ev.date > S.date){ passDays(daysBetween(S.date, nextStop(ev.date))); monthly(); save(); view(); return; }
   if (ev.k === 'nt'){ ntLive(ev.f); return; }
+  if (ev.k === 'euq'){ readyTactic(me()); const f = S.euq.fx.find(x => x.d === ev.date && !x.res && (x.h === me() || x.a === me()));
+    if (f){ startLive(f.h, f.a, { cup: euqLabel(f), euq: f, mo: () => euqOptsF(f) }); return; } finishEUQ(null); save(); view(); return; }
+  if (ev.k === 'fr'){ readyTactic(me()); startLive(ev.f.h, ev.f.a, { cup: 'Friendly', fr: ev.f, mo: () => ({ noPens: true }) }); return; }
   readyTactic(me());   // the side is checked on the pre-match screen, when you go to the match (sideCheck)
   if (ev.k === 'lc'){
     const ties = lcDraw(), mine = S.lc.alive.concat(S.lc.stage === 1 ? S.lc.wait : []).includes(me()) && ties.find(x => x.h === me() || x.a === me());
@@ -2764,7 +2767,7 @@ function euEntrants(){
   const E = D.eu, yrs = S.season - (E.season || D.season);
   if (yrs === 0) return Object.fromEntries(E.comps.map(c => [c.k, c.teams.filter(id => C.has(id) && (LG.has(id) || EU.has(id) || leagueOf(id)))]));
   const pv = (S.past || [])[(S.past || []).length - 1]; if (!pv) return null;
-  const out = { ucl: [], uel: [], uecl: [] };
+  const out = { ucl: [], uel: [], uecl: [] }, quals = [];
   // each league's places by its own quota (England: five, three with the FA Cup winner, the League Cup winner; France:
   // four, two with the Coupe de France winner, one; Italy: the same with the Coppa Italia winner)
   const lgs = [[pv.home || 'ENG', { table: pv.table, cup: pv.cup, lc: pv.lc }], ...Object.entries(pv.aw || {})];
@@ -2773,11 +2776,14 @@ function euEntrants(){
     if (f.cup && order.includes(f.cup) && !taken.has(f.cup)){ uel.push(f.cup); taken.add(f.cup); }
     for (const id of order){ if (uel.length >= q.uel + 1) break; if (!taken.has(id)){ uel.push(id); taken.add(id); } }
     out.uel.push(...uel);
-    const lc = f.lc && order.includes(f.lc) && !taken.has(f.lc) ? f.lc : order.find(id => !taken.has(id)); if (lc){ out.uecl.push(lc); taken.add(lc); } }
+    const lc = f.lc && order.includes(f.lc) && !taken.has(f.lc) ? f.lc : order.find(id => !taken.has(id)); if (lc){ out.uecl.push(lc); taken.add(lc); }
+    const QR = (LG_RULES[k] || LG_RULES.ENG).qual || {}, mine2 = { ucl: order.slice(0, q.ucl), uel, uecl: lc ? [lc] : [] };
+    for (const ck of EU_KEYS) (mine2[ck] || []).forEach((id, i) => { const rr = EUQ_S.indexOf((QR[ck] || [])[i]); if (rr >= 0) quals.push({ id, k: ck, r: rr }); }); }
   // the foreign clubs: each cup's own, sorted by strength with a little luck each season, then shared out
   const r = rng(`eu-q-${S.seed}-${S.season}`), pool = [];
   for (const c of E.comps) pool.push(...c.teams.filter(id => EU.has(id)).map(id => ({ id, v: club(id).q + (r() - .5) * 4 })).sort((a, b) => b.v - a.v).map(x => x.id));
   for (const k of EU_KEYS){ const need = 36 - out[k].length; out[k].push(...pool.splice(0, need)); }
+  out.quals = quals;
   return out;
 }
 // a fresh league phase: matchdays as in the data's first season (52 weeks on); each club meets different opponents,
@@ -2816,10 +2822,142 @@ function euSetup(){
     S.eu.c[k] = { k, teams, tab: Object.fromEntries(teams.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 }])), days: Object.keys(by).sort().map(d => ({ d, md: mdOf(d), m: by[d], res: null })),
       cur: 0, ko: null, win: null, yrs, mds: mds.length };
   }
-  euFixRounds();
-  const mine = EU_KEYS.find(k => S.eu.c[k] && S.eu.c[k].teams.includes(me()));
-  if (mine){ S.fin.tv += EU_PRIZE[mine].start; S.fin.bal += EU_PRIZE[mine].start;
+  euFixRounds(); euqInit(ent.quals);
+  const mine = EU_KEYS.find(k => S.eu.c[k] && S.eu.c[k].teams.includes(me())), myQ = (ent.quals || []).find(q => q.id === me());
+  if (myQ) news('comp', `${EU_NAME[myQ.k]} qualifying`, `${esc(club(me()).name)} start in the ${EU_NAME[myQ.k]} ${EUQ_R[myQ.r]}. Win every round and the league phase is yours; lose and the European season goes on in a smaller cup, or ends.`);
+  else if (mine){ S.fin.tv += EU_PRIZE[mine].start; S.fin.bal += EU_PRIZE[mine].start;
     news('comp', `Into the ${EU_NAME[mine]}`, `${esc(club(me()).name)} are in this season's ${EU_NAME[mine]}: ${S.eu.c[mine].mds} games in the league phase, the first on ${fmtDate(S.eu.c[mine].days.find(d => d.m.some(m => m.h === me() || m.a === me())).d, true)}. Taking part is worth ${cash(EU_PRIZE[mine].start)} to the club.`); }
+}
+/* ---- European qualifying (from the game's second season; the first season's league phases are the real ones). Each
+   league's places that UEFA's access list sends to a qualifying round (LG_RULES qual: England's League Cup winner to the
+   Conference League play-off round; France's fourth to the Champions League third qualifying round; Serbia's champions
+   to the Champions League second qualifying round, its Europa League clubs to the first, its Conference League club to
+   the second) start there, two legs a round in July and August: Q1, Q2, Q3, play-off (Champions League on Tuesdays,
+   the others on Thursdays). The club holds its league-phase place while it wins; the play-off won, it is in. A tie lost:
+   the opponent takes its place and it drops into the opponent's own cup (a Champions League qualifier's opponents come
+   from the Europa League, a Europa League qualifier's from the Conference League: losers go down a cup, as in the real
+   access list); a Conference League qualifier who loses is out. ---- */
+const EUQ_R = ['first qualifying round', 'second qualifying round', 'third qualifying round', 'play-off round'], EUQ_S = ['Q1', 'Q2', 'Q3', 'PO'];
+const euqDate = (k, r, leg) => day(monOn(`${S.season}-07-04`), 14 * r + 7 * leg + (k === 'ucl' ? 1 : 3));
+const euCompOf = id => euOn() ? EU_KEYS.find(k => S.eu.c[k] && S.eu.c[k].teams.includes(id)) || null : null;
+function euSwap(k, out, inn){ const c = S.eu.c[k]; if (!c) return; c.teams = c.teams.map(x => x === out ? inn : x); if (c.tab[out]){ c.tab[inn] = c.tab[out]; delete c.tab[out]; }
+  for (const d of c.days) for (const m of d.m){ if (m.h === out) m.h = inn; if (m.a === out) m.a = inn; } }
+// an opponent for a round: from the cup below (or, for the Conference League, from clubs in no cup), of another country,
+// not met yet this summer; stronger the later the round
+function euqOpp(k, r, a){
+  const Q = S.euq, lower = { ucl: 'uel', uel: 'uecl', uecl: null }[k], inComp = id => !!euCompOf(id), cA = ctryOf(a), used = new Set(Q.used);
+  const ok = id => id !== a && ctryOf(id) !== cA && !used.has(id) && club(id).q && !(club(id).ctry && !/^[A-Z]{3}$/.test(club(id).ctry)) && !((D.cwc && D.cwc.clubs) || []).some(c => c.id === id);   // European clubs only (the Club World Cup's others are not)
+  let pool = lower && S.eu.c[lower] ? S.eu.c[lower].teams.filter(id => EU.has(id) && ok(id)) : [];
+  // clubs in no cup: never from a top division the game plays (those leagues' places are their own)
+  const top = new Set([...LG, ...awayKs().flatMap(k2 => topOf(k2))]);
+  pool.push(...[...EU].filter(id => !inComp(id) && !top.has(id) && ok(id)));
+  // no foreign club left: a club from below the top divisions
+  if (!pool.length) pool = everyClub().map(c => c.id).filter(id => !inComp(id) && !top.has(id) && ok(id));
+  if (!pool.length) return null;
+  const tgt = club(a).q + [-5, -3, -1, 1][r] + (rng(`euq-${S.seed}-${S.season}-${a}-${r}`)() - .5) * 4, near = pool.sort((x, y) => Math.abs(club(x).q - tgt) - Math.abs(club(y).q - tgt)).slice(0, 3);
+  return near[Math.floor(rng(`euqo-${S.seed}-${S.season}-${a}-${r}`)() * near.length)];
+}
+function euqTie(k, r, a){
+  const Q = S.euq, b = euqOpp(k, r, a);
+  if (!b){ if (r < 3) return euqTie(k, r + 1, a); return; }   // nobody to play: through
+  Q.used.push(b); const i = Q.ties.length, aHome1 = rng(`euqh-${S.seed}-${a}-${r}`)() < .5;
+  Q.ties.push({ k, r, a, b, l1: null, l2: null, w: null });
+  const [h1, a1] = aHome1 ? [a, b] : [b, a];
+  Q.fx.push({ d: euqDate(k, r, 0), h: h1, a: a1, tie: i, leg: 0, res: null }, { d: euqDate(k, r, 1), h: a1, a: h1, tie: i, leg: 1, res: null });
+  if (a === me() || b === me()) news('comp', `${EU_NAME[k]}: ${EUQ_R[r]}`, `${esc(club(me()).name)} will play ${esc(club(a === me() ? b : a).name)} (${esc(ctryName(club(a === me() ? b : a)) || '')}) in the ${EUQ_R[r]}, the first leg on ${fmtDate(euqDate(k, r, 0), true)}${h1 === me() ? ' at home' : ' away'}.`);
+}
+function euqInit(quals){
+  S.euq = { s: S.season, ties: [], fx: [], used: [] };
+  for (const q of quals || []) euqTie(q.k, q.r, q.id);
+}
+const euqEvents = () => { const Q = S.euq; if (!Q || Q.s !== S.season) return []; const f = Q.fx.filter(x => !x.res).sort((a, b) => a.d < b.d ? -1 : 1)[0]; return f ? [{ k: 'euq', date: f.d }] : []; };
+const euqLabel = f => { const t = S.euq.ties[f.tie]; return `${EU_NAME[t.k]} ${EUQ_R[t.r]}, ${f.leg ? '2nd' : '1st'} leg`; };
+const euqOptsF = f => { const t = S.euq.ties[f.tie]; if (!f.leg) return { noPens: true }; const l1 = t.l1; return { agg: [l1.h === f.h ? l1.s[0] : l1.s[1], l1.h === f.h ? l1.s[1] : l1.s[0]] }; };
+// the day's qualifying matches: yours live (myM), the league's clubs in full, the rest from strength; then each tie decided
+function finishEUQ(myM){
+  const Q = S.euq, d0 = euqEvents()[0]; if (!d0) return; const day0 = d0.date, r = rng(`${S.seed}-euq-${day0}`), mine = [];
+  for (const f of Q.fx.filter(x => x.d === day0 && !x.res)){
+    const o = euqOptsF(f), label = euqLabel(f); let x;
+    if (!LG.has(f.h) && !LG.has(f.a) && !(myM && myM.h === f.h && myM.a === f.a)){
+      const [g1, g2] = chMatch(f.h, f.a, r, false, .16); x = { h: f.h, a: f.a, s: [g1, g2], p: null, hs: [], inc: [], st: {}, bg: 1 };
+      const tot = o.agg ? [g1 + o.agg[0], g2 + o.agg[1]] : [g1, g2];
+      if (!o.noPens && tot[0] === tot[1]){ x.p = [3 + Math.floor(r() * 3), 3 + Math.floor(r() * 3)]; if (x.p[0] === x.p[1]) x.p[r() < .5 ? 0 : 1]++; }
+      x.w = g1 > g2 ? f.h : g2 > g1 ? f.a : x.p ? (x.p[0] > x.p[1] ? f.h : f.a) : null; }
+    else { const M = myM && myM.h === f.h && myM.a === f.a ? playOut(myM) : playOut(newMatch(f.h, f.a, { cup: label, date: day0, ...o })); apply(M, 'eu'); x = summary(M); }
+    f.res = { s: x.s, p: x.p, w: x.w, bg: x.bg }; if (f.h === me() || f.a === me()) mine.push([x, label]);
+    const t = Q.ties[f.tie];
+    if (!f.leg) t.l1 = { h: f.h, a: f.a, s: x.s };
+    else { t.l2 = { h: f.h, a: f.a, s: x.s }; const ga = (t.l1.h === t.a ? t.l1.s[0] : t.l1.s[1]) + (f.h === t.a ? x.s[0] : x.s[1]), gb = (t.l1.h === t.b ? t.l1.s[0] : t.l1.s[1]) + (f.h === t.b ? x.s[0] : x.s[1]);
+      t.agg = [ga, gb]; t.p = ga === gb ? x.p : null; t.w = ga > gb ? t.a : gb > ga ? t.b : x.p ? (x.p[0] > x.p[1] ? f.h : f.a) : t.a; euqDone(t); }
+  }
+  for (const [x, label] of mine) afterMatchday([x], 'eu', label);
+}
+function euqDone(t){
+  const a = t.a, nm = esc(club(a).name), ours = a === me();
+  if (t.w === a){
+    if (t.r < 3){ euqTie(t.k, t.r + 1, a); return; }
+    if (ours){ const pr = EU_PRIZE[t.k].start; S.fin.tv += pr; S.fin.bal += pr; S.conf = Math.min(100, S.conf + 3); }
+    news(ours ? 'club' : 'comp', `${club(a).name} reach the ${EU_NAME[t.k]}`, `${nm} beat ${esc(club(t.b).name)} ${t.agg[0]}-${t.agg[1]} on aggregate${t.p ? ' (on penalties)' : ''} and are in the ${EU_NAME[t.k]} league phase.${ours ? ` That is worth ${cash(EU_PRIZE[t.k].start)} to the club.` : ''}`);
+    return;
+  }
+  // beaten: the opponent takes the place; the club drops into the opponent's cup, or is out
+  const kb = euCompOf(t.b); euSwap(t.k, a, t.b); if (kb) euSwap(kb, t.b, a); euFixRounds();
+  if (ours && kb){ const pr = EU_PRIZE[kb].start; S.fin.tv += pr; S.fin.bal += pr; }
+  if (ours) S.conf = Math.max(0, S.conf - (t.k === 'ucl' ? 6 : 3));
+  news(ours ? 'club' : 'comp', `${club(a).name} out of ${EU_NAME[t.k]} qualifying`, `${nm} lost to ${esc(club(t.b).name)} ${t.agg[0]}-${t.agg[1]} on aggregate${t.p ? ' on penalties' : ''} in the ${EUQ_R[t.r]}. ${kb ? `They drop into the ${EU_NAME[kb]} league phase.` : 'That is the end of their European season.'}`);
+}
+// the qualifying ties of the summer, for the cups' screens and the match's Table tab
+function euqHTML(k){
+  const Q = S.euq; if (!Q || Q.s !== S.season) return '';
+  const T = Q.ties.filter(t => !k || t.k === k); if (!T.length) return '';
+  return `<div class="ptitle">Qualifying</div><table class="ltab"><tbody>${T.map(t => `<tr class="${t.a === me() || t.b === me() ? 'me' : ''}"><td class="small dim">${esc(EU_NAME[t.k])}<br>${EUQ_S[t.r]}</td><td class="r">${crest(t.a)}<b>${esc(club(t.a).name)}</b></td><td class="c"><span class="pill">${t.l1 ? (t.agg ? `${t.agg[0]}-${t.agg[1]}` : `${t.l1.h === t.a ? t.l1.s[0] : t.l1.s[1]}-${t.l1.h === t.a ? t.l1.s[1] : t.l1.s[0]}`) : 'v'}</span>${t.p ? '<span class="small dim"> p</span>' : ''}</td><td>${crest(t.b)}${esc(club(t.b).name)}</td><td class="small ${t.w === t.a ? 'win' : t.w ? 'loss' : 'dim'}">${t.w ? (t.w === t.a ? 'through' : 'out') : ''}</td></tr>`).join('')}</tbody></table>`;
+}
+
+/* ---- club friendlies: yours only. Before each season (from the second; the game starts in August) the board arranges
+   a few for July and early August, around any qualifying ties, against clubs from lower leagues at home and abroad,
+   the opposition getting stronger as the start nears. On the Friendlies screen you call one off or arrange one on a
+   free day (two days clear of any other match). A friendly is a full match, live if you like: it costs legs and can
+   cost an injury, but counts for nothing else (no appearances, no bans, no table) ---- */
+const frBusy = d => { const D2 = [...fixtureRows(me()).map(x => x.date), ...(S.frs || []).filter(f => !f.x).map(f => f.d), ...(S.ntJob ? [] : [])]; return D2.some(x => Math.abs(daysBetween(x, d)) < 3); };
+const frOpps = () => everyClub().filter(c => !LG.has(c.id) && c.id !== me() && c.q).map(c => c.id);
+function frPreseason(){
+  S.frs = (S.frs || []).filter(f => f.d < S.date || f.res);
+  const start = S.rounds[0].date, r = rng(`fr-${S.seed}-${S.season}`), q = club(me()).q, L = frOpps(), used = new Set();
+  let d = day(S.date, 9), n = 0;
+  while (n < 5 && d < day(start, -6)){
+    const wd = new Date(d + 'T12:00:00Z').getUTCDay();
+    if ((wd === 6 || wd === 3) && !frBusy(d)){
+      const tgt = q - 12 + n * 4 + (r() - .5) * 4, near = L.filter(id => !used.has(id)).sort((a, b) => Math.abs(club(a).q - tgt) - Math.abs(club(b).q - tgt)).slice(0, 4), o = near[Math.floor(r() * near.length)];
+      if (o){ used.add(o); const home = n % 2 === 0; S.frs.push({ d, h: home ? me() : o, a: home ? o : me(), res: null, pre: 1 }); n++; d = day(d, 3); continue; }
+    }
+    d = day(d, 1);
+  }
+  const P2 = S.frs.filter(f => f.pre && !f.res);
+  if (P2.length) news('club', 'Pre-season friendlies', `The board have arranged ${P2.length} friendlies: ${P2.map(f => `${shortDate(f.d)} ${f.h === me() ? 'v' : 'at'} ${esc(club(f.h === me() ? f.a : f.h).name)}`).join(', ')}. Change them on the Friendlies screen.`);
+}
+const frEvents = () => { const f = (S.frs || []).filter(x => !x.res && !x.x && x.d >= S.date).sort((a, b) => a.d < b.d ? -1 : 1)[0]; return f ? [{ k: 'fr', date: f.d, f }] : []; };
+function finishFr(M, f){
+  if (!M) M = playOut(newMatch(f.h, f.a, { cup: 'Friendly', date: f.d, noPens: true }));
+  const x = summary(M); f.res = { s: x.s, w: x.w };
+  for (const s of [M.H, M.A]){ for (const y of s.on){ const q = ps(y.id); q.cond = clamp(q.cond - (100 - y.e) * .45, 35, 100); }
+    for (const j of s.inj) ps(j.id).injD = Math.max(ps(j.id).injD, Math.round(j.d)); }
+  const us = f.h === me(), sc0 = x.hs.filter(g => (g.side === 'h') === us).map(g => surname(P.get(g.id).n));
+  news('match', `Friendly: ${x.w === me() ? 'win' : x.w ? 'defeat' : 'draw'} ${us ? 'v' : 'at'} ${club(us ? f.a : f.h).name}`, `${esc(club(f.h).name)} ${x.s[0]}-${x.s[1]} ${esc(club(f.a).name)}.${sc0.length ? ` Scorers: ${[...new Set(sc0)].join(', ')}.` : ''}${M.H.inj.concat(M.A.inj).some(j => P.get(j.id) && P.get(j.id).club === me()) ? ` Injured: ${M.H.inj.concat(M.A.inj).filter(j => P.get(j.id) && P.get(j.id).club === me()).map(j => esc(P.get(j.id).n)).join(', ')}.` : ''}`);
+}
+function scrFriendlies(){
+  const L = (S.frs || []).filter(f => !f.x).sort((a, b) => a.d < b.d ? -1 : 1), last = S.rounds.length ? S.rounds[S.rounds.length - 1].date : day(S.date, 200);
+  const free = []; for (let d = day(S.date, 2); d <= day(S.date, 90) && d < last && free.length < 30; d = day(d, 1)) if (!frBusy(d)) free.push(d);
+  const opps = frOpps().map(id => club(id)).sort((a, b) => String(ctryName(a) || '').localeCompare(String(ctryName(b) || '')) || a.name.localeCompare(b.name));
+  const body = `<div class="ptitle">Friendlies</div>${L.length ? `<table class="ltab"><tbody>${L.map(f => { const i = S.frs.indexOf(f), us = f.h === me(), o = us ? f.a : f.h, r = f.res ? (f.res.w === me() ? 'W' : f.res.w ? 'L' : 'D') : null;
+      return `<tr><td class="small dim">${fmtDate(f.d)}</td><td>${us ? 'v' : 'at'} ${crest(o)}<b>${esc(club(o).name)}</b> <span class="dim small">${esc(ctryName(club(o)) || '')}</span></td><td class="c">${f.res ? `<span class="form"><span class="${r}">${r}</span></span> ${f.res.s[0]}-${f.res.s[1]}` : ''}</td><td class="r">${!f.res && f.d > S.date ? `<button class="btn sm" data-frx="${i}">Call off</button>` : ''}</td></tr>`; }).join('')}</tbody></table>` : '<p class="empty">No friendlies arranged.</p>'}
+    <div class="ptitle">Arrange a friendly</div>${free.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="frd">${free.map(d => `<option value="${d}">${fmtDate(d)}</option>`).join('')}</select>
+      <select id="fro">${opps.map(c => `<option value="${c.id}">${esc(c.name)} (${esc(ctryName(c) || '')})</option>`).join('')}</select><select id="frv"><option value="h">At home</option><option value="a">Away</option></select><button class="btn sm go" id="fradd">Arrange</button></div>
+      <p class="small dim">Only days two clear of any other match of yours. Clubs from your own league are busy with their fixtures.</p>` : '<p class="empty">No free day in the next three months.</p>'}`;
+  frame({ title: `${esc(club(me()).name)} Friendlies`, short: 'Friendlies', body });
+  document.querySelectorAll('[data-frx]').forEach(b => b.addEventListener('click', () => { const f = S.frs[+b.dataset.frx]; f.x = 1; save(); view(); toast('The friendly is off.'); }));
+  const add = $('#fradd'); if (add) add.addEventListener('click', () => { const d = $('#frd').value, o = +$('#fro').value, home = $('#frv').value === 'h';
+    if (frBusy(d)){ toast('That day is too close to another match.'); return; }
+    (S.frs = S.frs || []).push({ d, h: home ? me() : o, a: home ? o : me(), res: null }); save(); view(); toast(`Friendly arranged: ${fmtDate(d)} ${home ? 'v' : 'at'} ${club(o).name}.`); });
 }
 const euTable = c => Object.entries(c.tab).map(([id, t]) => ({ id: +id, ...t, pts: t.w * 3 + t.d })).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || club(b.id).q - club(a.id).q);
 // a league round on the Friday after a Thursday in Europe for one of its clubs moves to the Saturday (the round's date
@@ -3107,17 +3245,18 @@ const sortTbl = T => Object.entries(T || {}).map(([id, t]) => ({ id: +id, ...t, 
    league, played in full; every other top flight runs beside it on its own fixture list, each result drawn from the two
    clubs' strength, with its own cup winner and its own ups and downs. A job in another country starts with its season. */
 let HOME = 'ENG';
-const LG_RULES = { ENG: { shield: 'Community Shield', shieldAt: 'Wembley Stadium', lc: true, down: 3, quota: { ucl: 5, uel: 2, uecl: 1 } },
-  FRA: { shield: 'Trophée des Champions', lc: false, down: 2, barrage: true, quota: { ucl: 4, uel: 1, uecl: 1 } },
-  ITA: { shield: 'Supercoppa Italiana', lc: false, down: 3, po8: true, quota: { ucl: 4, uel: 1, uecl: 1 } },
-  ESP: { shield: 'Supercopa de España', lc: false, down: 3, po2: true, quota: { ucl: 4, uel: 1, uecl: 1 } },
-  GER: { shield: 'DFL-Supercup', lc: false, down: 2, barrage: true, bar3: true, quota: { ucl: 4, uel: 1, uecl: 1 } },
+// qual: for each cup, the round each of the league's places starts in (D straight into the league phase; Q1, Q2, Q3, PO)
+const LG_RULES = { ENG: { shield: 'Community Shield', shieldAt: 'Wembley Stadium', lc: true, down: 3, quota: { ucl: 5, uel: 2, uecl: 1 }, qual: { uecl: ['PO'] } },
+  FRA: { shield: 'Trophée des Champions', lc: false, down: 2, barrage: true, quota: { ucl: 4, uel: 1, uecl: 1 }, qual: { ucl: ['D', 'D', 'D', 'Q3'], uecl: ['PO'] } },
+  ITA: { shield: 'Supercoppa Italiana', lc: false, down: 3, po8: true, quota: { ucl: 4, uel: 1, uecl: 1 }, qual: { uecl: ['PO'] } },
+  ESP: { shield: 'Supercopa de España', lc: false, down: 3, po2: true, quota: { ucl: 4, uel: 1, uecl: 1 }, qual: { uecl: ['PO'] } },
+  GER: { shield: 'DFL-Supercup', lc: false, down: 2, barrage: true, bar3: true, quota: { ucl: 4, uel: 1, uecl: 1 }, qual: { uecl: ['PO'] } },
   // Serbia (FSS propositions 2026/27): no super cup; after the double round robin the table splits, the top six play each other
   // once (the play-off, rounds 27 to 31), the other eight likewise (the play-out, rounds 27 to 33), points carried over; the
   // champions to the Champions League, the cup winners and the runners-up to the Europa League, the third to the Conference
   // League. Four go down and two come up, so the league shrinks to twelve for 2027/28; after that (no propositions yet) the
   // same shape on twelve: two down, two up, the split six and six
-  SRB: { shield: null, lc: false, cupAll: true, down: 2, size: 12, up: 2, quota: { ucl: 1, uel: 1, uecl: 1 },
+  SRB: { shield: null, lc: false, cupAll: true, down: 2, size: 12, up: 2, quota: { ucl: 1, uel: 1, uecl: 1 }, qual: { ucl: ['Q2'], uel: ['Q1', 'Q1'], uecl: ['Q2'] },
     split: { a: 6, pairs: { A: [[[6, 4], [5, 3], [1, 2]], [[2, 6], [3, 1], [4, 5]], [[6, 5], [1, 4], [2, 3]], [[3, 6], [4, 2], [5, 1]], [[1, 6], [2, 5], [3, 4]]],
       B: [[[7, 12], [8, 11], [9, 14], [10, 13]], [[14, 7], [11, 10], [12, 8], [13, 9]], [[7, 11], [10, 14], [8, 13], [9, 12]], [[10, 7], [8, 9], [12, 13], [14, 11]],
           [[7, 8], [9, 10], [11, 12], [13, 14]], [[13, 7], [9, 11], [14, 8], [10, 12]], [[7, 9], [11, 13], [8, 10], [12, 14]]] } } } };
@@ -3340,10 +3479,11 @@ function newSeason(){
     else S.con[p.id] = { y: S.season + 1 + Math.floor(Math.random() * 3), w: c.w }; }
   const cn = cupStages(), { rounds, cupDates } = schedule(ids, `${S.seed}-${S.season}`, S.season, cn);
   Object.assign(S, { rounds, cupDates, round: 0, cup: { stage: 0, alive: cupEntrants(cn), log: [], n: cn }, results: [], done: false, next: false, ultimatum: null,
-    table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])), date: day(rounds[0].date, -6), split: null });
+    table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])), date: (() => { const j1 = `${S.season}-07-01`, nx = day(S.date, 1), lim = day(rounds[0].date, -6); return nx > lim ? lim : nx > j1 ? nx : j1; })(), split: null });
   for (const id of EUP) delete S.pl[id]; for (const id of EU) delete S.tac[id];   // the foreign clubs start each season afresh
   euApply(); S.cwc = null;
   S.train.last = S.date; S.lastTr = S.date; monthSnap(); chInit(); awInitAll(); shieldSetup(); euSetup(); uscSetup(); ficSetup(); lcSetup();
+  try { frPreseason(); } catch (e) { console.warn(e); }
   S.bids = (S.bids || []).filter(b => b.st === 'done'); S.offers = [];
   S.aim = aimFor(expRank(me())); S.conf = Math.max(45, Math.min(75, S.conf));
   const q = club(me()).q; S.fin.budget = Math.round(S.fin.budget * .5 + Math.max(12, (q - 70) * 9) * 1e6);
@@ -3504,7 +3644,7 @@ function view(){
   if (!S || SETUP_OPEN){ viewSetup(); return; }
   CTX = LIVE && LIVE.nt && !LIVE.peek ? LIVE.ntC : null;
   if (LIVE && !LIVE.peek){ viewMatch(); return; }
-  ({ nt: scrNT, ntjob: scrNTJob, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
+  ({ nt: scrNT, ntjob: scrNTJob, friendlies: scrFriendlies, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
   linkify(document.body); autoSort();
 }
 /* every table sorts: a table with a header and no sorting of its own sorts by any column on a click on its head (again
@@ -3542,9 +3682,9 @@ function menuTree(o, unread){
   const mine = me(), cv = (cid, tab) => ({ s: 'club', cid, tab });
   // your club in the order of a week's work: the side, the plan, the games, then the business; other clubs as a scout sees them
   const clubKids = cid => (cid === mine
-    ? [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['tactics', 'Tactics'], ['training', 'Training'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['tr', 'Transfers'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']]
+    ? [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['tactics', 'Tactics'], ['training', 'Training'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['frd', 'Friendlies'], ['tr', 'Transfers'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']]
     : [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'General Info']])
-    .map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'tr' ? { s: 'transfers' } : t === 'squad' ? { ...cv(cid, 'squad'), team: 'first' } : t === 'res' ? { ...cv(cid, 'squad'), team: 'res' } : cv(cid, t) }));
+    .map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'frd' ? { s: 'friendlies' } : t === 'tr' ? { s: 'transfers' } : t === 'squad' ? { ...cv(cid, 'squad'), team: 'first' } : t === 'res' ? { ...cv(cid, 'squad'), team: 'res' } : cv(cid, t) }));
   const otherKids = cid => [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']].map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'squad' ? { ...cv(cid, t), team: 'first' } : cv(cid, t) }));
   const byName = L => L.slice().sort((a, b) => a.name.localeCompare(b.name));
   const cupLabel = esc(CUP === 'Cup' ? 'The Cup' : CUP);
@@ -4202,6 +4342,8 @@ function fixtureRows(cid){
   if (S.fic) S.fic.st.forEach(x => { if (x.h !== cid && x.a !== cid) return; rows.push({ date: x.d, comp: `${FIC} ${FIC_STEP[x.k]}`, m: { h: x.h, a: x.a || x.h }, rr: x.res, nr: !x.res || x.res.bg ? 1 : 0, eur: x.res && !x.res.bg ? `fic|${x.k}|0` : null, neutral: !!x.neutral }); });
   if (S.cwc) S.cwc.days.forEach((d, di) => { const i = d.m.findIndex(m => m.h === cid || m.a === cid); if (i < 0) return; const rr = d.res && d.res[i];
     rows.push({ date: d.d, comp: cwcLabel(d), m: d.m[i], rr, nr: !rr || rr.bg ? 1 : 0, eur: rr && !rr.bg ? `cwc|${di}|${i}` : null, neutral: true }); });
+  if (S.euq && S.euq.s === S.season) for (const f of S.euq.fx) if (f.h === cid || f.a === cid) rows.push({ date: f.d, comp: euqLabel(f), m: { h: f.h, a: f.a }, rr: f.res, nr: 1 });
+  if (cid === S.club) for (const f of S.frs || []) if (!f.x) rows.push({ date: f.d, comp: 'Friendly', m: { h: f.h, a: f.a }, rr: f.res, nr: 1 });
   rows.sort((a, b) => a.date < b.date ? -1 : 1);
   return rows;
 }
@@ -4710,7 +4852,7 @@ function scrEU(){
     V.di = di; }
   if (tab === 'ko') body = euKoHTML(c, k);
   frame({ title: EU_NAME[k], top: tops, topOn: k, bottom: [['table', 'League Phase'], ['days', 'Matches'], ['ko', 'Knockout']], bottomOn: tab,
-    onTab: t => { V = tops.some(x => x[0] === t) ? { s: 'eu', k: t } : { s: 'eu', k, tab: t }; view(); }, body });
+    onTab: t => { V = tops.some(x => x[0] === t) ? { s: 'eu', k: t } : { s: 'eu', k, tab: t }; view(); }, body: body + ((tab || 'table') === 'table' ? euqHTML(k) : '') });
   document.querySelectorAll('[data-di]').forEach(b => b.addEventListener('click', () => { V = { ...V, tab: 'days', di: +b.dataset.di }; view(); }));
   document.querySelectorAll('[data-eurr]').forEach(r => r.addEventListener('click', () => { const d = c.days[V.di], x = d.res[+r.dataset.eurr]; if (x && !x.bg) go({ s: 'club', cid: LG.has(x.h) ? x.h : x.a, tab: 'last', rr: x }); }));
   document.querySelectorAll('[data-cv]').forEach(r => r.addEventListener('click', () => go({ s: 'club', cid: +r.dataset.cv, tab: 'ov' })));
@@ -4802,6 +4944,8 @@ function autoStep(){
   const ev = events()[0]; if (!ev){ endSeason(); return false; }
   if (ev.date > S.date){ passDays(daysBetween(S.date, nextStop(ev.date))); monthly(); holidayBuy(); return true; }
   if (ev.k === 'nt'){ finishNT(null, ev.f); return true; }
+  if (ev.k === 'euq'){ finishEUQ(null); return true; }
+  if (ev.k === 'fr'){ finishFr(null, ev.f); passDays(1); return true; }
   const t = S.tac[me()];
   if (S.hol.pick === 'ass'){ const a = (S.staff || []).find(x => x.role === 'ass'), ju = a ? a.ju : 8;
     Object.assign(t, bestXI(me(), t.form, true, judge())); }
@@ -5642,7 +5786,7 @@ function startLive(h, a, opts){
   const M = newMatch(h, a, { live: true, cup: opts.cup, date: S.date, ...mo({ h, a }) });
   const others = (opts.others || []).map(m => newMatch(m.h, m.a, { cup: opts.cup, date: S.date, ...mo(m) }));
   M.att = M.derby && !opts.neutral ? Math.round((club(h).cap || 30000) * (.985 + Math.random() * .015)) : opts.shield || (opts.lc && opts.cup === 'Final') ? 80000 + Math.round(Math.random() * 7000) : Math.round((club(h).cap || 30000) * clamp(.86 + (S.conf - 50) / 400 + Math.random() * .08, .65, 1));
-  LIVE = { M, others, cup: opts.cup, nt: opts.nt || null, ntC: opts.ntC || null, shield: !!opts.shield, lc: !!opts.lc, eu: opts.eu || null, usc: !!opts.usc, cwc: !!opts.cwc, fic: !!opts.fic, started: false, paused: true, sel: null, pre: true, atHT: false };
+  LIVE = { M, others, cup: opts.cup, euq: opts.euq || null, fr: opts.fr || null, nt: opts.nt || null, ntC: opts.ntC || null, shield: !!opts.shield, lc: !!opts.lc, eu: opts.eu || null, usc: !!opts.usc, cwc: !!opts.cwc, fic: !!opts.fic, started: false, paused: true, sel: null, pre: true, atHT: false };
   LIVE.args = [h, a, opts]; LIVE.side = JSON.stringify([S.tac[me()].xi, S.tac[me()].bench]);
   MTAB = 'overview'; view(); scrollTo(0, 0);
 }
@@ -5682,7 +5826,7 @@ function viewPre(){
   const strict = M.ref.s >= 13 ? 'strict, quick to book' : M.ref.s <= 7 ? 'lenient, lets the game flow' : 'fair';
   const wxNote = M.wk === 2 ? ' (a heavy pitch: short passing and ball control suffer)' : M.wk === 3 ? ' (long and direct passing suffer)' : M.wk === 5 ? ' (players will tire faster)' : M.wk === 6 ? ' (a slippery pitch)' : '';
   mframe(`<button class="sb go" id="tomatch">Go to Match</button><button class="sb" id="totac">${esc(club(me()).name)} Tactics</button>`,
-    `<div class="banner"><span></span><h1>Next Match<span class="sub">${L.shield ? SHIELD + (HL().shieldAt ? ' · ' + HL().shieldAt.replace(/ Stadium$/, '') : '') : L.lc ? `${LC} · ${esc(L.cup)}${L.cup === 'Final' ? ' · Wembley' : ''}` : L.nt ? esc(L.cup) : L.cup ? esc(CUP) + ' · ' + esc(L.cup) : esc(D.league)}</span></h1><span></span></div>
+    `<div class="banner"><span></span><h1>Next Match<span class="sub">${L.shield ? SHIELD + (HL().shieldAt ? ' · ' + HL().shieldAt.replace(/ Stadium$/, '') : '') : L.lc ? `${LC} · ${esc(L.cup)}${L.cup === 'Final' ? ' · Wembley' : ''}` : L.nt || L.euq || L.fr ? esc(L.cup) : L.cup ? esc(CUP) + ' · ' + esc(L.cup) : esc(D.league)}</span></h1><span></span></div>
     <div class="mteams"><div class="t" style="background:${kh};color:${kh2}">${crest(M.h, 'mcr')}<span>${esc(club(M.h).name)}</span></div><div class="t" style="background:${ka};color:${ka2}">${crest(M.a, 'mcr')}<span>${esc(club(M.a).name)}</span></div></div>
     <section class="pane">${L.nt ? ntPreHTML(L) : (() => { const fm = !L.cup && ((S.rounds[S.round] || {}).m || []).find(x => x.h === M.h && x.a === M.a), wd = new Date(S.date + 'T12:00:00Z').getUTCDay();
       return previewHTML(M.h, M.a, { M, date: S.date, ko: fm ? fm.ko || (wd === 0 || wd === 6 ? '15:00' : '19:45') : null, tv: fm && fm.tv, venue: L.shield ? (HL().shieldAt || 'Neutral ground') : (L.lc && L.cup === 'Final') ? 'Wembley Stadium' : club(M.h).venue, ref: M.ref, weather: M.weather, temp: M.temp, wxNote: wxNote.replace(/^ \(|\)$/g, '') }); })()}</section>
@@ -5758,7 +5902,7 @@ function viewMatch(){
   on('pause', () => { L.paused = true; clearTimeout(TIMER); liveSave(true); viewMatch(); });
   on('skip', () => sureBox('Play the rest of the match at once?', 'You will not be able to make changes before the final whistle.', 'To Full Time', skipToFT));
   function skipToFT(){ clearTimeout(TIMER); L.started = true; L.paused = true; L.atHT = false; M.auto = true; while (step(M)) L.others.forEach(o => step(o)); L.others.forEach(o => playOut(o)); liveSave(true); viewMatch(); }
-  on('done', () => { LIVE = null; liveDrop(); if (L.nt){ CTX = null; finishNT(M, L.nt); } else if (L.shield) finishShield(M); else if (L.lc) finishLC(M, L.others); else if (L.usc) finishUSC(M); else if (L.fic) finishFIC(M); else if (L.cwc) finishCWC(M, L.others); else if (L.eu) finishEU(L.eu, M, L.others); else if (L.cup) finishCup(M, L.others); else finishLeague(M, L.others); passDays(1); save(); HIST.push(V); V = { s: 'news', i: 0 }; view(); scrollTo(0, 0); });
+  on('done', () => { LIVE = null; liveDrop(); if (L.nt){ CTX = null; finishNT(M, L.nt); } else if (L.euq) finishEUQ(M); else if (L.fr) finishFr(M, L.fr); else if (L.shield) finishShield(M); else if (L.lc) finishLC(M, L.others); else if (L.usc) finishUSC(M); else if (L.fic) finishFIC(M); else if (L.cwc) finishCWC(M, L.others); else if (L.eu) finishEU(L.eu, M, L.others); else if (L.cup) finishCup(M, L.others); else finishLeague(M, L.others); passDays(1); save(); HIST.push(V); V = { s: 'news', i: 0 }; view(); scrollTo(0, 0); });
   document.querySelectorAll('[data-spd]').forEach(b => b.addEventListener('click', () => { SPEED = +b.dataset.spd; OPT.spd = SPEED; saveOpt(); viewMatch(); }));
   document.querySelectorAll('[data-mt]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.mt; if (k === 'tactics'){ openMatchTac(); return; } MTAB = k; TB.sel = null; viewMatch(); }));
   wireMatchPanel();
@@ -5902,6 +6046,8 @@ function cupPanel(L, M){
     const d0 = c.days[c.cur] || {};
     if (d0.st == null) return `<div class="ptitle">${EU_NAME[L.eu]}: League Phase, live</div><table>${head}<tbody>${rowsT(liveTab(c.tab), [7, 23])}</tbody></table><p class="small dim">Top 8 to the round of 16, 9th to 24th to the play-offs.</p>`;
     return euKoHTML(c, L.eu); }
+  if (L.fr) return '<p class="empty">A friendly: no table, nothing at stake but legs and places in the side.</p>';
+  if (L.euq) return euqHTML(S.euq.ties[L.euq.tie].k);
   if (L.nt){ const f = L.nt; if (f.g != null){ const F = ntAllFx().filter(x => x.comp === f.comp && x.g === f.g), T = [...new Set(F.flatMap(x => [x.h, x.a]))]; return ntGrpHTML(esc(ntLabel(f)), T, F, () => ''); }
     return `<div class="ptitle">${esc(ntLabel(f))}</div><table class="ltab"><tbody>${ntAllFx().filter(x => x.comp === f.comp && x.k && ntKoName(x) === ntKoName(f)).map(ntRow).join('')}</tbody></table>`; }
   if (L.cwc){ const W = S.cwc; return W.ko && (W.days[W.cur] || {}).st != null ? cwcKoHTML(W) : cwcGroupsHTML(W); }
