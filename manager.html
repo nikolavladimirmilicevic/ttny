@@ -832,7 +832,7 @@ function ntSquad(n){
   const gk = L.filter(p => p.prim === 'GK').sort((a, b) => key(b) - key(a)).slice(0, 3), out = L.filter(p => p.prim !== 'GK').sort((a, b) => key(b) - key(a)).slice(0, 23 - Math.min(3, gk.length));
   return [...gk, ...out];
 }
-const ntXI = sq => { const gk = sq.filter(p => p.prim === 'GK').sort((a, b) => ovrNow(b) - ovrNow(a))[0], o = sq.filter(p => p !== gk).sort((a, b) => ovrNow(b) - ovrNow(a)); return [...(gk ? [gk] : []), ...o.slice(0, gk ? 10 : 11)]; };
+const ntXI = sq => { const gk = sq.filter(p => p.prim === 'GK').sort((a, b) => ovrNow(b) - ovrNow(a))[0], o = sq.filter(p => p.prim !== 'GK').sort((a, b) => ovrNow(b) - ovrNow(a)); return [...(gk ? [gk] : []), ...o.slice(0, gk ? 10 : 11)]; };
 const ntAll = () => Object.values((S.nl && S.nl.groups) || NL26).flat();
 /* the competition, set up once: the groups, their six matchdays (four teams: home and away; three: two each) */
 function nlInit(){
@@ -3753,7 +3753,7 @@ function menuTree(o, unread){
     { id: 'comp', label: 'Competitions', v: { s: 'comp', tab: 'ov' }, kids: [['ov', 'Overview'], ['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results'], ['pstats', 'Player Stats'], ['tstats', 'Team Stats'], ['cup', cupLabel], ...(S.lc ? [['lc', LC]] : []), ['awards', 'Awards'], ['refs', 'Referees']].map(([t, n]) => ({ id: 'cp.' + t, label: n, v: { s: 'comp', tab: t } })).concat(awayKs().map(k => ({ id: 'aw.' + k, label: esc(D.lgs[k].league), v: { s: 'awl', k, tab: 'table' }, kids: [['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results']].map(([t, n]) => ({ id: `aw.${k}.${t}`, label: n, v: { s: 'awl', k, tab: t } })) }))) },
     ...(euOn() ? [{ id: 'eu', label: 'Europe', v: { s: 'eu', k: euMine() }, kids: [...EU_KEYS.filter(k => S.eu.c[k]).map(k => ({ id: 'eu.' + k, label: EU_NAME[k], v: { s: 'eu', k } })), ...(S.usc ? [{ id: 'eu.usc', label: USC, v: { s: 'eu', k: 'usc' } }] : [])] }] : []),
     // the cups between the continents, apart from Europe's
-    ...(S.nl ? [{ id: 'nt', label: 'Internationals', v: { s: 'nt' }, kids: [{ id: 'nt.job', label: S.ntJob ? `${S.ntJob.n} (your team)` : 'National team jobs', v: S.ntJob ? { s: 'nation', n: S.ntJob.n } : { s: 'ntjob' }, kids: S.ntJob ? [['ov', 'Overview'], ['squad', 'Squad'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'Job'], ['players', 'Players in the Game']].map(([t, l]) => ({ id: 'nt.job.' + t, label: l, v: { s: 'nation', n: S.ntJob.n, tab: t } })) : [] }, { id: 'nt.nl', label: 'Nations League', v: { s: 'nt', tab: S.nl2 ? 'n2A' : 'A' }, kids: (S.nl2 ? [['n2A', `${nlName(S.nl2.s)}: League A`], ['n2B', `${nlName(S.nl2.s)}: League B`], ['n2C', `${nlName(S.nl2.s)}: League C`], ...(S.nl2.ko.length ? [['n2ko', `${nlName(S.nl2.s)}: Knockouts`]] : []), ['nl26', '2026/27']] : [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(S.nl.ko.length ? [['ko', 'Knockouts']] : [])]).map(([k, n]) => ({ id: 'nt.' + k, label: n, v: { s: 'nt', tab: k } })) }, ...(S.eq ? [{ id: 'nt.eq', label: 'EURO qualifying', v: { s: 'nt', tab: 'eq' } }] : []), ...(S.e28 ? [{ id: 'nt.e28', label: `EURO ${S.e28.E || 2028}`, v: { s: 'nt', tab: 'e28' } }] : []), ...(S.wq ? [{ id: 'nt.wq', label: `WC ${wqW()} qualifying`, v: { s: 'nt', tab: 'wq' } }] : []), ...(S.wc ? [{ id: 'nt.wc', label: `World Cup ${S.wc.W || 2030}`, v: { s: 'nt', tab: 'wc' } }] : []), { id: 'nt.fr', label: 'Friendlies', v: { s: 'nt', tab: 'fr' } }, { id: 'nt.hon', label: 'Honours', v: { s: 'nt', tab: 'hon' } }] }] : []),
+    ...(S.nl ? [{ id: 'nt', label: 'Internationals', v: { s: 'nt' }, kids: [{ id: 'nt.job', label: S.ntJob ? `${S.ntJob.n} (your team)` : 'National team jobs', v: S.ntJob ? { s: 'nation', n: S.ntJob.n } : { s: 'ntjob' }, kids: S.ntJob ? [['ov', 'Overview'], ['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'Job'], ['players', 'Players in the Game']].map(([t, l]) => ({ id: 'nt.job.' + t, label: l, v: { s: 'nation', n: S.ntJob.n, tab: t } })) : [] }, { id: 'nt.nl', label: 'Nations League', v: { s: 'nt', tab: S.nl2 ? 'n2A' : 'A' }, kids: (S.nl2 ? [['n2A', `${nlName(S.nl2.s)}: League A`], ['n2B', `${nlName(S.nl2.s)}: League B`], ['n2C', `${nlName(S.nl2.s)}: League C`], ...(S.nl2.ko.length ? [['n2ko', `${nlName(S.nl2.s)}: Knockouts`]] : []), ['nl26', '2026/27']] : [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(S.nl.ko.length ? [['ko', 'Knockouts']] : [])]).map(([k, n]) => ({ id: 'nt.' + k, label: n, v: { s: 'nt', tab: k } })) }, ...(S.eq ? [{ id: 'nt.eq', label: 'EURO qualifying', v: { s: 'nt', tab: 'eq' } }] : []), ...(S.e28 ? [{ id: 'nt.e28', label: `EURO ${S.e28.E || 2028}`, v: { s: 'nt', tab: 'e28' } }] : []), ...(S.wq ? [{ id: 'nt.wq', label: `WC ${wqW()} qualifying`, v: { s: 'nt', tab: 'wq' } }] : []), ...(S.wc ? [{ id: 'nt.wc', label: `World Cup ${S.wc.W || 2030}`, v: { s: 'nt', tab: 'wc' } }] : []), { id: 'nt.fr', label: 'Friendlies', v: { s: 'nt', tab: 'fr' } }, { id: 'nt.hon', label: 'Honours', v: { s: 'nt', tab: 'hon' } }] }] : []),
     ...(S.fic || S.cwc ? [{ id: 'wd', label: 'Intercontinental', v: { s: 'eu', k: S.fic ? 'fic' : 'cwc' }, kids: [...(S.fic ? [{ id: 'eu.fic', label: FIC, v: { s: 'eu', k: 'fic' } }] : []), ...(S.cwc ? [{ id: 'eu.cwc', label: CWC, v: { s: 'eu', k: 'cwc' } }] : [])] }] : []),
     // the club lists are browsed on the Clubs screen; the menu holds the countries, the club you are looking at and the last few you saw
     { id: 'clubs', label: 'Clubs', v: { s: 'clubs' }, kids: [
@@ -3818,7 +3818,7 @@ function dayStrip(){
       else tail = `<span class="dim nw">${(x.m && x.m.ko) || (wd === 0 || wd === 6 ? '15:00' : '19:45')}</span></div><div class="de">${oddsHTML(cid, x.m.h, x.m.a, neu, 'mini', d)}`;
       it.push(`<div class="de">${crest(opp, 'dcr')}<span class="dn">${esc(club(opp) ? club(opp).name : '?')} <span class="dim">(${ha})</span></span></div><div class="de">${tail}</div><div class="dc dim">${esc(comp)}</div>${derbyOf(x.m.h, x.m.a) ? `<div class="dc dtagt">${esc(derbyOf(x.m.h, x.m.a))}</div>` : ''}`); }
     for (const f of (S.ntJob ? ntAllFx().filter(x => x.d === d && ntMineF(x)) : [])){ const n = S.ntJob.n, opp = f.h === n ? f.a : f.h, us = f.h === n;
-      it.push(`<div class="de">${flag(opp)}<span class="dn">${esc(opp)} <span class="dim">(${f.n ? 'N' : us ? 'H' : 'A'})</span></span></div><div class="de">${f.s ? (() => { const g = f.s[us ? 0 : 1], h = f.s[us ? 1 : 0], r = g > h || f.pw === n ? 'W' : g < h || (f.pw && f.pw !== n) ? 'L' : 'D'; return `<span class="form"><span class="${r}">${r}</span></span> ${f.s[0]}-${f.s[1]}`; })() : '<span class="dim nw">20:45</span>'}</div><div class="dc dim">${esc(n)}: ${esc(f.comp)}</div>`); }
+      it.push(`<div class="de" data-ntday="${esc(n)}|${f.s ? 'fix' : 'next'}" style="cursor:pointer">${flag(opp)}<span class="dn">${esc(opp)} <span class="dim">(${f.n ? 'N' : us ? 'H' : 'A'})</span></span></div><div class="de">${f.s ? (() => { const g = f.s[us ? 0 : 1], h = f.s[us ? 1 : 0], r = g > h || f.pw === n ? 'W' : g < h || (f.pw && f.pw !== n) ? 'L' : 'D'; return `<span class="form"><span class="${r}">${r}</span></span> ${f.s[0]}-${f.s[1]}`; })() : '<span class="dim nw">20:45</span>'}</div><div class="dc dim">${esc(n)}: ${esc(f.comp)}</div>`); }
     for (const [a, b] of W){ if (d === a) it.push('<div class="de yel">Transfer window opens</div>'); if (d === b) it.push('<div class="de yel">Deadline day</div>'); }
     if (!it.length) it.push(`<div class="de dim">${o < 0 ? '' : 'No match'}</div>`);
     // a click: a match played opens its report, the next match its preview, any other the Fixtures
@@ -3843,7 +3843,8 @@ function stripAnim(){
   el.style.setProperty('--shift', Math.min(n, 7)); el.classList.remove('moved'); void el.offsetWidth; el.classList.add('moved');
   const t = el.querySelector('.dday.today'); if (t) { t.classList.add('flip'); }
 }
-function wireStrip(){ document.querySelectorAll('[data-dayfx]').forEach(el => el.addEventListener('click', () => { if (LIVE) return; const [k, hh, aa, dd] = el.dataset.dayfx.split('|');
+function wireStrip(){ document.querySelectorAll('[data-ntday]').forEach(el => el.addEventListener('click', e => { if (LIVE) return; e.stopPropagation(); const [n, t] = el.dataset.ntday.split('|'); go({ s: 'nation', n, tab: t }); }));
+  document.querySelectorAll('[data-dayfx]').forEach(el => el.addEventListener('click', () => { if (LIVE) return; const [k, hh, aa, dd] = el.dataset.dayfx.split('|');
   if (k === 'rep'){ const rr = allResults().find(x => x.h === +hh && x.a === +aa && x.date === dd); if (rr){ go({ s: 'club', cid: me(), tab: 'last', rr }); return; } }
   go({ s: 'club', cid: me(), tab: k === 'next' ? 'next' : 'fix' }); })); }
 function frame(o){
@@ -4905,7 +4906,8 @@ function scrEU(){
       <table><tbody>${(d.res || d.m).map((x, i) => euRow(d.res ? x : { h: x.h, a: x.a, bg: 1 }, i)).join('')}</tbody></table>${d.res ? '<p class="small dim c">Matches of league clubs: click for the report.</p>' : ''}`;
     V.di = di; }
   if (tab === 'ko') body = euKoHTML(c, k);
-  frame({ title: EU_NAME[k], top: tops, topOn: k, bottom: [['table', 'League Phase'], ['days', 'Matches'], ['ko', 'Knockout']], bottomOn: tab,
+  if (tab === 'q') body = euqHTML(null) || '<p class="empty">No qualifying for the league\'s clubs this season.</p>';
+  frame({ title: EU_NAME[k], top: tops, topOn: k, bottom: [['table', 'League Phase'], ['days', 'Matches'], ['ko', 'Knockout'], ...(S.euq && S.euq.s === S.season && S.euq.ties.length ? [['q', 'Qualifying']] : [])], bottomOn: tab,
     onTab: t => { V = tops.some(x => x[0] === t) ? { s: 'eu', k: t } : { s: 'eu', k, tab: t }; view(); }, body: body + ((tab || 'table') === 'table' ? euqHTML(k) : '') });
   document.querySelectorAll('[data-di]').forEach(b => b.addEventListener('click', () => { V = { ...V, tab: 'days', di: +b.dataset.di }; view(); }));
   document.querySelectorAll('[data-eurr]').forEach(r => r.addEventListener('click', () => { const d = c.days[V.di], x = d.res[+r.dataset.eurr]; if (x && !x.bg) go({ s: 'club', cid: LG.has(x.h) ? x.h : x.a, tab: 'last', rr: x }); }));
@@ -5513,10 +5515,10 @@ function scrNation(){
   const n = ntName(V.n), J = S.ntJob, mine = !!(J && J.n === n), [k1, k2] = kitN(n), tab = V.tab || 'ov', conf = NT_CONF()[n] || '';
   const sib = ntWorld().filter(x => (NT_CONF()[x] || '') === conf).sort((a, b) => a.localeCompare(b)), i = sib.indexOf(n);
   const nav = sib.length > 1 && i >= 0 ? { what: 'nation', prev: { s: 'nation', n: sib[(i - 1 + sib.length) % sib.length], tab }, next: { s: 'nation', n: sib[(i + 1) % sib.length], tab } } : null;
-  const o = { k1, k2, flagBig: n, nav, title: esc(n), short: esc(n), sub: mine ? 'Your national team' : esc(conf), top: [['ov', 'Overview'], ['squad', 'Squad'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', mine ? 'Job' : 'General Info']],
+  const o = { k1, k2, flagBig: n, nav, title: esc(n), short: esc(n), sub: mine ? 'Your national team' : esc(conf), top: [['ov', 'Overview'], ['squad', 'Squad'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', mine ? 'Job' : 'General Info']],
     bottom: [['players', 'Players in the Game'], ['comps', 'Competitions']], topOn: tab, bottomOn: tab, onTab: t => t === 'comps' ? go({ s: 'nt' }) : go({ s: 'nation', n, tab: t }) };
   if (mine && (tab === 'squad' || tab === 'info')){ ntJobView(tab === 'squad' ? 'sq' : 'job', o); return; }
-  ({ ov: ntOverview, squad: ntSquadTab, fix: ntFixTab, hist: ntHistTab, info: ntInfoTab, players: ntPlayersTab }[tab] || ntOverview)(n, o, mine);
+  ({ ov: ntOverview, squad: ntSquadTab, next: ntNextTab, fix: ntFixTab, hist: ntHistTab, info: ntInfoTab, players: ntPlayersTab }[tab] || ntOverview)(n, o, mine);
   document.querySelectorAll('[data-nt]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); go({ s: 'nation', n: el.dataset.nt }); }));
 }
 function ntOverview(n, o, mine){
@@ -5543,6 +5545,23 @@ function ntSquadTab(n, o){
   const sq = ntWorld().includes(n) ? ntSquad(n) : [], G4 = { GK: 0, DEF: 1, MID: 2, FWD: 3 }, L = sq.slice().sort((a, b) => (G4[GROUP[a.prim]] ?? 2) - (G4[GROUP[b.prim]] ?? 2) || ovrNow(b) - ovrNow(a));
   o.body = L.length ? `<div class="ptitle">The squad (the next call-up)</div><div class="tw"><table class="ltab"><thead><tr><th>Pos</th><th>Name</th><th>Club</th><th class="r">Age</th><th class="r">Caps</th><th class="r">Gls</th><th></th></tr></thead><tbody>${L.map(p => { const q = S.pl[p.id] || {}, c = capR(p.id);
     return `<tr><td class="yel small">${cmPos(p.pos)}</td><td><b class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</b></td><td>${crest(p.club, 'mcr')}${esc(club(p.club).name)}</td><td class="r">${p.age}</td><td class="r">${c[0]}</td><td class="r">${c[1]}</td><td class="small">${q.injD ? `<span class="tag inj">Inj</span>` : ''}</td></tr>`; }).join('')}</tbody></table></div><p class="small dim">The coach's likely call-up: those he has called before first, then the best available.${sq.length < 23 ? ' The rest of the squad are players from home, not in the game.' : ''}</p>` : '<p class="empty">None of its players are in the game.</p>';
+  frame(o);
+}
+// the odds of a national match, from the model that plays it (goals as a Poisson process, from the two nations' strength)
+function ntOdds(f){
+  const dq = ntQ(f.h) - ntQ(f.a), lh = Math.exp(.3 + (f.n ? 0 : .1) + .045 * dq), la = Math.exp(.3 - .045 * dq), po = (l, k) => { let p = Math.exp(-l); for (let i = 1; i <= k; i++) p *= l / i; return p; };
+  let w = 0, d = 0, l = 0; for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++){ const p = po(lh, i) * po(la, j); if (i > j) w += p; else if (i === j) d += p; else l += p; }
+  return [w, d, l].map(x => (1 / Math.max(.01, x)).toFixed(2));
+}
+// the next match: the two sides in their colours, the preview, each side's likely eleven
+function ntNextTab(n, o){
+  const f = ntAllFx().filter(x => !x.s && (x.h === n || x.a === n)).sort((a, b) => a.d < b.d ? -1 : 1)[0];
+  if (!f){ o.body = '<p class="empty">Nothing arranged yet.</p>'; frame(o); return; }
+  const [kh, kh2] = kitN(f.h), [ka, ka2] = kitN(f.a), od = ntOdds(f);
+  const side = m => { const G4 = { GK: 0, DEF: 1, MID: 2, FWD: 3 }, xi = (ntWorld().includes(m) ? ntXI(ntSquadOf(m)) : []).sort((a, b) => (G4[GROUP[a.prim]] ?? 2) - (G4[GROUP[b.prim]] ?? 2)); return xi.length ? xi.map(p => `<div class="arow"><span><span class="yel small" style="display:inline-block;width:40px">${esc(p.prim)}</span><b class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</b></span><span class="small dim">${esc(club(p.club).name)}</span></div>`).join('') + (xi.length < 11 ? '<p class="small dim">The rest: players from home, not in the game.</p>' : '') : '<p class="dim small">None of its players are in the game.</p>'; };
+  o.body = `<div class="mteams"><div class="t" style="background:${kh};color:${kh2}">${flag(f.h)}<span>${esc(f.h)}</span></div><div class="t" style="background:${ka};color:${ka2}">${flag(f.a)}<span>${esc(f.a)}</span></div></div>
+    <div class="ptitle">${fmtDate(f.d, true)}</div>${ntPreHTML({ nt: f })}<dl class="kv"><dt>Odds</dt><dd><span class="pill">${esc(f.h)} ${od[0]}</span> <span class="pill">Draw ${od[1]}</span> <span class="pill">${esc(f.a)} ${od[2]}</span></dd></dl>
+    <div class="cols2"><div><div class="ptitle">${esc(f.h)}: likely eleven</div>${side(f.h)}</div><div><div class="ptitle">${esc(f.a)}: likely eleven</div>${side(f.a)}</div></div>`;
   frame(o);
 }
 function ntFixTab(n, o){
