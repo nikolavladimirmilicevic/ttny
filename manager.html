@@ -206,6 +206,8 @@ tr.me td{background:rgba(79,209,139,.10)}
 .aup,.adn{font-size:8.5px;opacity:.7;margin-right:3px;vertical-align:1px}.aup{color:var(--win)}.adn{color:var(--loss)}.dn{color:var(--loss);font-size:10px}
 .born{color:var(--gold);font:600 16px/1.3 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0 0 12px}
 .strip{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
+.nlgrid{grid-template-columns:repeat(auto-fill,minmax(420px,1fr))}.nlg .ltab td,.nlg .ltab th{padding:4px 6px}.nlg tr.nu td:first-child{box-shadow:inset 3px 0 0 #3FBF7F}.nlg tr.np td:first-child{box-shadow:inset 3px 0 0 #F2C94C}.nlg tr.nd td:first-child{box-shadow:inset 3px 0 0 #E8604C}
+.nlfx summary{cursor:pointer;color:var(--muted);margin:6px 0 2px}.nlfx table{width:100%;font-size:12px}.nlfx td{padding:2px 4px}
 .race{display:block;width:100%;height:auto}
 .sline{display:block;width:100%;max-width:620px;margin:0 auto;height:auto}
 .fspark{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:end;margin:-4px 0 12px;background:var(--panel-2);border-radius:10px;padding:8px 12px}.fsb{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:5px;height:58px}
@@ -782,6 +784,179 @@ const squadOf = cid => EU.has(cid) ? D.eu.players.filter(p => p.club === cid) : 
    a new game: the schedule (the real fixture list where the data has it), the cup's dates, the board's expectations,
    contracts and wages, the money
    ===================================================================================================================== */
+/* ===================== internationals: UEFA's national teams and the Nations League =====================
+   The 54 nations of the 2026/27 UEFA Nations League, in the groups of the league-phase draw (Brussels, 12 February
+   2026) and on its dates (league phase 24 September to 17 November 2026; League A quarter-finals and the A/B and B/C
+   play-offs 25-30 March 2027; the Finals 9-13 June 2027; the C/D play-offs 23-28 March 2028). Nothing of this
+   season's real results is used: the competition starts from nothing, as everything else in the game.
+   A nation's strength comes from its players in the game (its best eleven) and, where few of them are in the game,
+   from the league it plays in; its squad is its best 23 (the men its country has called up first). The matches are
+   played out by the scoreline model the odds use, and the men who play get their caps and goals. */
+const NT_ALIAS = { 'Türkiye': ['Turkey', 'Turkiye'], 'Czechia': ['Czech Republic'], 'Bosnia and Herzegovina': ['Bosnia-Herzegovina', 'Bosnia'], 'Republic of Ireland': ['Ireland', 'Rep. of Ireland'], 'North Macedonia': ['Macedonia', 'FYR Macedonia'], 'Faroe Islands': ['Faroe'] };
+const NT_KEY = (() => { const m = {}; for (const [k, L] of Object.entries(NT_ALIAS)) { m[k] = k; L.forEach(a => m[a] = k); } return m; })();
+const ntName = n => NT_KEY[n] || n;
+const NL26 = { A1: ['Belgium', 'France', 'Türkiye', 'Italy'], A2: ['Netherlands', 'Greece', 'Germany', 'Serbia'], A3: ['Spain', 'Croatia', 'England', 'Czechia'], A4: ['Norway', 'Portugal', 'Denmark', 'Wales'],
+  B1: ['Switzerland', 'Scotland', 'Slovenia', 'North Macedonia'], B2: ['Northern Ireland', 'Ukraine', 'Georgia', 'Hungary'], B3: ['Austria', 'Kosovo', 'Republic of Ireland', 'Israel'], B4: ['Sweden', 'Poland', 'Bosnia and Herzegovina', 'Romania'],
+  C1: ['Finland', 'Albania', 'Belarus', 'San Marino'], C2: ['Armenia', 'Montenegro', 'Cyprus', 'Latvia'], C3: ['Slovakia', 'Kazakhstan', 'Faroe Islands', 'Moldova'], C4: ['Luxembourg', 'Estonia', 'Iceland', 'Bulgaria'],
+  D1: ['Malta', 'Gibraltar', 'Andorra'], D2: ['Lithuania', 'Azerbaijan', 'Liechtenstein'] };
+const NL_MD = ['2026-09-25', '2026-09-28', '2026-10-02', '2026-10-05', '2026-11-13', '2026-11-16'];
+const NL_KO = { qf1: '2027-03-26', qf2: '2027-03-29', sf1: '2027-06-09', sf2: '2027-06-10', f: '2027-06-13', cd1: '2028-03-24', cd2: '2028-03-27' };
+// the national colours (shirt, then trim), for the match screens and the charts
+const NT_KIT = { Belgium: ['#C8102E', '#FDDA24'], France: ['#1F3A93', '#FFFFFF'], 'Türkiye': ['#E30A17', '#FFFFFF'], Italy: ['#0066B3', '#FFFFFF'], Netherlands: ['#F36C21', '#FFFFFF'], Greece: ['#0D5EAF', '#FFFFFF'], Germany: ['#FFFFFF', '#111111'], Serbia: ['#C6363C', '#FFFFFF'],
+  Spain: ['#C60B1E', '#FFC400'], Croatia: ['#FFFFFF', '#E1001A'], England: ['#FFFFFF', '#0C2340'], Czechia: ['#D7141A', '#FFFFFF'], Norway: ['#BA0C2F', '#FFFFFF'], Portugal: ['#9A1B1F', '#0B7A3E'], Denmark: ['#C8102E', '#FFFFFF'], Wales: ['#C8102E', '#00AB39'],
+  Switzerland: ['#D52B1E', '#FFFFFF'], Scotland: ['#1D2A5D', '#FFFFFF'], Slovenia: ['#FFFFFF', '#005DA4'], 'North Macedonia': ['#D20000', '#FFE600'], 'Northern Ireland': ['#00843D', '#FFFFFF'], Ukraine: ['#FFD500', '#005BBB'], Georgia: ['#FFFFFF', '#E00000'], Hungary: ['#CE2939', '#FFFFFF'],
+  Austria: ['#ED2939', '#FFFFFF'], Kosovo: ['#244AA5', '#D0A650'], 'Republic of Ireland': ['#169B62', '#FFFFFF'], Israel: ['#FFFFFF', '#0038B8'], Sweden: ['#FECC02', '#006AA7'], Poland: ['#FFFFFF', '#DC143C'], 'Bosnia and Herzegovina': ['#002395', '#FECB00'], Romania: ['#FCD116', '#002B7F'],
+  Finland: ['#FFFFFF', '#002F6C'], Albania: ['#E41E20', '#111111'], Belarus: ['#C8313E', '#FFFFFF'], 'San Marino': ['#5EB6E4', '#FFFFFF'], Armenia: ['#D90012', '#F2A800'], Montenegro: ['#C40308', '#D4AF37'], Cyprus: ['#1C3F94', '#FFFFFF'], Latvia: ['#9E3039', '#FFFFFF'],
+  Slovakia: ['#FFFFFF', '#0B4EA2'], Kazakhstan: ['#FEC50C', '#00AFCA'], 'Faroe Islands': ['#FFFFFF', '#0065BD'], Moldova: ['#0046AE', '#FFD200'], Luxembourg: ['#EF3340', '#FFFFFF'], Estonia: ['#0072CE', '#FFFFFF'], Iceland: ['#02529C', '#FFFFFF'], Bulgaria: ['#FFFFFF', '#00966E'],
+  Malta: ['#CF142B', '#FFFFFF'], Gibraltar: ['#DA000C', '#FFFFFF'], Andorra: ['#10069F', '#FEDF00'], Lithuania: ['#FDB913', '#006A44'], Azerbaijan: ['#00B5E2', '#EF3340'], Liechtenstein: ['#002B7F', '#CE1126'] };
+// honours before the game began: the World Cup (2026: Spain, 1-0 after extra time against Argentina), the EURO, the Nations League
+const NT_HON = {
+  wc: [['Brazil', [1958, 1962, 1970, 1994, 2002]], ['Germany', [1954, 1974, 1990, 2014]], ['Italy', [1934, 1938, 1982, 2006]], ['Argentina', [1978, 1986, 2022]], ['France', [1998, 2018]], ['Uruguay', [1930, 1950]], ['Spain', [2010, 2026]], ['England', [1966]]],
+  euro: [['Spain', [1964, 2008, 2012, 2024]], ['Germany', [1972, 1980, 1996]], ['Italy', [1968, 2020]], ['France', [1984, 2000]], ['Soviet Union', [1960]], ['Czechoslovakia', [1976]], ['Netherlands', [1988]], ['Denmark', [1992]], ['Greece', [2004]], ['Portugal', [2016]]],
+  nl: [['Portugal', [2019, 2025]], ['France', [2021]], ['Spain', [2023]]] };
+const NT_COMP = { wc: 'World Cup', euro: 'EURO', nl: 'Nations League' };
+const nlLeague = n => { for (const [g, L] of Object.entries((S.nl && S.nl.groups) || NL26)) if (L.includes(n)) return g[0]; return null; };
+const NT_POOL = () => { if (NT_POOL.c && NT_POOL.k === S.date) return NT_POOL.c; const m = new Map(); for (const p of allPlayers()) { const n = ntName(p.nat); if (n) (m.get(n) || m.set(n, []).get(n)).push(p); } NT_POOL.c = m; NT_POOL.k = S.date; return m; };
+// a nation's strength (on the clubs' scale): its best eleven in the game, leaning on its league's level where few of its men are in the game
+function ntQ(n){
+  const L = (NT_POOL().get(n) || []).map(p => ovrNow(p)).sort((a, b) => b - a), lg = nlLeague(n), prior = { A: 80.5, B: 75.5, C: 70, D: 64 }[lg] || 70;
+  if (!L.length) return prior - 1;
+  const top = L.slice(0, 11), pq = top.reduce((t, v) => t + v, 0) / top.length, w = Math.min(1, L.length / 18);
+  return Math.max(prior - 3, w * pq + (1 - w) * prior);
+}
+// the squad: 23 men, three of them keepers; those the country has called up before come first, then the best available
+function ntSquad(n){
+  const L = (NT_POOL().get(n) || []).filter(p => !(ps(p.id).injD > 6)), key = p => ovrNow(p) + (p.nt ? 4 : 0);
+  const gk = L.filter(p => p.prim === 'GK').sort((a, b) => key(b) - key(a)).slice(0, 3), out = L.filter(p => p.prim !== 'GK').sort((a, b) => key(b) - key(a)).slice(0, 23 - Math.min(3, gk.length));
+  return [...gk, ...out];
+}
+const ntXI = sq => { const gk = sq.filter(p => p.prim === 'GK').sort((a, b) => ovrNow(b) - ovrNow(a))[0], o = sq.filter(p => p !== gk).sort((a, b) => ovrNow(b) - ovrNow(a)); return [...(gk ? [gk] : []), ...o.slice(0, gk ? 10 : 11)]; };
+const ntAll = () => Object.values((S.nl && S.nl.groups) || NL26).flat();
+/* the competition, set up once: the groups, their six matchdays (four teams: home and away; three: two each) */
+function nlInit(){
+  if (S.nl || S.season > 2026) return;
+  const fx = [], P4 = [[[0, 1], [2, 3]], [[3, 0], [1, 2]], [[0, 2], [3, 1]]], P3 = [[0, 1], [1, 2], [2, 0]];
+  for (const [g, T] of Object.entries(NL26)){
+    if (T.length === 4) for (let r = 0; r < 6; r++) for (const [i, j] of P4[r % 3]) fx.push({ d: NL_MD[r], g, h: r < 3 ? T[i] : T[j], a: r < 3 ? T[j] : T[i] });
+    else for (let r = 0; r < 6; r++){ const [i, j] = P3[r % 3]; fx.push({ d: NL_MD[r], g, h: r < 3 ? T[i] : T[j], a: r < 3 ? T[j] : T[i] }); }
+  }
+  S.nl = { s: 2026, groups: JSON.parse(JSON.stringify(NL26)), fx, ko: [], stage: 'league' };
+}
+// a nation's goals in a match: the odds' scoreline model (goals as a Poisson process), a little more for the home side
+function ntGoals(h, a, neutral, seed){
+  const dq = ntQ(h) - ntQ(a), r = rng(seed), po = l => { let k = 0, p = Math.exp(-l), s = p, u = r(); while (u > s && k < 12){ k++; p *= l / k; s += p; } return k; };
+  return [po(Math.exp(.3 + (neutral ? 0 : .1) + .045 * dq)), po(Math.exp(.3 - .045 * dq))];
+}
+// plays one match: the score, the scorers among the men in the game, caps and goals for those who played
+function ntPlay(f){
+  if (f.s) return;
+  const s = ntGoals(f.h, f.a, f.n, `nt-${f.d}-${f.h}-${f.a}`), r = rng(`nts-${f.d}-${f.h}`); f.s = s; f.sc = [];
+  for (const [side, n, g] of [['h', f.h, s[0]], ['a', f.a, s[1]]]){
+    const sq = ntSquad(n), xi = ntXI(sq), subs = sq.filter(p => !xi.includes(p)).slice(0, 3), played = [...xi, ...subs];
+    for (const p of played){ const q = ps(p.id); q.caps = (q.caps || 0) + 1; }
+    (f.pl = f.pl || {})[side] = played.map(p => p.id);
+    const w = xi.map(p => ({ p, w: ({ FWD: 5, MID: 2.4, DEF: .8, GK: 0 }[GROUP[p.prim]] ?? 1) * Math.max(.2, ovrNow(p) - 60) }));
+    const tot = w.reduce((t, x) => t + x.w, 0), cover = Math.min(1, xi.length / 11);
+    for (let i = 0; i < g; i++){
+      if (!tot || r() > cover){ f.sc.push([side, null, 5 + Math.floor(r() * 85)]); continue; }
+      let u = r() * tot, pick = w[0].p; for (const x of w){ u -= x.w; if (u <= 0){ pick = x.p; break; } }
+      const q = ps(pick.id); q.ig = (q.ig || 0) + 1; f.sc.push([side, pick.id, 5 + Math.floor(r() * 85)]);
+    }
+    f.sc.sort((x, y) => x[2] - y[2]);
+  }
+}
+const nlTable = g => { const T = {}; for (const n of S.nl.groups[g]) T[n] = { n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  for (const f of S.nl.fx.filter(x => x.g === g && x.s)){ const H = T[f.h], A = T[f.a]; H.p++; A.p++; H.gf += f.s[0]; H.ga += f.s[1]; A.gf += f.s[1]; A.ga += f.s[0];
+    if (f.s[0] > f.s[1]){ H.w++; A.l++; H.pts += 3; } else if (f.s[0] < f.s[1]){ A.w++; H.l++; A.pts += 3; } else { H.d++; A.d++; H.pts++; A.pts++; } }
+  return Object.values(T).sort((x, y) => y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || ntQ(y.n) - ntQ(x.n)); };
+// a two-legged tie or a single match decided on the night (extra time, then penalties, by the stronger side's chance)
+function ntWinner(L){
+  const f1 = L[0], f2 = L[1]; if (!f1.s || (f2 && !f2.s)) return null;
+  const A = f1.h, B = f1.a, ga = f1.s[0] + (f2 ? f2.s[1] : 0), gb = f1.s[1] + (f2 ? f2.s[0] : 0);
+  if (ga !== gb) return ga > gb ? A : B;
+  const last = f2 || f1; if (!last.p){ const r = rng(`ntp-${last.d}-${last.h}`), pa = .5 + (ntQ(A) - ntQ(B)) / 60; last.p = r() < pa ? (last === f1 ? [5, 4] : [4, 5]) : (last === f1 ? [3, 4] : [4, 3]); last.pw = r() < pa ? A : B; }
+  return last.pw;
+}
+/* after the league phase: League A's quarter-finals (a group winner against another group's runner-up, the runner-up at
+   home first), the A/B and B/C play-offs (the higher league's third against the lower league's runner-up); the Finals
+   (semi-finals, third place, final) in June; then promotion and relegation for the next edition */
+function nlStage(){
+  const N = S.nl; if (!N) return;
+  if (N.stage === 'league' && N.fx.every(f => f.s)){
+    const T = g => nlTable(g).map(r => r.n), A = ['A1', 'A2', 'A3', 'A4'].map(T), B = ['B1', 'B2', 'B3', 'B4'].map(T), C = ['C1', 'C2', 'C3', 'C4'].map(T);
+    const tie = (k, x, y) => [{ d: NL_KO.qf1, k, h: y, a: x }, { d: NL_KO.qf2, k, h: x, a: y }];
+    N.ko = [...tie('QF1', A[0][0], A[1][1]), ...tie('QF2', A[1][0], A[0][1]), ...tie('QF3', A[2][0], A[3][1]), ...tie('QF4', A[3][0], A[2][1]),
+      ...[0, 1, 2, 3].flatMap(i => tie('AB' + (i + 1), A[i][2], B[(i + 1) % 4][1])), ...[0, 1, 2, 3].flatMap(i => tie('BC' + (i + 1), B[i][2], C[(i + 1) % 4][1]))];
+    N.lg = { A, B, C, D: ['D1', 'D2'].map(T) }; N.stage = 'ko';
+    news('match', 'Nations League: the league phase is over', `Into the quarter-finals: ${A.map(g => `${esc(g[0])}, ${esc(g[1])}`).join('; ')}. Promoted to League A: ${B.map(g => esc(g[0])).join(', ')}.`);
+  }
+  if (N.stage === 'ko' && N.ko.every(f => f.s)){
+    const w = k => ntWinner(N.ko.filter(f => f.k === k)), q = ['QF1', 'QF2', 'QF3', 'QF4'].map(w);
+    N.fin = [{ d: NL_KO.sf1, k: 'SF1', h: q[0], a: q[2], n: 1 }, { d: NL_KO.sf2, k: 'SF2', h: q[1], a: q[3], n: 1 }]; N.stage = 'sf';
+    news('match', 'Nations League Finals', `The last four: ${q.map(esc).join(', ')}. The semi-finals are on ${fmtDate(NL_KO.sf1)} and ${fmtDate(NL_KO.sf2)}.`);
+  }
+  if (N.stage === 'sf' && N.fin.every(f => f.s)){
+    const w1 = ntWinner([N.fin[0]]), w2 = ntWinner([N.fin[1]]), l1 = w1 === N.fin[0].h ? N.fin[0].a : N.fin[0].h, l2 = w2 === N.fin[1].h ? N.fin[1].a : N.fin[1].h;
+    N.fin.push({ d: NL_KO.f, k: '3rd', h: l1, a: l2, n: 1 }, { d: NL_KO.f, k: 'Final', h: w1, a: w2, n: 1 }); N.stage = 'final';
+  }
+  if (N.stage === 'final' && N.fin.every(f => f.s)){
+    const F = N.fin.find(f => f.k === 'Final'), ch = ntWinner([F]); N.champ = ch; N.stage = 'done';
+    (S.ntHon = S.ntHon || []).push({ c: 'nl', y: 2027, n: ch });
+    news('match', `${ch} win the Nations League`, `<b>${esc(ch)}</b> beat ${esc(ch === F.h ? F.a : F.h)} ${F.s[0]}-${F.s[1]}${F.p ? ` (${F.p[0]}-${F.p[1]} on penalties)` : ''} in the final.`);
+  }
+}
+// every day: the matches due are played, the stages move on
+function ntTick(){
+  nlInit(); const N = S.nl; if (!N) return;
+  for (let i = 0; i < 5; i++){ for (const f of [...N.fx, ...(N.ko || []), ...(N.fin || [])]) if (!f.s && f.d <= S.date) ntPlay(f); nlStage(); }
+}
+// the men called up for this window: the squads of the nations playing in it, and for the rest those their country has called up
+function callUps(a, b){
+  const N = S.nl, playing = new Set(); if (N) for (const f of [...N.fx, ...(N.ko || []), ...(N.fin || [])]) if (f.d >= a && f.d <= b){ playing.add(f.h); playing.add(f.a); }
+  const ids = new Set(); for (const n of playing) for (const p of ntSquad(n)) ids.add(p.id);
+  for (const p of D.players) if (p.nt && !ntAll().includes(ntName(p.nat))) ids.add(p.id);
+  return ids;
+}
+// how your men did for their countries in a window, after it: each man's games and goals, and his country's results
+function ntReport(a, b){
+  const N = S.nl; if (!N) return; const mine = new Set(squadOf(me()).map(p => p.id)), by = new Map();
+  for (const f of [...N.fx, ...(N.ko || []), ...(N.fin || [])].filter(f => f.s && f.d >= a && f.d <= b)) for (const side of ['h', 'a']) for (const id of ((f.pl || {})[side] || [])) if (mine.has(id)){
+    const e = by.get(id) || by.set(id, { n: side === 'h' ? f.h : f.a, k: 0, g: 0, r: [] }).get(id), us = side === 'h' ? f.s[0] : f.s[1], th = side === 'h' ? f.s[1] : f.s[0];
+    e.k++; e.g += (f.sc || []).filter(x => x[1] === id).length; e.r.push(us > th ? 'W' : us < th ? 'L' : 'D'); }
+  if (!by.size) return;
+  const rows = [...by].sort((x, y) => y[1].g - x[1].g || y[1].k - x[1].k).map(([id, e]) => `${flag(e.n)}<b>${esc(P.get(id).n)}</b> (${esc(e.n)}): ${e.k} game${e.k > 1 ? 's' : ''}${e.g ? `, <b>${e.g} goal${e.g > 1 ? 's' : ''}</b>` : ''} <span class="dim">${e.r.join(' ')}</span>`);
+  news('match', 'Your players on international duty', `In the Nations League:<br>${rows.join('<br>')}`);
+}
+
+/* ---- the screens: the Nations League (each league's groups with their tables and matches, the knockouts), the
+   honours; a nation's page gets its squad, its group and its matches ---- */
+const ntRow = f => `<tr class="${[f.h, f.a].some(n => (S.ntMine || []).includes(n)) ? 'me' : ''}"><td class="small dim">${fmtDate(f.d)}</td><td class="r"><span class="lk" data-nt="${esc(f.h)}">${esc(f.h)}</span>${flag(f.h)}</td><td class="c"><span class="pill">${f.s ? `${f.s[0]}-${f.s[1]}` : 'v'}</span>${f.p ? `<span class="small dim"> p ${f.p[0]}-${f.p[1]}</span>` : ''}</td><td>${flag(f.a)}<span class="lk" data-nt="${esc(f.a)}">${esc(f.a)}</span></td><td class="small dim">${f.sc && f.sc.some(x => x[1]) ? f.sc.filter(x => x[1]).map(x => `${esc(surname(P.get(x[1]).n))} ${x[2]}'`).join(', ') : ''}</td></tr>`;
+function nlGroupHTML(g){
+  const T = nlTable(g), F = S.nl.fx.filter(f => f.g === g), n = T.length, lg = g[0];
+  const mark = i => lg === 'A' ? (i < 2 ? 'nu' : i === n - 1 ? 'nd' : i === 2 ? 'np' : '') : lg === 'D' ? (i === 0 ? 'nu' : i === 1 ? 'np' : '') : (i === 0 ? 'nu' : i === 1 ? 'np' : i === n - 1 ? 'nd' : i === 2 ? 'np' : '');
+  return `<div class="ovc nlg"><div class="ovh"><span>Group ${g}</span></div><table class="ltab"><thead><tr><th></th><th>Nation</th><th class="c">P</th><th class="c">W</th><th class="c">D</th><th class="c">L</th><th class="c mh">GF</th><th class="c mh">GA</th><th class="c">GD</th><th class="c">Pts</th></tr></thead><tbody>${T.map((r, i) => `<tr class="${mark(i)} ${(S.ntMine || []).includes(r.n) ? 'me' : ''}"><td class="c">${i + 1}</td><td>${flag(r.n)}<span class="lk" data-nt="${esc(r.n)}"><b>${esc(r.n)}</b></span></td><td class="c">${r.p}</td><td class="c">${r.w}</td><td class="c">${r.d}</td><td class="c">${r.l}</td><td class="c mh">${r.gf}</td><td class="c mh">${r.ga}</td><td class="c">${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="c"><b>${r.pts}</b></td></tr>`).join('')}</tbody></table>
+    <details class="nlfx"><summary class="small">Matches</summary><table><tbody>${F.map(ntRow).join('')}</tbody></table></details></div>`;
+}
+function scrNT(){
+  ntTick(); const N = S.nl;
+  if (!N){ frame({ title: 'Internationals', body: '<p class="empty">The Nations League of 2026/27 is over; the next competitions come in the next part.</p>' }); return; }
+  const tab = V.tab || 'A', tabs = [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(N.ko.length ? [['ko', 'Knockouts']] : []), ['hon', 'Honours']];
+  let body = '';
+  if ('ABCD'.includes(tab) && tab.length === 1){
+    const note = { A: 'Group winners and runners-up go to the quarter-finals (March 2027), the winners of those to the Finals (June 2027). Fourth place goes down, third plays off against a League B runner-up.', B: 'Winners go up to League A, runners-up play off against a League A third; fourth place goes down, third plays off against a League C runner-up.', C: 'Winners go up to League B, runners-up play off against a League B third; the two worst fourths play off against League D (March 2028).', D: 'Winners go up to League C; runners-up play off against League C (March 2028).' }[tab];
+    body = `<div class="ovg nlgrid">${Object.keys(N.groups).filter(g => g[0] === tab).map(nlGroupHTML).join('')}</div><p class="small dim">${note} Matchdays: ${NL_MD.map(shortDate).join(', ')}.</p>`;
+  } else if (tab === 'ko'){
+    const sec = (t, L) => L.length ? `<div class="ptitle">${t}</div><table class="ltab"><tbody>${L.map(ntRow).join('')}</tbody></table>` : '';
+    body = sec('Finals', N.fin || []) + sec('Quarter-finals (two legs)', N.ko.filter(f => /^QF/.test(f.k))) + sec('Play-off A/B (two legs)', N.ko.filter(f => /^AB/.test(f.k))) + sec('Play-off B/C (two legs)', N.ko.filter(f => /^BC/.test(f.k)))
+      + (N.champ ? `<p><b>${flag(N.champ)}${esc(N.champ)}</b> are the champions.</p>` : '');
+  } else {
+    const H = JSON.parse(JSON.stringify(NT_HON)); for (const x of S.ntHon || []){ const L = H[x.c], e = L.find(y => y[0] === x.n); if (e) e[1].push(x.y); else L.push([x.n, [x.y]]); }
+    body = `<div class="ovg">${Object.keys(H).map(k => `<div class="ovc"><div class="ovh"><span>${NT_COMP[k]}</span></div><table><tbody>${H[k].sort((a, b) => b[1].length - a[1].length || Math.max(...b[1]) - Math.max(...a[1])).map(([n, y]) => `<tr><td>${flag(n)}<b>${esc(n)}</b></td><td class="c"><b>${y.length}</b></td><td class="small dim" style="white-space:normal">${y.join(', ')}</td></tr>`).join('')}</tbody></table></div>`).join('')}</div><p class="small dim">Spain are the world champions (2026, 1-0 after extra time against Argentina in the final) and the European champions (2024); Portugal won the last Nations League (2025).</p>`;
+  }
+  frame({ title: tab === 'hon' ? 'International honours' : 'UEFA Nations League', short: 'Nations League', top: tabs, topOn: tab, body });
+  document.querySelectorAll('[data-nt]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); go({ s: 'nation', n: el.dataset.nt }); }));
+}
+
 /* international breaks: FIFA's men's windows (cm.json intl, from pipeline/fifa_calendar.json); for a season not yet
    published, the 2025-2030 pattern: a 16-day window from the Monday on or after 21 September, nine days from the
    Monday on or after 9 November and from the Monday on or after 22 March */
@@ -799,19 +974,20 @@ function intlTick(){
   for (const [a, b, n] of intlWindows(S.season)){
     const key = a, t0 = S.t0 || (S.t0 = S.date);
     if (S.date > b && !S.intl[key] && a >= t0){   // the calendar jumped over the whole window: they went and came back
-      const mine = D.players.filter(p => p.nt && p.club === me());
+      ntTick(); const ids = callUps(a, b), mine = D.players.filter(p => ids.has(p.id) && p.club === me());
       news('club', 'International break', `The league stopped from ${fmtDate(a)} to ${fmtDate(b)} for ${n} international matches.${mine.length ? ` Away with their countries: ${mine.map(p => `${flag(p.nat)}<b>${esc(p.n)}</b>`).join(', ')}.` : ''}`);
       S.intl[key] = 'away';
     }
     if (S.date >= a && S.date <= b && !S.intl[key]){
-      S.intl[key] = 'away'; const L = D.players.filter(p => p.nt), mine = L.filter(p => p.club === me());
+      S.intl[key] = 'away'; ntTick(); const ids = callUps(a, b); (S.intlIds = S.intlIds || {})[key] = [...ids].filter(id => D.players.some(p => p.id === id)); const L = D.players.filter(p => ids.has(p.id)), mine = L.filter(p => p.club === me());
       for (const p of L) ps(p.id).away = b;
       news('club', 'International break', `The league stops until ${fmtDate(b)} for ${n} international matches.${mine.length ? ` Called up from your squad: ${mine.map(p => `${flag(p.nat)}<b>${esc(p.n)}</b>`).join(', ')}.` : ''}`);
     }
     if (S.date > b && S.intl[key] !== 'back'){
       if (!S.intl[key]){ S.intl[key] = 'back'; continue; }   // a window that passed before this game (or this save) began
       S.intl[key] = 'back'; const hurt = [];
-      for (const p of D.players.filter(x => x.nt)){ const q = ps(p.id); q.away = null;
+      const back = new Set((S.intlIds || {})[key] || D.players.filter(x => x.nt).map(x => x.id)); ntTick(); ntReport(a, b);
+      for (const p of D.players.filter(x => back.has(x.id))){ const q = ps(p.id); q.away = null;
         const r = rng(`intl-${p.id}-${a}`); q.cond = Math.max(55, q.cond - 6 - Math.round(r() * 10));
         if (r() < .02 * n / 2 && !q.injD){ q.injD = 7 + Math.floor(r() * 24); if (p.club === me()) hurt.push(p); } }
       for (const p of hurt) news('injury', `${p.n} hurt on international duty`, `<b>${esc(p.n)}</b> picked up an injury with ${esc(p.nat)} and is out for about ${Math.ceil(ps(p.id).injD / 7)} week${ps(p.id).injD > 7 ? 's' : ''}.`);
@@ -948,7 +1124,7 @@ function newGame(cid, manager){
   news('club', 'Your first match', `The league starts on ${fmtDate(rounds[0].date, true)} with ${matchLine(rounds[0].m.find(m => m.h === cid || m.a === cid))}. The ${esc(CUP)} starts with the ${cupName(0).toLowerCase()} on ${fmtDate(cupDates[0])}.`);
   const lc = club(cid), ch = D.last_season && club(D.last_season.champion);
   if (ch) news('club', 'Last season', `${esc(ch.name)} are the champions of ${D.season - 1}/${String(D.season % 100).padStart(2, '0')}${ch.last && ch.last.pts ? ` with ${ch.last.pts} points` : ''}. ${lc === ch ? `You take over the champions${lc.last && lc.last.w != null ? ` (${lc.last.w} won, ${lc.last.d} drawn, ${lc.last.l} lost)` : ''}, and the board expect them to defend the title.` : lc.last === 'promoted' ? `${esc(lc.name)} are newly promoted, and staying up is the first job.` : lc.last && lc.last.pos ? `${esc(lc.name)} finished ${ordinal(lc.last.pos)}${lc.last.pts != null ? ` with ${lc.last.pts} points (${lc.last.w} won, ${lc.last.d} drawn, ${lc.last.l} lost)` : ''}.` : ''}`);
-  mediaPred();
+  mediaPred(); nlInit();
   news('club', 'The backroom staff', 'Your assistant has picked a side and a formation to suit the squad. Look them over under Tactics, and set the training schedule under Training. Press Continue to move the calendar on.');
   save();
 }
@@ -1599,7 +1775,7 @@ function passDays(n){
   transferTick();
   contractWarn();
   if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
-  intlTick();
+  intlTick(); ntTick();
 }
 // a word from the assistant when your players' contracts are in their last season: at the start of it and in January
 function contractWarn(){
@@ -2676,7 +2852,7 @@ function view(){
   if (!D) return;
   if (!S || SETUP_OPEN){ viewSetup(); return; }
   if (LIVE && !LIVE.peek){ viewMatch(); return; }
-  ({ nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
+  ({ nt: scrNT, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
   linkify(document.body); autoSort();
 }
 /* every table sorts: a table with a header and no sorting of its own sorts by any column on a click on its head (again
@@ -2731,6 +2907,7 @@ function menuTree(o, unread){
     { id: 'comp', label: 'Competitions', v: { s: 'comp', tab: 'ov' }, kids: [['ov', 'Overview'], ['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results'], ['pstats', 'Player Stats'], ['tstats', 'Team Stats'], ['cup', cupLabel], ...(S.lc ? [['lc', LC]] : []), ['awards', 'Awards'], ['refs', 'Referees']].map(([t, n]) => ({ id: 'cp.' + t, label: n, v: { s: 'comp', tab: t } })).concat(awayKs().map(k => ({ id: 'aw.' + k, label: esc(D.lgs[k].league), v: { s: 'awl', k, tab: 'table' }, kids: [['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results']].map(([t, n]) => ({ id: `aw.${k}.${t}`, label: n, v: { s: 'awl', k, tab: t } })) }))) },
     ...(euOn() ? [{ id: 'eu', label: 'Europe', v: { s: 'eu', k: euMine() }, kids: [...EU_KEYS.filter(k => S.eu.c[k]).map(k => ({ id: 'eu.' + k, label: EU_NAME[k], v: { s: 'eu', k } })), ...(S.usc ? [{ id: 'eu.usc', label: USC, v: { s: 'eu', k: 'usc' } }] : [])] }] : []),
     // the cups between the continents, apart from Europe's
+    ...(S.nl ? [{ id: 'nt', label: 'Internationals', v: { s: 'nt' }, kids: [{ id: 'nt.nl', label: 'Nations League', v: { s: 'nt', tab: 'A' }, kids: [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(S.nl.ko.length ? [['ko', 'Knockouts']] : [])].map(([k, n]) => ({ id: 'nt.' + k, label: n, v: { s: 'nt', tab: k } })) }, { id: 'nt.hon', label: 'Honours', v: { s: 'nt', tab: 'hon' } }] }] : []),
     ...(S.fic || S.cwc ? [{ id: 'wd', label: 'Intercontinental', v: { s: 'eu', k: S.fic ? 'fic' : 'cwc' }, kids: [...(S.fic ? [{ id: 'eu.fic', label: FIC, v: { s: 'eu', k: 'fic' } }] : []), ...(S.cwc ? [{ id: 'eu.cwc', label: CWC, v: { s: 'eu', k: 'cwc' } }] : [])] }] : []),
     // the club lists are browsed on the Clubs screen; the menu holds the countries, the club you are looking at and the last few you saw
     { id: 'clubs', label: 'Clubs', v: { s: 'clubs' }, kids: [
@@ -2907,7 +3084,7 @@ function adopt(s){
   setHome(s && s.v === 2 && s.home || 'ENG');
   if (s && s.v === 2) setLeagues(s.lg);
   if (!(s && s.v === 2 && C.has(s.club) && Object.keys(s.table).length === D.clubs.length && Object.keys(s.table).every(id => LG.has(+id)))){ setHome((S && S.home) || 'ENG'); setLeagues(S && S.lg); return false; }
-  S = s; unpackPl(S); rebuildPlayers(); ensureStaff();
+  S = s; unpackPl(S); rebuildPlayers(); ensureStaff(); try { nlInit(); } catch (e) {}
   // a career abroad begun with England's referees: they get their country's names (each keeps his strictness)
   if (REF_NAMES[HOME] && (S.refs || []).length && REF_FIRST.includes(S.refs[0].n.split(' ')[0])){ const nn = refNames(HOME); S.refs.forEach((r, i) => r.n = nn[i % nn.length]); }
   for (const q of Object.values(S.pl || {})) if (q.d) for (const k in q.d) q.d[k] = Math.round(q.d[k] * 100) / 100;
@@ -3722,7 +3899,7 @@ function playerCard(p, q, con, born){
   const sim = D.players.filter(x => x.id !== p.id && x.prim === p.prim).map(x => [x, dist(x)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
   const real = '';   // the game starts with the current season: last season's real numbers are not shown
   // under the tabs, as in CM 01/02: born, age, nationality (career caps are not in the data, so none are shown)
-  const nat = p.nat ? `${flag(p.nat)}${esc(DEMONYM[p.nat] || p.nat)}.` : '';
+  const nat = p.nat ? `${flag(p.nat)}${esc(DEMONYM[p.nat] || p.nat)}.${ps(p.id).caps ? ` <span class="dim">${ps(p.id).caps} cap${ps(p.id).caps > 1 ? 's' : ''}, ${ps(p.id).ig || 0} goal${ps(p.id).ig === 1 ? '' : 's'} for ${esc(ntName(p.nat))} since the game began.</span>` : ''}` : '';
   return `<div class="born cmborn">${born}. ${nat}${onLoan(p) ? `<div class="loanl">On loan at <b>${esc(p.lo)}</b> until June ${D.season + 1}</div>` : ''}</div>
     <div class="cmattr">${col(0)}${col(1)}${col(2)}</div>
     <div class="strip pstrip"><div>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</div><div>Apps<b>${q.apps || '-'}</b></div><div>Gls<b>${q.apps ? q.g : '-'}</b></div><div>Asts<b>${q.apps ? q.a : '-'}</b></div><div>MoM<b>${q.apps ? q.mom : '-'}</b></div><div>Yel<b>${q.apps ? q.yc : '-'}</b></div><div>Av R<b class="avr">${q.apps ? avgRt(q) : '-'}</b></div></div>${formSpark(q)}
@@ -4464,11 +4641,17 @@ function scrComps(){
 }
 // a nation: its players in the game
 function scrNation(){
-  const n = V.n, L = allPlayers().filter(p => p.nat === n || p.nat2 === n);
+  const n = ntName(V.n), L = allPlayers().filter(p => ntName(p.nat) === n || ntName(p.nat2) === n);
+  const inNL = S.nl && ntAll().includes(n), g = inNL ? Object.keys(S.nl.groups).find(k => S.nl.groups[k].includes(n)) : null;
+  const sq = ntAll().includes(n) ? ntSquad(n) : [], F = inNL ? [...S.nl.fx, ...S.nl.ko, ...(S.nl.fin || [])].filter(f => f.h === n || f.a === n) : [];
+  const hon = Object.keys(NT_HON).map(k => { const e = NT_HON[k].find(x => x[0] === n), y = [...(e ? e[1] : []), ...(S.ntHon || []).filter(x => x.c === k && x.n === n).map(x => x.y)]; return y.length ? `${NT_COMP[k]} ${y.length}× (${y.join(', ')})` : ''; }).filter(Boolean);
+  const top = (g ? nlGroupHTML(g) : '') + (sq.length ? `<div class="ptitle">Squad (the next call-up)</div><table class="ltab"><thead><tr><th>Name</th><th>Club</th><th>Position</th><th class="r">Age</th><th class="r">Caps</th><th class="r">Gls</th></tr></thead><tbody>${sq.map(p => `<tr class="click ${p.club === me() ? 'me' : ''}" data-pl="${p.id}"><td><b>${esc(cmName(p.n))}</b></td><td>${crest(p.club, 'mcr')}${esc(club(p.club).name)}</td><td>${esc(cmPos(p.pos))}</td><td class="r">${p.age}</td><td class="r">${ps(p.id).caps || 0}</td><td class="r">${ps(p.id).ig || 0}</td></tr>`).join('')}</tbody></table><p class="small dim">Caps and goals since the game began. Out of the game's leagues: ${23 - sq.length > 0 ? `${23 - sq.length} places filled from leagues not in the game` : 'none'}.</p>` : '')
+    + (F.length && !g ? `<table class="ltab"><tbody>${F.map(ntRow).join('')}</tbody></table>` : '') + (hon.length ? `<p><b>Honours:</b> ${hon.join('; ')}</p>` : '');
   const R = resTable(L, [{ k: 'name', label: 'Name', v: p => surname(p.n), h: p => `<b>${esc(cmName(p.n))}</b>` }, { k: 'club', label: 'Club', v: p => club(p.club).name, h: p => `${crest(p.club, 'mcr')}${esc(club(p.club).name)}`, cls: 'sky' },
     { k: 'based', label: 'Based', v: p => basedOf(p.club), h: p => esc(basedOf(p.club)), cls: 'yel mh' }, { k: 'pos', label: 'Position', v: p => ['GK', 'DEF', 'MID', 'FWD'].indexOf(GROUP[p.prim]) * 100 + POS_ORDER.indexOf(p.prim), h: p => esc(cmPos(p.pos)) },
     { k: 'age', label: 'Age', v: p => p.age, h: p => p.age, cls: 'r' }, { k: 'val', label: 'Value', v: p => p.val || 0, h: p => valueOf(p), cls: 'r', desc: true }], { def: 'val', attrs: p => `class="click" data-pl="${p.id}"` });
-  frame({ title: `${flag(n)}${esc(n)}`, short: esc(n), body: `<div class="ptitle">${L.length} player${L.length === 1 ? '' : 's'} in the game</div>${R.html}` });
+  frame({ title: `${flag(n)}${esc(n)}`, short: esc(n), body: `${top}<div class="ptitle">${L.length} player${L.length === 1 ? '' : 's'} in the game</div>${R.html}` });
+  document.querySelectorAll('[data-nt]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); go({ s: 'nation', n: el.dataset.nt }); }));
   R.wire(); wirePlayers(R.rows.map(p => p.id));
 }
 function scrFind(){
