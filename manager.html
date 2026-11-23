@@ -818,8 +818,8 @@ const NT_HON = {
   euro: [['Spain', [1964, 2008, 2012, 2024]], ['Germany', [1972, 1980, 1996]], ['Italy', [1968, 2020]], ['France', [1984, 2000]], ['Soviet Union', [1960]], ['Czechoslovakia', [1976]], ['Netherlands', [1988]], ['Denmark', [1992]], ['Greece', [2004]], ['Portugal', [2016]]],
   nl: [['Portugal', [2019, 2025]], ['France', [2021]], ['Spain', [2023]]] };
 const NT_COMP = { wc: 'World Cup', euro: 'EURO', nl: 'Nations League' };
-const nlLeague = n => { for (const [g, L] of Object.entries((S.nl && S.nl.groups) || NL26)) if (L.includes(n)) return g[0]; return null; };
-const NT_POOL = () => { if (NT_POOL.c && NT_POOL.k === S.date) return NT_POOL.c; const m = new Map(); for (const p of allPlayers()) { const n = ntName(p.nat); if (n) (m.get(n) || m.set(n, []).get(n)).push(p); } NT_POOL.c = m; NT_POOL.k = S.date; return m; };
+const nlLeague = n => { for (const [g, L] of Object.entries((S && S.nl && S.nl.groups) || NL26)) if (L.includes(n)) return g[0]; return null; };
+const NT_POOL = () => { const k0 = S ? S.date : 'setup'; if (NT_POOL.c && NT_POOL.k === k0) return NT_POOL.c; const m = new Map(); for (const p of allPlayers()) { const n = ntName(p.nat); if (n) (m.get(n) || m.set(n, []).get(n)).push(p); } NT_POOL.c = m; NT_POOL.k = k0; return m; };
 // a nation's strength (on the clubs' scale): its best eleven in the game, leaning on its league's level where few of its men are in the game
 function ntQ(n){
   const L = (NT_POOL().get(n) || []).map(p => ovrNow(p)).sort((a, b) => b - a), lg = nlLeague(n), prior = { A: 80.5, B: 75.5, C: 70, D: 64 }[lg] || 70;
@@ -829,7 +829,7 @@ function ntQ(n){
 }
 // the squad: 23 men, three of them keepers; those the country has called up before come first, then the best available
 function ntSquad(n){
-  const L = (NT_POOL().get(n) || []).filter(p => !((S.pl[p.id] || {}).injD > 6)), key = p => ovrNow(p) + (p.nt ? 4 : 0);
+  const L = (NT_POOL().get(n) || []).filter(p => !(((S && S.pl[p.id]) || {}).injD > 6)), key = p => ovrNow(p) + (p.nt ? 4 : 0);
   const gk = L.filter(p => p.prim === 'GK').sort((a, b) => key(b) - key(a)).slice(0, 3), out = L.filter(p => p.prim !== 'GK').sort((a, b) => key(b) - key(a)).slice(0, 23 - Math.min(3, gk.length));
   return [...gk, ...out];
 }
@@ -972,7 +972,7 @@ const NT_OUT = new Set(['Russia']);   // suspended
 // every nation of the game: UEFA's 54 and those Transfermarkt values elsewhere
 const ntWorld = () => Object.keys(NT_CONF()).filter(n => !NT_OUT.has(n));
 ntQ = function(n){
-  const L = (NT_POOL().get(n) || []).map(p => ovrNow(p)).sort((a, b) => b - a), v = ntVal(n), lg = (S.nl2 && nlLeague2(n)) || nlLeague(n);
+  const L = (NT_POOL().get(n) || []).map(p => ovrNow(p)).sort((a, b) => b - a), v = ntVal(n), lg = (S && S.nl2 && nlLeague2(n)) || nlLeague(n);
   const base = v ? 56.6 + 4.1 * Math.log(Math.max(.05, v)) : ({ A: 80.5, B: 73, C: 66, D: 60 }[lg] || 57);
   if (L.length < 11) return base;
   const top = L.slice(0, 11), pq = top.reduce((t, x) => t + x, 0) / top.length, w = Math.min(.5, L.length / 40);
@@ -1430,7 +1430,7 @@ function ntLive(f){
 function finishNT(M, f){
   const n = ntMine();
   if (M){
-    const x = summary(M); f.s = x.s; if (x.p){ f.p = x.p; f.pw = x.w === NTC(f.h) ? f.h : f.a; }
+    const x = summary(M); f.s = x.s; if (x.p){ f.p = x.p; f.pw = x.w === NTC(f.h) ? f.h : f.a; } if (typeof x.mom === 'number') f.mom = x.mom;
     f.sc = x.hs.map(g => [g.side, String(g.id).startsWith('x:') ? null : g.id, g.m]); f.pl = {};
     for (const [side, T] of [['h', M.H], ['a', M.A]]){
       const ids = [...new Set([...T.on.map(y => y.id), ...T.subbed.flatMap(z => [z[0], z[1]]), ...Object.keys(T.ev).filter(id => T.ev[id].rc).map(id => isNaN(+id) ? id : +id)])].filter(id => !String(id).startsWith('x:'));
@@ -1446,6 +1446,10 @@ function finishNT(M, f){
 // your nation's result: into your record, and a word in the news
 function ntAfter(f){
   const n = ntMine(); if (!n || !f.s) return;
+  try { if (!S.hol){ const us = f.h === n; const gf = f.s[us ? 0 : 1], ga = f.s[us ? 1 : 0], won = gf > ga || f.pw === n, drew = gf === ga && !f.pw, on = us ? f.a : f.h;
+    pressBoldCheck({ w: won ? n : drew ? null : on }, 1);
+    const bold = S.pressBold && S.pressBold.d === S.date && S.pressBold.nt ? S.pressBold.t : null, notable = bold || Math.abs(gf - ga) >= 3 || ntKoName(f) || /EURO 20|World Cup 20/.test(f.comp);
+    if (!(S.press && !S.press.done) && (notable || rng(`prna-${S.seed}-${f.d}`)() < .3)) pressOpen('post', { d: f.d, on, nt: 1, won, drew, gd: gf - ga, mom: f.mom || null, red: null, bold }); } } catch (e) { console.warn(e); }
   const us = f.h === n, gf = f.s[us ? 0 : 1], ga = f.s[us ? 1 : 0], won = gf > ga || (f.pw === n), drew = gf === ga && !f.pw, opp = us ? f.a : f.h;
   (S.ntJob.rec = S.ntJob.rec || []).push({ d: f.d, o: opp, h: us ? 1 : 0, s: [gf, ga], r: won ? 'W' : drew ? 'D' : 'L', c: ntLabel(f) });
   const sc = (f.sc || []).filter(g => g[0] === (us ? 'h' : 'a') && g[1] && P.get(g[1])).map(g => `<span class="lk" data-lp="${g[1]}">${esc(surname(P.get(g[1]).n))}</span>`);
@@ -3771,7 +3775,7 @@ function menuTree(o, unread){
         { id: 'k.hist', label: 'History', v: { s: 'manager', tab: 'hist' } }, { id: 'k.con', label: 'Contract', v: { s: 'manager', tab: 'con' } },
         { id: 'k.jobs', label: 'Jobs', v: { s: 'managers', tab: 'jobs' } }, { id: 'k.rep', label: 'Manager Rankings', v: { s: 'managers', tab: 'rep' } },
         { id: 'k.hall', label: 'Hall of Fame', act: () => { SETUP_OPEN = true; SETUP = 'hall'; view(); } }] }] },
-    { id: 'my', cls: 'myclub', label: esc(club(mine).name), v: cv(mine, 'ov'), kids: clubKids(mine) },
+    ...(mine ? [{ id: 'my', cls: 'myclub', label: esc(club(mine).name), v: cv(mine, 'ov'), kids: clubKids(mine) }] : []),
     { id: 'comp', label: 'Competitions', v: { s: 'comp', tab: 'ov' }, kids: [['ov', 'Overview'], ['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results'], ['pstats', 'Player Stats'], ['tstats', 'Team Stats'], ['cup', cupLabel], ...(S.lc ? [['lc', LC]] : []), ['awards', 'Awards'], ['refs', 'Referees']].map(([t, n]) => ({ id: 'cp.' + t, label: n, v: { s: 'comp', tab: t } })).concat(awayKs().map(k => ({ id: 'aw.' + k, label: esc(D.lgs[k].league), v: { s: 'awl', k, tab: 'table' }, kids: [['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results']].map(([t, n]) => ({ id: `aw.${k}.${t}`, label: n, v: { s: 'awl', k, tab: t } })) }))) },
     ...(euOn() ? [{ id: 'eu', label: 'Europe', v: { s: 'eu', k: euMine() }, kids: [...EU_KEYS.filter(k => S.eu.c[k]).map(k => ({ id: 'eu.' + k, label: EU_NAME[k], v: { s: 'eu', k } })), ...(S.usc ? [{ id: 'eu.usc', label: USC, v: { s: 'eu', k: 'usc' } }] : [])] }] : []),
     // the cups between the continents, apart from Europe's
@@ -3996,7 +4000,8 @@ const setupHas = () => { try { return slotList().length > 0; } catch (e) { retur
 function viewSetup(){
   const clubs = D.clubs.slice().sort((a, b) => b.q - a.q), max = clubs[0].q, stars = q => '★'.repeat(clamp(Math.round(5 - (max - q) / 3), 1, 5)).padEnd(5, '☆');
   const files = slotList();
-  if (['league', 'name', 'nat', 'team', 'quick', 'preview', 'status'].includes(SETUP)){ renderFlow(setupFlow(SETUP, files)); return; }
+  if (['league', 'name', 'nat', 'team', 'quick', 'preview', 'ntpreview', 'status'].includes(SETUP)){ renderFlow(setupFlow(SETUP, files)); return; }
+  if (SETUP === 'confirm' && NEWG.mode === 'nt' && NEWG.nt){ const [k1, k2] = kitN(NEWG.nt); dialog({ title: esc(`${NEWG.first} ${NEWG.last}`.trim()), sub: 'Please Confirm', text: `Take control of ${esc(NEWG.nt)} ?`, k1, k2, onNo: () => { SETUP = 'ntpreview'; viewSetup(); }, onYes: () => { SETUP = 'status'; viewSetup(); } }); return; }
   if (SETUP === 'confirm'){ const c = club(NEWG.club); dialog({ title: esc(`${NEWG.first} ${NEWG.last}`.trim()), sub: 'Please Confirm', text: `Take control of ${esc(c.name)} ?`, k1: (c.kit || [])[0], k2: (c.kit || [])[1], onNo: () => { SETUP = 'preview'; viewSetup(); }, onYes: () => { SETUP = 'status'; viewSetup(); } }); return; }
   if (SETUP === 'exists'){ dialog({ title: 'Auto Save Game', sub: 'File Exists', text: `The file "${esc(NEWG.file)}" already exists. Replace this file ?`, onNo: () => { SETUP = 'file'; viewSetup(); }, onYes: () => startNewGame() }); return; }
   const seasonTxt = `${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`;
@@ -5114,14 +5119,22 @@ function setupFlow(state, files){
     return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select Nationality', back: 'name', next: NEWG.nat ? () => to('team') : null,
       tools: `<span style="flex:1"></span><select class="dd" id="reg">${[['all', 'Filter: All'], ['EUR', 'Europe'], ['AFR', 'Africa'], ['SAM', 'South America'], ['NAM', 'North & Central America'], ['ASI', 'Asia'], ['OCE', 'Oceania']].map(([k, n]) => `<option value="${k}" ${flt === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`,
       body: `<div class="two">${L.map(n => `<button class="nat ${NEWG.nat === n ? 'on' : ''}" data-nat="${esc(n)}"><b>${esc(n)}</b><span>${REGION[n] || ''}</span></button>`).join('')}</div>` }; }
+  if (state === 'team' && NEWG.mode === 'nt'){ const L = ntWorld().filter(n => (NT_POOL().get(n) || []).length >= 4 && !WC_NOFIFA.has(n)).sort((a, b) => (NT_CONF()[a] || '').localeCompare(NT_CONF()[b] || '') || a.localeCompare(b));
+    return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select National Team', back: 'nat', tools: `<span class="opts" id="smode"><button data-m="club">Club</button><button data-m="nt" class="on">National team</button></span>`,
+      body: `<p class="c dim small" style="margin-top:0">Coach a national team without a club. Club jobs can come later.</p><div class="two">${L.map(n => `<button class="nat" data-ntpick="${esc(n)}"><b>${flag(n)}${esc(n)}</b><span>${esc(NT_CONF()[n] || '')}</span></button>`).join('')}</div>` }; }
+  if (state === 'ntpreview'){ const n = NEWG.nt, sq = ntSquad(n), [k1, k2] = kitN(n), half = Math.ceil(sq.length / 2), row = p => `<div class="sqr" style="cursor:default"><span></span><span class="nm">${esc(cmName(p.n))}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
+    return { title: `${flag(n)}${esc(n)}`, k1, k2, sub: `${esc(NT_CONF()[n] || '')}${nlLeague(n) ? ` · Nations League, League ${nlLeague(n)}` : ''}`, back: 'team', act: '<button class="btn y" id="take">Take Control</button>',
+      body: `<div class="ptitle">The likely squad</div><div class="sq"><div>${sq.slice(0, half).map(row).join('')}</div><div>${sq.slice(half).map(row).join('')}</div></div>` }; }
   if (state === 'team' || state === 'quick'){ const LGC = { ENG: 'PRM', FRA: 'L1', ITA: 'SA', ESP: 'LL', GER: 'BL', SRB: 'SL' }, clubs = Object.values(D.lgs).flatMap(L => L.top0.map(id => club(id)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name)).map(c2 => ({ c2, k: L.k })));
-    return { title: state === 'quick' ? 'Quick Start Game' : `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select Team', back: state === 'quick' ? 'menu' : 'nat',
+    return { title: state === 'quick' ? 'Quick Start Game' : `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Select Team', back: state === 'quick' ? 'menu' : 'nat', tools: state === 'team' ? `<span class="opts" id="smode"><button data-m="club" class="on">Club</button><button data-m="nt">National team</button></span>` : '',
       body: `${state === 'quick' ? '<p class="c dim small" style="margin-top:0">Pick a club and go straight to the first match day: the assistant has picked the side.</p>' : ''}<div class="two">${clubs.map(({ c2, k }) => `<button class="nat" data-club="${c2.id}"><b>${esc(c2.name)}</b><span>${k} <em>${LGC[k] || '1'}</em></span></button>`).join('')}</div>` }; }
   if (state === 'preview'){ const sq = squadOf(c.id).slice().sort((a, b) => ({ GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[a.prim]] - { GK: 0, DEF: 1, MID: 2, FWD: 3 }[GROUP[b.prim]]) || ovrNow(b) - ovrNow(a)), half = Math.ceil(sq.length / 2);
     const row = p => `<div class="sqr" style="cursor:default"><span></span><span class="nm">${esc(cmName(p.n))}</span><span></span><span class="ps">${cmPos(p.pos)}</span></div>`;
     const rank = expRank(c.id);
     return { title: esc(c.name), k1: (c.kit || [])[0], k2: (c.kit || [])[1], sub: `${AIMS20[aimFor(rank, (leagueOf(c.id) ? topOf(leagueOf(c.id)) : D.clubs).length)].name} · ${(c.cap || 0).toLocaleString('en-GB')} seats`, back: 'team', act: '<button class="btn y" id="take">Take Control</button>',
       body: `<div class="ptitle">Position(s)</div><div class="sq"><div>${sq.slice(0, half).map(row).join('')}</div><div>${sq.slice(half).map(row).join('')}</div></div>` }; }
+  if (state === 'status' && NEWG.mode === 'nt') return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Manager Status', back: 'ntpreview', nextLabel: 'Finish', next: () => { NEWG.file = NEWG.file || `${NEWG.first} ${NEWG.last}`.trim() + ' ' + NEWG.nt; to('file'); },
+    body: `<div class="lg"><div class="on"><b>${esc(`${NEWG.first} ${NEWG.last}`.trim())}</b><span>${flag(NEWG.nt)}${esc(NEWG.nt)}</span><span class="dim">National team</span><span class="dim small">${esc(NEWG.nat || '')}</span></div></div>` };
   if (state === 'status') return { title: `Manager ${D.season}/${String((D.season + 1) % 100).padStart(2, '0')}`, sub: 'Manager Status', back: 'preview', nextLabel: 'Finish', next: () => { NEWG.file = NEWG.file || `${NEWG.first} ${NEWG.last}`.trim() + ' ' + c.name; to('file'); },
     body: `<div class="lg"><div class="on"><b>${esc(`${NEWG.first} ${NEWG.last}`.trim())}</b><span>${esc(c.name)}</span><span class="dim">Playing</span><span class="dim small">${esc(NEWG.nat || '')}</span></div></div><p class="small dim">More managers on one device, each with his own club, come with Network Play.</p>` };
   return null;
@@ -5140,10 +5153,19 @@ function renderFlow(F){
     if (SETUP === 'quick'){ const nm = (localStorage.getItem('ttny.manager.name') || 'The manager').split(' '); NEWG.first = nm[0]; NEWG.last = nm.slice(1).join(' '); NEWG.file = 'Quick Start ' + club(NEWG.club).name; startNewGame(); const ev = events()[0]; if (ev && ev.date > S.date){ passDays(daysBetween(S.date, ev.date)); save(); view(); } return; }
     to('preview'); }));
   on('#take', () => to('confirm'));
+  document.querySelectorAll('#smode [data-m]').forEach(b => b.addEventListener('click', () => { NEWG.mode = b.dataset.m; viewSetup(); }));
+  document.querySelectorAll('[data-ntpick]').forEach(b => b.addEventListener('click', () => { NEWG.nt = b.dataset.ntpick; NEWG.club = null; to('ntpreview'); }));
 }
 const to = k => { SETUP = k; FILE = ''; viewSetup(); scrollTo(0, 0); };
 function startNewGame(){
   const name = `${NEWG.first} ${NEWG.last}`.trim() || 'The manager';
+  if (NEWG.mode === 'nt' && NEWG.nt){
+    const k = Object.keys(D.lgs).find(k2 => D.lgs[k2].country === NEWG.nt) || 'ENG', base = (k === 'ENG' ? D.lgs.ENG.top0 : D.lgs[k].top0)[0];
+    LIVE = null; liveDrop(); newGame(base, name);
+    Object.assign(S, { mask: NEWG.mask, nat: NEWG.nat, slot: NEWG.file || name, seen: [], short: [], fac: {}, hist: [], club: null, ntOnly: 1, rep: 'Unproven' });
+    S.news = []; ntTake(NEWG.nt); S.hist = [{ d: S.date, c: null, t: `Became the ${NEWG.nt} national coach` }];
+    news('board', `Welcome, ${NEWG.nt} coach`, `The ${esc(NEWG.nt)} federation have appointed you national coach. Name your squad before each international window; their matches are yours to play. Club jobs may come your way: look at the Jobs screen.`);
+    save(); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'home' }; view(); return; }
   LIVE = null; liveDrop(); newGame(NEWG.club, name);
   Object.assign(S, { mask: NEWG.mask, nat: NEWG.nat, slot: NEWG.file || name, seen: [], short: [], fac: {}, hist: [{ d: S.date, c: S.club, t: `Hired as ${club(S.club).name} manager` }] });
   news('comp', `${D.season}/${String((D.season + 1) % 100).padStart(2, '0')} ${D.league} fixture list decided`, `The fixtures for the new season are out. ${esc(club(S.club).name)} start ${matchLine(S.rounds[0].m.find(m => m.h === S.club || m.a === S.club))}.`);
@@ -5826,7 +5848,8 @@ const REP_SCORE = { 'Unproven': 1, 'Poor': 0, 'Average': 1, 'Good': 2, 'Very goo
 function jobOK(cid){ const ak = !LG.has(cid) && leagueOf(cid), CL = ak ? topOf(ak).map(id => club(id)) : D.clubs, rank = CL.slice().sort((a, b) => b.q - a.q).findIndex(c => c.id === cid) + 1; return rank >= [15, 12, 7, 1][REP_SCORE[S.rep] ?? 1]; }
 function takeJob(cid){
   const old = S.club, c = club(cid), q = c.q;
-  if (!S.sacked){ S.vac = S.vac || {}; S.vac[old] = { d: S.date }; }
+  if (!S.sacked && old){ S.vac = S.vac || {}; S.vac[old] = { d: S.date }; }
+  delete S.ntOnly;
   if (S.vac) delete S.vac[cid];
   S.club = cid; S.sacked = false; S.ultimatum = null; S.conf = 60; S.aim = aimFor(expRank(cid));
   if (!S.tac[cid]) S.tac[cid] = autoTactic(cid);
@@ -5967,13 +5990,27 @@ function careerSnap(){
 const PRESS_OUT = { ENG: ['BBC Sport', 'Sky Sports', 'The Athletic', 'The Guardian', 'talkSPORT', 'The Times'], SRB: ['Sportski žurnal', 'Mozzart Sport', 'Arena Sport', 'Novosti', 'Kurir', 'Informer'], FRA: ["L'Équipe", 'RMC Sport', 'Le Parisien', 'Canal+'], ITA: ['La Gazzetta dello Sport', 'Corriere dello Sport', 'Sky Sport Italia', 'Tuttosport'], ESP: ['Marca', 'AS', 'Mundo Deportivo', 'Sport', 'Movistar'], GER: ['Kicker', 'Bild', 'Sport1', 'Sky Deutschland'] };
 const pressForm = cid => fixtureRows(cid).filter(x => x.m && x.rr && x.rr.s && !x.rr.bg && x.comp !== 'Friendly').slice(-5).map(x => x.rr.w === cid ? 'W' : x.rr.w == null ? 'D' : 'L');
 const pressPts = L => L.reduce((t, r) => t + (r === 'W' ? 3 : r === 'D' ? 1 : 0), 0);
+const pressOpp = ctx => ctx.on || (ctx.opp ? club(ctx.opp).name : '');
+const pressUs = ctx => ctx.nt && S.ntJob ? S.ntJob.n : club(me()).name;
+const pressSquad = ctx => ctx.nt && S.ntJob ? ntSquadOf(S.ntJob.n) : squadOf(me());
+const ntForm = n => ntFxOf(n).filter(f => f.s).sort((a, b) => a.d < b.d ? -1 : 1).slice(-5).map(f => ntRes(f, n));
 // the questions of a conference, from what is going on
 function pressQs(kind, ctx){
-  const r = rng(`press-${S.seed}-${ctx.d}-${kind}`), sq = squadOf(me()), q = p => S.pl[p.id] || {}, avgR = p => { const L = (q(p).rt || []).slice(-5); return L.length >= 3 ? L.reduce((a, b) => a + b, 0) / L.length : 0; };
-  const oc = ctx.opp ? club(ctx.opp).name : '', myF = pressForm(me()), opF = ctx.opp ? pressForm(ctx.opp) : [], st = standings(), pos = st.findIndex(x => x.id === me()) + 1, aim = AIMS[S.aim] || { pos: 10 };
+  const r = rng(`press-${S.seed}-${ctx.d}-${kind}`), sq = pressSquad(ctx), q = p => S.pl[p.id] || {}, avgR = p => { const L = (q(p).rt || []).slice(-5); return L.length >= 3 ? L.reduce((a, b) => a + b, 0) / L.length : 0; };
+  const oc = pressOpp(ctx), myF = ctx.nt ? ntForm(S.ntJob.n) : pressForm(me()), opF = ctx.nt ? ntForm(ctx.on) : ctx.opp ? pressForm(ctx.opp) : [], st = standings(), pos = ctx.nt ? 0 : st.findIndex(x => x.id === me()) + 1, aim = AIMS[S.aim] || { pos: 10 };
   const Q = [], add = (q2, a) => Q.push({ q: q2, a });
   const A = (t, tone, fx) => ({ t, tone, fx });
-  if (kind === 'pre'){
+  if (kind === 'pre' && ctx.nt){
+    const n = S.ntJob.n, dq = ntQ(n) - ntQ(oc), insq = new Set(sq.map(p => p.id)), left = (NT_POOL().get(n) || []).filter(p => !insq.has(p.id) && !(S.pl[p.id] || {}).injD).sort((a, b) => ovrNow(b) - ovrNow(a))[0];
+    if (ctx.big) add(`${ctx.big}. Can ${n} go all the way?`, [A("Why not? We fear nobody.", 'Bold', { t: 2, n: .01, bold: 1 }), A("We respect everyone and take it one game at a time.", 'Calm', { t: 1, n: .005 }), A("The whole country is behind us. We'll give everything.", 'Passionate', { t: 2, n: .008 })]);
+    add(dq < -3 ? `${oc} are favourites. What chance do you give ${n}?` : dq > 3 ? `${n} are expected to beat ${oc}. Is there a danger of complacency?` : `${oc} look evenly matched with ${n}. What decides it?`,
+      dq < -3 ? [A("Every game starts at 0-0. We believe.", 'Confident', { t: 2, n: .008 }), A("We know they are better on paper. We'll make it hard for them.", 'Cautious', { t: 1, n: .006 }), A("We'll beat them.", 'Bold', { t: 2, n: .012, bold: 1 })]
+        : dq > 3 ? [A("Not with this group. They know what this shirt means.", 'Confident', { t: 2, n: .006 }), A("There are no easy games in international football.", 'Calm', { t: 1, n: .006 }), A("We expect to win, and win well.", 'Bold', { t: 1, n: .008, bold: 1 })]
+        : [A("Small details. Set pieces, concentration.", 'Calm', { t: 1, n: .006 }), A("Who wants it more. And that will be us.", 'Passionate', { t: 2, n: .008 }), A('No comment.', 'Evasive', { m: -1 })]);
+    if (left && r() < .5 && (S.pressLeft !== left.id || r() < .3) && ovrNow(left) >= Math.min(...sq.map(p => ovrNow(p))) && (S.pressLeft = left.id)) add(`Why is ${left.n} not in your squad?`, [A("The door is open. He knows what he has to do.", 'Backing', { p: [left.id, 2] }), A("I pick on form and on what the team needs.", 'Calm', { t: 1 }), A("Those who are here deserve to be.", 'Demanding', { p: [left.id, -4], t: 1 })]);
+    const G = ntGroupNow(n); if (G && !ctx.big){ const k = G.rows.findIndex(x => x.n === n) + 1; if (k) add(`${n} are ${ordinal(k)} in ${G.title}. What do you need from this window?`, [A("Wins. Nothing less.", 'Bold', { t: 1, n: .006, bold: 1 }), A("Steady progress, and a few new faces given a chance.", 'Calm', { t: 1 }), A("We'll see where we are after these games.", 'Cautious', {})]); }
+  }
+  if (kind === 'pre' && !ctx.nt){
     if (ctx.derby) add(`It's the ${ctx.derby} against ${oc}. What does this one mean to you?`, [A('It means everything to our supporters, and to us.', 'Passionate', { t: 2, n: .01 }), A("It's three points like any other.", 'Calm', { t: 0, n: .004 }), A(`${oc} should be worried.`, 'Bold', { t: 2, n: .012, bold: 1, b: 0 }), A("I'm not getting drawn into that.", 'Evasive', { m: -1 })]);
     if (ctx.big) add(`${ctx.big}. How big is this for the club?`, [A("It's the kind of night we work for. We're ready.", 'Confident', { t: 2, n: .008 }), A("We'll respect the occasion and play our game.", 'Calm', { t: 1, n: .005 }), A("We're going there to win it, simple as that.", 'Bold', { t: 2, n: .012, bold: 1 })]);
     if (ctx.opp && opF.length >= 3) add(pressPts(opF) >= 10 ? `${oc} have won ${opF.filter(x => x === 'W').length} of their last ${opF.length}. Are you worried?` : `${oc} have struggled lately. Is this a game you expect to win?`,
@@ -5985,14 +6022,15 @@ function pressQs(kind, ctx){
     if (S.round >= 6 && pos > aim.pos + 3) add(`You're ${ordinal(pos)}, well short of what the board want. Is the pressure getting to you?`, [A("Pressure is part of the job. We'll turn it around.", 'Confident', { t: 1, b: 1 }), A("Judge us at the end of the season.", 'Calm', { b: .5 }), A("The players need to look at themselves.", 'Critical', { t: -3, n: .006 }), A('No comment.', 'Evasive', { b: -1, m: -1 })]);
     else if (S.round >= 6 && pos && pos <= Math.max(2, aim.pos - 1)) add(`You're ${ordinal(pos)}. Can you go all the way?`, [A("Why not? We fear nobody.", 'Bold', { t: 2, bold: 1 }), A("One game at a time.", 'Calm', { t: 1, b: .5 }), A("It's far too early to talk about that.", 'Cautious', { t: 0 })]);
     if (myF.length >= 3 && pressPts(myF) <= 4) add(`One win in your last ${myF.length}. What has gone wrong?`, [A("We've been unlucky; the performances are there.", 'Defending', { t: 2, b: -.5 }), A("It's on me. I'll fix it.", 'Responsible', { t: 2, b: .5 }), A("Some players have let themselves down.", 'Critical', { t: -3, n: .008 })]);
-  } else {
+  }
+  if (kind === 'post'){
     const w = ctx.won, dr = ctx.drew, gd = ctx.gd;
     if (w) add(gd >= 3 ? `${gd}-goal win. Is this the best your side has played?` : `A win against ${oc}. How pleased are you?`, [A("Delighted with every one of them.", 'Praise', { t: 3 }), A("Good, but there's more to come.", 'Grounded', { t: 1, b: .5 }), A("We were sloppy at times; I want more.", 'Demanding', { t: -1, n2: .006 })]);
     else if (dr) add(`A draw with ${oc}. Two points dropped or one gained?`, [A("A point gained; it was a tough game.", 'Positive', { t: 1 }), A("Two points dropped. We should have won.", 'Demanding', { t: -1, n2: .005 }), A("Let's see at the end of the season.", 'Calm', {})]);
     else add(gd <= -3 ? `A heavy defeat to ${oc}. What happened out there?` : `Defeat to ${oc}. What went wrong?`, [A("We were second best. That's on me.", 'Responsible', { t: 2, b: -.5 }), A("The players didn't do what we asked.", 'Critical', { t: -3, n2: .008 }), A("Some of those decisions went against us.", 'Referee', { t: 1, b: -1.5 }), A("Bad day. We move on.", 'Calm', { t: .5 })]);
-    if (ctx.mom && P.get(ctx.mom) && P.get(ctx.mom).club === me()) add(`${P.get(ctx.mom).n} was man of the match. Your thoughts?`, [A("Fantastic. He's a joy to work with.", 'Praise', { p: [ctx.mom, 6], t: .5 }), A("He did his job, like the others.", 'Grounded', { t: 1 })]);
+    if (ctx.mom && P.get(ctx.mom) && (ctx.nt ? sq.some(p => p.id === ctx.mom) : P.get(ctx.mom).club === me())) add(`${P.get(ctx.mom).n} was man of the match. Your thoughts?`, [A("Fantastic. He's a joy to work with.", 'Praise', { p: [ctx.mom, 6], t: .5 }), A("He did his job, like the others.", 'Grounded', { t: 1 })]);
     if (ctx.red) add(`${P.get(ctx.red).n}'s red card. Did he let you down?`, [A("He knows he was wrong; we'll deal with it inside.", 'Calm', { p: [ctx.red, -1], t: .5 }), A("Yes. That can't happen.", 'Critical', { p: [ctx.red, -6] }), A("I thought it was harsh.", 'Backing', { p: [ctx.red, 4], b: -1 })]);
-    if (S.conf < 35 && !w) add('Is your job under threat?', [A("I have the board's support and I'll keep working.", 'Confident', { b: -1 }), A("That's for the board to say. I'll fight on.", 'Calm', { b: .5 }), A('No comment.', 'Evasive', { b: -1.5, m: -1 })]);
+    if (!ctx.nt && S.conf < 35 && !w) add('Is your job under threat?', [A("I have the board's support and I'll keep working.", 'Confident', { b: -1 }), A("That's for the board to say. I'll fight on.", 'Calm', { b: .5 }), A('No comment.', 'Evasive', { b: -1.5, m: -1 })]);
     if (ctx.bold) add(`You said before the game ${ctx.bold}. Do you regret it?`, ctx.won ? [A("I said it, we did it.", 'Bold', { t: 2 }), A("The players made me look good.", 'Praise', { t: 3 })] : [A("I stand by it. It didn't happen today.", 'Defiant', { t: 1, b: -1 }), A("Perhaps I spoke too soon.", 'Humble', { t: .5, b: .5 })]);
   }
   // three or four questions; the media ask about the season when they have nothing else
@@ -6002,6 +6040,11 @@ function pressQs(kind, ctx){
 // is there a conference before this match? (always for the big ones, now and then otherwise)
 function pressTick(){
   if (!S || S.done || S.hol || (S.press && !S.press.done)) return;
+  const J = S.ntJob, nf = J ? ntEvents()[0] : null;
+  if (nf && daysBetween(S.date, nf.date) === 1 && nf.f.comp !== 'Friendly'){ const f = nf.f, key = `nt|${f.d}|${f.h}|${f.a}`; S.pressK = S.pressK || {};
+    if (!S.pressK[key]){ S.pressK[key] = 1; const on = f.h === J.n ? f.a : f.h, big = /EURO 20|World Cup 20/.test(f.comp) && !/qualifying/.test(f.comp) ? `${f.comp}${ntKoName(f) ? ', ' + ntKoName(f) : ''}` : ntKoName(f) && ntKoName(f) !== 'Play-off' ? `A ${ntKoName(f).toLowerCase()}` : ntKoName(f) === 'Play-off' ? 'A play-off' : null;
+      if (big || rng(`prn-${S.seed}-${key}`)() < .6){ pressOpen('pre', { d: f.d, on, nt: 1, big, comp: ntLabel(f) }); return; } } }
+  if (!me()) return;
   const rows = fixtureRows(me()), nx = rows.find(x => x.m && !x.rr && x.date > S.date && x.comp !== 'Friendly');
   if (!nx || daysBetween(S.date, nx.date) !== 1) return;
   const key = `pre|${nx.date}|${nx.m.h}|${nx.m.a}`; S.pressK = S.pressK || {}; if (S.pressK[key]) return; S.pressK[key] = 1;
@@ -6013,7 +6056,7 @@ function pressTick(){
 function pressOpen(kind, ctx){
   const qs = pressQs(kind, ctx); if (!qs.length) return;
   S.press = { kind, ctx, qs, i: 0, ans: [], done: false, d: S.date };
-  news('board', kind === 'pre' ? `Press conference: ${club(me()).name} v ${club(ctx.opp).name}` : 'Post-match press conference', kind === 'pre' ? `The press want to hear from you before ${ctx.comp ? esc(ctx.comp) + ' against ' : ''}${esc(club(ctx.opp).name)}. Answer their questions, or send your assistant.` : `The press want your view on the game against ${esc(club(ctx.opp).name)}.`, { id: 'press' });
+  news('board', kind === 'pre' ? `Press conference: ${pressUs(ctx)} v ${pressOpp(ctx)}` : `Post-match press conference${ctx.nt ? ': ' + pressUs(ctx) : ''}`, kind === 'pre' ? `The press want to hear from you before ${ctx.comp ? esc(ctx.comp) + ' against ' : ''}${esc(pressOpp(ctx))}. Answer their questions, or send your assistant.` : `The press want your view on the game against ${esc(pressOpp(ctx))}.`, { id: 'press' });
 }
 // after a result that makes headlines
 function pressAfter(x, kind, stage){
@@ -6025,15 +6068,15 @@ function pressAfter(x, kind, stage){
   pressOpen('post', { d: S.date, opp, won, drew, gd, mom: x.mom, red: red ? red.id : null, bold });
 }
 function pressAnswer(i){
-  const Pz = S.press, Q = Pz.qs[Pz.i], a = Q.a[i], fx = a.fx || {}, sq = squadOf(me()), lines = [];
+  const Pz = S.press, Q = Pz.qs[Pz.i], a = Q.a[i], fx = a.fx || {}, sq = pressSquad(Pz.ctx), lines = [];
   if (fx.t) for (const p of sq){ const q = ps(p.id); q.mor = clamp(q.mor + fx.t, 15, 100); }
   if (fx.p){ const q = ps(fx.p[0]); q.mor = clamp(q.mor + fx.p[1], 15, 100); }
-  if (fx.b) S.conf = clamp(S.conf + fx.b, 0, 100);
-  const nx = (fx.n || 0) + (fx.n2 || 0); if (nx) S.pressMod = { d: Pz.kind === 'pre' ? Pz.ctx.d : (fixtureRows(me()).find(x => x.m && !x.rr && x.date > S.date) || {}).date, v: ((S.pressMod && S.pressMod.d === Pz.ctx.d) ? S.pressMod.v : 0) + nx };
-  if (fx.bold && Pz.kind === 'pre') S.pressBold = { d: Pz.ctx.d, t: `"${a.t.replace(/\.$/, '')}"` };
+  if (fx.b && !Pz.ctx.nt) S.conf = clamp(S.conf + fx.b, 0, 100);
+  const nx = (fx.n || 0) + (fx.n2 || 0); if (nx) S.pressMod = { d: Pz.kind === 'pre' ? Pz.ctx.d : Pz.ctx.nt ? ((ntEvents()[0] || {}).date) : (fixtureRows(me()).find(x => x.m && !x.rr && x.date > S.date) || {}).date, v: ((S.pressMod && S.pressMod.d === Pz.ctx.d) ? S.pressMod.v : 0) + nx };
+  if (fx.bold && Pz.kind === 'pre') S.pressBold = { d: Pz.ctx.d, t: `"${a.t.replace(/\.$/, '')}"`, nt: !!Pz.ctx.nt };
   if (fx.t >= 2) lines.push('The squad liked that.'); else if (fx.t <= -2) lines.push('Some in the squad did not take it well.');
   if (fx.p) lines.push(fx.p[1] > 0 ? `${P.get(fx.p[0]).n} will be pleased.` : `${P.get(fx.p[0]).n} won't like that.`);
-  if (fx.b >= 1) lines.push('The board approve.'); else if (fx.b <= -1) lines.push('The board raised an eyebrow.');
+  if (fx.b >= 1) lines.push(Pz.ctx.nt ? 'The federation approve.' : 'The board approve.'); else if (fx.b <= -1) lines.push(Pz.ctx.nt ? 'The federation raised an eyebrow.' : 'The board raised an eyebrow.');
   if (fx.bold) lines.push('Bold words. They had better be backed up.');
   if (fx.m) lines.push('The journalists were not impressed.');
   Pz.ans.push({ q: Q.q, a: a.t, tone: a.tone, r: lines.join(' ') || 'Noted.' }); Pz.i++;
@@ -6041,15 +6084,15 @@ function pressAnswer(i){
 }
 function pressClose(skip){
   const Pz = S.press; Pz.done = true;
-  if (skip){ S.conf = clamp(S.conf - .5, 0, 100); news('board', 'Your assistant faced the press', 'Your assistant manager took the press conference. Nothing he said will make the headlines.'); return; }
+  if (skip){ if (!Pz.ctx.nt) S.conf = clamp(S.conf - .5, 0, 100); news('board', 'Your assistant faced the press', 'Your assistant manager took the press conference. Nothing he said will make the headlines.'); return; }
   const best = Pz.ans.find(x => ['Bold', 'Critical', 'Referee', 'Passionate', 'Demanding'].includes(x.tone)) || Pz.ans[0];
-  news('club', `${S.manager}: "${best.a.replace(/[.!]$/, '')}"`, `${Pz.kind === 'pre' ? 'Before the game against' : 'After the game against'} ${esc(club(Pz.ctx.opp).name)} you told the press:${Pz.ans.map(x => `<br><span class="dim">${esc(x.q)}</span><br><b>"${esc(x.a)}"</b>`).join('')}`);
+  news('club', `${S.manager}: "${best.a.replace(/[.!]$/, '')}"`, `${Pz.kind === 'pre' ? 'Before the game against' : 'After the game against'} ${esc(pressOpp(Pz.ctx))} you told the press:${Pz.ans.map(x => `<br><span class="dim">${esc(x.q)}</span><br><b>"${esc(x.a)}"</b>`).join('')}`);
 }
 function scrPress(){
   const Pz = S.press;
   if (!Pz){ go({ s: 'home' }); return; }
   const outs = PRESS_OUT[HOME] || PRESS_OUT.ENG, cur = Pz.qs[Pz.i], last = Pz.ans[Pz.ans.length - 1];
-  const head = `<div class="ovclub" style="--k1:${kitOf(me())[0]};--k2:${kitOf(me())[1]}">${crest(me(), 'bigcr')}<div class="ovci"><div class="ovcn">${Pz.kind === 'pre' ? 'Pre-match' : 'Post-match'} press conference</div><div class="small dim">${esc(club(me()).name)} v ${esc(club(Pz.ctx.opp).name)}${Pz.ctx.comp ? ' · ' + esc(Pz.ctx.comp) : ''} · ${fmtDate(Pz.ctx.d)}</div></div></div>`;
+  const [hk1, hk2] = Pz.ctx.nt ? kitN(S.ntJob ? S.ntJob.n : '') : kitOf(me()), head = `<div class="ovclub" style="--k1:${hk1};--k2:${hk2}">${Pz.ctx.nt ? `<span class="bigflag">${flagOf(pressUs(Pz.ctx))}</span>` : crest(me(), 'bigcr')}<div class="ovci"><div class="ovcn">${Pz.kind === 'pre' ? 'Pre-match' : 'Post-match'} press conference</div><div class="small dim">${esc(pressUs(Pz.ctx))} v ${esc(pressOpp(Pz.ctx))}${Pz.ctx.comp ? ' · ' + esc(Pz.ctx.comp) : ''} · ${fmtDate(Pz.ctx.d)}</div></div></div>`;
   const past = Pz.ans.map(x => `<div class="ovc" style="margin-bottom:8px"><div class="small dim">${esc(x.q)}</div><div><b>"${esc(x.a)}"</b> <span class="small dim">(${esc(x.tone)})</span></div><div class="small yel">${esc(x.r)}</div></div>`).join('');
   const body = Pz.done ? `${head}${past}<p class="dim">The conference is over.</p><div class="tools"><button class="btn go" id="prdone">Back</button></div>`
     : `${head}${past}<div class="ovc"><div class="ovh"><span>${esc(outs[(Pz.i * 7 + Pz.qs.length) % outs.length])}</span><span class="small dim">Question ${Pz.i + 1} of ${Pz.qs.length}</span></div><p style="font-size:16px;margin:8px 0 12px"><b>${esc(cur.q)}</b></p>
@@ -6061,10 +6104,38 @@ function scrPress(){
   const dn = $('#prdone'); if (dn) dn.addEventListener('click', () => go({ s: 'home' }));
 }
 // a bold word before the game, and then a defeat: the squad and the board remember
-function pressBoldCheck(x){ const B = S.pressBold; if (!B || B.d !== S.date) return; if (x.w === me()) return;
-  const lost = x.w != null; for (const p of squadOf(me())){ const q = ps(p.id); q.mor = clamp(q.mor - (lost ? 3 : 1), 15, 100); } S.conf = clamp(S.conf - (lost ? 2.5 : 1), 0, 100);
+function pressBoldCheck(x, nt){ const B = S.pressBold; if (!B || B.d !== S.date || !!B.nt !== !!nt) return; if (x.w === (nt ? S.ntJob.n : me())) return;
+  const lost = x.w != null; for (const p of (nt ? ntSquadOf(S.ntJob.n) : squadOf(me()))){ const q = ps(p.id); q.mor = clamp(q.mor - (lost ? 3 : 1), 15, 100); } if (!nt) S.conf = clamp(S.conf - (lost ? 2.5 : 1), 0, 100);
   news('board', 'Your words come back to bite', `Before the game you said ${esc(B.t)}. ${lost ? 'After the defeat' : 'After the draw'} the papers have reminded everyone, and the dressing room has noticed.`); }
+// Home without a club: the national team at the centre
+function scrHomeNT(){
+  const J = S.ntJob, n = J ? J.n : null, H = S.hist || [], first = H[0] ? H[0].d : `${D.season}-07-01`, days = Math.max(0, daysBetween(first, S.date)), un = S.news.filter(x => x.n).length, acts = pendingActs();
+  const box = (t, inner, more) => `<div class="ovc"><div class="ovh"><span>${t}</span>${more || ''}</div>${inner}</div>`, lnk = (v, l) => `<button class="lnk" data-hv='${JSON.stringify(v)}'>${l}</button>`;
+  const [k1, k2] = n ? kitN(n) : ['#2A44D0', '#fff'], R = J ? J.rec || [] : [], w = R.filter(x => x.r === 'W').length, d = R.filter(x => x.r === 'D').length;
+  const trophies = H.filter(x => /^Won the /.test(x.t));
+  const hero = `<div class="ovclub hhero" style="--k1:${k1};--k2:${k2}">${n ? `<span class="bigflag">${flagOf(n)}</span>` : ''}<div class="ovci"><div class="ovcn">${esc(S.manager)}</div><div class="small">${n ? `Coach of ${flag(n)}<span class="lk" data-ln="${esc(n)}">${esc(n)}</span>` : 'Out of work'}</div>
+    <div class="ovchips"><span>${esc(S.rep || 'Unproven')} reputation</span><span>${days} day${days === 1 ? '' : 's'} in the job</span><span>${R.length} match${R.length === 1 ? '' : 'es'}: ${w} won, ${d} drawn, ${R.length - w - d} lost${R.length ? ` (${Math.round(100 * w / R.length)}%)` : ''}</span><span>${trophies.length} troph${trophies.length === 1 ? 'y' : 'ies'}</span></div></div>
+    <div class="hdate"><div class="small dim">${WD[new Date(S.date + 'T12:00:00Z').getUTCDay()]}</div><b>${fmtDate(S.date, true)}</b><div class="small dim">Season ${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</div></div></div>`;
+  const alert = acts.length ? `<div class="nact" style="margin:10px 0"><span><b>${acts.length}</b> thing${acts.length > 1 ? 's need' : ' needs'} your answer: ${acts[0].txt}</span><button class="btn sm go" id="hact">${acts[0].btn}</button></div>` : '';
+  const nx = n ? ntAllFx().filter(f => !f.s && (f.h === n || f.a === n)).sort((a, b) => a.d < b.d ? -1 : 1)[0] : null;
+  const nextH = !nx ? '<p class="dim">Nothing arranged yet.</p>' : (() => { const o = nx.h === n ? nx.a : nx.h, od = ntOdds(nx); return `<div class="ovnext">${shirt(k1, k2, 'kit sm')}<div><div class="small dim">${esc(ntLabel(nx))} · ${fmtDate(nx.d)} · in ${daysBetween(S.date, nx.d)} days</div><div class="ovvs">${nx.h === n ? `<b>${esc(n)}</b> v ${flag(o)}<span class="lk" data-ln="${esc(o)}">${esc(o)}</span>` : `${flag(o)}<span class="lk" data-ln="${esc(o)}">${esc(o)}</span> v <b>${esc(n)}</b>`}</div><div class="small" style="margin-top:4px"><span class="pill">${esc(nx.h)} ${od[0]}</span> <span class="pill">Draw ${od[1]}</span> <span class="pill">${esc(nx.a)} ${od[2]}</span></div></div></div>`; })();
+  const formH = R.length ? `<table><tbody>${R.slice(-6).reverse().map(x => `<tr><td><span class="form"><span class="${x.r}">${x.r}</span></span></td><td>${x.h ? '' : '<span class="dim">at</span> '}${flag(x.o)}<span class="lk" data-ln="${esc(x.o)}">${esc(x.o)}</span></td><td class="small dim">${esc(x.c)}</td><td class="r">${x.s[0]}-${x.s[1]}</td></tr>`).join('')}</tbody></table>` : '<p class="dim">No matches yet.</p>';
+  const G = n ? ntGroupNow(n) : null, grpH = G ? `<div class="small dim" style="margin-bottom:4px">${esc(G.title)}</div><table><tbody>${G.rows.map((r, j) => `<tr class="${r.n === n ? 'me' : ''}"><td class="dim">${j + 1}</td><td>${flag(r.n)}<span class="lk" data-ln="${esc(r.n)}">${esc(r.n)}</span></td><td class="c">${r.p}</td><td class="c"><b>${r.pts}</b></td></tr>`).join('')}</tbody></table>` : '<p class="dim">No group yet.</p>';
+  const sq = n ? ntSquadOf(n) : [], inj = sq.filter(p => (S.pl[p.id] || {}).injD), mc = sq.slice().sort((a, b) => capR(b.id)[0] - capR(a.id)[0])[0], ts = sq.slice().sort((a, b) => capR(b.id)[1] - capR(a.id)[1])[0];
+  const sqH = `<dl class="kv"><dt>Called up</dt><dd>${sq.length}${(J && (J.sq || []).length) ? '' : ' <span class="small dim">(your assistant\'s choice)</span>'}</dd><dt>Injured</dt><dd>${inj.length ? inj.map(p => `<span class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</span>`).join(', ') : 'None'}</dd>${mc && capR(mc.id)[0] ? `<dt>Most caps</dt><dd><span class="lk" data-lp="${mc.id}">${esc(cmName(mc.n))}</span>, ${capR(mc.id)[0]}</dd>` : ''}${ts && capR(ts.id)[1] ? `<dt>Top scorer</dt><dd><span class="lk" data-lp="${ts.id}">${esc(cmName(ts.n))}</span>, ${capR(ts.id)[1]}</dd>` : ''}</dl>`;
+  const jobsH = `<p class="small">Clubs looking for a manager: ${Object.keys(S.vac || {}).length}. National teams looking for a coach: ${Object.keys(S.ntVac || {}).length}.</p>`;
+  const newsH = `<table><tbody>${S.news.slice(0, 5).map((x, i) => `<tr class="click" data-hn="${i}"><td class="small dim">${shortDate(x.d)}</td><td>${x.n ? '<b>' : ''}${esc(x.t)}${x.n ? '</b>' : ''}</td></tr>`).join('')}</tbody></table>`;
+  const cab = trophies.length ? `<ul class="hon">${trophies.map(x => `<li>${esc(x.t.replace(/^Won the /, ''))}</li>`).join('')}</ul>` : '<p class="dim">The cabinet is empty. For now.</p>';
+  const tlH = H.length ? `<table><tbody>${H.slice(-7).reverse().map(x => `<tr><td><span class="pill">${shortDate(x.d)}</span></td><td class="small">${esc(x.t)}</td></tr>`).join('')}</tbody></table>` : '';
+  const body = `${hero}${alert}<div class="ovgrid">${n ? box('Next match', nextH, lnk({ s: 'nation', n, tab: 'next' }, 'Preview')) + box('Form', formH, lnk({ s: 'nation', n, tab: 'fix' }, 'Fixtures')) + box('Group', grpH, lnk({ s: 'nt' }, 'Competitions')) + box('The squad', sqH, lnk({ s: 'nation', n, tab: 'squad' }, 'Squad')) : ''}
+    ${box(`Inbox${un ? ` <span class="badge">${un}</span>` : ''}`, newsH, lnk({ s: 'news', f: 'all' }, 'All news'))}${box('Jobs', jobsH, lnk({ s: 'managers', tab: 'jobs' }, 'Club jobs') + ' ' + lnk({ s: 'ntjob' }, 'National teams'))}${box('Trophy cabinet', cab)}${tlH ? box('Milestones', tlH) : ''}</div>`;
+  frame({ title: 'Home', short: 'Home', sub: esc(S.manager), k1, k2, body });
+  document.querySelectorAll('[data-hv]').forEach(b => b.addEventListener('click', () => go(JSON.parse(b.dataset.hv))));
+  document.querySelectorAll('[data-hn]').forEach(r => r.addEventListener('click', () => go({ s: 'news', f: 'all', i: +r.dataset.hn })));
+  const ha = $('#hact'); if (ha) ha.addEventListener('click', () => go(acts[0].v));
+}
 function scrHome(){
+  if (!me()){ scrHomeNT(); return; }
   const cid = me(), c = club(cid), [k1, k2] = kitOf(cid), all = officialRes(cid);
   const gfo = r => r.h === cid ? r.s[0] : r.s[1], gao = r => r.h === cid ? r.s[1] : r.s[0], res = r => r.w === cid ? 'W' : r.w == null ? 'D' : 'L';
   const H0 = S.hist || [], took = H0.some(x => x.c === cid && /Hired as|Took charge/.test(x.t)) ? [] : [{ d: `${((S.mcar || []).find(x => x.c === cid) || { s: S.season }).s}-07-01`, c: cid, t: `Took charge of ${c.name}` }], H = [...took, ...H0].sort((a, b) => a.d < b.d ? -1 : 1), first = H[0] ? H[0].d : `${D.season}-07-01`, days = Math.max(0, daysBetween(first, S.date));
