@@ -150,7 +150,7 @@ input[type=text]{background:var(--panel-2);border:1px solid var(--line);border-r
 .ovci{flex:1;min-width:0}.ovcn{font:600 22px/1.1 var(--display);letter-spacing:.03em;text-transform:uppercase}
 .ovchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.ovchips > span:empty{display:none}.ovchips > span{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:12px;color:var(--muted)}
 .ovform{display:flex;gap:3px}.ovform span{width:24px;height:24px;display:grid;place-items:center;border-radius:6px;font:700 12px/1 var(--body);color:#0b1626}.ovform .W{background:var(--win)}.ovform .D{background:var(--draw)}.ovform .L{background:var(--loss)}
-.ovgrid{columns:2 300px;column-gap:12px}.ovgrid>.ovc{break-inside:avoid;margin-bottom:12px;display:block}
+.orbar{display:inline-flex;gap:3px;vertical-align:middle}.orbar i{width:16px;height:9px;border-radius:2px;background:rgba(255,255,255,.1)}.orbar i.hi{background:var(--win)}.orbar i.mi{background:var(--warn)}.orbar i.lo{background:var(--loss)}.ortab td{padding:4px 6px}.orgl td,.orgl th{padding:3px 4px}.orgb{height:34px;width:16px;margin:0 auto;display:flex;align-items:flex-end;background:rgba(255,255,255,.05);border-radius:2px}.orgb i{display:block;width:100%;border-radius:2px}.oradv{list-style:none;padding:0;margin:0}.oradv li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.07)}.orprep{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}.orprep button{display:flex;flex-direction:column;gap:4px;text-align:left;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit;cursor:pointer;font:inherit}.orprep button.on{border-color:var(--win);background:rgba(80,200,120,.12)}.ovgrid{columns:2 300px;column-gap:12px}.ovgrid>.ovc{break-inside:avoid;margin-bottom:12px;display:block}
 .ovnext{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:6px 2px 10px}.ovnext>div{flex:1;text-align:center}.ovvs{font-size:15px;margin:3px 0}
 @media(max-width:600px){.ovclub{flex-wrap:wrap}.ovform{width:100%}}
 .ovtop{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px;align-items:start}
@@ -2001,6 +2001,7 @@ function eff(side, x){
   if (q.light) v *= .93;   // back from injury, not yet sharp
   if (side.talk) v *= 1 + side.talk;   // the half-time team talk, for better or worse
   if (side.cid === me() && S.pressMod && S.pressMod.d === S.date) v *= 1 + S.pressMod.v;   // what you told the press
+  if (S.prep && S.prep.k === 'danger' && S.prep.d === S.date && side.cid === S.prep.opp && x.id === S.prep.pid) v *= S.prep.fit ? .92 : .95;   // studied all week
   return v;
 }
 function units(side, M){
@@ -2033,6 +2034,8 @@ function units(side, M){
     u.cre += (tb - 1) * .3; u.mid += (cl - 1) * .25; }
   if (wet) u.att -= wet * .6;
   const n = side.on.length; if (n < 11){ const k = (11 - n) * 3.2; u.att -= k; u.mid -= k; u.def -= k; }
+  const pp = M && M.h != null && side.cid === me() ? prepOn(M) : null;   // the week's preparation (the opposition report)
+  if (pp){ const k = pp.fit ? 1.5 : 1; if (pp.k === 'shape') u.def += k; if (pp.k === 'att'){ u.att += .7 * k; u.cre += .5 * k; } if (pp.k === 'sp'){ u.air += 2 * k; u.att += .4 * k; u.def += .4 * k; } }
   if (side.home){ u.att += 1.6; u.mid += 1.2; u.def += 1.0; }
   return u;
 }
@@ -4293,7 +4296,7 @@ function previewHTML(h, a, o){
   const t = S.tac[me()], seg = (k, Lb) => `<span class="seg" data-qt="${k}">${Lb.map((n, i) => `<button data-v="${i}" class="${t[k] === i ? 'on' : ''}">${n}</button>`).join('')}</span>`;
   const quick = mine ? `<div class="ptitle">Your instructions</div><div class="instr tbq"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}</div>
     <div class="tools" style="margin-top:8px"><button class="btn sm" id="qtac">Full tactics</button></div>
-    <div class="ptitle">Before kick-off</div>${warn.length ? `<ul class="mpv-w">${warn.slice(0, 6).map(([c, x]) => `<li class="${c}">${x}</li>`).join('')}</ul>` : '<p class="small" style="color:var(--win)">The side is ready: everyone fit and in his place.</p>'}` : '';
+    <div class="ptitle">Before kick-off</div>${(() => { const k = prepNow(); return k !== 'none' ? `<p class="small">Preparation this week: <b>${PREPS.find(x => x[0] === k)[1]}</b></p>` : !o.M ? '<p class="small dim">No special preparation: see the Opposition Report.</p>' : ''; })()}${warn.length ? `<ul class="mpv-w">${warn.slice(0, 6).map(([c, x]) => `<li class="${c}">${x}</li>`).join('')}</ul>` : '<p class="small" style="color:var(--win)">The side is ready: everyone fit and in his place.</p>'}` : '';
   const ot = o.M ? (o.M.h === opp ? o.M.H.t : o.M.A.t) : (S.tac[opp] || autoTactic(opp)), tb = S.table[opp];
   const dw = x => ovrNow(x.p) + ({ FWD: 4, MID: 2, DEF: 0 })[GROUP[x.p.prim]], danger = sides[opp].places.filter(x => x.p && x.code !== 'GK').sort((x, y) => dw(y) - dw(x)).slice(0, 3);
   const dossier = `<div class="ptitle">${esc(club(opp).name)}</div><table><tbody>
@@ -4310,6 +4313,112 @@ function previewWire(again){
   document.querySelectorAll('.seg[data-qt] button').forEach(b => b.addEventListener('click', () => { S.tac[me()][b.parentElement.dataset.qt] = +b.dataset.v; save(); again(); }));
   document.querySelectorAll('.mpv [data-pl]').forEach(x => x.addEventListener('click', () => { if (LIVE) return; go({ s: 'player', id: +x.dataset.pl }); }));
 }
+/* ---- the opposition report: your assistant's dossier on the next opponents. How they play, their strengths and
+   weaknesses by the standards of the league (in words: no numbers), their form and when their goals come, the men who
+   matter, how the two sides match up, his advice (each piece can be put into your tactics with one click) and the
+   week's preparation, which counts for a little on the day. A side he has not watched (no scout report) he knows only
+   from the results; how sure he is depends on his judgement ---- */
+const OPP_ROWS = [['att', 'Attack', ['Toothless', 'Blunt', 'Average', 'Dangerous', 'Lethal']], ['cre', 'Creativity', ['Very limited', 'Limited', 'Average', 'Inventive', 'Very inventive']],
+  ['mid', 'Midfield', ['Very weak', 'Weak', 'Average', 'Strong', 'Dominant']], ['def', 'Defence', ['Very leaky', 'Leaky', 'Average', 'Solid', 'Very solid']],
+  ['gk', 'Goalkeeper', ['Very poor', 'Poor', 'Average', 'Good', 'Excellent']], ['bpace', 'Pace at the back', ['Very slow', 'Slow', 'Average', 'Quick', 'Very quick']],
+  ['fpace', 'Pace up front', ['Very slow', 'Slow', 'Average', 'Quick', 'Very quick']], ['bair', 'In the air at the back', ['Very weak', 'Weak', 'Average', 'Strong', 'Dominant']],
+  ['fair', 'Threat from set pieces', ['Hardly any', 'Little', 'Average', 'Real', 'Big']], ['agg', 'Aggression', ['Very gentle', 'Gentle', 'Average', 'Physical', 'Very physical']]];
+const PREPS = [['none', 'Our own game', 'No special work: the side trains as usual.'], ['danger', 'Stop their danger man', 'The defenders study his runs: he has a quieter day.'],
+  ['shape', 'Defensive shape', 'Drills on keeping the shape: a little harder to break down.'], ['att', 'Attacking moves', 'Rehearsed moves against their back line: a little sharper in front of goal.'],
+  ['sp', 'Set pieces', 'Corners and free kicks, at both ends.']];
+// a side as it would line up (theirs as their manager is likely to pick it, yours as picked), for the report's measures
+function repSide(cid){
+  const t0 = cid === me() ? readyTactic(cid) : (S.tac[cid] && (S.tac[cid].shape || formSlots(S.tac[cid].form)) ? S.tac[cid] : autoTactic(cid)), sl = slotsOf(t0);
+  const xi = cid === me() ? t0.xi : bestXI(cid, t0.form, true, null, sl).xi, t = { ...t0, xi };
+  const on = xi.map((id, i) => id && P.get(id) ? { id, p: P.get(id), pos: sl[i][0], e: 100, st: A(P.get(id), 'st') } : null).filter(Boolean);
+  return { cid, home: false, t, on, bench: [], subs: 0, goals: 0, ev: {}, rate: {}, subbed: [], inj: [] };
+}
+function repMetrics(cid){
+  const s = repSide(cid), u = units(s, { wk: 0 }), av = (L, f) => L.length ? L.reduce((t, x) => t + f(x), 0) / L.length : 60, r = x => ROLE[x.pos];
+  const back = s.on.filter(x => ['CB', 'FB'].includes(r(x))), cb = s.on.filter(x => r(x) === 'CB'), front = s.on.filter(x => ['ST', 'W', 'AM'].includes(r(x))), out = s.on.filter(x => r(x) !== 'GK');
+  return { att: u.att, cre: u.cre, mid: u.mid, def: u.def, gk: u.gk, bpace: av(back, x => (A(x.p, 'sp') + A(x.p, 'ac')) / 2), fpace: av(front, x => (A(x.p, 'sp') + A(x.p, 'ac')) / 2),
+    bair: av(cb, x => (A(x.p, 'he') + A(x.p, 'ju')) / 2), fair: av(s.on.filter(x => ['ST', 'CB'].includes(r(x))), x => (A(x.p, 'he') + A(x.p, 'ju')) / 2) * .7 + (() => { const k = P.get((s.t.set || {}).fk); return k ? (A(k, 'pk') + A(k, 'cu')) / 2 * .3 : 18; })(),
+    agg: av(out, x => A(x.p, 'ag')), side: s };
+}
+let OPPC = null;
+function oppBase(opp){
+  const pool = (LG.has(opp) ? D.clubs : D.clubs).map(c => c.id), key = S.date + '|' + pool.join(',');
+  if (!OPPC || OPPC.k !== key){ OPPC = { k: key, M: new Map() }; for (const id of pool) OPPC.M.set(id, repMetrics(id)); }
+  if (!OPPC.M.has(opp)) OPPC.M.set(opp, repMetrics(opp));
+  if (!OPPC.M.has(me())) OPPC.M.set(me(), repMetrics(me()));
+  return OPPC;
+}
+function oppReport(f){
+  const opp = f.m.h === me() ? f.m.a : f.m.h, home = f.m.h === me(), B = oppBase(opp), T = B.M.get(opp), U = B.M.get(me()), pool = [...B.M.entries()].filter(([id]) => D.clubs.some(c => c.id === id)).map(([, v]) => v);
+  const a = (S.staff || []).find(x => x.role === 'ass'), ju = a ? a.ju || 10 : 8, seen = !S.mask || (S.seen || []).includes(opp);
+  const pct = (k, v) => { const L = pool.map(x => x[k]); return 100 * L.filter(x => x < v).length / Math.max(1, L.length - 1); };
+  const lvl = k => { const n = (rng(`or-${opp}-${S.date}-${k}`)() - .5) * (20 - ju) * 3; return clamp(Math.floor((clamp(pct(k, T[k]) + n, 0, 99.9)) / 20), 0, 4); };
+  const L = Object.fromEntries(OPP_ROWS.map(([k]) => [k, lvl(k)]));
+  const t = T.side.t, my = S.tac[me()], res = officialRes(opp).slice(), rows = fixtureRows(opp).filter(x => x.m && x.rr && x.rr.s && x.comp !== 'Friendly');
+  const gf = r => r.h === opp ? r.s[0] : r.s[1], ga = r => r.h === opp ? r.s[1] : r.s[0], wdl = r => r.w === opp ? 'W' : r.w == null ? 'D' : 'L';
+  const rec = L0 => { const w = L0.filter(r => r.w === opp).length, d = L0.filter(r => r.w == null).length; return L0.length ? `W${w} D${d} L${L0.length - w - d}, goals ${L0.reduce((x, r) => x + gf(r), 0)}-${L0.reduce((x, r) => x + ga(r), 0)}` : '<span class="dim">No games yet</span>'; };
+  // when the goals come: from the incidents of their matches, in six spells of a quarter of an hour
+  const band = [0, 0, 0, 0, 0, 0].map(() => [0, 0]); let nInc = 0;
+  for (const x of rows){ const inc = x.rr.inc; if (!inc) continue; nInc++; const us = x.m.h === opp ? 'h' : 'a';
+    for (const g of inc) if (g.k === 'goal'){ const mn = parseInt(g.l, 10) || 0, b = clamp(Math.floor((mn - 1) / 15), 0, 5); band[b][g.side === us ? 0 : 1]++; } }
+  const sq = squadOf(opp), q = p => S.pl[p.id] || {}, avgR = p => { const r = q(p).rt || []; return r.length >= 3 ? r.reduce((x, y) => x + y, 0) / r.length : 0; };
+  const top = (f0, min) => sq.filter(p => f0(p) >= (min || 1)).sort((x, y) => f0(y) - f0(x))[0];
+  const scorer = top(p => q(p).g || 0), maker = top(p => q(p).a || 0), rated = top(avgR, 6);
+  const dw = x => A(x.p, 'oa') + A(x.p, 'fi') + A(x.p, 'dr') + ({ ST: 12, W: 10, AM: 8 })[ROLE[x.pos]] || 0, danger = T.side.on.filter(x => ROLE[x.pos] !== 'GK').sort((x, y) => dw(y) - dw(x))[0];
+  const absent = sq.filter(p => !onLoan(p) && (q(p).injD || q(p).sus) && squadRank(p) < 16);
+  const pl = p => `<span class="lk" data-lp="${p.id}">${esc(p.n)}</span>`;
+  // the advice: from the gaps between the two sides; each one can be put into your tactics
+  const adv = [], d = (k1, k2) => U[k1] - T[k2];
+  if (seen){
+    if (L.bpace <= 1 && U.fpace > T.bpace + 3) adv.push({ k: 'direct', t: `Their back line is slow and ours is quick up front: go direct and play balls in behind.`, ok: my.pass === 1 });
+    else if (L.bair <= 1 && U.fair > T.bair + 2) adv.push({ k: 'long', t: `They are weak in the air at the back: get the ball forward early and win the headers.`, ok: my.pass === 3 });
+    if (d('mid', 'mid') < -2.5) adv.push({ k: 'counter', t: 'They are stronger than us in midfield: let them have the ball and hit them on the counter.', ok: !!my.counter });
+    else if (d('mid', 'mid') > 2.5 && L.cre <= 2) adv.push({ k: 'press', t: 'Our midfield is the stronger and they are not comfortable on the ball: press them high.', ok: !!my.press });
+    if (d('def', 'att') < -3) adv.push({ k: 'defend', t: 'Their attack is better than our defence: a more cautious approach would be wise.', ok: my.men <= 1 });
+    else if (d('att', 'def') > 3 && L.def <= 2) adv.push({ k: 'attack', t: 'Their defence is there for the taking: go at them.', ok: my.men >= 3 });
+    if (danger){ const mk = (my.xi || []).map(id => P.get(id)).filter(p => p && ['DM', 'CB'].includes(ROLE[(slotsOf(my)[my.xi.indexOf(p.id)] || [])[0]])).sort((x, y) => A(y, 'da') - A(x, 'da'))[0];
+      if (mk && L.att >= 2) adv.push({ k: 'mark', id: mk.id, t: `${esc(danger.p.n)} is the man who makes them tick: ${esc(mk.n)} should mark him tightly.`, ok: !!piOf(my, mk.id, 'mark', 0) }); }
+    if (L.agg <= 1 && L.cre >= 3) adv.push({ k: 'hard', t: 'They are a footballing side who do not like it physical: get stuck in.', ok: my.tack === 2 }); }
+  const cond = matchConditions(f.m.h, f.m.a, f.date);
+  if (cond.ref && cond.ref.s >= 13 && my.tack === 2) adv.push({ k: 'easy', t: `The referee, ${esc(cond.ref.n)}, is strict: hard tackling will cost us cards.`, ok: false });
+  const late = band[5][1] + band[4][1], early = band[0][1] + band[1][1];
+  if (nInc >= 3 && late >= 3 && late >= early * 1.5) adv.push({ k: null, t: 'They concede late in games: keep fresh legs on the bench for the last twenty minutes.', ok: null });
+  const pick = !seen ? 'none' : L.att >= 3 && danger ? 'danger' : L.def <= 1 ? 'att' : L.fair >= 3 || L.bair <= 1 ? 'sp' : L.att >= 2 ? 'shape' : 'att';
+  return { opp, home, L, T, U, seen, ju, a, t, res, rows, band, nInc, scorer, maker, rated, danger, absent, adv: adv.slice(0, 5), pick, rec, gf, ga, wdl, pl, cond };
+}
+const ADV_DO = { direct: t => { t.pass = 1; }, long: t => { t.pass = 3; }, counter: t => { t.counter = true; t.press = false; }, press: t => { t.press = true; t.counter = false; },
+  defend: t => { t.men = Math.min(t.men, 1); }, attack: t => { t.men = Math.max(t.men, 3); t.mbb = false; }, hard: t => { t.tack = 2; }, easy: t => { t.tack = 1; },
+  mark: (t, x) => { t.pi = t.pi || {}; t.pi[x.id] = { ...(t.pi[x.id] || {}), mark: 1 }; } };
+const prepNow = () => { const f = me() && nextFixture(me()); return f && f.m && S.prep && S.prep.d === f.date && S.prep.opp === (f.m.h === me() ? f.m.a : f.m.h) ? S.prep.k : 'none'; };
+function oppReportHTML(f){
+  const R = oppReport(f), opp = R.opp, bar = n => `<span class="orbar">${[0, 1, 2, 3, 4].map(i => `<i class="${i <= n ? (n >= 3 ? 'hi' : n <= 1 ? 'lo' : 'mi') : ''}"></i>`).join('')}</span>`;
+  const box = (h, inner) => `<div class="ovc"><div class="ovh"><span>${h}</span></div>${inner}</div>`, t = R.t, by = R.a ? `${esc(R.a.n)}, your assistant` : 'your assistant';
+  const style = `<dl class="kv"><dt>Shape</dt><dd>${esc(formLabel(t) || t.form)}</dd><dt>Mentality</dt><dd>${MENT[t.men]}</dd><dt>Passing</dt><dd>${PASS[t.pass]}</dd><dt>Tackling</dt><dd>${TACK[t.tack]}</dd><dt>Without the ball</dt><dd>${[t.press ? 'Press high' : 'Sit off', t.offside ? 'offside trap' : '', t.mbb ? 'men behind the ball' : ''].filter(Boolean).join(', ')}</dd><dt>With it</dt><dd>${t.counter ? 'On the counter' : 'Build patiently'}</dd></dl>`;
+  const sw = R.seen ? `<table class="ortab"><tbody>${OPP_ROWS.map(([k, n, W]) => `<tr><td class="dim">${n}</td><td>${bar(R.L[k])}</td><td>${W[R.L[k]]}</td></tr>`).join('')}</tbody></table><p class="small dim">By the standards of the ${esc(D.league)}.</p>`
+    : `<p class="dim">${by[0].toUpperCase() + by.slice(1)} has only seen them on television. Send a scout to watch them for a full report.</p><div class="tools"><button class="btn sm" data-hv='${JSON.stringify({ s: 'find', tab: 'sc1' })}'>Scouting</button></div>`;
+  const last = R.rows.slice(-6).reverse();
+  const form = `${last.length ? `<table><tbody>${last.map(x => { const r = { h: x.m.h, a: x.m.a, s: x.rr.s, w: x.rr.w }, o = x.m.h === opp ? x.m.a : x.m.h; return `<tr><td><span class="form"><span class="${R.wdl(r)}">${R.wdl(r)}</span></span></td><td>${x.m.h === opp ? '' : '<span class="dim">at</span> '}<span class="lk" data-lc="${o}">${esc(club(o).name)}</span></td><td class="r">${R.gf(r)}-${R.ga(r)}</td><td class="small dim">${esc(String(x.comp).replace(/<[^>]+>/g, ''))}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">No competitive games yet this season.</p>'}
+    <dl class="kv" style="margin-top:8px"><dt>At home</dt><dd>${R.rec(R.res.filter(r => r.h === opp))}</dd><dt>Away</dt><dd>${R.rec(R.res.filter(r => r.a === opp))}</dd><dt>Clean sheets</dt><dd>${R.res.filter(r => !R.ga(r)).length}</dd></dl>`;
+  const mx = Math.max(1, ...R.band.flat());
+  const goals = R.nInc >= 2 ? `<table class="orgl"><thead><tr><th></th>${['1-15', '16-30', '31-45', '46-60', '61-75', '76-90'].map(x => `<th class="c small">${x}</th>`).join('')}</tr></thead><tbody>${[['Scored', 0, 'var(--win)'], ['Conceded', 1, 'var(--loss)']].map(([n, j, c]) => `<tr><td class="dim small">${n}</td>${R.band.map(b => `<td class="c"><div class="orgb"><i style="height:${Math.round(100 * b[j] / mx)}%;background:${c}"></i></div><span class="small">${b[j]}</span></td>`).join('')}</tr>`).join('')}</tbody></table>` : '<p class="dim">Too few of their games to tell.</p>';
+  const men = `<dl class="kv">${R.danger && R.seen ? `<dt>Danger man</dt><dd>${R.pl(R.danger.p)} <span class="small yel">${R.danger.pos}</span></dd>` : ''}${R.scorer ? `<dt>Top scorer</dt><dd>${R.pl(R.scorer)} (${(S.pl[R.scorer.id] || {}).g})</dd>` : ''}${R.maker ? `<dt>Most assists</dt><dd>${R.pl(R.maker)} (${(S.pl[R.maker.id] || {}).a})</dd>` : ''}${R.rated ? `<dt>In form</dt><dd>${R.pl(R.rated)}</dd>` : ''}<dt>Missing</dt><dd>${R.absent.length ? R.absent.map(p => `${R.pl(p)} <span class="small dim">(${(S.pl[p.id] || {}).sus ? 'banned' : 'injured'})</span>`).join(', ') : 'Nobody who matters'}</dd></dl>`;
+  const vs = (n, k1, k2) => { const x = R.U[k1] - R.T[k2], w = x > 2.5 ? ['We have the edge', 'var(--win)'] : x < -2.5 ? ['They have the edge', 'var(--loss)'] : ['Even', 'inherit']; return `<dt>${n}</dt><dd style="color:${w[1]}">${w[0]}</dd>`; };
+  const match = R.seen ? `<dl class="kv">${vs('Our attack v their defence', 'att', 'def')}${vs('Our defence v their attack', 'def', 'att')}${vs('Midfield', 'mid', 'mid')}${vs('Our pace v their back line', 'fpace', 'bpace')}${vs('In the air, at their end', 'fair', 'bair')}${vs('Goalkeepers', 'gk', 'gk')}</dl>` : '<p class="dim">Not without a scout report.</p>';
+  const advH = R.adv.length ? `<ul class="oradv">${R.adv.map((x, i) => `<li><span>${x.t}</span>${x.k ? (x.ok ? '<span class="small" style="color:var(--win)">In your tactics</span>' : `<button class="btn sm" data-adv="${i}">Apply</button>`) : ''}</li>`).join('')}</ul>` : `<p class="dim">${R.seen ? 'Nothing special: play our own game.' : 'He cannot say much until a scout has seen them.'}</p>`;
+  const cur = prepNow();
+  const prep = `<p class="small dim">One focus for the days before the match. It counts for a little on the day, more where it meets their real threat.</p><div class="orprep">${PREPS.map(([k, n, x]) => `<button data-prep="${k}" class="${cur === k ? 'on' : ''}"><b>${n}${k === R.pick ? ' <span class="tag">Assistant\'s pick</span>' : ''}</b><span class="small">${k === 'danger' && R.danger && R.seen ? `${esc(R.danger.p.n)}: ` : ''}${x}</span></button>`).join('')}</div>`;
+  return { R, html: `<p class="c">Report by ${by}, on <span class="lk" data-lc="${opp}">${esc(club(opp).name)}</span>, ${R.home ? 'at home' : 'away'}, ${fmtDate(f.date, true)} (${esc(String(f.comp).replace(/<[^>]+>/g, ''))}).${R.seen ? '' : ' <span class="yel">Partial: not scouted.</span>'}</p>
+    <div class="ovgrid">${box('How they play', style)}${box('Strengths and weaknesses', sw)}${box('Form', form)}${box('When the goals come', goals)}${box('The men who matter', men)}${box('How we match up', match)}</div>
+    <div class="ptitle">Your assistant's advice</div>${advH}<div class="ptitle">Preparation</div>${prep}` };
+}
+function oppWire(f, R){
+  document.querySelectorAll('[data-adv]').forEach(b => b.addEventListener('click', () => { const x = R.adv[+b.dataset.adv], t = S.tac[me()]; if (x && ADV_DO[x.k]) ADV_DO[x.k](t, x); save(); toast('Done: it is in your tactics.'); view(); }));
+  document.querySelectorAll('[data-prep]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.prep;
+    S.prep = { d: f.date, opp: R.opp, k, pid: R.danger ? R.danger.id : null, fit: k === R.pick ? 1 : 0 }; save(); view(); }));
+  document.querySelectorAll('[data-hv]').forEach(b => b.addEventListener('click', () => go(JSON.parse(b.dataset.hv))));
+}
+// on the day: what the week's preparation is worth
+const prepOn = M => { const p = S.prep; return p && p.d === S.date && me() && (M.h === p.opp || M.a === p.opp) && (M.h === me() || M.a === me()) ? p : null; };
 // the club at a glance: kit, ground, form, the next game, where they stand, who matters, who came and went
 const shirt = (a, b, cls = 'kit') => `<svg class="${cls}" viewBox="0 0 60 56" aria-hidden="true"><path d="M20 2 L8 6 L1 18 L10 23 L13 18 L13 54 L47 54 L47 18 L50 23 L59 18 L52 6 L40 2 C38 7 34 9 30 9 C26 9 22 7 20 2 Z" fill="${a}" stroke="${b}" stroke-width="2.4" stroke-linejoin="round"/><path d="M22 3 C24 7 27 8 30 8 C33 8 36 7 38 3" fill="none" stroke="${b}" stroke-width="2.4"/></svg>`;
 // what a club has won: the real 2025/26 season, then every season played in this game (and this one's finished cups)
@@ -4399,9 +4508,13 @@ function clubNext(cid, o){
   const f = nextFixture(cid);
   if (!f){ o.body = '<p class="empty">No more matches this season.</p>'; frame(o); return; }
   if (!f.m){ o.body = `<div class="ptitle">${f.comp}</div><p class="c">${fmtDate(f.date, true)}. The draw is made on the day.</p>`; frame(o); return; }
+  if (cid === me()){ const sub = V.sub === 'opp' ? 'opp' : 'prev';
+    o.tools = `<span class="seg"><button data-ns="prev" class="${sub === 'prev' ? 'on' : ''}">Preview</button><button data-ns="opp" class="${sub === 'opp' ? 'on' : ''}">Opposition Report</button></span>`;
+    if (sub === 'opp'){ const X = oppReportHTML(f); o.body = X.html; frame(o); oppWire(f, X.R); document.querySelectorAll('[data-ns]').forEach(b => b.addEventListener('click', () => { V = { ...V, sub: b.dataset.ns }; view(); })); return; } }
   const cond = matchConditions(f.m.h, f.m.a, f.date), fm = f.comp === 'League' && ((S.rounds.find(r => r.date === f.date) || {}).m || []).find(x => x.h === f.m.h && x.a === f.m.a);
   o.body = previewHTML(f.m.h, f.m.a, { comp: f.comp, date: f.date, ko: fm && fm.ko, tv: fm && fm.tv, venue: f.comp === SHIELD ? (HL().shieldAt || 'Neutral ground') : f.comp === USC || f.comp.startsWith(CWC) || f.comp.startsWith(FIC) ? 'Neutral ground' : /Final$/.test(f.comp) && /League/.test(f.comp) && f.comp !== LC + ' · Final' ? 'Neutral ground' : club(f.m.h).venue, ref: cond.ref, weather: cond.weather, temp: cond.temp });
   frame(o); previewWire(() => view());
+  document.querySelectorAll('[data-ns]').forEach(b => b.addEventListener('click', () => { V = { ...V, sub: b.dataset.ns }; view(); }));
   const q = $('#qtac'); if (q) q.addEventListener('click', () => go({ s: 'club', cid: me(), tab: 'tactics' }));
 }
 
