@@ -4360,7 +4360,8 @@ function clubOverview(cid, o){
   o.body = `${head}<div class="ovgrid">
     ${lg ? box('Next match', next) : ''}${box('Recent results', res.length ? `<table><tbody>${res.map(resRow).join('')}</tbody></table>` : '<p class="dim">No matches yet.</p>', lg ? '<button class="lnk" data-ctab2="fix">Fixtures</button>' : '')}
     ${place ? box('League position', place, '<button class="lnk" data-ctab2="league">Table</button>') : ''}${box('Key players', `<table><tbody>${kp}</tbody></table>`, '<button class="lnk" data-ctab2="squad">Squad</button>')}
-    ${box('Honours', trophyCabinet(clubTrophies(cid)), '<button class="lnk" data-ctab2="hist">History</button>')}${box('Unavailable', out ? `<table><tbody>${out}</tbody></table>` : '<p class="dim">Everyone is fit.</p>')}${box('Arrivals', `<table><tbody>${tr(ins)}</tbody></table>`)}${box('Departures', `<table><tbody>${tr(outs)}</tbody></table>`)}
+    ${box('Honours', trophyCabinet(clubTrophies(cid)), '<button class="lnk" data-ctab2="hist">History</button>')}${mine ? (() => { const W = intlWindows(S.season).find(w => w[1] >= S.date); if (!W) return ''; let ids; try { ids = callUps(W[0], W[1]); } catch (e) { return ''; } const L = sq.filter(p => ids.has(p.id));
+      return box('International duty', `<p class="small dim">${S.date >= W[0] ? 'Away now' : 'The next break'}: ${fmtDate(W[0])} to ${fmtDate(W[1])}.</p>${L.length ? `<table><tbody>${L.slice(0, 8).map(p => `<tr><td>${flag(p.nat)}<b class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</b></td><td class="small dim">${esc(ntName(p.nat))}</td><td class="r small">${capR(p.id)[0]} caps</td></tr>`).join('')}</tbody></table>${L.length > 8 ? `<p class="small dim">And ${L.length - 8} more: ${L.slice(8).map(p => esc(surname(p.n))).join(', ')}.</p>` : ''}` : '<p class="dim">Nobody expected to be called up.</p>'}`); })() : ''}${box('Unavailable', out ? `<table><tbody>${out}</tbody></table>` : '<p class="dim">Everyone is fit.</p>')}${box('Arrivals', `<table><tbody>${tr(ins)}</tbody></table>`)}${box('Departures', `<table><tbody>${tr(outs)}</tbody></table>`)}
   </div>`;
   frame(o);
   document.querySelectorAll('[data-ctab2]').forEach(b => b.addEventListener('click', () => b.dataset.ctab2 === 'league' ? go(ak ? { s: 'awl', k: ak, tab: 'table' } : { s: 'comp', tab: 'ov' }) : go({ s: 'club', cid, tab: b.dataset.ctab2 })));
@@ -4771,6 +4772,17 @@ function formSpark(q){
   const col = v => v >= 7.5 ? '#3FBF7F' : v >= 6.9 ? '#A6D96A' : v >= 6.3 ? '#F2C94C' : '#E8604C';
   return `<div class="fspark"><span class="small dim">Form, last ${L.length}</span><div class="fsb">${L.map(v => `<div title="${v.toFixed(1)}"><i style="height:${Math.max(8, (v - 4) / 6 * 100)}%;background:${col(v)}"></i><span>${v.toFixed(1)}</span></div>`).join('')}</div></div>`;
 }
+// a player's international career: his country, caps and goals, whether he is in its squad, his goals and recent games
+function playerIntl(p){
+  const n = ntName(p.nat), c = capR(p.id), J = S.ntJob, mineN = J && J.n === n, inSq = ntWorld().includes(n) && ntSquadOf(n).some(x => x.id === p.id);
+  const F = ntAllFx().filter(f => f.s), goals = F.flatMap(f => (f.sc || []).filter(g => g[1] === p.id).map(g => ({ f, m: g[2] }))).sort((a, b) => a.f.d < b.f.d ? 1 : -1);
+  const games = F.filter(f => f.pl && ((f.pl.h || []).includes(p.id) || (f.pl.a || []).includes(p.id))).sort((a, b) => a.d < b.d ? 1 : -1).slice(0, 10);
+  const vs = f => { const u = f.h === n, o = u ? f.a : f.h; return `${u ? 'v' : 'at'} ${flag(o)}<span class="lk" data-nt="${esc(o)}">${esc(o)}</span>`; };
+  return `<div class="cols2"><div><div class="ptitle">International</div><dl class="kv"><dt>Country</dt><dd>${flag(n)}<b class="lk" data-nt="${esc(n)}">${esc(n)}</b></dd><dt>Caps</dt><dd>${c[0]}</dd><dt>Goals</dt><dd>${c[1]}</dd>
+      <dt>Squad</dt><dd>${inSq ? '<span class="win">In the squad</span>' : '<span class="dim">Not in the squad</span>'}${mineN ? ` <button class="btn sm ${inSq ? '' : 'go'}" id="ntcall">${inSq ? 'Leave out' : 'Call up'}</button>` : ''}</dd>${p.nt ? '<dt>Before the game</dt><dd class="small dim">A regular for his country</dd>' : ''}</dl></div>
+    <div><div class="ptitle">Goals for ${esc(n)}</div>${goals.length ? `<table><tbody>${goals.slice(0, 12).map(g => `<tr><td class="small dim">${shortDate(g.f.d)}</td><td>${vs(g.f)}</td><td class="small dim">${esc(g.f.comp)}</td><td class="r">${g.m}'</td></tr>`).join('')}</tbody></table>` : '<p class="dim">None in the game yet.</p>'}</div></div>
+    <div class="ptitle">His last games for ${esc(n)}</div>${games.length ? `<table class="ltab"><tbody>${games.map(f => `<tr><td class="small dim">${fmtDate(f.d)}</td><td>${vs(f)}</td><td class="small dim">${esc(ntLabel(f))}</td><td class="r">${f.s[0]}-${f.s[1]}</td></tr>`).join('')}</tbody></table>` : '<p class="dim">None in the last three months.</p>'}`;
+}
 function scrPlayer(){
   const p = P.get(V.id); if (!p){ V = { s: 'news' }; view(); return; }
   const q = ps(p.id), con = S.con[p.id], tab = V.tab || 'profile', b = p.bd || null;
@@ -4802,12 +4814,13 @@ function scrPlayer(){
   if (tab === 'hist') body = `${careerMoves(p)}${hon.length ? `<div class="ptitle">Honours</div><ul class="hon">${hon.map(a => `<li>${esc(a.k)}, ${a.s}/${String((a.s + 1) % 100).padStart(2, '0')}${a.why ? ` <span class="dim">(${a.why})</span>` : ''}</li>`).join('')}</ul>` : ''}<div class="ptitle">History</div><div class="tw"><table><thead><tr><th>Season</th><th>Club</th><th class="r">Apps</th><th class="r">Gls</th><th class="r">Asts</th><th class="r">Av R</th></tr></thead><tbody>${(q.hs || []).map(h => `<tr><td>${h.s}/${String((h.s + 1) % 100).padStart(2, '0')}</td><td>${h.c && C.has(h.c) ? esc(club(h.c).name) : '-'}</td><td class="r">${h.apps}</td><td class="r">${h.g}</td><td class="r">${h.a}</td><td class="r">${h.rt ?? '-'}</td></tr>`).join('')}
     <tr class="me"><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td>${esc(club(p.club).name)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${avgRt(q)}</td></tr></tbody></table></div>`;
   if (tab === 'tr') body = transferTab(p);
+  if (tab === 'int') body = playerIntl(p);
   if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
   frame(ofClub(p.club, { nav: playerNav(p), short: esc(p.n), title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(<a class="bclk" data-lc="${p.club}" href="#" title="Open ${esc(fullName(p.club))}">${esc(fullName(p.club))}</a>)</span>`,
     act: mine ? `<button class="btn sm" id="promo">${firstTeam(me()).has(p.id) ? 'Move to Reserves' : 'Promote to First Team'}</button><button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
-    top: [['profile', 'Profile'], ...(mine && !onLoan(p) ? [['talk', 'Talk']] : []), ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['hist', 'History']], topOn: tab,
+    top: [['profile', 'Profile'], ...(mine && !onLoan(p) ? [['talk', 'Talk']] : []), ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['hist', 'History'], ...(ntWorld().includes(ntName(p.nat)) || capR(p.id)[0] ? [['int', 'International']] : [])], topOn: tab,
     onTab: k => { V = { ...V, tab: k, say: null, nsay: null, ow: null, oy: null, orl: null }; view(); }, body,
     next: at >= 0 && at < list.length - 1 ? () => { V = { ...V, id: list[at + 1] }; view(); } : null }));
   const pk = $('#pick'); if (pk) pk.addEventListener('click', () => { toggleSel(p.id); view(); });
@@ -4815,6 +4828,9 @@ function scrPlayer(){
     if (!up){ t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); }
     S.promo[p.id] = up ? 1 : 0; save(); toast(`${cmName(p.n)} ${up ? 'joins the first team' : 'goes to the reserves'}.`); view(); });
   if (tab === 'tr') wireTransfer(p);
+  if (tab === 'int'){ document.querySelectorAll('[data-nt]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); go({ s: 'nation', n: el.dataset.nt }); }));
+    const b2 = $('#ntcall'); if (b2) b2.addEventListener('click', () => { const J = S.ntJob; if (!(J.sq || []).length) J.sq = ntSquad(J.n).map(x => x.id);
+      if (J.sq.includes(p.id)) J.sq = J.sq.filter(x => x !== p.id); else if (J.sq.length >= 23){ toast('The squad is full: 23. Take someone out first.'); return; } else J.sq.push(p.id); save(); view(); }); }
   document.querySelectorAll('[data-talk]').forEach(b => b.addEventListener('click', () => { const r = talkTo(p, b.dataset.talk); V = { ...V, say: r.say }; save(); view(); }));
   const negRead = () => ({ ow: V.ow ?? negAsk(p).ask, oy: +$('#oy').value, orl: $('#orl').value });
   document.querySelectorAll('[data-ow]').forEach(b => b.addEventListener('click', () => { const o = negRead(), st = Math.max(500, Math.round(o.ow * .05 / 500) * 500); V = { ...V, ...o, ow: Math.max(500, o.ow + st * +b.dataset.ow), nsay: null }; view(); }));
