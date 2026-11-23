@@ -329,7 +329,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
 .tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
-.tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tsg{display:grid;grid-template-columns:1fr 1fr;gap:4px}.tsg .sb{padding:5px 3px;font-size:11.5px;margin:0}.tsg .sb:disabled{opacity:.4;cursor:default}.tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 @media(max-width:520px){.tok{width:68px}.tok .nm{font-size:10.5px;max-width:68px}.tok .dot{width:30px;height:30px}.tbrow{grid-template-columns:34px minmax(0,1fr) 26px 30px 46px 22px}.tbrow .nm .small{display:none}.tbrow .cnd .sqc{display:none}}
 .instr{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;align-items:center}
 @media(max-width:520px){.instr{grid-template-columns:1fr 1fr}}
@@ -2000,6 +2000,7 @@ function eff(side, x){
   let v = (fitIn(x.p, x.pos) / Math.max(40, ovrNow(x.p))) * (0.72 + 0.28 * x.e / 100) * (0.85 + 0.15 * q.cond / 100) * (0.96 + 0.08 * q.mor / 100);
   if (q.light) v *= .93;   // back from injury, not yet sharp
   if (side.talk) v *= 1 + side.talk;   // the half-time team talk, for better or worse
+  if (side.shout) v *= 1 + SH_V[side.shout.k] * side.shout.r;   // a word from the touchline
   if (side.cid === me() && S.pressMod && S.pressMod.d === S.date) v *= 1 + S.pressMod.v;   // what you told the press
   if (S.prep && S.prep.k === 'danger' && S.prep.d === S.date && side.cid === S.prep.opp && x.id === S.prep.pid) v *= S.prep.fit ? .92 : .95;   // studied all week
   return v;
@@ -2034,6 +2035,7 @@ function units(side, M){
     u.cre += (tb - 1) * .3; u.mid += (cl - 1) * .25; }
   if (wet) u.att -= wet * .6;
   const n = side.on.length; if (n < 11){ const k = (11 - n) * 3.2; u.att -= k; u.mid -= k; u.def -= k; }
+  const sh = side.shout; if (sh){ if (sh.k === 'fire'){ u.att += sh.r > 0 ? 2 * sh.r : sh.r; u.mid += sh.r; u.def -= .5; } if (sh.k === 'focus') u.def += 1.8 * sh.r; if (sh.k === 'calm') u.def += .5 * sh.r; }
   const pp = M && M.h != null && side.cid === me() ? prepOn(M) : null;   // the week's preparation (the opposition report)
   if (pp){ const k = pp.fit ? 1.5 : 1; if (pp.k === 'shape') u.def += k; if (pp.k === 'att'){ u.att += .7 * k; u.cre += .5 * k; } if (pp.k === 'sp'){ u.air += 2 * k; u.att += .4 * k; u.def += .4 * k; } }
   if (side.home){ u.att += 1.6; u.mid += 1.2; u.def += 1.0; }
@@ -2151,7 +2153,7 @@ function corner(M, S1, S2, u1, u2){
 function foul(M, S1, S2){
   const x = who(S1, 'foul', 'ag'), v = who(S2, 'dribble', 'dr'), strict = (M.ref ? M.ref.s : 10) / 10.5 * (M.derby ? 1.12 : 1);
   S1.fouls++;
-  const ag = A(x.p, 'ag'), r = Math.random(), hard = piOf(S1.t, x.id, 'tack', S1.t.tack);
+  const ag = A(x.p, 'ag'), r0 = Math.random(), hard = piOf(S1.t, x.id, 'tack', S1.t.tack), r = r0 / (S1.shout ? ({ fire: 1.4, calm: .6, focus: .9 })[S1.shout.k] || 1 : 1);   // a fired-up side picks up more cards
   if (r < (.0015 + .001 * (ag - 60) / 20) * strict * [.6, 1, 1.6][hard]){ S1.rc++; evAdd(S1, x, 'rc'); S1.ev[x.id].straight = 1; rateAdd(S1, x, -1.5); say(M, S1, 'red', T([`RED CARD! ${nm(x)} is sent off for a reckless challenge on ${nm(v)}.`, `RED CARD! ${nm(x)} goes in two-footed on ${nm(v)} and is off.`, `RED CARD! ${nm(x)} denies ${nm(v)} a clear chance and is sent off.`])); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', id: x.p.id, t: surname(x.p.n) }); off(S1, x); return; }
   if (r < (.12 + .05 * (ag - 60) / 20) * strict * [.7, 1, 1.4][hard]){
     const already = (S1.ev[x.id] || {}).yc;
@@ -2202,6 +2204,7 @@ function aiManage(M, side){
   if (tired && (tired.e < 72 || diff < 0 && M.min > 65)) substitute(M, side, tired, false);
 }
 function minute(M){
+  shoutTick(M);
   const H = M.H, Aw = M.A, uh = units(H, M), ua = units(Aw, M);
   // possession: the midfields; pressing hurts a short-passing side; men behind the ball give it away
   let x = (uh.mid - ua.mid) / 39 + (uh.cre - ua.cre) / 70;
@@ -6547,7 +6550,7 @@ function viewMatch(){
   // away from the overview the commentary carries on in a slim bar
   if (MTAB !== 'overview' && !M.over && L.started) panelBody = `<div class="mcom ${last.c === 'goal' ? 'gcol' : comCls(last)} ${fresh ? 'gfl' : ''}" style="${gst || comSt(last)}${fresh ? fd : ''}"><span class="m">${last.m ? last.m + "'" : ''}</span><span>${last.t}</span></div>` + panelBody;
   const side = `<div class="mclock">${clock}</div>${M.over ? `<button class="sb go" id="done">Continue Game</button>` : L.started && !L.paused ? '<button class="sb go" id="pause">Pause</button>' : `<button class="sb go" id="play">${!L.started ? 'Kick Off' : L.atHT ? 'Second Half' : 'Resume Match'}</button>`}
-    ${M.over ? '' : '<button class="sb" id="skip">To Full Time</button>'}<button class="sb" data-mt="tactics">${esc(club(me()).name)} Tactics</button>
+    ${M.over ? '' : '<button class="sb" id="skip">To Full Time</button>'}<button class="sb" data-mt="tactics">${esc(club(me()).name)} Tactics</button>${shoutBox()}
     <div class="date" style="margin-top:6px"><span class="small"><span class="mh">Commentary </span>Speed</span></div>${SPEEDS.map(([, n], i) => `<button class="sb ${SPEED === i ? 'on' : ''}" data-spd="${i}" style="padding:5px 3px;font-size:11.5px">${n.replace('Very ', '<span class="mh">Very </span><i class="moi">V. </i>')}</button>`).join('')}`;
   mframe(side, `<div class="mteams"><div class="t ${fresh && last.cid === M.h ? 'gfl2' : ''}" style="background:${kh};color:${kh2}${fresh ? fd : ''}">${crest(M.h, 'mcr')}<span>${esc(club(M.h).name)}</span><b>${M.H.goals}</b></div><div class="t ${fresh && last.cid === M.a ? 'gfl2' : ''}" style="background:${ka};color:${ka2}${fresh ? fd : ''}">${crest(M.a, 'mcr')}<span>${esc(club(M.a).name)}</span><b>${M.A.goals}</b></div></div>
     ${M.pens ? `<p class="c yel" style="margin:2px 0"><b>Penalties: ${M.pens[0]}-${M.pens[1]}</b></p>` : ''}
@@ -6559,6 +6562,7 @@ function viewMatch(){
   on('skip', () => sureBox('Play the rest of the match at once?', 'You will not be able to make changes before the final whistle.', 'To Full Time', skipToFT));
   function skipToFT(){ clearTimeout(TIMER); L.started = true; L.paused = true; L.atHT = false; M.auto = true; while (step(M)) L.others.forEach(o => step(o)); L.others.forEach(o => playOut(o)); liveSave(true); viewMatch(); }
   on('done', () => { LIVE = null; liveDrop(); if (L.nt){ CTX = null; finishNT(M, L.nt); } else if (L.euq) finishEUQ(M); else if (L.fr) finishFr(M, L.fr); else if (L.shield) finishShield(M); else if (L.lc) finishLC(M, L.others); else if (L.usc) finishUSC(M); else if (L.fic) finishFIC(M); else if (L.cwc) finishCWC(M, L.others); else if (L.eu) finishEU(L.eu, M, L.others); else if (L.cup) finishCup(M, L.others); else finishLeague(M, L.others); passDays(1); save(); HIST.push(V); V = { s: 'news', i: 0 }; view(); scrollTo(0, 0); });
+  document.querySelectorAll('[data-tsh]').forEach(b => b.addEventListener('click', () => shoutNow(b.dataset.tsh)));
   document.querySelectorAll('[data-spd]').forEach(b => b.addEventListener('click', () => { SPEED = +b.dataset.spd; OPT.spd = SPEED; saveOpt(); viewMatch(); }));
   document.querySelectorAll('[data-mt]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.mt; if (k === 'tactics'){ openMatchTac(); return; } MTAB = k; TB.sel = null; viewMatch(); }));
   wireMatchPanel();
@@ -6593,6 +6597,52 @@ function viewMatchTac(){
 }
 /* full time: the result as a page, the scorers, what the board will make of it, the moments that mattered, the main
    numbers, how each of your players did, and the other results */
+/* touchline shouts: a word from the technical area while the match runs. Each lasts a dozen minutes; how the players
+   take it depends on the score, the time, how they are playing, a man sent off or the cards they carry, a goal just
+   conceded. The right word lifts them, the wrong one costs; shouting the same thing again and again wears thin.
+   Firing them up brings cards with it, calming them down fewer. A good judge on your staff suggests the word */
+const SHOUTS = [['encourage', 'Encourage', 'Come on, lads!'], ['demand', 'Demand more', 'More! I want more from you!'], ['praise', 'Praise', 'Well done, keep it going!'],
+  ['fire', 'Fire up', 'Show some passion!'], ['focus', 'Focus', 'Concentrate! Switch on!'], ['calm', 'Calm down', 'Calm down, keep your heads!']];
+const SH_V = { encourage: .02, demand: .03, praise: .025, fire: .02, focus: .01, calm: .006 };
+const absMin = M => M.half === 1 ? Math.min(M.min, 45) : M.half === 2 ? Math.min(M.min, 90) : M.min;
+function shoutFit(M, k){
+  const us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, d = us.goals - them.goals, late = absMin(M) >= 70, sk = us === M.H ? 'h' : 'a';
+  const avg = us.on.length ? us.on.reduce((t, x) => t + (us.rate[x.id] || 0), 0) / us.on.length : 0, poor = avg < -.15, good = avg > .25;
+  const exp = clamp(.5 + ((club(us.cid) || {}).q - (club(them.cid) || {}).q || 0) / 14 + (us === M.H ? .08 : -.08), .1, .9);
+  const lastG = (M.hs || []).filter(g => g.side !== sk).slice(-1)[0], conc = !!lastG && absMin(M) - Math.min(lastG.m, 90) <= 6 && absMin(M) >= Math.min(lastG.m, 90);
+  const red = us.on.filter(x => !x.off).length < 11, booked = us.on.filter(x => (us.ev[x.id] || {}).yc).length;
+  return { encourage: d < 0 ? (late ? .6 : .5) : d === 0 ? (poor ? .5 : .3) : .1,
+    demand: poor && d <= 0 ? .8 : d < 0 && exp > .55 ? .7 : d > 0 && good ? -.7 : d > 0 ? -.2 : .15,
+    praise: d > 0 ? (good ? .8 : .5) : d === 0 ? (good ? .4 : -.2) : -.6,
+    fire: d < 0 ? (late ? .8 : .4) : d === 0 ? (late ? .3 : 0) : -.4,
+    focus: conc ? .8 : d > 0 && late ? .7 : d > 0 ? .3 : .1,
+    calm: red ? .8 : booked >= 3 ? .6 : booked >= 2 ? .4 : -.1 }[k];
+}
+function shoutNow(k){
+  const L = LIVE, M = L.M; if (!L || M.over || !L.started || L.atHT) return;
+  const us = M.h === me() ? M.H : M.A, ab = absMin(M);
+  if (M.shoutAt != null && M.half === M.shoutH && ab - M.shoutAt < 5) return toast('Give them a few minutes first.');
+  let r = shoutFit(M, k) + (rng(`sh-${S.date}-${M.min}-${k}`)() - .5) * .6;
+  if (M.lastShout === k && r > 0) r *= .5;
+  M.nShout = (M.nShout || 0) + 1; if (M.nShout > 5) r -= .12 * (M.nShout - 5);
+  r = clamp(Math.round(r * 100) / 100, -1, 1);
+  us.shout = { k, r, until: ab + 12, h: M.half };
+  M.shoutAt = ab; M.shoutH = M.half; M.lastShout = k;
+  const s = SHOUTS.find(x => x[0] === k), how = r >= .45 ? 'The players respond.' : r >= .15 ? 'Some of the players respond.' : r > -.15 ? 'It makes little difference.' : 'The players do not like it.';
+  say(M, us, r >= .45 ? 'yel' : 'minor', `From the touchline: "${s[2]}" ${how}`);
+  (M.shouts = M.shouts || []).push({ l: label(M), k, r });
+  liveSave(true); viewMatch();
+}
+// each minute: a shout runs out
+function shoutTick(M){ for (const s of [M.H, M.A]) if (s.shout && (absMin(M) > s.shout.until || M.half > s.shout.h)) s.shout = null; }   // half-time ends it
+function shoutBox(){
+  const L = LIVE, M = L.M; if (!L.started || M.over || L.atHT || L.pre) return '';
+  const us = M.h === me() ? M.H : M.A, a = (S.staff || []).find(x => x.role === 'ass'), ju = a ? a.ju || 8 : 8, ab = absMin(M);
+  const wait = M.shoutAt != null && M.half === M.shoutH ? Math.max(0, 5 - (ab - M.shoutAt)) : 0;
+  const best = SHOUTS.map(([k]) => [k, shoutFit(M, k)]).sort((x, y) => y[1] - x[1])[0];
+  const act = us.shout ? `<p class="small" style="margin:4px 0 0">${SHOUTS.find(x => x[0] === us.shout.k)[1]}: <b>${Math.max(0, us.shout.until - ab)}'</b> left</p>` : '';
+  return `<div class="tshout"><div class="date" style="margin-top:6px"><span class="small">Touchline</span></div><div class="tsg">${SHOUTS.map(([k, n, line]) => `<button class="sb ${us.shout && us.shout.k === k ? 'on' : ''}" data-tsh="${k}" title="${esc(line)}" ${wait ? 'disabled' : ''}>${n}</button>`).join('')}</div>${act}${wait ? `<p class="small dim" style="margin:2px 0 0">Next shout in ${wait}'</p>` : ''}${ju >= 10 && best[1] >= .4 ? `<p class="small dim" style="margin:2px 0 0">${esc(a.n.split(' ').slice(-1)[0])}: try <b>${SHOUTS.find(x => x[0] === best[0])[1]}</b></p>` : ''}</div>`;
+}
 /* the half-time team talk: four things to say, and how it lands depends on the score and on how the side has played.
    Praise a side that is ahead, demand more of one behind; the wrong word at the wrong moment costs a little */
 const HT_TALKS = [['praise', 'Praise them', 'Well done, more of the same.'], ['demand', 'Demand more', 'That was not good enough.'], ['calm', 'Keep calm', 'Stay focused, stick to the plan.'], ['none', 'Say nothing', 'Let them sit and think.']];
