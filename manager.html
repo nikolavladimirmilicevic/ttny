@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
-<script>window.__cm = fetch('cm.json', { cache: 'no-cache' }).catch(() => null);   /* the league starts downloading first */</script>
+<script>window.__cm = fetch('cm.json', { cache: 'no-cache' }).catch(() => null); window.__wx = fetch('world.json').catch(() => null);   /* the league starts downloading first */</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Manager · This Time Next Year</title>
 <meta name="description" content="Take charge of a Premier League club: squad, tactics, training, the board, and every match told in words.">
@@ -1748,9 +1748,9 @@ function newGame(cid, manager){
   const refs = refNames(HOME).map(n => ({ n, s: 5 + Math.floor(r0() * 12) }));
   const q = club(cid).q;
   S = { v: 2, lines: 8, club: cid, manager: manager || 'The manager', season: D.season, seed, rounds, round: 0, cupDates, cup: { stage: 0, alive: cupEntrants(cn), log: [], n: cn },
-    date: day(rounds[0].date, -6), pl: {}, tac: {}, table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])),
+    date: `${D.season}-07-01`, pl: {}, tac: {}, table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])),
     results: [], news: [], refs, aim, conf: 62, rep: 'Unproven', done: false, sacked: false,
-    train: { sched: 'General', int: 1, last: day(rounds[0].date, -6) },
+    train: { sched: 'General', int: 1, last: `${D.season}-07-01` },
     fin: { bal: Math.round((40 + (q - 70) * 6) * 1e6), wk: [], gate: 0, tv: 0, wages: 0, budget: Math.round(Math.max(12, (q - 70) * 9) * 1e6) },
     con: {}, started: Date.now(), loans: Object.fromEntries((D.loans || []).filter(l => P.has(l.id)).map(l => [l.id, { from: l.from, to: l.to }])) };
   S.lg = D.clubs.map(c => c.id); S.home = HOME; S.lgs = Object.fromEntries(Object.keys(D.lgs).map(k => [k, k === HOME ? S.lg.slice() : D.lgs[k].top0.slice()]));
@@ -1758,6 +1758,7 @@ function newGame(cid, manager){
   awInitAll();
   S.euOut = []; euApply(); chInit(); shieldSetup(); euSetup(); ficSetup(); lcSetup();
   ensureStaff();
+  try { frPreseason(); } catch (e) { console.warn(e); }
   // every game a little different: each attribute of each player moves -2, -1, 0, +1 or +2, one chance in five each,
   // never out of 40-99 (a move that would leave it is not made)
   const rz = rng(seed + '-rz');
@@ -2721,6 +2722,45 @@ const euLabel = (k, d) => d.st == null ? `${EU_NAME[k]} matchday ${d.md}` : `${E
 // a player the data gives no nationality takes his club's country (Wales for the Welsh clubs in the English leagues)
 const WELSH = new Set(['Cardiff City', 'Swansea City', 'Wrexham', 'Newport County']);
 function natFill(L){ for (const p of L || []){ if (p.nat) continue; const c = C.get(p.club); if (!c) continue; p.nat = WELSH.has(c.name) ? 'Wales' : ctryName(c); } }
+/* the other UEFA clubs: every club of the Draft game's world (world.json, UEFA's club ranking with its squads) that the
+   league data does not have joins the foreign clubs: its players' levels on this game's scale (fitted on the players
+   both files have), their attributes from a player of this game of the same position and level; a squad short of
+   twenty made up with players of its level (the same in every game, never in the save). They play the European
+   qualifying rounds against your clubs, friendlies, and can be scouted and signed like any foreign club */
+const WX_KIT = [['#C8102E', '#FFFFFF'], ['#003DA5', '#FFFFFF'], ['#006B3F', '#FFFFFF'], ['#111111', '#FFFFFF'], ['#FFD100', '#111111'], ['#6A1B9A', '#FFFFFF'], ['#FFFFFF', '#C8102E'], ['#87CEEB', '#0B2545'], ['#F57C00', '#111111'], ['#7B1E2A', '#F2C14E'], ['#FFFFFF', '#003DA5'], ['#2E7D32', '#FFEB3B']];
+function worldAdd(W){
+  const E = D.europe; if (!E || !W || !Array.isArray(W.clubs) || !Array.isArray(W.players)) return;
+  const have = new Set([...C.keys(), ...E.clubs.map(c => c.id)]), pid = new Set([...P.keys(), ...E.players.map(p => p.id)]);
+  const T = {}; for (const p of D.all) if (p.a && p.r && p.prim) (T[p.prim] = T[p.prim] || []).push(p);
+  for (const k in T) T[k].sort((a, b) => a.ovr - b.ovr);
+  const near = (prim, ovr, r) => { const L = T[prim] || T.CMF; let lo = 0, hi = L.length; while (lo < hi){ const m = (lo + hi) >> 1; if (L[m].ovr < ovr) lo = m + 1; else hi = m; } return L[clamp(lo + Math.floor((r() - .5) * 10), 0, L.length - 1)]; };
+  const mk = (id, n, nat, age, no, club, prim, pos, ovr, r) => { const t = near(prim, ovr, r), d = t.ovr - ovr, a = {}, rr = {};
+    for (const [k, v] of Object.entries(t.a)) a[k] = clamp(Math.round(v - d + (r() - .5) * 4), 35, 99);
+    for (const [k, v] of Object.entries(t.r)) rr[k] = clamp(Math.round(v - d), 30, 99);
+    for (const x of pos) rr[x] = Math.max(rr[x] || 0, ovr - (x === prim ? 0 : 3)); rr[prim] = ovr;
+    return { id, n, nat, age, no, club, prim, pos, ht: t.ht, wt: t.wt, a, r: rr, ovr, val: +Math.max(.2, 2 ** ((ovr - 70) / 4) * (age <= 23 ? 1.4 : age >= 31 ? .6 : 1)).toFixed(1), style: t.style, inj: 1 + Math.floor(r() * 3), eu: 1, wx: 1 }; };
+  const by = new Map(); for (const p of W.players) if (!pid.has(p.id)) (by.get(p.club) || by.set(p.club, []).get(p.club)).push(p);
+  const names = {}; for (const p of W.players) if (p.name && p.name.includes(' ')) (names[p.nat] = names[p.nat] || []).push(p.name.split(' '));
+  const FILL = ['GK', 'GK', 'CB', 'CB', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'CMF', 'AMF', 'LMF', 'RMF', 'LWF', 'RWF', 'CF', 'CF', 'CMF', 'CB', 'GK'];
+  for (const c of W.clubs){
+    if (have.has(c.id) || !c.ctry || !c.name) continue;
+    // the club's level from its UEFA Elo (fitted on the clubs both files have), its men spread around it as the Draft rates them
+    const r = rng(`wx-${c.id}`), base = 10.46 + .03644 * (c.elo || 1300), W0 = (by.get(c.id) || []).map(p => 25.1 + .645 * (p.ovr || 60)), t14 = W0.slice().sort((a, b) => b - a).slice(0, 14), sh = t14.length >= 11 ? base - t14.reduce((t, v) => t + v, 0) / t14.length : 0;
+    const L = (by.get(c.id) || []).map((p, i) => mk(p.id, p.name, p.nat, p.age || 25, p.no, c.id, p.prim || 'CMF', (p.pos && p.pos.length ? p.pos : [p.prim || 'CMF']), clamp(Math.round(W0[i] + sh), 40, 95), rng(`wxp-${p.id}`)));
+    const nat = NAT3[c.ctry] || '', pool = names[nat] && names[nat].length >= 4 ? names[nat] : W.players.slice(0, 400).map(p => (p.name || 'A B').split(' '));
+    const used = new Set(L.map(p => p.no));
+    for (let k = 0; L.length < 20 && k < 40; k++){
+      const prim = FILL[k % FILL.length]; if (prim === 'GK' && L.filter(p => p.prim === 'GK').length >= 3) continue;
+      if (prim !== 'GK' && L.filter(p => p.prim !== 'GK').length >= 17) continue;
+      let no = 2 + k; while (used.has(no)) no++; used.add(no);
+      const nm = `${pool[Math.floor(r() * pool.length)][0]} ${pool[Math.floor(r() * pool.length)].slice(-1)[0]}`;
+      L.push(mk(-(9e6 + c.id * 50 + k), nm, nat, 19 + Math.floor(r() * 14), no, c.id, prim, [prim], Math.round(base - 3 - r() * 7), r));
+    }
+    const q14 = L.map(p => p.ovr).sort((a, b) => b - a).slice(0, 14);
+    E.clubs.push({ id: c.id, name: c.name, full: c.name, ctry: c.ctry, kit: WX_KIT[c.id % WX_KIT.length], q: +(q14.reduce((t, v) => t + v, 0) / Math.max(1, q14.length)).toFixed(1), eu: 1, wx: 1 });
+    E.players.push(...L);
+  }
+}
 function euLoad(){
   const E = D.europe; D.eu = null; EU = new Set(); EUP = new Set();
   if (!E || !Array.isArray(E.comps) || !E.comps.length || !Array.isArray(E.clubs)) return;
@@ -2765,7 +2805,11 @@ function shuffleR(L, r){ for (let i = L.length - 1; i > 0; i--){ const j = Math.
 // the clubs of each cup this season
 function euEntrants(){
   const E = D.eu, yrs = S.season - (E.season || D.season);
-  if (yrs === 0) return Object.fromEntries(E.comps.map(c => [c.k, c.teams.filter(id => C.has(id) && (LG.has(id) || EU.has(id) || leagueOf(id)))]));
+  if (yrs === 0){ const out0 = Object.fromEntries(E.comps.map(c => [c.k, c.teams.filter(id => C.has(id) && (LG.has(id) || EU.has(id) || leagueOf(id)))])), quals = [];
+    // each league's clubs in each cup, strongest first (the places as the table would have given them), into the rounds of its access list
+    for (const k of Object.keys(D.lgs)){ const mine = new Set(topOf(k)), QR = (LG_RULES[k] || LG_RULES.ENG).qual || {};
+      for (const ck of EU_KEYS) (out0[ck] || []).filter(id => mine.has(id)).sort((a, b) => club(b).q - club(a).q).forEach((id, i) => { const rr = EUQ_S.indexOf((QR[ck] || [])[i]); if (rr >= 0) quals.push({ id, k: ck, r: rr }); }); }
+    out0.quals = quals; return out0; }
   const pv = (S.past || [])[(S.past || []).length - 1]; if (!pv) return null;
   const out = { ucl: [], uel: [], uecl: [] }, quals = [];
   // each league's places by its own quota (England: five, three with the FA Cup winner, the League Cup winner; France:
@@ -6129,7 +6173,9 @@ function run(){
   D.players = D.players.concat(xp);
   D.allClubs.forEach(c => C.set(c.id, c)); natFill(D.players);
   D.players.forEach(p => { P.set(p.id, p); p._c0 = p.club; p._n0 = p.no; }); D.all = D.players.slice();
-  D.pool = D.all.slice(); setLeagues(null); euLoad();
+  D.pool = D.all.slice(); setLeagues(null);
+  try { const r = (await window.__wx) || await fetch('world.json'); if (r && r.ok) worldAdd(await r.json()); } catch (e) { console.warn('world.json', e); }
+  euLoad();
   if (D.cup && (D.cup.rounds || []).length >= 5){ CUP_NAMES = D.cup.rounds.slice(-6).map(r => r[0]); CUP = D.cup.name || 'Cup'; }
   if (D.rules && D.rules.bench) BENCH = D.rules.bench;
   adopt(loadSave());
