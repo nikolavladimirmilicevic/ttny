@@ -329,7 +329,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
 .tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
-.clg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 10px;max-width:720px;margin:4px auto 8px}.clg label{display:flex;flex-direction:column;gap:2px}.clg .dd{width:100%}.tsg{display:grid;grid-template-columns:1fr 1fr;gap:4px}.tsg .sb{padding:5px 3px;font-size:11.5px;margin:0}.tsg .sb:disabled{opacity:.4;cursor:default}.tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.mtg{display:flex;flex-direction:column;gap:6px}.mtr{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:8px}.mtr div{display:flex;gap:6px;flex-wrap:wrap}.clg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 10px;max-width:720px;margin:4px auto 8px}.clg label{display:flex;flex-direction:column;gap:2px}.clg .dd{width:100%}.tsg{display:grid;grid-template-columns:1fr 1fr;gap:4px}.tsg .sb{padding:5px 3px;font-size:11.5px;margin:0}.tsg .sb:disabled{opacity:.4;cursor:default}.tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 @media(max-width:520px){.tok{width:68px}.tok .nm{font-size:10.5px;max-width:68px}.tok .dot{width:30px;height:30px}.tbrow{grid-template-columns:34px minmax(0,1fr) 26px 30px 46px 22px}.tbrow .nm .small{display:none}.tbrow .cnd .sqc{display:none}}
 .instr{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;align-items:center}
 @media(max-width:520px){.instr{grid-template-columns:1fr 1fr}}
@@ -2002,6 +2002,7 @@ function eff(side, x){
   if (side.talk) v *= 1 + side.talk;   // the half-time team talk, for better or worse
   if (side.shout) v *= 1 + SH_V[side.shout.k] * side.shout.r;   // a word from the touchline
   if (side.cid === me() && S.pressMod && S.pressMod.d === S.date) v *= 1 + S.pressMod.v;   // what you told the press
+  if (side.cid === me() && S.meetMod && S.meetMod.d === S.date) v *= 1 + S.meetMod.v;   // the last team meeting
   if (S.prep && S.prep.k === 'danger' && S.prep.d === S.date && side.cid === S.prep.opp && x.id === S.prep.pid) v *= S.prep.fit ? .92 : .95;   // studied all week
   return v;
 }
@@ -2445,7 +2446,7 @@ function passDays(n){
   chTick(); awTick();
   scoutTick();
   transferTick();
-  try { promTick(); relTick(); visEnsure(); } catch (e) { console.warn(e); }
+  try { promTick(); sqPromTick(); relTick(); visEnsure(); } catch (e) { console.warn(e); }
   contractWarn();
   if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
   intlTick(); ntTick();
@@ -6059,6 +6060,10 @@ function dressingRoom(){
       const key = `${S.season}-${p.id}-${c.k}`; if (S.cnews[key]) continue; S.cnews[key] = 1; wantsWord(p);
       news('club', `${p.n} wants a word`, `${esc(p.n)}: ${c.t} Have a talk with him (his Talk screen).`, { id: p.id }); } }
   promTick();
+  // a restless squad ask for a meeting
+  const unh = squadOf(me()).filter(p => !onLoan(p) && (concerns(p).length || ps(p.id).mor < 45)).length;
+  if (unh >= 4 && !meetWait() && !(S.meetAsk && daysBetween(S.meetAsk, S.date) < 30) && !(S.meet && daysBetween(S.meet.d, S.date) < 21)){ S.meetAsk = S.date;
+    news('club', 'The players want a meeting', `${unh} players are unsettled, and the senior men have asked for a team meeting. You can call one from the Dressing Room screen.`); }
 }
 const TALKS = [['praise', 'Praise his form'], ['crit', 'Tell him to do better'], ['calm', 'Tell him he is part of the plans'], ...Object.entries(PROMS).map(([k, v]) => [k, v.n])];
 // which promises make sense for him now
@@ -6117,6 +6122,86 @@ function talkTab(p){
     <p class="small dim c">${credWord()}${S.trust || S.kept ? ` (promises kept ${S.kept || 0}, broken ${S.trust || 0})` : ''}. A promise lifts him; a broken one costs his morale and the squad's, and makes the next harder to believe. A good man-manager on your staff (your assistant) gets more out of these talks.</p>`;
 }
 // your club's Dressing Room: your word, the promises you have made and how they stand, who wants a word, who is low
+/* ---- team meetings: the whole squad in one room, once a fortnight. A topic that fits the moment (the form, good or bad,
+   the next match, the season's target, the mood in the squad, the transfer window) and a way of putting it. Each player
+   takes it his own way: the right words for the moment carry most of them, the unhappy are harder to reach, and the
+   leaders (the captain and the senior men) sway the room. Morale moves man by man, and the next match feels it a
+   little. Promising the squad that things will change is a promise like any other ---- */
+const MEET_T = {
+  good: { n: 'Praise the recent form', tones: [['keep', 'Well done: keep it going'], ['complacent', 'Good, but no complacency'], ['more', 'I still want more']] },
+  bad: { n: 'The poor form', tones: [['demand', 'Demand a reaction'], ['believe', 'Tell them you believe in them'], ['blame', 'Take the blame yourself']] },
+  next: { n: 'The next match', tones: [['must', 'It is a must-win game'], ['enjoy', 'No pressure: go and enjoy it'], ['respect', 'Respect them, fear no one']] },
+  target: { n: "The season's target", tones: [['hit', 'We will hit the target'], ['higher', 'We can aim higher'], ['together', 'It will be hard: stick together']] },
+  unrest: { n: 'The mood in the squad', tones: [['change', 'Promise that things will change'], ['focus', 'Tell them to focus on football'], ['door', 'My door is open: come and see me']] },
+  window: { n: 'The transfer window', tones: [['stronger', 'We are stronger now'], ['enough', 'This squad is good enough'], ['fight', 'Places must be fought for']] },
+};
+const meetWait = () => S.meet && S.meet.d ? Math.max(0, 14 - daysBetween(S.meet.d, S.date)) : 0;
+function leadersOf(){
+  const sq = squadOf(me()).filter(p => !onLoan(p)), cap = ((S.tac[me()] || {}).set || {}).cap;
+  const L = sq.filter(p => p.id !== cap && p.age >= 25).sort((a, b) => (b.age - 24) + (18 - squadRank(b)) * .8 - ((a.age - 24) + (18 - squadRank(a)) * .8)).slice(0, cap ? 3 : 4);
+  return [...(cap && P.get(cap) && P.get(cap).club === me() ? [P.get(cap)] : []), ...L];
+}
+function meetCtx(){
+  const sq = squadOf(me()).filter(p => !onLoan(p)), res = officialRes(me()).slice(-5), fp = res.reduce((t, r) => t + (r.w === me() ? 3 : r.w == null ? 1 : 0), 0);
+  const pos = standings().findIndex(r => r.id === me()) + 1, aim = AIMS[S.aim].pos, avgM = sq.length ? sq.reduce((t, p) => t + ps(p.id).mor, 0) / sq.length : 65;
+  const unh = sq.filter(p => concerns(p).length || ps(p.id).mor < 45), f = nextFixture(me()), soon = f && f.m && daysBetween(S.date, f.date) <= 7;
+  const opp = soon ? (f.m.h === me() ? f.m.a : f.m.h) : null, oq = opp ? (club(opp).q || 70) : 70, mq = club(me()).q, exp = clamp(.5 + (mq - oq) / 14, .1, .9);
+  const big = soon && (derbyOf(me(), opp) || /final|semi/i.test(String(f.comp)) || (club(opp).q || 0) >= mq + 2 || /Champions|Europa|Conference/.test(String(f.comp)) && !/League phase/.test(String(f.comp)));
+  const W = WINDOWS(), endW = W.map(w => w[1]).filter(e => e <= S.date && daysBetween(e, S.date) <= 14)[0], name = club(me()).name;
+  const ins = endW ? (S.transfers || []).filter(t => t.d >= W.find(w => w[1] === endW)[0] && t.to === name && t.fee !== 'Loan').length : 0;
+  const outs = endW ? (S.transfers || []).filter(t => t.d >= W.find(w => w[1] === endW)[0] && t.from === name && P.get(t.id) && ovrNow(P.get(t.id)) >= club(me()).q).length : 0;
+  return { sq, res, fp, pos: pos || aim, aim, avgM, unh, f, soon, opp, exp, big, endW, ins, outs, started: S.round > 0 };
+}
+function meetTopics(c){ const out = [];
+  if (c.res.length >= 3 && c.fp >= 9) out.push('good'); if (c.res.length >= 3 && c.fp <= 5) out.push('bad');
+  if (c.soon) out.push('next'); out.push('target'); if (c.unh.length >= 3) out.push('unrest'); if (c.endW) out.push('window'); return out; }
+function meetFit(c, t, k){
+  const late = c.started, P0 = c.pos, A0 = c.aim;
+  return ({
+    good: { keep: .6, complacent: c.exp > .55 ? .55 : .35, more: c.fp >= 13 ? -.35 : .05 },
+    bad: { demand: c.avgM < 50 ? -.3 : P0 > A0 ? .45 : .15, believe: c.avgM < 55 ? .55 : .2, blame: .3 },
+    next: { must: c.big ? (c.avgM >= 55 ? .5 : -.2) : -.15, enjoy: c.exp < .4 ? .6 : c.exp > .6 ? -.15 : .2, respect: c.exp > .6 ? .5 : .3 },
+    target: { hit: !late ? .3 : P0 <= A0 ? .5 : P0 > A0 + 3 ? -.4 : .2, higher: !late ? -.1 : P0 <= A0 - 3 ? .6 : P0 <= A0 ? .1 : -.5, together: !late ? .25 : P0 > A0 ? .5 : .1 },
+    unrest: { change: .6, focus: 0, door: .3 },
+    window: { stronger: c.ins >= 2 ? .5 : c.ins ? .2 : -.5, enough: c.ins ? .1 : c.outs ? -.2 : .4, fight: c.sq.length > 25 ? .5 : .3 },
+  }[t] || {})[k] ?? 0;
+}
+function holdMeeting(t, k){
+  const c = meetCtx(); if (meetWait() || !meetTopics(c).includes(t)) return;
+  let base = meetFit(c, t, k); const again = (S.meets || []).find(m => m.t === t && daysBetween(m.d, S.date) <= 30); if (again) base *= .5;
+  const L = leadersOf(), Lid = new Set(L.map(p => p.id)), R = new Map();
+  for (const p of c.sq){ let r = base + (rng(`mt-${S.date}-${p.id}`)() - .5) * .7; if (concerns(p).length && base > 0 && !(t === 'unrest' && k !== 'focus')) r -= .2; if (t === 'unrest' && k === 'focus' && concerns(p).length) r -= .3; if (t === 'unrest' && k === 'door' && concerns(p).length) r += .15; R.set(p.id, r); }
+  const lr = L.length ? L.reduce((x, p) => x + R.get(p.id), 0) / L.length : 0, sway = lr > .3 ? .1 : lr < -.2 ? -.1 : 0;
+  let ag = 0, ne = 0, di = 0, sum = 0; const lead = [];
+  for (const p of c.sq){ const r = R.get(p.id) + (Lid.has(p.id) ? 0 : sway), q = ps(p.id), how = r >= .25 ? 'agree' : r <= -.15 ? 'disagree' : 'neutral';
+    if (how === 'agree'){ ag++; q.mor = clamp(q.mor + Math.round(3 + r * 4), 15, 100); } else if (how === 'disagree'){ di++; q.mor = clamp(q.mor - Math.round(2 - r * 4), 15, 100); } else ne++;
+    sum += r; if (Lid.has(p.id)) lead.push([p.id, how]); }
+  const avg = c.sq.length ? sum / c.sq.length : 0, f = c.f;
+  if (f && f.m) S.meetMod = { d: f.date, v: clamp(avg * .02, -.02, .025) };
+  let extra = '';
+  if (t === 'unrest' && k === 'change'){ S.sqProm = { r: S.round, w0: (S.table[me()] || {}).w || 0, need: 3, n: 6 }; extra = ' You have promised them three wins in the next six league games.'; }
+  if (t === 'unrest' && k === 'door'){ for (const p of c.unh) wantsWord(p); extra = ' The unhappy players will come and see you.'; }
+  const T = MEET_T[t], tone = T.tones.find(x => x[0] === k)[1], mood = ag > di * 2 ? 'The meeting went well.' : di > ag ? 'The meeting went badly.' : 'The meeting had a mixed reception.';
+  const ld = lead.map(([id, how]) => `${P.get(id).n} ${how === 'agree' ? 'backed you up' : how === 'disagree' ? 'did not agree' : 'kept quiet'}`);
+  S.meet = { d: S.date, t, k, ag, ne, di, lead, mood, extra, again: !!again };
+  (S.meets = S.meets || []).unshift({ d: S.date, t, k, ag, ne, di }); S.meets = S.meets.slice(0, 10);
+  news('club', 'Team meeting', `<b>${esc(T.n)}</b>: "${esc(tone)}". ${mood} ${ag} agreed, ${ne} were not moved, ${di} disagreed. ${esc(ld.join('; '))}.${again ? ' They had heard this one recently.' : ''}${extra}`);
+}
+// a squad promise falls due
+function sqPromTick(){
+  const x = S.sqProm; if (!x || !me()) return; const w = ((S.table[me()] || {}).w || 0) - x.w0;
+  if (w >= x.need){ S.sqProm = null; S.kept = (S.kept || 0) + 1; squadMor(3); news('club', 'The squad are happy', `You promised the players three wins in six league games, and they came. The mood in the dressing room has lifted.`); }
+  else if (S.round >= x.r + x.n){ S.sqProm = null; S.trust = (S.trust || 0) + 1; squadMor(-5); news('club', 'The squad feel let down', `You promised the players that things would change: three wins in six league games. Only ${w} came, and the dressing room noticed.`); }
+}
+function meetHTML(){
+  const c = meetCtx(), w = meetWait(), T = meetTopics(c), m = S.meet;
+  const last = m ? `<p class="small">Last meeting, ${shortDate(m.d)}: <b>${esc(MEET_T[m.t].n)}</b>, "${esc(MEET_T[m.t].tones.find(x => x[0] === m.k)[1])}". ${m.mood} <span style="color:var(--win)">${m.ag} agreed</span>, ${m.ne} not moved, <span style="color:var(--loss)">${m.di} disagreed</span>.${m.lead.length ? ` ${m.lead.map(([id, how]) => `<span class="lk" data-lp="${id}">${esc(P.get(id).n)}</span> ${how === 'agree' ? 'backed you up' : how === 'disagree' ? 'did not agree' : 'kept quiet'}`).join('; ')}.` : ''}${m.extra ? ' ' + esc(m.extra) : ''}</p>` : '';
+  const pr = S.sqProm ? `<p class="small yel">Your promise to the squad: three wins in six league games. ${((S.table[me()] || {}).w || 0) - S.sqProm.w0} so far, ${Math.max(0, S.sqProm.r + S.sqProm.n - S.round)} league game${S.sqProm.r + S.sqProm.n - S.round === 1 ? '' : 's'} left.</p>` : '';
+  const L = leadersOf(), a = (S.staff || []).find(x => x.role === 'ass'), best = T.flatMap(t => MEET_T[t].tones.map(([k]) => [t, k, meetFit(c, t, k)])).sort((x, y) => y[2] - x[2])[0];
+  const hint = a && (a.ju || 8) >= 10 && best && best[2] >= .4 ? `<p class="small dim">${esc(a.n)}: "${esc(MEET_T[best[0]].tones.find(x => x[0] === best[1])[1])}" would go down well.</p>` : '';
+  return `<div class="ptitle">Team meeting</div><p class="small dim">The whole squad, once a fortnight. Pick a topic and how to put it; the leaders (${L.map(p => `<span class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</span>`).join(', ')}) sway the room.</p>${pr}${last}
+  ${w ? '' : hint}${w ? `<p class="dim c">The next meeting in ${w} day${w > 1 ? 's' : ''}.</p>` : `<div class="mtg">${T.map(t => `<div class="mtr"><b>${MEET_T[t].n}</b><div>${MEET_T[t].tones.map(([k, n]) => `<button class="btn sm" data-meet="${t}|${k}">${n}</button>`).join('')}</div></div>`).join('')}</div>`}`;
+}
 function clubDressing(cid, o){
   const sq = squadOf(me()).filter(p => !onLoan(p)), L = (S.prom || []).filter(x => P.get(x.id) && P.get(x.id).club === me());
   const lowM = sq.slice().sort((a, b) => ps(a.id).mor - ps(b.id).mor).slice(0, 8), avgM = sq.length ? sq.reduce((t, p) => t + ps(p.id).mor, 0) / sq.length : 65;
@@ -6126,11 +6211,13 @@ function clubDressing(cid, o){
     <div class="ovc"><div class="ovh"><span>Your word</span></div><dl class="kv"><dt>In the dressing room</dt><dd><b>${credWord()}</b></dd><dt>Promises kept</dt><dd>${S.kept || 0}</dd><dt>Promises broken</dt><dd>${S.trust ? `<span style="color:var(--loss)">${S.trust}</span>` : 0}</dd><dt>Squad morale</dt><dd>${morWord(avgM)}</dd></dl></div>
     <div class="ovc"><div class="ovh"><span>Wants a word</span></div>${words.length ? `<table><tbody>${words.map(x => `<tr class="click" data-dtalk="${x.p.id}"><td>${pl(x.p)}</td><td class="small">${esc(x.cs[0].t)}</td></tr>`).join('')}</tbody></table>` : '<p class="dim">No one. The dressing room is settled.</p>'}</div>
   </div>
+  ${meetHTML()}
   <div class="ptitle">Promises</div>${L.length ? `<table><thead><tr><th>Player</th><th>You promised</th><th>Made</th><th>So far</th><th>Due</th></tr></thead><tbody>${L.map(x => { const s = promState(x), p = P.get(x.id); return `<tr><td>${pl(p)}</td><td>${esc(promSay(x))}</td><td class="small">${x.d ? shortDate(x.d) : ''}</td><td>${s.prog}</td><td class="${s.urgent ? 'yel' : ''}">${s.due}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">You have promised nothing to anyone. Promises are made in a player\'s Talk screen.</p>'}
   <div class="ptitle">Lowest morale</div><table><tbody>${lowM.map(p => `<tr class="click" data-dtalk="${p.id}"><td>${pl(p)}</td><td>${cmPos(p.pos)}</td><td class="r">${morWord(ps(p.id).mor)}</td></tr>`).join('')}</tbody></table>
   ${(S.promLog || []).length ? `<div class="ptitle">Promise record</div><table><tbody>${S.promLog.slice(0, 10).map(x => `<tr><td><span class="pill">${shortDate(x.d)}</span></td><td>${P.get(x.id) ? pl(P.get(x.id)) : esc(x.n)}</td><td>${esc((PROMS[x.k] || { say: '' }).say)}</td><td class="r" style="color:${x.how === 'broken' ? 'var(--loss)' : x.how === 'kept' ? 'var(--win)' : 'inherit'}">${x.how === 'kept' ? 'Kept' : x.how === 'broken' ? 'Broken' : 'Lapsed'}</td></tr>`).join('')}</tbody></table>` : ''}`;
   frame(o);
   document.querySelectorAll('[data-dtalk]').forEach(r => r.addEventListener('click', e => { if (e.target.closest('.lk')) return; go({ s: 'player', id: +r.dataset.dtalk, tab: 'talk' }); }));
+  document.querySelectorAll('[data-meet]').forEach(b => b.addEventListener('click', () => { const [t, k] = b.dataset.meet.split('|'); holdMeeting(t, k); save(); view(); }));
 }
 // a new contract: his agent asks for a wage, a length and a role; you offer, he answers. Three bad offers and the talks are off
 function negAsk(p){ S.neg = S.neg || {}; let n = S.neg[p.id];
