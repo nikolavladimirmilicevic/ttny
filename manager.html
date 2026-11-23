@@ -1996,6 +1996,7 @@ function eff(side, x){
   let v = (fitIn(x.p, x.pos) / Math.max(40, ovrNow(x.p))) * (0.72 + 0.28 * x.e / 100) * (0.85 + 0.15 * q.cond / 100) * (0.96 + 0.08 * q.mor / 100);
   if (q.light) v *= .93;   // back from injury, not yet sharp
   if (side.talk) v *= 1 + side.talk;   // the half-time team talk, for better or worse
+  if (side.cid === me() && S.pressMod && S.pressMod.d === S.date) v *= 1 + S.pressMod.v;   // what you told the press
   return v;
 }
 function units(side, M){
@@ -2436,6 +2437,7 @@ function passDays(n){
   contractWarn();
   if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
   intlTick(); ntTick();
+  try { pressTick(); } catch (e) { console.warn(e); }
 }
 // a word from the assistant when your players' contracts are in their last season: at the start of it and in January
 function contractWarn(){
@@ -2503,6 +2505,7 @@ function pendingActs(){
     out.push({ txt: `${esc(club(o.from).name)} have bid ${cash(o.fee)} for <b>${esc(p.n)}</b>. Accept or reject it.`, btn: 'To his Transfer screen', v: { s: 'player', id: p.id, tab: 'tr' } }); }
   for (const b of S.bids || []) if (['counter', 'yes'].includes(b.st)){ const p = P.get(b.id); if (!p || p.club === me()){ b.st = 'off'; continue; }
     out.push({ txt: b.st === 'yes' ? `${esc(club(p.club).name)} have accepted your bid for <b>${esc(p.n)}</b>. Agree his terms or walk away.` : `${esc(club(p.club).name)} want ${cash(b.ask)} for <b>${esc(p.n)}</b>. Pay it or walk away.`, btn: 'To his Transfer screen', v: { s: 'player', id: p.id, tab: 'tr' } }); }
+  if (S.press && !S.press.done) out.push({ txt: 'The press are waiting for you.', btn: 'To the press room', v: { s: 'press', id: 'press' } });
   if (S.ntOffer) out.push({ txt: `The <b>${esc(S.ntOffer.n)}</b> federation want you as their coach. Accept or decline.`, btn: 'To the offer', v: { s: 'ntjob', tab: 'job', id: 'nto' } });
   for (const [id, d] of Object.entries(S.word || {})){ const p = P.get(+id);
     if (!p || p.club !== me() || onLoan(p)){ delete S.word[id]; continue; }
@@ -3234,6 +3237,7 @@ function finishFIC(myM){
 function afterMatchday(res, kind, stage){
   if (kind === 'league'){ aiSackings(); unrest(); dressingRoom(); }
   const mine = res.find(r => r.h === me() || r.a === me());
+  if (mine) try { pressBoldCheck(mine); pressAfter(mine, kind, stage); } catch (e) { console.warn(e); }
   if (mine){ S.seen = S.seen || []; const opp = mine.h === me() ? mine.a : mine.h; if (!S.seen.includes(opp)) S.seen.push(opp); }
   if (mine){
     const us = mine.h === me(), opp = club(us ? mine.a : mine.h), won = mine.w === me(), drew = mine.w == null;
@@ -3500,6 +3504,7 @@ function retireAndIntake(){
 }
 // the next season: numbers into each player's history, a year on everyone, contracts that end, a new schedule
 function newSeason(){
+  if (S.press) S.press.done = true;
   try { careerSnap(); } catch (e) { console.warn(e); }
   S.prom = (S.prom || []).filter(x => x.k === 'pay');   // promises of football are for the season they were made in
   // up and down: the league's bottom three swap places with the Championship's top two and its play-off winner
@@ -3714,7 +3719,7 @@ function view(){
   if (!S || SETUP_OPEN){ viewSetup(); return; }
   CTX = LIVE && LIVE.nt && !LIVE.peek ? LIVE.ntC : null;
   if (LIVE && !LIVE.peek){ viewMatch(); return; }
-  ({ home: scrHome, nt: scrNT, ntjob: scrNTJob, friendlies: scrFriendlies, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
+  ({ home: scrHome, press: scrPress, nt: scrNT, ntjob: scrNTJob, friendlies: scrFriendlies, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
   linkify(document.body); autoSort();
 }
 /* every table sorts: a table with a header and no sorting of its own sorts by any column on a click on its head (again
@@ -5953,6 +5958,112 @@ function careerSnap(){
   C2.push({ s: S.season, c: me(), p: all.length, w: all.filter(r => r.w === me()).length, d: all.filter(r => r.w == null).length, gf: all.reduce((t, r) => t + gf(r), 0), ga: all.reduce((t, r) => t + ga(r), 0),
     pos: (standings().findIndex(r => r.id === me()) + 1) || null, big: big ? { o: big.h === me() ? big.a : big.h, s: [gf(big), ga(big)], d: big.date } : null });
 }
+/* ---- press conferences. Before the big games (a derby, a final, a European night, a top side, or now and then any
+   match) and after the results that make headlines, the press want you: three or four questions from the context
+   (the opponent, the form, the table, a player in form or out of it, a red card, your job). Each answer has a tone and
+   its effects: the squad's morale, a player's, the board's view, and before a match a little on the day itself; a bold
+   promise that goes wrong comes back to bite. You can send your assistant instead. The conference waits for you like
+   any question (Continue stops); on holiday the assistant goes ---- */
+const PRESS_OUT = { ENG: ['BBC Sport', 'Sky Sports', 'The Athletic', 'The Guardian', 'talkSPORT', 'The Times'], SRB: ['Sportski žurnal', 'Mozzart Sport', 'Arena Sport', 'Novosti', 'Kurir', 'Informer'], FRA: ["L'Équipe", 'RMC Sport', 'Le Parisien', 'Canal+'], ITA: ['La Gazzetta dello Sport', 'Corriere dello Sport', 'Sky Sport Italia', 'Tuttosport'], ESP: ['Marca', 'AS', 'Mundo Deportivo', 'Sport', 'Movistar'], GER: ['Kicker', 'Bild', 'Sport1', 'Sky Deutschland'] };
+const pressForm = cid => fixtureRows(cid).filter(x => x.m && x.rr && x.rr.s && !x.rr.bg && x.comp !== 'Friendly').slice(-5).map(x => x.rr.w === cid ? 'W' : x.rr.w == null ? 'D' : 'L');
+const pressPts = L => L.reduce((t, r) => t + (r === 'W' ? 3 : r === 'D' ? 1 : 0), 0);
+// the questions of a conference, from what is going on
+function pressQs(kind, ctx){
+  const r = rng(`press-${S.seed}-${ctx.d}-${kind}`), sq = squadOf(me()), q = p => S.pl[p.id] || {}, avgR = p => { const L = (q(p).rt || []).slice(-5); return L.length >= 3 ? L.reduce((a, b) => a + b, 0) / L.length : 0; };
+  const oc = ctx.opp ? club(ctx.opp).name : '', myF = pressForm(me()), opF = ctx.opp ? pressForm(ctx.opp) : [], st = standings(), pos = st.findIndex(x => x.id === me()) + 1, aim = AIMS[S.aim] || { pos: 10 };
+  const Q = [], add = (q2, a) => Q.push({ q: q2, a });
+  const A = (t, tone, fx) => ({ t, tone, fx });
+  if (kind === 'pre'){
+    if (ctx.derby) add(`It's the ${ctx.derby} against ${oc}. What does this one mean to you?`, [A('It means everything to our supporters, and to us.', 'Passionate', { t: 2, n: .01 }), A("It's three points like any other.", 'Calm', { t: 0, n: .004 }), A(`${oc} should be worried.`, 'Bold', { t: 2, n: .012, bold: 1, b: 0 }), A("I'm not getting drawn into that.", 'Evasive', { m: -1 })]);
+    if (ctx.big) add(`${ctx.big}. How big is this for the club?`, [A("It's the kind of night we work for. We're ready.", 'Confident', { t: 2, n: .008 }), A("We'll respect the occasion and play our game.", 'Calm', { t: 1, n: .005 }), A("We're going there to win it, simple as that.", 'Bold', { t: 2, n: .012, bold: 1 })]);
+    if (ctx.opp && opF.length >= 3) add(pressPts(opF) >= 10 ? `${oc} have won ${opF.filter(x => x === 'W').length} of their last ${opF.length}. Are you worried?` : `${oc} have struggled lately. Is this a game you expect to win?`,
+      pressPts(opF) >= 10 ? [A("We respect them, but we look at ourselves.", 'Calm', { t: 1, n: .005 }), A("Form goes out of the window on the day.", 'Confident', { t: 1, n: .006 }), A("They'll have to be at their best to beat us.", 'Bold', { t: 2, n: .01, bold: 1 }), A('No comment.', 'Evasive', { m: -1 })]
+        : [A("There are no easy games at this level.", 'Calm', { t: 1, n: .006 }), A("We expect to win, yes.", 'Bold', { t: 1, n: .006, bold: 1 }), A("A wounded side is a dangerous side.", 'Cautious', { t: 0, n: .008 })]);
+    const hot = sq.filter(p => avgR(p) >= 7.2).sort((a, b) => avgR(b) - avgR(a))[0], cold = sq.filter(p => (q(p).apps || 0) >= 3 && avgR(p) && avgR(p) < 6.4).sort((a, b) => avgR(a) - avgR(b))[0];
+    if (hot && r() < .7) add(`${hot.n} has been outstanding. Can he keep it up?`, [A("He's in the form of his life. Long may it continue.", 'Praise', { p: [hot.id, 5], t: 1 }), A("He has to keep working; nobody has a place guaranteed.", 'Demanding', { p: [hot.id, -2], n: .004 }), A("It's about the team, not one player.", 'Calm', { t: 1 })]);
+    else if (cold) add(`${cold.n} has struggled for form. Does he still have your trust?`, [A("Completely. He'll come good.", 'Backing', { p: [cold.id, 6] }), A("He knows he has to do better.", 'Demanding', { p: [cold.id, -4], t: 0 }), A("I don't discuss individuals.", 'Evasive', { p: [cold.id, -1] })]);
+    if (S.round >= 6 && pos > aim.pos + 3) add(`You're ${ordinal(pos)}, well short of what the board want. Is the pressure getting to you?`, [A("Pressure is part of the job. We'll turn it around.", 'Confident', { t: 1, b: 1 }), A("Judge us at the end of the season.", 'Calm', { b: .5 }), A("The players need to look at themselves.", 'Critical', { t: -3, n: .006 }), A('No comment.', 'Evasive', { b: -1, m: -1 })]);
+    else if (S.round >= 6 && pos && pos <= Math.max(2, aim.pos - 1)) add(`You're ${ordinal(pos)}. Can you go all the way?`, [A("Why not? We fear nobody.", 'Bold', { t: 2, bold: 1 }), A("One game at a time.", 'Calm', { t: 1, b: .5 }), A("It's far too early to talk about that.", 'Cautious', { t: 0 })]);
+    if (myF.length >= 3 && pressPts(myF) <= 4) add(`One win in your last ${myF.length}. What has gone wrong?`, [A("We've been unlucky; the performances are there.", 'Defending', { t: 2, b: -.5 }), A("It's on me. I'll fix it.", 'Responsible', { t: 2, b: .5 }), A("Some players have let themselves down.", 'Critical', { t: -3, n: .008 })]);
+  } else {
+    const w = ctx.won, dr = ctx.drew, gd = ctx.gd;
+    if (w) add(gd >= 3 ? `${gd}-goal win. Is this the best your side has played?` : `A win against ${oc}. How pleased are you?`, [A("Delighted with every one of them.", 'Praise', { t: 3 }), A("Good, but there's more to come.", 'Grounded', { t: 1, b: .5 }), A("We were sloppy at times; I want more.", 'Demanding', { t: -1, n2: .006 })]);
+    else if (dr) add(`A draw with ${oc}. Two points dropped or one gained?`, [A("A point gained; it was a tough game.", 'Positive', { t: 1 }), A("Two points dropped. We should have won.", 'Demanding', { t: -1, n2: .005 }), A("Let's see at the end of the season.", 'Calm', {})]);
+    else add(gd <= -3 ? `A heavy defeat to ${oc}. What happened out there?` : `Defeat to ${oc}. What went wrong?`, [A("We were second best. That's on me.", 'Responsible', { t: 2, b: -.5 }), A("The players didn't do what we asked.", 'Critical', { t: -3, n2: .008 }), A("Some of those decisions went against us.", 'Referee', { t: 1, b: -1.5 }), A("Bad day. We move on.", 'Calm', { t: .5 })]);
+    if (ctx.mom && P.get(ctx.mom) && P.get(ctx.mom).club === me()) add(`${P.get(ctx.mom).n} was man of the match. Your thoughts?`, [A("Fantastic. He's a joy to work with.", 'Praise', { p: [ctx.mom, 6], t: .5 }), A("He did his job, like the others.", 'Grounded', { t: 1 })]);
+    if (ctx.red) add(`${P.get(ctx.red).n}'s red card. Did he let you down?`, [A("He knows he was wrong; we'll deal with it inside.", 'Calm', { p: [ctx.red, -1], t: .5 }), A("Yes. That can't happen.", 'Critical', { p: [ctx.red, -6] }), A("I thought it was harsh.", 'Backing', { p: [ctx.red, 4], b: -1 })]);
+    if (S.conf < 35 && !w) add('Is your job under threat?', [A("I have the board's support and I'll keep working.", 'Confident', { b: -1 }), A("That's for the board to say. I'll fight on.", 'Calm', { b: .5 }), A('No comment.', 'Evasive', { b: -1.5, m: -1 })]);
+    if (ctx.bold) add(`You said before the game ${ctx.bold}. Do you regret it?`, ctx.won ? [A("I said it, we did it.", 'Bold', { t: 2 }), A("The players made me look good.", 'Praise', { t: 3 })] : [A("I stand by it. It didn't happen today.", 'Defiant', { t: 1, b: -1 }), A("Perhaps I spoke too soon.", 'Humble', { t: .5, b: .5 })]);
+  }
+  // three or four questions; the media ask about the season when they have nothing else
+  if (Q.length < 2) add(kind === 'pre' ? `What do you expect from ${oc}?` : 'Where does this leave your season?', [A("A hard game. We're prepared.", 'Calm', { t: 1, n: .004 }), A("We'll take the game to them.", 'Confident', { t: 1, n: .006 }), A('We go again.', 'Grounded', { t: .5 })]);
+  return Q.slice(0, 4);
+}
+// is there a conference before this match? (always for the big ones, now and then otherwise)
+function pressTick(){
+  if (!S || S.done || S.hol || (S.press && !S.press.done)) return;
+  const rows = fixtureRows(me()), nx = rows.find(x => x.m && !x.rr && x.date > S.date && x.comp !== 'Friendly');
+  if (!nx || daysBetween(S.date, nx.date) !== 1) return;
+  const key = `pre|${nx.date}|${nx.m.h}|${nx.m.a}`; S.pressK = S.pressK || {}; if (S.pressK[key]) return; S.pressK[key] = 1;
+  const opp = nx.m.h === me() ? nx.m.a : nx.m.h, derby = derbyOf(nx.m.h, nx.m.a), comp = String(nx.comp).replace(/<[^>]+>/g, ''), top = standings().slice(0, 4).some(x => x.id === opp);
+  const big = /Final|Semi/.test(comp) ? `It's ${/Semi/.test(comp) ? 'a semi-final' : 'a final'}` : /Champions League|Europa|Conference/.test(comp) && !/matchday [2-7]\b/.test(comp) ? `A European night` : top ? `${club(opp).name} are one of the best sides in the league` : null;
+  if (!derby && !big && rng(`prt-${S.seed}-${key}`)() > .3) return;
+  pressOpen('pre', { d: nx.date, opp, derby, big, comp, key });
+}
+function pressOpen(kind, ctx){
+  const qs = pressQs(kind, ctx); if (!qs.length) return;
+  S.press = { kind, ctx, qs, i: 0, ans: [], done: false, d: S.date };
+  news('board', kind === 'pre' ? `Press conference: ${club(me()).name} v ${club(ctx.opp).name}` : 'Post-match press conference', kind === 'pre' ? `The press want to hear from you before ${ctx.comp ? esc(ctx.comp) + ' against ' : ''}${esc(club(ctx.opp).name)}. Answer their questions, or send your assistant.` : `The press want your view on the game against ${esc(club(ctx.opp).name)}.`, { id: 'press' });
+}
+// after a result that makes headlines
+function pressAfter(x, kind, stage){
+  if (!S || S.hol || (S.press && !S.press.done) || !x || x.bg) return;
+  const us = x.h === me(), opp = us ? x.a : x.h, gf = x.s[us ? 0 : 1], ga = x.s[us ? 1 : 0], won = x.w === me(), drew = x.w == null, gd = gf - ga;
+  const bold = S.pressBold && S.pressBold.d === S.date ? S.pressBold.t : null, red = (x.inc || []).find(i => i.k === 'red' && i.side === (us ? 'h' : 'a') && typeof i.id === 'number');
+  const derby = derbyOf(x.h, x.a), big = (kind === 'eu' || kind === 'cup') && /Final|Semi|Quarter|Round of 16|play-off/i.test(String(stage || ''));
+  if (!(bold || derby || Math.abs(gd) >= 3 || big || red || S.conf < 30) && rng(`pra-${S.seed}-${S.date}`)() > .15) return;
+  pressOpen('post', { d: S.date, opp, won, drew, gd, mom: x.mom, red: red ? red.id : null, bold });
+}
+function pressAnswer(i){
+  const Pz = S.press, Q = Pz.qs[Pz.i], a = Q.a[i], fx = a.fx || {}, sq = squadOf(me()), lines = [];
+  if (fx.t) for (const p of sq){ const q = ps(p.id); q.mor = clamp(q.mor + fx.t, 15, 100); }
+  if (fx.p){ const q = ps(fx.p[0]); q.mor = clamp(q.mor + fx.p[1], 15, 100); }
+  if (fx.b) S.conf = clamp(S.conf + fx.b, 0, 100);
+  const nx = (fx.n || 0) + (fx.n2 || 0); if (nx) S.pressMod = { d: Pz.kind === 'pre' ? Pz.ctx.d : (fixtureRows(me()).find(x => x.m && !x.rr && x.date > S.date) || {}).date, v: ((S.pressMod && S.pressMod.d === Pz.ctx.d) ? S.pressMod.v : 0) + nx };
+  if (fx.bold && Pz.kind === 'pre') S.pressBold = { d: Pz.ctx.d, t: `"${a.t.replace(/\.$/, '')}"` };
+  if (fx.t >= 2) lines.push('The squad liked that.'); else if (fx.t <= -2) lines.push('Some in the squad did not take it well.');
+  if (fx.p) lines.push(fx.p[1] > 0 ? `${P.get(fx.p[0]).n} will be pleased.` : `${P.get(fx.p[0]).n} won't like that.`);
+  if (fx.b >= 1) lines.push('The board approve.'); else if (fx.b <= -1) lines.push('The board raised an eyebrow.');
+  if (fx.bold) lines.push('Bold words. They had better be backed up.');
+  if (fx.m) lines.push('The journalists were not impressed.');
+  Pz.ans.push({ q: Q.q, a: a.t, tone: a.tone, r: lines.join(' ') || 'Noted.' }); Pz.i++;
+  if (Pz.i >= Pz.qs.length) pressClose();
+}
+function pressClose(skip){
+  const Pz = S.press; Pz.done = true;
+  if (skip){ S.conf = clamp(S.conf - .5, 0, 100); news('board', 'Your assistant faced the press', 'Your assistant manager took the press conference. Nothing he said will make the headlines.'); return; }
+  const best = Pz.ans.find(x => ['Bold', 'Critical', 'Referee', 'Passionate', 'Demanding'].includes(x.tone)) || Pz.ans[0];
+  news('club', `${S.manager}: "${best.a.replace(/[.!]$/, '')}"`, `${Pz.kind === 'pre' ? 'Before the game against' : 'After the game against'} ${esc(club(Pz.ctx.opp).name)} you told the press:${Pz.ans.map(x => `<br><span class="dim">${esc(x.q)}</span><br><b>"${esc(x.a)}"</b>`).join('')}`);
+}
+function scrPress(){
+  const Pz = S.press;
+  if (!Pz){ go({ s: 'home' }); return; }
+  const outs = PRESS_OUT[HOME] || PRESS_OUT.ENG, cur = Pz.qs[Pz.i], last = Pz.ans[Pz.ans.length - 1];
+  const head = `<div class="ovclub" style="--k1:${kitOf(me())[0]};--k2:${kitOf(me())[1]}">${crest(me(), 'bigcr')}<div class="ovci"><div class="ovcn">${Pz.kind === 'pre' ? 'Pre-match' : 'Post-match'} press conference</div><div class="small dim">${esc(club(me()).name)} v ${esc(club(Pz.ctx.opp).name)}${Pz.ctx.comp ? ' · ' + esc(Pz.ctx.comp) : ''} · ${fmtDate(Pz.ctx.d)}</div></div></div>`;
+  const past = Pz.ans.map(x => `<div class="ovc" style="margin-bottom:8px"><div class="small dim">${esc(x.q)}</div><div><b>"${esc(x.a)}"</b> <span class="small dim">(${esc(x.tone)})</span></div><div class="small yel">${esc(x.r)}</div></div>`).join('');
+  const body = Pz.done ? `${head}${past}<p class="dim">The conference is over.</p><div class="tools"><button class="btn go" id="prdone">Back</button></div>`
+    : `${head}${past}<div class="ovc"><div class="ovh"><span>${esc(outs[(Pz.i * 7 + Pz.qs.length) % outs.length])}</span><span class="small dim">Question ${Pz.i + 1} of ${Pz.qs.length}</span></div><p style="font-size:16px;margin:8px 0 12px"><b>${esc(cur.q)}</b></p>
+      <div style="display:grid;gap:8px">${cur.a.map((a, i) => `<button class="btn" data-pra="${i}" style="text-align:left;white-space:normal"><span class="small yel" style="display:inline-block;min-width:96px">${esc(a.tone)}</span>${esc(a.t)}</button>`).join('')}</div></div>
+      <div class="tools" style="margin-top:10px"><button class="btn sm" id="prskip">Send your assistant</button></div>`;
+  frame({ title: 'Press Conference', short: 'Press', body });
+  document.querySelectorAll('[data-pra]').forEach(b => b.addEventListener('click', () => { pressAnswer(+b.dataset.pra); save(); view(); }));
+  const sk = $('#prskip'); if (sk) sk.addEventListener('click', () => { pressClose(true); save(); go({ s: 'home' }); });
+  const dn = $('#prdone'); if (dn) dn.addEventListener('click', () => go({ s: 'home' }));
+}
+// a bold word before the game, and then a defeat: the squad and the board remember
+function pressBoldCheck(x){ const B = S.pressBold; if (!B || B.d !== S.date) return; if (x.w === me()) return;
+  const lost = x.w != null; for (const p of squadOf(me())){ const q = ps(p.id); q.mor = clamp(q.mor - (lost ? 3 : 1), 15, 100); } S.conf = clamp(S.conf - (lost ? 2.5 : 1), 0, 100);
+  news('board', 'Your words come back to bite', `Before the game you said ${esc(B.t)}. ${lost ? 'After the defeat' : 'After the draw'} the papers have reminded everyone, and the dressing room has noticed.`); }
 function scrHome(){
   const cid = me(), c = club(cid), [k1, k2] = kitOf(cid), all = officialRes(cid);
   const gfo = r => r.h === cid ? r.s[0] : r.s[1], gao = r => r.h === cid ? r.s[1] : r.s[0], res = r => r.w === cid ? 'W' : r.w == null ? 'D' : 'L';

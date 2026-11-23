@@ -54,7 +54,7 @@ const fail = m => { console.error('SMOKE FAILED: ' + m); process.exit(1); };
         for (const sel of ['[data-club]', '#take', '#yes', '#fok', '#next']){ const el = await m.$(sel + ':not([disabled])'); if (el){ await el.click(); break; } }
         await m.waitForTimeout(200);
       }
-      for (let i = 0; i < 40 && !(await m.$('#tomatch')); i++){ await m.evaluate(() => { document.querySelectorAll('.mdl').forEach(x => x.remove()); (S.offers || []).forEach(o => { if (o.st === 'open') o.st = 'rej'; }); S.word = {}; S.bids = []; }); await m.click('#cont'); await m.waitForTimeout(150); }
+      for (let i = 0; i < 40 && !(await m.$('#tomatch')); i++){ await m.evaluate(() => { document.querySelectorAll('.mdl').forEach(x => x.remove()); (S.offers || []).forEach(o => { if (o.st === 'open') o.st = 'rej'; }); S.word = {}; S.bids = []; if (S.press) S.press.done = true; S.ntOffer = null; }); await m.click('#cont'); await m.waitForTimeout(150); }
       await m.click('#tomatch'); await m.waitForSelector('#skip', { timeout: 10000 }); await m.click('#skip'); await m.click('.sure [data-yes]'); await m.waitForSelector('#done', { timeout: 10000 }); await m.click('#done');
       await m.waitForSelector('#cont', { timeout: 10000 });
     }
