@@ -144,6 +144,7 @@ input[type=text]{background:var(--panel-2);border:1px solid var(--line);border-r
 @media(max-width:560px){.mov{grid-template-columns:1fr}.mov .pitch.mini{max-width:290px;margin:0 auto}}
 .troph{margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}.tph{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .ovc .troph{margin:4px 0 2px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}.tphn{font:700 24px/1 var(--display);color:var(--gold);min-width:28px;text-align:center}
+.hhero .ovci{flex:1}.hhero .ovcn{font-size:24px}.hdate{text-align:right;white-space:nowrap}.hdate b{font-size:16px}.hmeter{height:10px;border-radius:6px;background:var(--panel);overflow:hidden}.hmeter i{display:block;height:100%;border-radius:6px}
 .ovclub{display:flex;align-items:center;gap:16px;background:linear-gradient(100deg,color-mix(in srgb,var(--k1) 30%,var(--panel-2)),var(--panel-2) 70%);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .kit{width:64px;height:60px;flex:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))}.kit.sm{width:40px;height:38px}
 .ovci{flex:1;min-width:0}.ovcn{font:600 22px/1.1 var(--display);letter-spacing:.03em;text-transform:uppercase}
@@ -1777,6 +1778,7 @@ function newGame(cid, manager){
   longInjured();
   for (const id of ids) S.tac[id] = autoTactic(id, id === cid ? judge() : null);
   const a = AIMS[aim];
+  (S.hist = S.hist || []).push({ d: S.date, c: cid, t: `Took charge of ${club(cid).name}` });
   news('board', `Welcome to ${club(cid).name}`, `The chairman has appointed ${esc(S.manager)} as manager. The board's expectation for the season: <b>${a.name}</b>. ${a.text}`);
   news('club', 'Your first match', `The league starts on ${fmtDate(rounds[0].date, true)} with ${matchLine(rounds[0].m.find(m => m.h === cid || m.a === cid))}. The ${esc(CUP)} starts with the ${cupName(0).toLowerCase()} on ${fmtDate(cupDates[0])}.`);
   const lc = club(cid), ch = D.last_season && club(D.last_season.champion);
@@ -3498,6 +3500,7 @@ function retireAndIntake(){
 }
 // the next season: numbers into each player's history, a year on everyone, contracts that end, a new schedule
 function newSeason(){
+  try { careerSnap(); } catch (e) { console.warn(e); }
   S.prom = (S.prom || []).filter(x => x.k === 'pay');   // promises of football are for the season they were made in
   // up and down: the league's bottom three swap places with the Championship's top two and its play-off winner
   if (S.ch && S.ch.up && (S.down || []).length && prOK(HOME, S.down, S.ch.up)){ const dn = S.down;
@@ -3607,7 +3610,7 @@ const wage = w => cash(w * (OPT.wages === 'm' ? 52 / 12 : OPT.wages === 'y' ? 52
 const valueOf = p => cash(p.val * 1e6);
 
 // where we are: a screen and what it shows; back and forward like a browser
-let V = { s: 'news' }, HIST = [], FWD = [], PICK = null, SORT = { k: 'pos', d: 1 };
+let V = { s: 'home' }, HIST = [], FWD = [], PICK = null, SORT = { k: 'pos', d: 1 };
 function go(v, keep){ if (!keep && V && LIVE == null) { HIST.push(V); if (HIST.length > 60) HIST.shift(); FWD = []; } V = v; PICK = null; view(); scrollTo(0, 0); }
 const SCREEN_SET = s => go(s);   // (kept for the calendar code)
 /* every name is a way in: a player's, a club's or a competition's name, wherever it is written (news, tables, reports,
@@ -3711,7 +3714,7 @@ function view(){
   if (!S || SETUP_OPEN){ viewSetup(); return; }
   CTX = LIVE && LIVE.nt && !LIVE.peek ? LIVE.ntC : null;
   if (LIVE && !LIVE.peek){ viewMatch(); return; }
-  ({ nt: scrNT, ntjob: scrNTJob, friendlies: scrFriendlies, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
+  ({ home: scrHome, nt: scrNT, ntjob: scrNTJob, friendlies: scrFriendlies, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
   linkify(document.body); autoSort();
 }
 /* every table sorts: a table with a header and no sorting of its own sorts by any column on a click on its head (again
@@ -3756,7 +3759,8 @@ function menuTree(o, unread){
   const byName = L => L.slice().sort((a, b) => a.name.localeCompare(b.name));
   const cupLabel = esc(CUP === 'Cup' ? 'The Cup' : CUP);
   const T = [
-    { id: 'mgr', cls: 'mgr', label: `${esc(S.manager)}${unread ? `<span class="badge">${unread}</span>` : ''}`, v: { s: 'news' }, kids: [
+    { id: 'mgr', cls: 'mgr', label: `${esc(S.manager)}${unread ? `<span class="badge">${unread}</span>` : ''}`, v: { s: 'home' }, kids: [
+      { id: 'home', label: 'Home', v: { s: 'home' } },
       { id: 'news', label: 'News', v: { s: 'news', f: 'all' }, kids: [['all', 'All'], ['club', 'Club &amp; Board'], ['comp', 'Competitions'], ['inj', 'Injuries &amp; Bans']].map(([f, n]) => ({ id: 'n.' + f, label: n, v: { s: 'news', f } })) },
       { id: 'career', label: 'Career', v: { s: 'manager', tab: 'hist' }, kids: [
         { id: 'k.hist', label: 'History', v: { s: 'manager', tab: 'hist' } }, { id: 'k.con', label: 'Contract', v: { s: 'manager', tab: 'con' } },
@@ -3884,7 +3888,7 @@ function frame(o){
   on('#navb', back); on('#back', back);
   on('#navf', () => { if (!FWD.length) return; HIST.push(V); V = FWD.pop(); view(); });
   wireStrip(); stripAnim(); on('#cont', onContinue); on('#backm', backToMatch); on('#needs', () => { const a = pendingActs()[0]; if (a) go(a.v); });
-  on('#nextseason', () => { newSeason(); save(); V = { s: 'news' }; view(); });
+  on('#nextseason', () => { newSeason(); save(); V = { s: 'home' }; view(); });
   on('#findjob', () => go({ s: 'managers', tab: 'jobs' }));
   if (o.next) on('#next', o.next);
   document.querySelectorAll('[data-side]').forEach(b => b.addEventListener('click', () => go({ s: b.dataset.side })));
@@ -4048,7 +4052,7 @@ function viewSetup(){
       FILE = ''; if (!setupHas()) SETUP = 'menu'; viewSetup(); return; }
     LIVE = null; liveDrop();
     if (!adopt(raw)){ toast('That save no longer fits the league as it is today.'); return; }
-    save(); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'news' }; view(); });
+    save(); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'home' }; view(); });
   // settings
   if (SETUP === 'set'){ const before = JSON.stringify(OPT);
     wireSettings(viewSetup);
@@ -5138,7 +5142,7 @@ function startNewGame(){
   LIVE = null; liveDrop(); newGame(NEWG.club, name);
   Object.assign(S, { mask: NEWG.mask, nat: NEWG.nat, slot: NEWG.file || name, seen: [], short: [], fac: {}, hist: [{ d: S.date, c: S.club, t: `Hired as ${club(S.club).name} manager` }] });
   news('comp', `${D.season}/${String((D.season + 1) % 100).padStart(2, '0')} ${D.league} fixture list decided`, `The fixtures for the new season are out. ${esc(club(S.club).name)} start ${matchLine(S.rounds[0].m.find(m => m.h === S.club || m.a === S.club))}.`);
-  save(); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'news' }; view();
+  save(); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'home' }; view();
 }
 
 /* ---- the squad's slots, as a strip of boxes above the list: the eleven places, then the substitutes ---- */
@@ -5935,6 +5939,69 @@ function scrTransfers(){
     body: `<div class="sqsum"><span><b>${all.length}</b> moves this season</span><span>${esc(nm)}: <b>${ins.length}</b> in, <b>${outs.length}</b> out</span><span>spent <b>${cash(spent)}</b>, received <b>${cash(got)}</b></span></div>
       ${L.length ? `<div class="tw"><table><tbody>${rows}</tbody></table></div>` : `<p class="empty">No transfers ${f === 'all' ? 'yet this season' : 'of this kind yet'}.</p>`}` });
   document.querySelectorAll('#trf button').forEach(b => b.addEventListener('click', () => { V = { ...V, tf2: b.dataset.v }; view(); }));
+}
+/* ---- the manager's home: where the game opens. Who you are and where you stand: the job (club, and nation if you have
+   one), the board's mood and what they expect, the next match, the form, the season so far, the squad's pulse, your
+   career in numbers (every season, every trophy, the clubs), the latest of the news; one click to anywhere ---- */
+// a season's record is kept when it ends: matches, goals, the league place, the biggest win
+const officialRes = cid => fixtureRows(cid).filter(x => x.m && x.rr && x.rr.s && x.comp !== 'Friendly').map(x => ({ h: x.m.h, a: x.m.a, s: x.rr.s, w: x.rr.w, date: x.date }));
+function careerSnap(){
+  const all = officialRes(me()), C2 = S.mcar = S.mcar || [];
+  if (C2.some(x => x.s === S.season)) return;
+  const gf = r => r.h === me() ? r.s[0] : r.s[1], ga = r => r.h === me() ? r.s[1] : r.s[0];
+  const big = all.filter(r => r.w === me()).sort((a, b) => (gf(b) - ga(b)) - (gf(a) - ga(a)) || gf(b) - gf(a))[0];
+  C2.push({ s: S.season, c: me(), p: all.length, w: all.filter(r => r.w === me()).length, d: all.filter(r => r.w == null).length, gf: all.reduce((t, r) => t + gf(r), 0), ga: all.reduce((t, r) => t + ga(r), 0),
+    pos: (standings().findIndex(r => r.id === me()) + 1) || null, big: big ? { o: big.h === me() ? big.a : big.h, s: [gf(big), ga(big)], d: big.date } : null });
+}
+function scrHome(){
+  const cid = me(), c = club(cid), [k1, k2] = kitOf(cid), all = officialRes(cid);
+  const gfo = r => r.h === cid ? r.s[0] : r.s[1], gao = r => r.h === cid ? r.s[1] : r.s[0], res = r => r.w === cid ? 'W' : r.w == null ? 'D' : 'L';
+  const H0 = S.hist || [], took = H0.some(x => x.c === cid && /Hired as|Took charge/.test(x.t)) ? [] : [{ d: `${((S.mcar || []).find(x => x.c === cid) || { s: S.season }).s}-07-01`, c: cid, t: `Took charge of ${c.name}` }], H = [...took, ...H0].sort((a, b) => a.d < b.d ? -1 : 1), first = H[0] ? H[0].d : `${D.season}-07-01`, days = Math.max(0, daysBetween(first, S.date));
+  const past = (S.mcar || []).filter(x => x.s !== S.season), cur = { p: all.length, w: all.filter(r => r.w === cid).length, d: all.filter(r => r.w == null).length, gf: all.reduce((t, r) => t + gfo(r), 0), ga: all.reduce((t, r) => t + gao(r), 0) };
+  const tot = past.reduce((t, x) => ({ p: t.p + x.p, w: t.w + x.w, d: t.d + x.d, gf: t.gf + x.gf, ga: t.ga + x.ga }), cur), tl = tot.p - tot.w - tot.d;
+  const trophies = H.filter(x => /^Won the /.test(x.t)).map(x => { const k = x.t.replace(/^Won the /, '').replace(/ \d{4}/, ''); return { k: k === 'league' ? ((D.lgs[club(x.c).ctry || 'ENG'] || {}).league || 'League') : k, y: +x.d.slice(0, 4) - (+x.d.slice(5, 7) < 7 ? 1 : 0) }; });
+  const M = managers(), rank = M.findIndex(m => m.mine) + 1, sec = (M.find(m => m.mine) || {}).sec || '';
+  const st = standings(), pos = st.findIndex(r => r.id === cid) + 1, row = st[pos - 1], aim = AIMS[S.aim] || { name: '', pos: 10, text: '' };
+  const rows = fixtureRows(cid), nx = rows.find(x => x.m && !x.rr && x.date >= S.date), last = rows.filter(x => x.m && x.rr && x.rr.s && !x.rr.bg).slice(-6);
+  const sq = squadOf(cid), q = p => S.pl[p.id] || {}, avgR = p => { const r = q(p).rt || []; return r.length >= 3 ? r.reduce((a, b) => a + b, 0) / r.length : 0; };
+  const topSc = sq.filter(p => q(p).g).sort((a, b) => q(b).g - q(a).g)[0], inForm = sq.filter(p => avgR(p)).sort((a, b) => avgR(b) - avgR(a))[0];
+  const inj = sq.filter(p => q(p).injD).length, unh = sq.filter(p => (q(p).mor ?? 65) < 35).length, mor = sq.length ? sq.reduce((t, p) => t + (q(p).mor ?? 65), 0) / sq.length : 65, exp = sq.filter(p => S.con[p.id] && S.con[p.id].y <= S.season + 1).length;
+  const away = sq.filter(p => q(p).away && S.date <= q(p).away).length, un = S.news.filter(n => n.n).length, acts = pendingActs(), J = S.ntJob;
+  const box = (t, inner, more) => `<div class="ovc"><div class="ovh"><span>${t}</span>${more || ''}</div>${inner}</div>`, lnk = (v, l) => `<button class="lnk" data-hv='${JSON.stringify(v)}'>${l}</button>`;
+  const opp = x => x.m.h === cid ? x.m.a : x.m.h;
+  // the hero: you, the job, the numbers that sum you up
+  const role = `Manager of <span class="lk" data-lc="${cid}">${esc(c.name)}</span>${J ? ` · ${flag(J.n)}<span class="lk" data-ln="${esc(J.n)}">${esc(J.n)}</span> coach` : ''}`;
+  const hero = `<div class="ovclub hhero" style="--k1:${k1};--k2:${k2}">${crest(cid, 'bigcr')}<div class="ovci"><div class="ovcn">${esc(S.manager)}</div><div class="small">${role}</div>
+    <div class="ovchips"><span>${esc(S.rep || 'Unproven')} reputation</span>${rank ? `<span>${ordinal(rank)} in the ${esc(HL().country || 'league')} rankings</span>` : ''}<span>${days} day${days === 1 ? '' : 's'} in charge</span><span>${tot.p} match${tot.p === 1 ? '' : 'es'}: ${tot.w} won, ${tot.d} drawn, ${tl} lost${tot.p ? ` (${Math.round(100 * tot.w / tot.p)}%)` : ''}</span><span>${trophies.length} troph${trophies.length === 1 ? 'y' : 'ies'}</span></div></div>
+    <div class="hdate"><div class="small dim">${WD[new Date(S.date + 'T12:00:00Z').getUTCDay()]}</div><b>${fmtDate(S.date, true)}</b><div class="small dim">Season ${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</div></div></div>`;
+  const alert = acts.length ? `<div class="nact" style="margin:10px 0"><span><b>${acts.length}</b> thing${acts.length > 1 ? 's need' : ' needs'} your answer: ${acts[0].txt}</span><button class="btn sm go" id="hact">${acts[0].btn}</button></div>` : '';
+  const nextH = !nx ? '<p class="dim">No match arranged.</p>' : `<div class="ovnext">${shirt(k1, k2, 'kit sm')}<div><div class="small dim">${esc(String(nx.comp).replace(/<[^>]+>/g, ''))} · ${fmtDate(nx.date)}${nx.date === S.date ? ' · <b class="yel">today</b>' : ` · in ${daysBetween(S.date, nx.date)} day${daysBetween(S.date, nx.date) === 1 ? '' : 's'}`}</div><div class="ovvs">${nx.m.h === cid ? `<b>${esc(c.name)}</b> v <span class="lk" data-lc="${nx.m.a}">${esc(club(nx.m.a).name)}</span>` : `<span class="lk" data-lc="${nx.m.h}">${esc(club(nx.m.h).name)}</span> v <b>${esc(c.name)}</b>`}</div><div style="margin-top:4px">${(() => { try { return oddsHTML(cid, nx.m.h, nx.m.a, !!nx.neutral, 'mini', nx.date); } catch (e) { return ''; } })()}</div></div></div>`;
+  const ntNext = J ? ntAllFx().filter(f => !f.s && (f.h === J.n || f.a === J.n)).sort((a, b) => a.d < b.d ? -1 : 1)[0] : null, ntRec = J ? (J.rec || []) : [];
+  const ntH = J ? `<div class="small dim">${ntRec.length} match${ntRec.length === 1 ? '' : 'es'} in charge: ${ntRec.filter(x => x.r === 'W').length} won, ${ntRec.filter(x => x.r === 'D').length} drawn, ${ntRec.filter(x => x.r === 'L').length} lost</div>${ntNext ? `<p style="margin:6px 0">Next: ${ntNext.h === J.n ? 'v' : 'at'} ${flag(ntNext.h === J.n ? ntNext.a : ntNext.h)}<span class="lk" data-ln="${esc(ntNext.h === J.n ? ntNext.a : ntNext.h)}">${esc(ntNext.h === J.n ? ntNext.a : ntNext.h)}</span>, ${fmtDate(ntNext.d)} <span class="small dim">(${esc(ntLabel(ntNext))})</span></p>` : '<p class="dim">Nothing arranged yet.</p>'}<div class="form">${ntRec.slice(-6).map(x => `<span class="${x.r}" title="${esc(x.o)} ${x.s[0]}-${x.s[1]}">${x.r}</span>`).join('')}</div>` : '';
+  const formH = last.length ? `<table><tbody>${last.slice().reverse().map(x => { const r = x.rr.w === cid ? 'W' : x.rr.w == null ? 'D' : 'L', h = x.m.h === cid; return `<tr><td><span class="form"><span class="${r}">${r}</span></span></td><td>${h ? '' : '<span class="dim">at</span> '}<span class="lk" data-lc="${opp(x)}">${esc(club(opp(x)).name)}</span></td><td class="small dim">${esc(String(x.comp).replace(/<[^>]+>/g, '').replace(/^League$/, D.league).replace(/, matchday.*$/, ''))}</td><td class="r">${x.rr.s[0]}-${x.rr.s[1]}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">No matches yet.</p>';
+  const confW = S.conf >= 75 ? 'Delighted' : S.conf >= 60 ? 'Pleased' : S.conf >= 45 ? 'Satisfied' : S.conf >= 30 ? 'Concerned' : 'Losing patience';
+  const boardH = `<div class="hmeter"><i style="width:${Math.round(S.conf)}%;background:${S.conf >= 60 ? 'var(--win)' : S.conf >= 40 ? 'var(--gold)' : 'var(--loss)'}"></i></div><dl class="kv" style="margin-top:8px"><dt>The board</dt><dd><b>${confW}</b></dd><dt>Expectation</dt><dd>${esc(aim.name)}</dd><dt>League position</dt><dd>${S.round && pos ? `<b>${ordinal(pos)}</b> <span class="small dim">(aim: ${ordinal(aim.pos)} or better)</span>` : 'Not started'}</dd><dt>Job security</dt><dd>${esc(sec)}</dd><dt>Balance</dt><dd>${cash(S.fin.bal)}</dd><dt>Transfer budget</dt><dd>${cash(S.fin.budget)}</dd></dl>`;
+  const seasonH = `<dl class="kv"><dt>${esc(D.league)}</dt><dd>${S.round && row ? `${ordinal(pos)}, ${row.w * 3 + row.d} points from ${row.p}` : 'Not started'}</dd><dt>All matches</dt><dd>${cur.p}: ${cur.w} won, ${cur.d} drawn, ${cur.p - cur.w - cur.d} lost</dd><dt>Goals</dt><dd>${cur.gf} for, ${cur.ga} against</dd>${euOn() && euCompOf(cid) ? `<dt>Europe</dt><dd><span class="lk" data-lm="eu:${euCompOf(cid)}">${EU_NAME[euCompOf(cid)]}</span></dd>` : ''}${topSc ? `<dt>Top scorer</dt><dd><span class="lk" data-lp="${topSc.id}">${esc(cmName(topSc.n))}</span>, ${q(topSc).g}</dd>` : ''}${inForm ? `<dt>In form</dt><dd><span class="lk" data-lp="${inForm.id}">${esc(cmName(inForm.n))}</span>, ${avgR(inForm).toFixed(2)} average</dd>` : ''}</dl>`;
+  const pulseH = `<dl class="kv"><dt>Players</dt><dd>${sq.length}</dd><dt>Morale</dt><dd>${morWord(mor)}</dd><dt>Injured</dt><dd>${inj || 'None'}</dd>${unh ? `<dt>Unhappy</dt><dd class="yel">${unh}</dd>` : ''}${away ? `<dt>With their countries</dt><dd>${away}</dd>` : ''}<dt>Contracts ending</dt><dd>${exp ? `<span class="yel">${exp}</span> this season` : 'None this season'}</dd></dl>`;
+  const seasons = [...past, { s: S.season, c: cid, ...cur, pos: S.round ? pos : null, now: 1 }].slice().reverse();
+  const careerH = `<table><thead><tr><th>Season</th><th>Club</th><th class="c">Pos</th><th class="c">P</th><th class="c">W</th><th class="c">D</th><th class="c">L</th><th class="c">GD</th></tr></thead><tbody>${seasons.map(x => `<tr class="${x.now ? 'me' : ''}"><td>${x.s}/${String((x.s + 1) % 100).padStart(2, '0')}</td><td><span class="lk" data-lc="${x.c}">${esc(club(x.c).name)}</span></td><td class="c">${x.pos ? ordinal(x.pos) : '-'}</td><td class="c">${x.p}</td><td class="c">${x.w}</td><td class="c">${x.d}</td><td class="c">${x.p - x.w - x.d}</td><td class="c">${x.gf - x.ga > 0 ? '+' : ''}${x.gf - x.ga}</td></tr>`).join('')}</tbody></table>`;
+  const cab = trophies.length ? (() => { const by = {}; for (const t of trophies) (by[t.k] = by[t.k] || []).push(t.y); return `<div class="troph">${Object.entries(by).map(([k, L]) => `<div class="tph"><div class="tphn">${L.length}</div><div><b>${esc(k)}</b><div class="small dim">${L.map(y => `${String(y % 100).padStart(2, '0')}/${String((y + 1) % 100).padStart(2, '0')}`).join(', ')}</div></div></div>`).join('')}</div>`; })() : '<p class="dim">The cabinet is empty. For now.</p>';
+  const bigs = [...past.filter(x => x.big).map(x => x.big), ...(() => { const b = all.filter(r => r.w === cid).sort((a, b2) => (gfo(b2) - gao(b2)) - (gfo(a) - gao(a)))[0]; return b ? [{ o: b.h === cid ? b.a : b.h, s: [gfo(b), gao(b)], d: b.date }] : []; })()].sort((a, b) => (b.s[0] - b.s[1]) - (a.s[0] - a.s[1]))[0];
+  let streak = 0; for (const r of all.slice().reverse()){ if (r.w === cid || r.w == null) streak++; else break; }
+  const recH = `<dl class="kv"><dt>Clubs managed</dt><dd>${[...new Set([...H.map(x => x.c), cid])].filter(x => club(x).name !== '?').map(x => `<span class="lk" data-lc="${x}">${esc(club(x).name)}</span>`).join(', ')}</dd>${bigs ? `<dt>Biggest win</dt><dd>${bigs.s[0]}-${bigs.s[1]} v <span class="lk" data-lc="${bigs.o}">${esc(club(bigs.o).name)}</span> <span class="small dim">(${shortDate(bigs.d)})</span></dd>` : ''}<dt>Unbeaten run</dt><dd>${streak} match${streak === 1 ? '' : 'es'}</dd><dt>Goals</dt><dd>${tot.gf} for, ${tot.ga} against</dd></dl>`;
+  const tlH = H.length ? `<table><tbody>${H.slice(-7).reverse().map(x => `<tr><td><span class="pill">${shortDate(x.d)}</span></td><td class="small">${esc(x.t)}</td></tr>`).join('')}</tbody></table>` : '<p class="dim">The story starts now.</p>';
+  const newsH = `<table><tbody>${S.news.slice(0, 5).map((n, i) => `<tr class="click" data-hn="${i}"><td class="small dim">${shortDate(n.d)}</td><td>${n.n ? '<b>' : ''}${esc(n.t)}${n.n ? '</b>' : ''}</td></tr>`).join('')}</tbody></table>`;
+  const body = `${hero}${alert}<div class="ovgrid">
+    ${box('Next match', nextH, lnk({ s: 'club', cid, tab: 'fix' }, 'Fixtures'))}${box('The board', boardH, lnk({ s: 'club', cid, tab: 'board' }, 'Board'))}
+    ${box('Form', formH, lnk({ s: 'club', cid, tab: 'last' }, 'Last match'))}${box('This season', seasonH, lnk({ s: 'comp', tab: 'table' }, 'Table'))}
+    ${J ? box(`${flag(J.n)} ${esc(J.n)}`, ntH, lnk({ s: 'nation', n: J.n }, 'National team')) : ''}${box('The squad', pulseH, lnk({ s: 'club', cid, tab: 'squad' }, 'Squad'))}
+    ${box(`Inbox${un ? ` <span class="badge">${un}</span>` : ''}`, newsH, lnk({ s: 'news', f: 'all' }, 'All news'))}${box('Trophy cabinet', cab, lnk({ s: 'manager', tab: 'hist' }, 'Career'))}
+    ${box('Career, season by season', careerH)}${box('Records', recH)}${box('Milestones', tlH, lnk({ s: 'manager', tab: 'hist' }, 'History'))}
+  </div>`;
+  frame(ofClub(cid, { title: 'Home', short: 'Home', sub: esc(S.manager), body }));
+  document.querySelectorAll('[data-hv]').forEach(b => b.addEventListener('click', () => go(JSON.parse(b.dataset.hv))));
+  document.querySelectorAll('[data-hn]').forEach(r => r.addEventListener('click', () => { const i = +r.dataset.hn; go({ s: 'news', f: 'all', i }); }));
+  const ha = $('#hact'); if (ha) ha.addEventListener('click', () => go(acts[0].v));
 }
 function scrManager(){
   const tab = V.tab || 'hist', all = allResults().filter(r => r.h === me() || r.a === me());
