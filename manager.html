@@ -2438,6 +2438,7 @@ function passDays(n){
   chTick(); awTick();
   scoutTick();
   transferTick();
+  try { promTick(); } catch (e) { console.warn(e); }
   contractWarn();
   if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
   intlTick(); ntTick();
@@ -3510,7 +3511,7 @@ function retireAndIntake(){
 function newSeason(){
   if (S.press) S.press.done = true;
   try { careerSnap(); } catch (e) { console.warn(e); }
-  S.prom = (S.prom || []).filter(x => x.k === 'pay');   // promises of football are for the season they were made in
+  S.prom = (S.prom || []).filter(x => x.k === 'pay' || x.k === 'go');   // promises of football are for the season they were made in
   // up and down: the league's bottom three swap places with the Championship's top two and its play-off winner
   if (S.ch && S.ch.up && (S.down || []).length && prOK(HOME, S.down, S.ch.up)){ const dn = S.down;
     S.lg = D.clubs.map(c => c.id).filter(id => !dn.includes(id)).concat(S.ch.up); setLeagues(S.lg);
@@ -3761,7 +3762,7 @@ function menuTree(o, unread){
   const mine = me(), cv = (cid, tab) => ({ s: 'club', cid, tab });
   // your club in the order of a week's work: the side, the plan, the games, then the business; other clubs as a scout sees them
   const clubKids = cid => (cid === mine
-    ? [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['tactics', 'Tactics'], ['training', 'Training'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['frd', 'Friendlies'], ['tr', 'Transfers'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']]
+    ? [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['frd', 'Friendlies'], ['tr', 'Transfers'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']]
     : [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'General Info']])
     .map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'frd' ? { s: 'friendlies' } : t === 'tr' ? { s: 'transfers' } : t === 'squad' ? { ...cv(cid, 'squad'), team: 'first' } : t === 'res' ? { ...cv(cid, 'squad'), team: 'res' } : cv(cid, t) }));
   const otherKids = cid => [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']].map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'squad' ? { ...cv(cid, t), team: 'first' } : cv(cid, t) }));
@@ -4107,9 +4108,9 @@ function scrClub(){
   const cid = V.cid || me(), mine = cid === me(), c = club(cid), sec = !LG.has(cid), tab = sec && !['ov', 'squad', 'hist', 'info'].includes(V.tab) ? 'ov' : V.tab || 'ov';
   if (sec && !S.tac[cid]) S.tac[cid] = autoTactic(cid);
   const top = sec ? [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']] : [['ov', 'Overview'], ['squad', 'Squad'], ['transfers', 'Transfers'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', mine ? 'Finances &amp; Info' : 'General Info']];
-  const bottom = sec ? [] : mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['league', esc(D.league)], ['last', 'Last Match']];
+  const bottom = sec ? [] : mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['league', esc(D.league)], ['last', 'Last Match']];
   const o = ofClub(cid, { nav: clubNav(cid), title: esc(fullName(cid)), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'ov' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
-  (({ ov: clubOverview, hist: clubHistory, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard })[tab] || clubSquad)(cid, o);
+  (({ ov: clubOverview, hist: clubHistory, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard, ...(mine ? { dress: clubDressing } : {}) })[tab] || clubSquad)(cid, o);
 }
 function playerFlags(p){
   const q = ps(p.id), out = [];
@@ -5327,7 +5328,7 @@ function transferTick(){
     else { b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} have rejected your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b> out of hand${riv ? `: they do not sell cheaply to a rival (the ${esc(riv)})` : ''}.`); }
   }
   // other clubs' bids for your players, open a week
-  for (const o of S.offers) if (o.st === 'open' && (daysBetween(o.d, S.date) > 7 || !open)){ o.st = 'gone'; }
+  for (const o of S.offers) if (o.st === 'open' && (daysBetween(o.d, S.date) > 7 || !open)){ o.st = 'gone'; try { bidRefused(o, true); } catch (e) { console.warn(e); } }
   rumours(open);
   if (!open) return;
   const days = Math.max(1, Math.min(14, daysBetween(S.lastTr || S.date, S.date))); S.lastTr = S.date;
@@ -5399,7 +5400,7 @@ function wireTransfer(p){
     news('club', `${p.n} signs`, `<b>${esc(p.n)}</b> joins ${esc(club(me()).name)} for ${cash(b.fee)} on ${wage(b.w)}, until 30.6.${String(S.season + y).slice(2)}.`); toast(`${cmName(p.n)} signs!`); });
   on('[data-oacc]', el => { const o = S.offers[+el.dataset.oacc]; if (!o || o.st !== 'open') return; o.st = 'acc'; S.con[p.id] = { y: S.season + 3, w: wageDemand(p) }; moveP(p, o.from, o.fee);
     news('club', `${p.n} sold`, `<b>${esc(p.n)}</b> leaves for ${esc(club(o.from).name)} for ${cash(o.fee)}.`); V = { s: 'club', cid: me(), tab: 'squad' }; });
-  on('[data-orej]', el => { const o = S.offers[+el.dataset.orej]; if (o) o.st = 'rej'; });
+  on('[data-orej]', el => { const o = S.offers[+el.dataset.orej]; if (o && o.st === 'open'){ o.st = 'rej'; bidRefused(o); } });
   on('#loanout', () => { const to = D.allClubs.filter(c => c.id !== me() && c.q < club(me()).q && squadOf(c.id).length < 32).sort(() => Math.random() - .5)[0];
     if (!to){ toast('No club wants him just now.'); return; }
     (S.loans = S.loans || {})[p.id] = { from: me(), to: to.id }; moveP(p, to.id, 0, 'Loan');
@@ -5751,41 +5752,123 @@ const roleOf = p => (S.role || {})[p.id] || null;
 const demandW = p => { const c = S.con[p.id] || { w: 0 }; return Math.round(Math.max(c.w * 1.15, p.val * 1500) / 500) * 500; };
 const recentRt = q => { const L = (q.rt || []).slice(-5); return L.length >= 2 ? L.reduce((a, b) => a + b, 0) / L.length : null; };
 const promOf = p => (S.prom || []).filter(x => x.id === p.id);
+/* promises: what you can promise a player, how long you have, how it is measured, and what it is worth to him.
+   A soft promise (more chances over the season, a contract by the summer) lifts him less and gives you longer */
+const PROMS = {
+  time: { n: 'Promise him first-team football in the next few games', say: 'first-team football in the next few games' },
+  time2: { n: 'Promise him more chances over the season', say: 'more chances over the season' },
+  youth: { n: 'Promise him a first-team chance this season', say: 'a first-team chance this season' },
+  pay: { n: 'Promise him a new contract within a month', say: 'a new contract within a month' },
+  pay2: { n: 'Promise him a new contract by the end of the season', say: 'a new contract by the end of the season' },
+  sign: { n: 'Promise to sign a quality player', say: 'to bring in a player of real quality' },
+  go: { n: 'Promise to let him go if a fair offer comes', say: 'to let him go if a fair offer comes' },
+};
+const promKind = x => x.k === 'time' && x.soft ? 'time2' : x.k === 'pay' && x.soft ? 'pay2' : x.k;
+const promSay = x => (PROMS[promKind(x)] || { say: 'something' }).say;
+// your word in the dressing room: broken promises count against it, kept ones (half as much) for it
+const credScore = () => (S.trust || 0) - (S.kept || 0) * .5;
+const credWord = () => { const c = credScore(); return c <= -1.5 ? 'Your word is trusted' : c < 1 ? 'They believe you' : c < 2.5 ? 'They have their doubts' : 'Nobody believes your promises'; };
+const doubts = () => clamp((credScore() - .5) * .25, 0, .7);
+const winEnd = () => { const W = WINDOWS(), cur = W.find(([a, b]) => S.date >= a && S.date <= b); if (cur) return cur[1]; const nx = W.find(([a]) => S.date < a); return nx ? nx[1] : `${S.season + 1}-09-01`; };
+const seasonEnd = () => `${S.season + 1}-05-31`;
+// how a promise stands: what is done, what is left, by when
+function promState(x){
+  const p = P.get(x.id), q = ps(x.id);
+  if (x.k === 'time' || x.k === 'youth'){ const got = Math.max(0, q.apps - x.a0), left = Math.max(0, x.r + x.w - S.round);
+    return { prog: `${Math.min(got, x.n)} of ${x.n} games`, due: left ? `${left} league game${left > 1 ? 's' : ''} left` : 'now', urgent: left <= 2 && got < x.n }; }
+  const dl = daysBetween(S.date, x.by);
+  const due = dl > 0 ? `by ${fmtDate(x.by)} (${dl} day${dl > 1 ? 's' : ''})` : 'now';
+  if (x.k === 'pay') return { prog: (S.renew || {})[x.id] === S.season ? 'Signed' : 'Not offered yet', due, urgent: dl <= 7 };
+  if (x.k === 'sign') return { prog: `A player of ${x.bar}+ wanted`, due, urgent: dl <= 7 };
+  if (x.k === 'go') return { prog: `A bid of ${cash(x.fair)} or more`, due, urgent: false };
+  return { prog: '', due, urgent: false };
+}
+function promLog(x, how){ (S.promLog = S.promLog || []).unshift({ d: S.date, id: x.id, n: (P.get(x.id) || {}).n || '?', k: promKind(x), how }); S.promLog = S.promLog.slice(0, 30); }
+const squadMor = (dm, but) => { for (const o of squadOf(me())) if (o.id !== but){ const oq = ps(o.id); oq.mor = clamp(oq.mor + dm, 15, 100); } };
+function promKept(x, txt){ const p = P.get(x.id), q = ps(x.id);
+  if (p && p.club === me()) q.mor = clamp(q.mor + (x.soft ? 6 : 8), 15, 100);
+  S.kept = (S.kept || 0) + 1; S.prom = S.prom.filter(y => y !== x); promLog(x, 'kept');
+  if (p && p.club === me() && squadRank(p) < 5) squadMor(1, p.id);
+  news('club', `${p ? p.n : 'He'} ${p && p.club === me() ? 'is happy' : 'thanks you'}`, txt || `${esc(p.n)} says you kept your word: ${promSay(x)}.`, p ? { id: p.id } : undefined); }
+function promBroken(x, extra){ const p = P.get(x.id), q = ps(x.id), key = squadRank(p) < 5;
+  q.mor = clamp(q.mor - (x.k === 'go' ? 25 : x.soft ? 14 : 20), 15, 100); q.brk = S.season;
+  S.trust = (S.trust || 0) + 1; S.prom = S.prom.filter(y => y !== x); promLog(x, 'broken');
+  if (q.req !== S.season && !((x.k === 'time' || x.k === 'youth') && squadRank(p) >= 18)) q.req = S.season;
+  wantsWord(p); squadMor(key ? -4 : -2, p.id);
+  news('club', `${p.n} feels let down`, `${esc(p.n)} says you broke your promise of ${promSay(x)}.${extra ? ' ' + extra : ''}${q.req === S.season ? ' He has handed in a transfer request.' : ''} ${key ? 'He is one of the leaders of the dressing room, and the whole squad feel it.' : 'The rest of the squad noticed too.'}`, { id: p.id }); }
+// every day: promises kept, broken, about to fall due, or (a promise to let him go) lapsed with no fair offer
+function promTick(){
+  if (!me() || !S.prom || !S.prom.length) return;
+  for (const x of S.prom.slice()){ const p = P.get(x.id);
+    if (!p){ S.prom = S.prom.filter(y => y !== x); continue; }
+    if (p.club !== me() || onLoan(p)){ S.prom = S.prom.filter(y => y !== x);
+      if (x.k === 'go' && !onLoan(p)) promKept(x, `<b>${esc(p.n)}</b> thanks you on his way out to ${esc(club(p.club).name)}: you kept your word. The dressing room notice that you did.`);
+      continue; }
+    const q = ps(p.id), st = promState(x);
+    let kept = false, late = false;
+    if (x.k === 'time' || x.k === 'youth'){ kept = q.apps - x.a0 >= x.n && (x.k !== 'youth' || !inRes(p)); late = S.round >= x.r + x.w; }
+    if (x.k === 'pay'){ kept = (S.renew || {})[p.id] === S.season && S.con[p.id].w > x.w0; late = S.date > x.by; }
+    if (x.k === 'sign'){ kept = (S.transfers || []).some(t => t.d >= x.d && t.id !== p.id && t.fee !== 'Loan' && P.get(t.id) && P.get(t.id).club === me() && ovrNow(P.get(t.id)) >= x.bar); late = S.date > x.by; }
+    if (x.k === 'go'){ if (S.date > x.by){ S.prom = S.prom.filter(y => y !== x); promLog(x, 'lapsed');
+        news('club', `No offer for ${p.n}`, `No club came in with a fair offer for <b>${esc(p.n)}</b>, so he stays for now. He does not blame you, but he still wants to go.`, { id: p.id }); } continue; }
+    if (kept) promKept(x, x.k === 'sign' ? `${esc(p.n)} is pleased with the new arrival: you promised quality and you brought it in.` : x.k === 'youth' ? `${esc(p.n)} got his chance in the first team, as you promised.` : null);
+    else if (late) promBroken(x);
+    else if (st.urgent && !x.warn){ x.warn = 1;
+      news('club', `${p.n} reminds you`, `${esc(p.n)} has not forgotten your promise of ${promSay(x)}: ${st.prog}, ${st.due}.`, { id: p.id }); } }
+}
+// a bid of yours turned down: a promise to let him go broken, or a player upset you stood in the way of a bigger club
+function bidRefused(o, ignored){
+  const p = P.get(o.id); if (!p || p.club !== me() || onLoan(p)) return;
+  const q = ps(p.id), g = (S.prom || []).find(x => x.id === p.id && x.k === 'go');
+  if (g){ if (o.fee >= g.fair) promBroken(g, `${esc(club(o.from).name)} offered ${cash(o.fee)} and you ${ignored ? 'let the offer lapse' : 'turned it down'}.`); return; }
+  const big = (club(o.from).q || 0) > club(me()).q + 2;
+  if (!big || q.rej || rng(`rej-${p.id}-${o.d}`)() > .6) return;
+  q.rej = { c: o.from, d: S.date }; q.mor = clamp(q.mor - 6, 15, 100); wantsWord(p);
+  news('club', `${p.n} unhappy about the bid`, `<b>${esc(p.n)}</b> is upset that you ${ignored ? 'ignored' : 'turned down'} ${esc(club(o.from).name)}'s offer. He wants a word.`, { id: p.id });
+}
 function concerns(p){
   if (p.club !== me() || (S.loans || {})[p.id] || onLoan(p)) return [];
-  const q = ps(p.id), R = S.round, out = [], role = roleOf(p), c = S.con[p.id];
+  const q = ps(p.id), R = S.round, out = [], role = roleOf(p), c = S.con[p.id], pr = promOf(p), has = k => pr.some(x => x.k === k);
   const need = role ? ROLES.find(r => r[0] === role)[2] : squadRank(p) < 16 && !inRes(p) ? .35 : 0;
-  if (R >= 6 && need && !q.injD && q.apps < R * need && !promOf(p).some(x => x.k === 'time'))
+  if (R >= 6 && need && !q.injD && q.apps < R * need && !has('time'))
     out.push({ k: 'time', t: role && need > .3 ? `His contract made him a ${roleName(role).toLowerCase()}, and he is not playing like one.` : 'He wants more first-team football.' });
-  if (c && R >= 4 && q.apps >= R * .5 && demandW(p) > c.w * 1.4 && (S.renew || {})[p.id] !== S.season && !promOf(p).some(x => x.k === 'pay'))
+  if (R >= 6 && inRes(p) && p.age >= 18 && p.age <= 21 && squadRank(p) < 22 && !q.injD && !has('youth'))
+    out.push({ k: 'res', t: 'He feels ready for the first team and wants his chance.' });
+  if (c && R >= 4 && q.apps >= R * .5 && demandW(p) > c.w * 1.4 && (S.renew || {})[p.id] !== S.season && !has('pay'))
     out.push({ k: 'pay', t: 'He feels his wage no longer matches his standing in the side.' });
-  if (R >= 19 && squadRank(p) < 3 && ovrNow(p) > club(me()).q + 6 && standings().findIndex(r => r.id === me()) >= 10)
+  if (R >= 19 && squadRank(p) < 3 && ovrNow(p) > club(me()).q + 6 && standings().findIndex(r => r.id === me()) >= 10 && !has('sign'))
     out.push({ k: 'amb', t: 'He wonders whether the club is ambitious enough for him.' });
-  if (q.req === S.season) out.push({ k: 'req', t: 'He has asked to leave.' });
+  if (q.rej && daysBetween(q.rej.d, S.date) <= 45 && !has('pay')) out.push({ k: 'rej', t: `He is upset that you turned down ${club(q.rej.c).name}'s offer for him.` });
+  if (q.req === S.season) out.push({ k: 'req', t: has('go') ? 'He has asked to leave. You promised to let him go for a fair offer.' : 'He has asked to leave.' });
   return out;
 }
-// after each league game: concerns wear morale down, promises are kept or broken
+// after each league game: concerns wear morale down
 function dressingRoom(){
+  if (!me()) return;
   S.cnews = S.cnews || {}; S.prom = S.prom || [];
   for (const p of squadOf(me())){ const q = ps(p.id), cs = concerns(p);
-    for (const c of cs){ if (c.k === 'req') continue; q.mor = clamp(q.mor - (c.k === 'amb' ? 1 : 2), 15, 100);
+    if (q.rej && daysBetween(q.rej.d, S.date) > 45) delete q.rej;
+    for (const c of cs){ if (c.k === 'req') continue; q.mor = clamp(q.mor - (c.k === 'amb' || c.k === 'res' ? 1 : 2), 15, 100);
       const key = `${S.season}-${p.id}-${c.k}`; if (S.cnews[key]) continue; S.cnews[key] = 1; wantsWord(p);
       news('club', `${p.n} wants a word`, `${esc(p.n)}: ${c.t} Have a talk with him (his Talk screen).`, { id: p.id }); } }
-  for (const pr of S.prom.slice()){ const p = P.get(pr.id); if (!p || p.club !== me()){ S.prom = S.prom.filter(x => x !== pr); continue; }
-    const q = ps(p.id);
-    const kept = pr.k === 'time' ? q.apps - pr.a0 >= 3 : (S.renew || {})[p.id] === S.season && S.con[p.id].w > pr.w0;
-    const late = pr.k === 'time' ? S.round >= pr.r + 6 : S.date > pr.by;
-    if (kept){ q.mor = clamp(q.mor + 8, 15, 100); S.prom = S.prom.filter(x => x !== pr); news('club', `${p.n} is happy`, `${esc(p.n)} says you kept your word${pr.k === 'time' ? ': he is playing again' : ''}.`); }
-    else if (late){ q.mor = clamp(q.mor - 20, 15, 100); S.trust = (S.trust || 0) + 1; S.prom = S.prom.filter(x => x !== pr);
-      if (q.req !== S.season && !(pr.k === 'time' && squadRank(p) >= 18)) q.req = S.season;
-      wantsWord(p);
-      news('club', `${p.n} feels let down`, `${esc(p.n)} says you broke your promise ${pr.k === 'time' ? 'of first-team football' : 'of a new contract'}.${q.req === S.season ? ' He has handed in a transfer request.' : ''} The rest of the squad noticed too.`, { id: p.id });
-      for (const o of squadOf(me())) if (o.id !== p.id){ const oq = ps(o.id); oq.mor = clamp(oq.mor - 2, 15, 100); } } }
+  promTick();
 }
-const TALKS = [['praise', 'Praise his form'], ['crit', 'Tell him to do better'], ['calm', 'Tell him he is part of the plans'], ['time', 'Promise him more first-team football'], ['pay', 'Promise him a new contract soon']];
+const TALKS = [['praise', 'Praise his form'], ['crit', 'Tell him to do better'], ['calm', 'Tell him he is part of the plans'], ...Object.entries(PROMS).map(([k, v]) => [k, v.n])];
+// which promises make sense for him now
+function talkOpts(p){
+  const q = ps(p.id), cs = concerns(p).map(c => c.k), pr = promOf(p), has = k => pr.some(x => x.k === k), res = inRes(p);
+  return TALKS.filter(([k]) => {
+    if (k === 'time' || k === 'time2') return !res && !has('time') && q.req !== S.season || cs.includes('time') && !has('time');
+    if (k === 'youth') return res && p.age <= 21 && !has('youth');
+    if (k === 'pay' || k === 'pay2') return !has('pay') && q.brk !== S.season;
+    if (k === 'sign') return !has('sign') && (cs.includes('amb') || squadRank(p) < 5);
+    if (k === 'go') return q.req === S.season && !has('go');
+    return true; });
+}
 const talkWait = p => { const d = (S.talk || {})[p.id]; return d ? Math.max(0, 14 - daysBetween(d, S.date)) : 0; };
 function talkTo(p, k){
-  const q = ps(p.id), mm = manMgmt(), rr = rng(`tk-${p.id}-${S.date}-${k}`)(), fr = recentRt(q), cs = concerns(p).map(c => c.k), trust = S.trust || 0;
+  const q = ps(p.id), mm = manMgmt(), rr = rng(`tk-${p.id}-${S.date}-${k}`)(), fr = recentRt(q), cs = concerns(p).map(c => c.k), dbt = doubts();
+  const doubted = rr < dbt, add = o => (S.prom = S.prom || []).push({ id: p.id, d: S.date, ...o });
   let dm = 0, say = '';
   if (k === 'praise'){ if (fr == null){ dm = 1; say = 'He thanks you, though he knows he has hardly played.'; }
     else if (fr >= 7){ dm = 6 + mm * .3; say = 'He is delighted that you have noticed.'; }
@@ -5794,25 +5877,53 @@ function talkTo(p, k){
   if (k === 'crit'){ if (fr == null || fr >= 6.9){ dm = -10; say = 'He is angry: he feels he has done nothing to deserve that.'; }
     else if (rr < .4 + mm * .02){ dm = 6; say = 'He takes it on the chin and promises to work harder.'; }
     else { dm = -7; say = 'He takes it badly and storms out.'; } }
-  if (k === 'calm'){ dm = q.mor < 55 ? 3 + mm * .25 : 1; say = q.mor < 55 ? 'He is glad to hear it.' : 'He nods: he never doubted it.'; if (cs.includes('time') || cs.includes('pay')){ dm = 1; say = 'He listens, but words alone do not change what is on his mind.'; } }
-  if (k === 'time'){ if (q.apps >= S.round * .6 && S.round >= 4){ dm = 1; say = 'He thanks you, but he is playing already.'; }
-    else if (trust >= 2 && rr < .5){ dm = -2; say = 'He has heard promises like that before.'; }
-    else { dm = 12; say = 'He is happy with that. He expects to play in the next few games.'; (S.prom = S.prom || []).push({ id: p.id, k: 'time', r: S.round, a0: q.apps }); } }
-  if (k === 'pay'){ const c = S.con[p.id];
-    if (!cs.includes('pay') && c.y - S.season > 2){ dm = 0; say = 'He did not ask for one, but he will hold you to it.'; }
-    else if (trust >= 2 && rr < .5){ dm = -2; say = 'He will believe it when he sees it.'; }
-    else { dm = 10; say = `He is pleased. He expects an offer by ${fmtDate(day(S.date, 30))}.`; }
-    if (dm >= 0) (S.prom = S.prom || []).push({ id: p.id, k: 'pay', by: day(S.date, 30), w0: c.w }); }
+  if (k === 'calm'){ dm = q.mor < 55 ? 3 + mm * .25 : 1; say = q.mor < 55 ? 'He is glad to hear it.' : 'He nods: he never doubted it.';
+    if (cs.includes('rej') && rr < .3 + mm * .03){ delete q.rej; dm = 4; say = 'He accepts that you want to build the side around him, and lets the bid go.'; }
+    else if (cs.some(c => ['time', 'pay', 'rej', 'res', 'amb'].includes(c))){ dm = 1; say = 'He listens, but words alone do not change what is on his mind.'; } }
+  if (k === 'time' || k === 'time2'){ const soft = k === 'time2';
+    if (q.apps >= S.round * .6 && S.round >= 4){ dm = 1; say = 'He thanks you, but he is playing already.'; }
+    else if (doubted){ dm = -2; say = 'He has heard promises like that before.'; }
+    else { dm = soft ? 7 : 12; say = soft ? 'He will take that. He expects to play more over the coming weeks.' : 'He is happy with that. He expects to play in the next few games.';
+      add({ k: 'time', r: S.round, a0: q.apps, n: soft ? 5 : 3, w: soft ? 12 : 6, ...(soft ? { soft: 1 } : {}) }); } }
+  if (k === 'youth'){ if (doubted){ dm = -2; say = 'He has heard that before, from you.'; }
+    else { dm = 10; say = 'His face lights up. He will be ready when the call comes.'; add({ k: 'youth', r: S.round, a0: q.apps, n: 2, w: 10 }); } }
+  if (k === 'pay' || k === 'pay2'){ const c = S.con[p.id], soft = k === 'pay2', by = soft ? seasonEnd() : day(S.date, 30);
+    if (!cs.includes('pay') && !cs.includes('rej') && c.y - S.season > 2){ dm = 0; say = 'He did not ask for one, but he will hold you to it.'; }
+    else if (doubted){ dm = -2; say = 'He will believe it when he sees it.'; }
+    else { dm = soft ? 6 : 10; say = `He is pleased. He expects an offer by ${fmtDate(by)}.`; if (cs.includes('rej')) delete q.rej; }
+    if (dm >= 0) add({ k: 'pay', by, w0: c.w, ...(soft ? { soft: 1 } : {}) }); }
+  if (k === 'sign'){ const sq = squadOf(me()).filter(x => x.id !== p.id && !onLoan(x)).map(ovrNow).sort((a, b) => b - a), bar = Math.round(Math.max(sq[3] || 60, ovrNow(p) - 4)), by = winEnd();
+    if (doubted){ dm = -2; say = 'He shrugs. He has heard managers say that before.'; }
+    else { dm = cs.includes('amb') ? 10 : 4; say = `He is glad to hear the club means business. He expects a real signing by ${fmtDate(by)}.`; add({ k: 'sign', by, bar }); } }
+  if (k === 'go'){ const fair = roundFee(p.val * 1e6 * .9), by = winEnd();
+    dm = 10; say = `He calms down. He expects you to accept any offer of ${cash(fair)} or more by ${fmtDate(by)}.`; add({ k: 'go', by, fair }); }
   q.mor = clamp(Math.round(q.mor + dm), 15, 100); (S.talk = S.talk || {})[p.id] = S.date; if (S.word) delete S.word[p.id];
-  if (q.req === S.season && q.mor >= 60 && k !== 'crit'){ q.req = null; say += ' He has withdrawn his transfer request.'; }
+  if (q.req === S.season && q.mor >= 60 && k !== 'crit' && k !== 'go'){ q.req = null; say += ' He has withdrawn his transfer request.'; }
   return { say, dm };
 }
+const promLi = x => { const s = promState(x); return `<li class="yel">You promised him ${promSay(x)}: ${s.prog}${s.due ? `, ${s.due}` : ''}.</li>`; };
 function talkTab(p){
   const q = ps(p.id), cs = concerns(p), w = talkWait(p), pr = promOf(p), role = roleOf(p);
-  return `<div class="ptitle">Morale</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Morale</dt><dd><b>${morWord(q.mor)}</b></dd><dt>Role</dt><dd>${role ? roleName(role) + ' <span class="dim small">(agreed in his contract)</span>' : '<span class="dim">Not set</span>'}</dd><dt>Form</dt><dd>${recentRt(q) != null ? recentRt(q).toFixed(1) + ' <span class="dim small">(last five)</span>' : '<span class="dim">Has hardly played</span>'}</dd>${prospectWord(p) ? `<dt>Assistant's view</dt><dd>${prospectWord(p)}</dd>` : ''}</dl>
-    <div class="ptitle">On his mind</div>${cs.length || pr.length ? `<ul class="hon">${cs.map(c => `<li>${esc(c.t)}</li>`).join('')}${pr.map(x => `<li class="yel">You promised him ${x.k === 'time' ? 'first-team football' : `a new contract by ${fmtDate(x.by)}`}.</li>`).join('')}</ul>` : '<p class="c dim">Nothing. He is getting on with his football.</p>'}
-    <div class="ptitle">Have a word</div>${V.say ? `<p class="c"><b>${esc(V.say)}</b></p>` : ''}${w ? `<p class="c dim">You spoke to him recently. Give it ${w} more day${w > 1 ? 's' : ''}.</p>` : `<div class="menu talkm" style="max-width:420px;margin:0 auto">${TALKS.filter(([k]) => !pr.some(x => x.k === k)).map(([k, n]) => `<button data-talk="${k}">${n}</button>`).join('')}</div>`}
-    <p class="small dim c">${S.trust ? `You have broken ${S.trust} promise${S.trust > 1 ? 's' : ''}; the squad remembers. ` : ''}A good man-manager on your staff (your assistant) gets more out of these talks.</p>`;
+  return `<div class="ptitle">Morale</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Morale</dt><dd><b>${morWord(q.mor)}</b></dd><dt>Role</dt><dd>${role ? roleName(role) + ' <span class="dim small">(agreed in his contract)</span>' : '<span class="dim">Not set</span>'}</dd><dt>Form</dt><dd>${recentRt(q) != null ? recentRt(q).toFixed(1) + ' <span class="dim small">(last five)</span>' : '<span class="dim">Has hardly played</span>'}</dd>${prospectWord(p) ? `<dt>Assistant's view</dt><dd>${prospectWord(p)}</dd>` : ''}${q.brk === S.season ? '<dt>Trust</dt><dd class="yel">You broke a promise to him this season</dd>' : ''}</dl>
+    <div class="ptitle">On his mind</div>${cs.length || pr.length ? `<ul class="hon">${cs.map(c => `<li>${esc(c.t)}</li>`).join('')}${pr.map(promLi).join('')}</ul>` : '<p class="c dim">Nothing. He is getting on with his football.</p>'}
+    <div class="ptitle">Have a word</div>${V.say ? `<p class="c"><b>${esc(V.say)}</b></p>` : ''}${w ? `<p class="c dim">You spoke to him recently. Give it ${w} more day${w > 1 ? 's' : ''}.</p>` : `<div class="menu talkm" style="max-width:460px;margin:0 auto">${talkOpts(p).map(([k, n]) => `<button data-talk="${k}">${n}</button>`).join('')}</div>`}
+    <p class="small dim c">${credWord()}${S.trust || S.kept ? ` (promises kept ${S.kept || 0}, broken ${S.trust || 0})` : ''}. A promise lifts him; a broken one costs his morale and the squad's, and makes the next harder to believe. A good man-manager on your staff (your assistant) gets more out of these talks.</p>`;
+}
+// your club's Dressing Room: your word, the promises you have made and how they stand, who wants a word, who is low
+function clubDressing(cid, o){
+  const sq = squadOf(me()).filter(p => !onLoan(p)), L = (S.prom || []).filter(x => P.get(x.id) && P.get(x.id).club === me());
+  const lowM = sq.slice().sort((a, b) => ps(a.id).mor - ps(b.id).mor).slice(0, 8), avgM = sq.length ? sq.reduce((t, p) => t + ps(p.id).mor, 0) / sq.length : 65;
+  const words = sq.map(p => ({ p, cs: concerns(p) })).filter(x => x.cs.length);
+  const pl = p => `<span class="lk" data-lp="${p.id}">${esc(p.n)}</span>`;
+  o.body = `<div class="ovgrid">
+    <div class="ovc"><div class="ovh"><span>Your word</span></div><dl class="kv"><dt>In the dressing room</dt><dd><b>${credWord()}</b></dd><dt>Promises kept</dt><dd>${S.kept || 0}</dd><dt>Promises broken</dt><dd>${S.trust ? `<span style="color:var(--loss)">${S.trust}</span>` : 0}</dd><dt>Squad morale</dt><dd>${morWord(avgM)}</dd></dl></div>
+    <div class="ovc"><div class="ovh"><span>Wants a word</span></div>${words.length ? `<table><tbody>${words.map(x => `<tr class="click" data-dtalk="${x.p.id}"><td>${pl(x.p)}</td><td class="small">${esc(x.cs[0].t)}</td></tr>`).join('')}</tbody></table>` : '<p class="dim">No one. The dressing room is settled.</p>'}</div>
+  </div>
+  <div class="ptitle">Promises</div>${L.length ? `<table><thead><tr><th>Player</th><th>You promised</th><th>Made</th><th>So far</th><th>Due</th></tr></thead><tbody>${L.map(x => { const s = promState(x), p = P.get(x.id); return `<tr><td>${pl(p)}</td><td>${esc(promSay(x))}</td><td class="small">${x.d ? shortDate(x.d) : ''}</td><td>${s.prog}</td><td class="${s.urgent ? 'yel' : ''}">${s.due}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">You have promised nothing to anyone. Promises are made in a player\'s Talk screen.</p>'}
+  <div class="ptitle">Lowest morale</div><table><tbody>${lowM.map(p => `<tr class="click" data-dtalk="${p.id}"><td>${pl(p)}</td><td>${cmPos(p.pos)}</td><td class="r">${morWord(ps(p.id).mor)}</td></tr>`).join('')}</tbody></table>
+  ${(S.promLog || []).length ? `<div class="ptitle">Promise record</div><table><tbody>${S.promLog.slice(0, 10).map(x => `<tr><td><span class="pill">${shortDate(x.d)}</span></td><td>${P.get(x.id) ? pl(P.get(x.id)) : esc(x.n)}</td><td>${esc((PROMS[x.k] || { say: '' }).say)}</td><td class="r" style="color:${x.how === 'broken' ? 'var(--loss)' : x.how === 'kept' ? 'var(--win)' : 'inherit'}">${x.how === 'kept' ? 'Kept' : x.how === 'broken' ? 'Broken' : 'Lapsed'}</td></tr>`).join('')}</tbody></table>` : ''}`;
+  frame(o);
+  document.querySelectorAll('[data-dtalk]').forEach(r => r.addEventListener('click', e => { if (e.target.closest('.lk')) return; go({ s: 'player', id: +r.dataset.dtalk, tab: 'talk' }); }));
 }
 // a new contract: his agent asks for a wage, a length and a role; you offer, he answers. Three bad offers and the talks are off
 function negAsk(p){ S.neg = S.neg || {}; let n = S.neg[p.id];
@@ -5820,6 +5931,7 @@ function negAsk(p){ S.neg = S.neg || {}; let n = S.neg[p.id];
   return n; }
 function negNeed(p, n, y, role){ const q = ps(p.id); return n.ask * (1 - (ROLE_LV[n.role] - ROLE_LV[role]) * .06 + Math.abs(y - n.y) * .04 - (q.mor - 60) / 400); }
 function wantsOut(p){ const q = ps(p.id);
+  if (q.brk === S.season) return 'You broke a promise to him. He no longer trusts you and will not talk about a new contract.';
   if (q.mor < 40) return 'He is unhappy and will not talk about a new contract.';
   if (squadRank(p) < 6 && club(me()).q < ovrNow(p) - 8 && rng(`r-${p.id}-${S.season}`)() < .5) return 'He wants to play for a bigger club, and will not sign again.';
   return null; }
@@ -6164,7 +6276,7 @@ function scrHome(){
   const confW = S.conf >= 75 ? 'Delighted' : S.conf >= 60 ? 'Pleased' : S.conf >= 45 ? 'Satisfied' : S.conf >= 30 ? 'Concerned' : 'Losing patience';
   const boardH = `<div class="hmeter"><i style="width:${Math.round(S.conf)}%;background:${S.conf >= 60 ? 'var(--win)' : S.conf >= 40 ? 'var(--gold)' : 'var(--loss)'}"></i></div><dl class="kv" style="margin-top:8px"><dt>The board</dt><dd><b>${confW}</b></dd><dt>Expectation</dt><dd>${esc(aim.name)}</dd><dt>League position</dt><dd>${S.round && pos ? `<b>${ordinal(pos)}</b> <span class="small dim">(aim: ${ordinal(aim.pos)} or better)</span>` : 'Not started'}</dd><dt>Job security</dt><dd>${esc(sec)}</dd><dt>Balance</dt><dd>${cash(S.fin.bal)}</dd><dt>Transfer budget</dt><dd>${cash(S.fin.budget)}</dd></dl>`;
   const seasonH = `<dl class="kv"><dt>${esc(D.league)}</dt><dd>${S.round && row ? `${ordinal(pos)}, ${row.w * 3 + row.d} points from ${row.p}` : 'Not started'}</dd><dt>All matches</dt><dd>${cur.p}: ${cur.w} won, ${cur.d} drawn, ${cur.p - cur.w - cur.d} lost</dd><dt>Goals</dt><dd>${cur.gf} for, ${cur.ga} against</dd>${euOn() && euCompOf(cid) ? `<dt>Europe</dt><dd><span class="lk" data-lm="eu:${euCompOf(cid)}">${EU_NAME[euCompOf(cid)]}</span></dd>` : ''}${topSc ? `<dt>Top scorer</dt><dd><span class="lk" data-lp="${topSc.id}">${esc(cmName(topSc.n))}</span>, ${q(topSc).g}</dd>` : ''}${inForm ? `<dt>In form</dt><dd><span class="lk" data-lp="${inForm.id}">${esc(cmName(inForm.n))}</span>, ${avgR(inForm).toFixed(2)} average</dd>` : ''}</dl>`;
-  const pulseH = `<dl class="kv"><dt>Players</dt><dd>${sq.length}</dd><dt>Morale</dt><dd>${morWord(mor)}</dd><dt>Injured</dt><dd>${inj || 'None'}</dd>${unh ? `<dt>Unhappy</dt><dd class="yel">${unh}</dd>` : ''}${away ? `<dt>With their countries</dt><dd>${away}</dd>` : ''}<dt>Contracts ending</dt><dd>${exp ? `<span class="yel">${exp}</span> this season` : 'None this season'}</dd></dl>`;
+  const pulseH = `<dl class="kv"><dt>Players</dt><dd>${sq.length}</dd><dt>Morale</dt><dd>${morWord(mor)}</dd><dt>Injured</dt><dd>${inj || 'None'}</dd>${unh ? `<dt>Unhappy</dt><dd class="yel">${unh}</dd>` : ''}${(() => { const L = (S.prom || []).filter(x => P.get(x.id) && P.get(x.id).club === cid), u = L.filter(x => promState(x).urgent).length; return L.length ? `<dt>Promises</dt><dd><button class="lnk" data-hv='${JSON.stringify({ s: 'club', cid, tab: 'dress' })}'>${L.length} to keep</button>${u ? ` <span class="yel">(${u} due soon)</span>` : ''}</dd>` : ''; })()}${away ? `<dt>With their countries</dt><dd>${away}</dd>` : ''}<dt>Contracts ending</dt><dd>${exp ? `<span class="yel">${exp}</span> this season` : 'None this season'}</dd></dl>`;
   const seasons = [...past, { s: S.season, c: cid, ...cur, pos: S.round ? pos : null, now: 1 }].slice().reverse();
   const careerH = `<table><thead><tr><th>Season</th><th>Club</th><th class="c">Pos</th><th class="c">P</th><th class="c">W</th><th class="c">D</th><th class="c">L</th><th class="c">GD</th></tr></thead><tbody>${seasons.map(x => `<tr class="${x.now ? 'me' : ''}"><td>${x.s}/${String((x.s + 1) % 100).padStart(2, '0')}</td><td><span class="lk" data-lc="${x.c}">${esc(club(x.c).name)}</span></td><td class="c">${x.pos ? ordinal(x.pos) : '-'}</td><td class="c">${x.p}</td><td class="c">${x.w}</td><td class="c">${x.d}</td><td class="c">${x.p - x.w - x.d}</td><td class="c">${x.gf - x.ga > 0 ? '+' : ''}${x.gf - x.ga}</td></tr>`).join('')}</tbody></table>`;
   const cab = trophies.length ? (() => { const by = {}; for (const t of trophies) (by[t.k] = by[t.k] || []).push(t.y); return `<div class="troph">${Object.entries(by).map(([k, L]) => `<div class="tph"><div class="tphn">${L.length}</div><div><b>${esc(k)}</b><div class="small dim">${L.map(y => `${String(y % 100).padStart(2, '0')}/${String((y + 1) % 100).padStart(2, '0')}`).join(', ')}</div></div></div>`).join('')}</div>`; })() : '<p class="dim">The cabinet is empty. For now.</p>';
