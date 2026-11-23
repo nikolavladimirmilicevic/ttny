@@ -531,7 +531,7 @@ button.frow:hover{border-color:var(--gold)}
 .flag{font-family:'Noto Color Emoji',sans-serif;font-size:14px;line-height:1;margin-right:5px;vertical-align:-1px}
 .banner.wc{grid-template-columns:auto 1fr auto}
 .banner .bcr{display:flex;align-items:center;padding-left:14px}
-.bigcr{width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 0 .8px rgba(255,255,255,.85)) drop-shadow(0 0 .8px rgba(255,255,255,.85)) drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+.bigflag{font-size:46px;line-height:54px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}.bigcr{width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 0 .8px rgba(255,255,255,.85)) drop-shadow(0 0 .8px rgba(255,255,255,.85)) drop-shadow(0 2px 3px rgba(0,0,0,.45))}
 .banner .bclub{font-weight:500;opacity:.92}
 .banner .binfo{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 18px;font:500 14px/1.4 var(--body);text-transform:none;letter-spacing:0;margin-top:6px;white-space:normal}
 .banner .binfo .flag{font-size:16px}
@@ -865,7 +865,7 @@ function ntPlay(f){
   if (f.s) return;
   const s = ntGoals(f.h, f.a, f.n, `nt-${f.d}-${f.h}-${f.a}`), r = rng(`nts-${f.d}-${f.h}`); f.s = s; f.sc = [];
   for (const [side, n, g] of [['h', f.h, s[0]], ['a', f.a, s[1]]]){
-    const sq = ntSquadOf(n), xi = ntXI(sq), subs = sq.filter(p => !xi.includes(p)).slice(0, 3), played = [...xi, ...subs];
+    const sq = ntSquadOf(n), xi = ntXI(sq), subs = sq.filter(p => !xi.includes(p) && p.prim !== 'GK').slice(0, 3), played = [...xi, ...subs];
     for (const p of played) capOf(p.id)[0]++;
     (f.pl = f.pl || {})[side] = played.map(p => p.id);
     const w = xi.map(p => ({ p, w: ({ FWD: 5, MID: 2.4, DEF: .8, GK: 0 }[GROUP[p.prim]] ?? 1) * Math.max(.2, ovrNow(p) - 60) }));
@@ -1501,8 +1501,12 @@ function ntTake(n){
 }
 // the national team's screen: your squad (pick it, or the assistant does), the matches, the job; without one, the vacancies
 function scrNTJob(){
-  ntTick(); const J = S.ntJob, tab = V.tab || (J ? 'sq' : 'job');
-  const tabs = J ? [['sq', 'Squad'], ['fx', 'Matches'], ['job', 'Job']] : [['job', 'National team jobs']];
+  ntTick(); const J = S.ntJob;
+  if (J){ V = { s: 'nation', n: J.n, tab: { sq: 'squad', fx: 'fix', job: 'info' }[V.tab] || 'ov' }; scrNation(); return; }
+  ntJobView('job', { title: 'National team jobs', short: 'National team', top: [['job', 'National team jobs']], topOn: 'job', onTab: () => {} });
+}
+function ntJobView(tab, o){
+  const J = S.ntJob;
   let body = '';
   if (J && tab === 'sq'){
     const n = J.n, G4 = { GK: 0, DEF: 1, MID: 2, FWD: 3 }, pool = (NT_POOL().get(n) || []).slice().sort((a, b) => (G4[GROUP[a.prim]] ?? 2) - (G4[GROUP[b.prim]] ?? 2) || ovrNow(b) - ovrNow(a)), sel = new Set((J.sq || []).length ? J.sq : ntSquad(n).map(p => p.id)), own = (J.sq || []).length > 0;
@@ -1510,8 +1514,10 @@ function scrNTJob(){
     body = `<div class="ptitle">${flag(n)}${esc(n)}: the squad ${own ? '' : '<span class="small dim">(your assistant\'s, until you change it)</span>'}</div>
       <p class="small dim">${sel.size} of 23 named, ${gk} goalkeeper${gk === 1 ? '' : 's'}. ${nx ? `Next: ${esc(nx.f.h === n ? nx.f.a : nx.f.h)} on ${fmtDate(nx.date)} (${esc(ntLabel(nx.f))}).` : 'No match arranged yet.'}${pool.length < 23 ? ` Only ${pool.length} of ${esc(n)}'s players are in the game: the rest of the squad is made up of players from home.` : ''}</p>
       <div style="display:flex;gap:8px;margin:8px 0"><button class="btn sm go" id="ntauto">Assistant picks</button><button class="btn sm" id="ntclear">Clear</button></div>
-      <table class="ltab"><thead><tr><th></th><th>Name</th><th>Position</th><th>Club</th><th class="r">Age</th><th class="r">Caps</th><th class="r">Goals</th><th></th></tr></thead><tbody>${pool.map(p => { const q = S.pl[p.id] || {}, c = capR(p.id);
-        return `<tr class="${sel.has(p.id) ? 'me' : ''}" data-ntp="${p.id}" style="cursor:pointer"><td class="c">${sel.has(p.id) ? '✓' : ''}</td><td><b class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</b></td><td>${esc(p.prim)}</td><td>${crest(p.club)}${esc(club(p.club).name)}</td><td class="r">${p.age}</td><td class="r">${c[0]}</td><td class="r">${c[1]}</td><td class="small ${q.injD ? 'loss' : 'dim'}">${q.injD ? `injured (${q.injD} d)` : ''}</td></tr>`; }).join('')}</tbody></table>`;
+      ${(() => { const row = p => { const q = S.pl[p.id] || {}, c = capR(p.id);
+          return `<tr class="${sel.has(p.id) ? 'me' : ''}" data-ntp="${p.id}" style="cursor:pointer"><td class="c">${sel.has(p.id) ? '✓' : '+'}</td><td class="yel small">${cmPos(p.pos)}</td><td><b class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</b></td><td>${crest(p.club, 'mcr')}${esc(club(p.club).name)}</td><td class="r">${p.age}</td><td class="r">${c[0]}</td><td class="r">${c[1]}</td><td class="small">${q.injD ? `<span class="tag inj">Inj</span> ${q.injD} d` : q.cond < 65 ? '<span class="tag tir">Tir</span>' : ''}</td></tr>`; };
+        const head = '<thead><tr><th></th><th>Pos</th><th>Name</th><th>Club</th><th class="r">Age</th><th class="r">Caps</th><th class="r">Gls</th><th></th></tr></thead>', inS = pool.filter(p => sel.has(p.id)), outS = pool.filter(p => !sel.has(p.id));
+        return `<div class="ptitle">Called up (${inS.length})</div><div class="tw"><table class="ltab">${head}<tbody>${inS.map(row).join('')}</tbody></table></div><div class="ptitle">The rest of the pool (${outS.length})</div><p class="small dim">A click on a man calls him up or leaves him out.</p><div class="tw"><table class="ltab">${head}<tbody>${outS.map(row).join('')}</tbody></table></div>`; })()}`
   }
   if (J && tab === 'fx'){
     const n = J.n, up = ntAllFx().filter(f => !f.s && (f.h === n || f.a === n)).sort((a, b) => a.d < b.d ? -1 : 1).slice(0, 10), R = (J.rec || []).slice().reverse();
@@ -1525,7 +1531,7 @@ function scrNTJob(){
       + (J ? `<dl class="kv"><dt>National team</dt><dd>${flag(J.n)}<b>${esc(J.n)}</b></dd><dt>Since</dt><dd>${fmtDate(J.from)}</dd><dt>Trophies</dt><dd>${J.hon || 0}</dd></dl><div style="margin:10px 0"><button class="btn sm" id="ntquit">Resign</button></div>` : '<p>You can coach a national team alongside your club. A federation looking for a coach takes you if your name is big enough for it.</p>')
       + `<div class="ptitle">Federations looking for a coach</div>${vac.length ? `<table class="ltab"><tbody>${vac.map(n => `<tr><td>${flag(n)}<span class="lk" data-nt="${esc(n)}"><b>${esc(n)}</b></span></td><td class="dim">${esc(NT_CONF()[n] || '')}</td><td class="r">${n === ntMine() ? '' : `<button class="btn sm" data-ntapp="${esc(n)}">Apply</button>`}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">No federation is looking right now.</p>'}`;
   }
-  frame({ title: J ? `${flag(J.n)}${esc(J.n)}` : 'National team jobs', short: 'National team', top: tabs, topOn: tab, onTab: t => go({ s: 'ntjob', tab: t }), body });
+  frame(Object.assign(o, { body }));
   document.querySelectorAll('[data-nt]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); go({ s: 'nation', n: el.dataset.nt }); }));
   document.querySelectorAll('[data-ntp]').forEach(tr => tr.addEventListener('click', e => { if (e.target.closest('[data-lp]')) return; const id = +tr.dataset.ntp;
     if (!(J.sq || []).length) J.sq = ntSquad(J.n).map(p => p.id);
@@ -1534,11 +1540,11 @@ function scrNTJob(){
   const on = (sel, f) => { const el = $(sel); if (el) el.addEventListener('click', f); };
   on('#ntauto', () => { J.sq = ntSquad(J.n).map(p => p.id); save(); view(); toast('Your assistant has named the squad.'); });
   on('#ntclear', () => { J.sq = []; save(); view(); });
-  on('#ntacc', () => { ntTake(S.ntOffer.n); save(); go({ s: 'ntjob', tab: 'sq' }); });
+  on('#ntacc', () => { ntTake(S.ntOffer.n); save(); go({ s: 'nation', n: S.ntJob.n, tab: 'squad' }); });
   on('#ntdec', () => { news('board', `You turn ${S.ntOffer.n} down`, `You have told the ${esc(S.ntOffer.n)} federation no.`); delete S.ntVac[S.ntOffer.n]; S.ntOffer = null; save(); view(); });
-  on('#ntquit', () => choice('Resign', `Leave ${esc(J.n)}?`, [['Resign', () => { (S.hist = S.hist || []).push({ d: S.date, c: S.club, t: `Resigned as ${J.n} coach` }); news('board', `You leave ${J.n}`, `You have resigned as ${esc(J.n)} coach.`); S.ntVac[J.n] = S.date; S.ntJob = null; save(); go({ s: 'ntjob', tab: 'job' }); }, 'go'], ['Stay', () => {}]]));
+  on('#ntquit', () => choice('Resign', `Leave ${esc(J.n)}?`, [['Resign', () => { (S.hist = S.hist || []).push({ d: S.date, c: S.club, t: `Resigned as ${J.n} coach` }); news('board', `You leave ${J.n}`, `You have resigned as ${esc(J.n)} coach.`); S.ntVac[J.n] = S.date; S.ntJob = null; save(); go({ s: 'ntjob' }); }, 'go'], ['Stay', () => {}]]));
   document.querySelectorAll('[data-ntapp]').forEach(b => b.addEventListener('click', () => { const n = b.dataset.ntapp;
-    if (ntFits(n)){ choice(`${n} say yes`, `The ${esc(n)} federation would take you.${S.ntJob ? ` You would leave ${esc(S.ntJob.n)}.` : ''}`, [['Take the job', () => { ntTake(n); save(); go({ s: 'ntjob', tab: 'sq' }); }, 'go'], ['Not now', () => {}]]); }
+    if (ntFits(n)){ choice(`${n} say yes`, `The ${esc(n)} federation would take you.${S.ntJob ? ` You would leave ${esc(S.ntJob.n)}.` : ''}`, [['Take the job', () => { ntTake(n); save(); go({ s: 'nation', n: S.ntJob.n, tab: 'squad' }); }, 'go'], ['Not now', () => {}]]); }
     else { toast(`The ${n} federation want a bigger name. Win more with your club first.`, 4000); } }));
 }
 // a nation's match on the pre-match screen: the competition, where, the two sides, how they have done lately
@@ -3715,7 +3721,7 @@ function autoSort(){
 }
 // the left menu: every screen and every tab, opening in a cascade (CM's menus without hunting for tabs on the page)
 let MITEMS = {}, MOB_OPEN = false, MRECENT = [];
-const MDEF = { news: { f: 'all' }, club: { tab: 'ov', team: 'first' }, comp: { tab: 'ov' }, find: { tab: 'search' }, managers: { tab: 'rep' }, manager: { tab: 'hist' } };
+const MDEF = { news: { f: 'all' }, club: { tab: 'ov', team: 'first' }, comp: { tab: 'ov' }, find: { tab: 'search' }, managers: { tab: 'rep' }, manager: { tab: 'hist' }, nation: { tab: 'ov' } };
 const vEq = v => v && Object.keys(v).every(k => (V[k] != null ? V[k] : k === 'cid' && V.s === 'club' ? me() : (MDEF[V.s] || {})[k]) === v[k]);
 /* clubs of countries whose leagues are not in the game: Europe's (the European cups) and the rest of the world's (the
    Club World Cup); a country listed above, by code or by name, keeps its own */
@@ -3747,7 +3753,7 @@ function menuTree(o, unread){
     { id: 'comp', label: 'Competitions', v: { s: 'comp', tab: 'ov' }, kids: [['ov', 'Overview'], ['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results'], ['pstats', 'Player Stats'], ['tstats', 'Team Stats'], ['cup', cupLabel], ...(S.lc ? [['lc', LC]] : []), ['awards', 'Awards'], ['refs', 'Referees']].map(([t, n]) => ({ id: 'cp.' + t, label: n, v: { s: 'comp', tab: t } })).concat(awayKs().map(k => ({ id: 'aw.' + k, label: esc(D.lgs[k].league), v: { s: 'awl', k, tab: 'table' }, kids: [['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results']].map(([t, n]) => ({ id: `aw.${k}.${t}`, label: n, v: { s: 'awl', k, tab: t } })) }))) },
     ...(euOn() ? [{ id: 'eu', label: 'Europe', v: { s: 'eu', k: euMine() }, kids: [...EU_KEYS.filter(k => S.eu.c[k]).map(k => ({ id: 'eu.' + k, label: EU_NAME[k], v: { s: 'eu', k } })), ...(S.usc ? [{ id: 'eu.usc', label: USC, v: { s: 'eu', k: 'usc' } }] : [])] }] : []),
     // the cups between the continents, apart from Europe's
-    ...(S.nl ? [{ id: 'nt', label: 'Internationals', v: { s: 'nt' }, kids: [{ id: 'nt.job', label: S.ntJob ? `${S.ntJob.n} (your team)` : 'National team jobs', v: { s: 'ntjob' } }, { id: 'nt.nl', label: 'Nations League', v: { s: 'nt', tab: S.nl2 ? 'n2A' : 'A' }, kids: (S.nl2 ? [['n2A', `${nlName(S.nl2.s)}: League A`], ['n2B', `${nlName(S.nl2.s)}: League B`], ['n2C', `${nlName(S.nl2.s)}: League C`], ...(S.nl2.ko.length ? [['n2ko', `${nlName(S.nl2.s)}: Knockouts`]] : []), ['nl26', '2026/27']] : [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(S.nl.ko.length ? [['ko', 'Knockouts']] : [])]).map(([k, n]) => ({ id: 'nt.' + k, label: n, v: { s: 'nt', tab: k } })) }, ...(S.eq ? [{ id: 'nt.eq', label: 'EURO qualifying', v: { s: 'nt', tab: 'eq' } }] : []), ...(S.e28 ? [{ id: 'nt.e28', label: `EURO ${S.e28.E || 2028}`, v: { s: 'nt', tab: 'e28' } }] : []), ...(S.wq ? [{ id: 'nt.wq', label: `WC ${wqW()} qualifying`, v: { s: 'nt', tab: 'wq' } }] : []), ...(S.wc ? [{ id: 'nt.wc', label: `World Cup ${S.wc.W || 2030}`, v: { s: 'nt', tab: 'wc' } }] : []), { id: 'nt.fr', label: 'Friendlies', v: { s: 'nt', tab: 'fr' } }, { id: 'nt.hon', label: 'Honours', v: { s: 'nt', tab: 'hon' } }] }] : []),
+    ...(S.nl ? [{ id: 'nt', label: 'Internationals', v: { s: 'nt' }, kids: [{ id: 'nt.job', label: S.ntJob ? `${S.ntJob.n} (your team)` : 'National team jobs', v: S.ntJob ? { s: 'nation', n: S.ntJob.n } : { s: 'ntjob' }, kids: S.ntJob ? [['ov', 'Overview'], ['squad', 'Squad'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'Job'], ['players', 'Players in the Game']].map(([t, l]) => ({ id: 'nt.job.' + t, label: l, v: { s: 'nation', n: S.ntJob.n, tab: t } })) : [] }, { id: 'nt.nl', label: 'Nations League', v: { s: 'nt', tab: S.nl2 ? 'n2A' : 'A' }, kids: (S.nl2 ? [['n2A', `${nlName(S.nl2.s)}: League A`], ['n2B', `${nlName(S.nl2.s)}: League B`], ['n2C', `${nlName(S.nl2.s)}: League C`], ...(S.nl2.ko.length ? [['n2ko', `${nlName(S.nl2.s)}: Knockouts`]] : []), ['nl26', '2026/27']] : [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(S.nl.ko.length ? [['ko', 'Knockouts']] : [])]).map(([k, n]) => ({ id: 'nt.' + k, label: n, v: { s: 'nt', tab: k } })) }, ...(S.eq ? [{ id: 'nt.eq', label: 'EURO qualifying', v: { s: 'nt', tab: 'eq' } }] : []), ...(S.e28 ? [{ id: 'nt.e28', label: `EURO ${S.e28.E || 2028}`, v: { s: 'nt', tab: 'e28' } }] : []), ...(S.wq ? [{ id: 'nt.wq', label: `WC ${wqW()} qualifying`, v: { s: 'nt', tab: 'wq' } }] : []), ...(S.wc ? [{ id: 'nt.wc', label: `World Cup ${S.wc.W || 2030}`, v: { s: 'nt', tab: 'wc' } }] : []), { id: 'nt.fr', label: 'Friendlies', v: { s: 'nt', tab: 'fr' } }, { id: 'nt.hon', label: 'Honours', v: { s: 'nt', tab: 'hon' } }] }] : []),
     ...(S.fic || S.cwc ? [{ id: 'wd', label: 'Intercontinental', v: { s: 'eu', k: S.fic ? 'fic' : 'cwc' }, kids: [...(S.fic ? [{ id: 'eu.fic', label: FIC, v: { s: 'eu', k: 'fic' } }] : []), ...(S.cwc ? [{ id: 'eu.cwc', label: CWC, v: { s: 'eu', k: 'cwc' } }] : [])] }] : []),
     // the club lists are browsed on the Clubs screen; the menu holds the countries, the club you are looking at and the last few you saw
     { id: 'clubs', label: 'Clubs', v: { s: 'clubs' }, kids: [
@@ -3854,7 +3860,7 @@ function frame(o){
       ${unread && V.s !== 'news' ? '<button class="sb newsflag" data-side="news">You Have News</button>' : ''}
     </aside>
     <div class="main">
-      <div class="banner ${o.crest ? 'wc' : ''} ${o.nav ? 'hn' : ''}" style="--k1:${o.k1 || '#2A44D0'};--k2:${o.k2 || '#fff'}"><span class="bcr">${o.nav ? `<span class="bnav"><button id="bprev" aria-label="Previous ${o.nav.what}" title="Previous ${o.nav.what}">‹</button><button id="bnext" aria-label="Next ${o.nav.what}" title="Next ${o.nav.what}">›</button></span>` : ''}${o.crest ? crest(o.crest, 'bigcr') : ''}</span><h1>${o.title}${o.sub ? `<span class="sub">${o.sub}</span>` : ''}${o.info ? `<span class="binfo">${o.info}</span>` : ''}</h1><span class="act">${o.act || ''}</span></div>
+      <div class="banner ${o.crest || o.flagBig ? 'wc' : ''} ${o.nav ? 'hn' : ''}" style="--k1:${o.k1 || '#2A44D0'};--k2:${o.k2 || '#fff'}"><span class="bcr">${o.nav ? `<span class="bnav"><button id="bprev" aria-label="Previous ${o.nav.what}" title="Previous ${o.nav.what}">‹</button><button id="bnext" aria-label="Next ${o.nav.what}" title="Next ${o.nav.what}">›</button></span>` : ''}${o.crest ? crest(o.crest, 'bigcr') : o.flagBig ? `<span class="bigflag">${flagOf(o.flagBig)}</span>` : ''}</span><h1>${o.title}${o.sub ? `<span class="sub">${o.sub}</span>` : ''}${o.info ? `<span class="binfo">${o.info}</span>` : ''}</h1><span class="act">${o.act || ''}</span></div>
       ${o.tools ? `<div class="tools">${o.tools}</div>` : ''}
       <section class="pane">${o.body}</section>
       <div class="bn"><button id="back" ${HIST.length ? '' : 'disabled'}>Back</button><button id="next" ${o.next ? '' : 'disabled'}>Next</button></div>
@@ -5487,20 +5493,91 @@ function scrComps(){
   findQ(); R.wire(); document.querySelectorAll('[data-gov]').forEach(r => r.addEventListener('click', () => go(JSON.parse(r.dataset.gov))));
 }
 // a nation: its players in the game
+/* ---- a nation's screens, built like a club's: the banner in its colours with its flag, the arrows through its
+   confederation; Overview (the side, next match, recent results, its group, key players, honours, who is out), Squad,
+   Fixtures, History, General Info (your own national team: the Job); below, its players in the game and the
+   competitions ---- */
+const ntFxOf = n => [...ntArchFx(), ...ntAllFx()].filter(f => f.h === n || f.a === n);
+const ntRes = (f, n) => { const u = f.h === n, g = f.s[u ? 0 : 1], h = f.s[u ? 1 : 0]; return g > h || f.pw === n ? 'W' : g < h || (f.pw && f.pw !== n) ? 'L' : 'D'; };
+const ntHonOf = n => { const T = []; for (const k of Object.keys(NT_HON)){ const e = NT_HON[k].find(x => x[0] === n); for (const y of e ? e[1] : []) T.push({ k: NT_COMP[k], y }); } for (const x of S.ntHon || []) if (x.n === n) T.push({ k: NT_COMP[x.c], y: x.y }); return T.sort((a, b) => b.y - a.y); };
+const ntCabinet = T => { const by = {}; for (const t of T) (by[t.k] = by[t.k] || []).push(t.y);
+  return Object.keys(by).length ? `<div class="troph">${Object.entries(by).map(([k, L]) => `<div class="tph"><div class="tphn">${L.length}</div><div><b>${esc(k)}</b><div class="small dim">${L.join(', ')}</div></div></div>`).join('')}</div>` : '<p class="dim">No major trophies.</p>'; };
+// the group it is playing in now (or last played in): its table, with the competition's name
+function ntGroupNow(n){
+  const F = ntAllFx().filter(f => f.g != null && (f.h === n || f.a === n)).sort((a, b) => a.d < b.d ? -1 : 1), cur = F.find(f => !f.s) || F[F.length - 1]; if (!cur) return null;
+  const G = ntAllFx().filter(f => f.comp === cur.comp && f.g === cur.g), T = [...new Set(G.flatMap(f => [f.h, f.a]))];
+  return { title: `${cur.comp}, group ${String(cur.g).replace(/^(Q|L1-|L2-)/, '')}`, rows: ntTable(T, G) };
+}
 function scrNation(){
-  const n = ntName(V.n), L = allPlayers().filter(p => ntName(p.nat) === n || ntName(p.nat2) === n);
-  const inNL = S.nl && ntAll().includes(n), g = inNL ? Object.keys(S.nl.groups).find(k => S.nl.groups[k].includes(n)) : null;
-  const sq = ntWorld().includes(n) ? ntSquad(n) : [], F = [...ntArchFx(), ...ntAllFx()].filter(f => f.h === n || f.a === n).sort((x, y) => x.d < y.d ? 1 : -1).slice(0, 60);
-  const hon = Object.keys(NT_HON).map(k => { const e = NT_HON[k].find(x => x[0] === n), y = [...(e ? e[1] : []), ...(S.ntHon || []).filter(x => x.c === k && x.n === n).map(x => x.y)]; return y.length ? `${NT_COMP[k]} ${y.length}× (${y.join(', ')})` : ''; }).filter(Boolean);
-  const g2 = S.nl2 && Object.keys(S.nl2.groups).find(k => S.nl2.groups[k].includes(n));
-  const top = (g2 ? ntGrpHTML(`Nations League ${nlName(S.nl2.s)}, group ${g2}`, S.nl2.groups[g2], S.nl2.fx.filter(f => f.g === g2), () => '') : g ? nlGroupHTML(g) : '') + (sq.length ? `<div class="ptitle">Squad (the next call-up)</div><table class="ltab"><thead><tr><th>Name</th><th>Club</th><th>Position</th><th class="r">Age</th><th class="r">Caps</th><th class="r">Gls</th></tr></thead><tbody>${sq.map(p => `<tr class="click ${p.club === me() ? 'me' : ''}" data-pl="${p.id}"><td><b>${esc(cmName(p.n))}</b></td><td>${crest(p.club, 'mcr')}${esc(club(p.club).name)}</td><td>${esc(cmPos(p.pos))}</td><td class="r">${p.age}</td><td class="r">${ps(p.id).caps || 0}</td><td class="r">${ps(p.id).ig || 0}</td></tr>`).join('')}</tbody></table><p class="small dim">Caps and goals since the game began. Out of the game's leagues: ${23 - sq.length > 0 ? `${23 - sq.length} places filled from leagues not in the game` : 'none'}.</p>` : '')
-    + (F.length ? `<div class="ptitle">Matches</div><table class="ltab"><tbody>${F.map(f => ntRow(f).replace('<td class="small dim">', `<td class="small dim">${esc(f.comp)}<br>`)).join('')}</tbody></table>` : '') + (hon.length ? `<p><b>Honours:</b> ${hon.join('; ')}</p>` : '');
+  ntTick();
+  const n = ntName(V.n), J = S.ntJob, mine = !!(J && J.n === n), [k1, k2] = kitN(n), tab = V.tab || 'ov', conf = NT_CONF()[n] || '';
+  const sib = ntWorld().filter(x => (NT_CONF()[x] || '') === conf).sort((a, b) => a.localeCompare(b)), i = sib.indexOf(n);
+  const nav = sib.length > 1 && i >= 0 ? { what: 'nation', prev: { s: 'nation', n: sib[(i - 1 + sib.length) % sib.length], tab }, next: { s: 'nation', n: sib[(i + 1) % sib.length], tab } } : null;
+  const o = { k1, k2, flagBig: n, nav, title: esc(n), short: esc(n), sub: mine ? 'Your national team' : esc(conf), top: [['ov', 'Overview'], ['squad', 'Squad'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', mine ? 'Job' : 'General Info']],
+    bottom: [['players', 'Players in the Game'], ['comps', 'Competitions']], topOn: tab, bottomOn: tab, onTab: t => t === 'comps' ? go({ s: 'nt' }) : go({ s: 'nation', n, tab: t }) };
+  if (mine && (tab === 'squad' || tab === 'info')){ ntJobView(tab === 'squad' ? 'sq' : 'job', o); return; }
+  ({ ov: ntOverview, squad: ntSquadTab, fix: ntFixTab, hist: ntHistTab, info: ntInfoTab, players: ntPlayersTab }[tab] || ntOverview)(n, o, mine);
+  document.querySelectorAll('[data-nt]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); go({ s: 'nation', n: el.dataset.nt }); }));
+}
+function ntOverview(n, o, mine){
+  const [k1, k2] = kitN(n), conf = NT_CONF()[n] || '', sq = ntWorld().includes(n) ? ntSquadOf(n) : [], all = NT_POOL().get(n) || [], F = ntFxOf(n);
+  const next = ntAllFx().filter(f => !f.s && (f.h === n || f.a === n)).sort((a, b) => a.d < b.d ? -1 : 1)[0], last = F.filter(f => f.s).sort((a, b) => a.d < b.d ? 1 : -1).slice(0, 5);
+  const box = (t, inner, more) => `<div class="ovc"><div class="ovh"><span>${t}</span>${more || ''}</div>${inner}</div>`, lnk = (t, l) => `<button class="lnk" data-ntab="${t}">${l}</button>`;
+  const opp = f => f.h === n ? f.a : f.h, ven = f => f.n ? 'N' : f.h === n ? 'H' : 'A';
+  const nextH = !next ? '<p class="dim">Nothing arranged yet.</p>' : `<div class="ovnext">${shirt(k1, k2, 'kit sm')}<div><div class="small dim">${esc(ntLabel(next))} · ${fmtDate(next.d)}</div><div class="ovvs">${next.h === n ? `<b>${esc(n)}</b> v ${flag(next.a)}<span class="lk" data-nt="${esc(next.a)}">${esc(next.a)}</span>` : `${flag(next.h)}<span class="lk" data-nt="${esc(next.h)}">${esc(next.h)}</span> v <b>${esc(n)}</b>`}</div><div class="small dim">${next.n ? 'Neutral ground' : next.h === n ? 'At home' : 'Away'}</div></div></div>`;
+  const resH = last.length ? `<table><tbody>${last.map(f => { const r = ntRes(f, n), u = f.h === n; return `<tr><td><span class="form"><span class="${r}">${r}</span></span></td><td>${u ? '' : '<span class="dim">at</span> '}${flag(opp(f))}<b class="lk" data-nt="${esc(opp(f))}">${esc(opp(f))}</b></td><td class="small dim">${esc(f.comp)}</td><td class="r">${f.s[0]}-${f.s[1]}${f.p ? ' p' : ''}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">No matches yet.</p>';
+  const G = ntGroupNow(n), grpH = G ? (() => { const k = G.rows.findIndex(r => r.n === n), lo = Math.max(0, Math.min(G.rows.length - 5, k - 2)); return `<div class="small dim" style="margin-bottom:4px">${esc(G.title)}</div><table><tbody>${G.rows.slice(lo, lo + 5).map((r, j) => `<tr class="${r.n === n ? 'me' : ''}"><td class="dim">${lo + j + 1}</td><td>${flag(r.n)}<b class="lk" data-nt="${esc(r.n)}">${esc(r.n)}</b></td><td class="c">${r.p}</td><td class="c">${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="c"><b>${r.pts}</b></td></tr>`).join('')}</tbody></table>`; })() : '';
+  const by = f => all.filter(p => f(p) > 0).sort((a, b) => f(b) - f(a))[0], mc = by(p => capR(p.id)[0]), ts = by(p => capR(p.id)[1]), cap = sq.slice().sort((a, b) => (capR(b.id)[0] + b.age) - (capR(a.id)[0] + a.age))[0];
+  const kp = [['Most caps', mc, p => `${capR(p.id)[0]} caps`], ['Top scorer', ts, p => `${capR(p.id)[1]} goals`], ['Captain', cap, p => esc(club(p.club).name)]].map(([t, p, f]) => `<tr><td class="small dim">${t}</td><td>${p ? `<b class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</b> <span class="small dim">${cmPos(p.pos)}</span>` : '<span class="dim">-</span>'}</td><td class="r small">${p ? f(p) : ''}</td></tr>`).join('');
+  const out = sq.filter(p => (S.pl[p.id] || {}).injD).map(p => `<tr><td><b class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</b></td><td class="r small"><span class="tag inj">Inj</span> ${S.pl[p.id].injD} d</td></tr>`).join('');
+  const rec = F.filter(f => f.s), w = rec.filter(f => ntRes(f, n) === 'W').length, d = rec.filter(f => ntRes(f, n) === 'D').length;
+  const head = `<div class="ovclub" style="--k1:${k1};--k2:${k2}">${shirt(k1, k2)}<div class="ovci"><div class="ovcn">${flag(n)}${esc(n)}</div><div class="small dim">${esc(conf)}${ntVal(n) != null ? ` · squad value ${cash(ntVal(n) * 1e6 / EUR)} (Transfermarkt)` : ''}</div>
+    <div class="ovchips"><span>${G ? esc(G.title) : esc(conf)}</span><span>${mine ? 'Coach: you' : ''}</span><span>${all.length} player${all.length === 1 ? '' : 's'} in the game</span><span>${rec.length ? `${rec.length} matches: ${w} won, ${d} drawn, ${rec.length - w - d} lost` : ''}</span></div></div></div>`;
+  o.body = `${head}<div class="ovgrid">${box('Next match', nextH, lnk('fix', 'Fixtures'))}${box('Recent results', resH, lnk('fix', 'Fixtures'))}${G ? box('Group', grpH, `<button class="lnk" data-ntc="1">Competition</button>`) : ''}
+    ${box('Key players', `<table><tbody>${kp}</tbody></table>`, lnk('squad', 'Squad'))}${box('Honours', ntCabinet(ntHonOf(n)), lnk('hist', 'History'))}${sq.length ? box('Unavailable', out ? `<table><tbody>${out}</tbody></table>` : '<p class="dim">Everyone is fit.</p>') : ''}</div>`;
+  frame(o);
+  document.querySelectorAll('[data-ntab]').forEach(b => b.addEventListener('click', () => go({ s: 'nation', n, tab: b.dataset.ntab })));
+  document.querySelectorAll('[data-ntc]').forEach(b => b.addEventListener('click', () => go({ s: 'nt' })));
+}
+function ntSquadTab(n, o){
+  const sq = ntWorld().includes(n) ? ntSquad(n) : [], G4 = { GK: 0, DEF: 1, MID: 2, FWD: 3 }, L = sq.slice().sort((a, b) => (G4[GROUP[a.prim]] ?? 2) - (G4[GROUP[b.prim]] ?? 2) || ovrNow(b) - ovrNow(a));
+  o.body = L.length ? `<div class="ptitle">The squad (the next call-up)</div><div class="tw"><table class="ltab"><thead><tr><th>Pos</th><th>Name</th><th>Club</th><th class="r">Age</th><th class="r">Caps</th><th class="r">Gls</th><th></th></tr></thead><tbody>${L.map(p => { const q = S.pl[p.id] || {}, c = capR(p.id);
+    return `<tr><td class="yel small">${cmPos(p.pos)}</td><td><b class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</b></td><td>${crest(p.club, 'mcr')}${esc(club(p.club).name)}</td><td class="r">${p.age}</td><td class="r">${c[0]}</td><td class="r">${c[1]}</td><td class="small">${q.injD ? `<span class="tag inj">Inj</span>` : ''}</td></tr>`; }).join('')}</tbody></table></div><p class="small dim">The coach's likely call-up: those he has called before first, then the best available.${sq.length < 23 ? ' The rest of the squad are players from home, not in the game.' : ''}</p>` : '<p class="empty">None of its players are in the game.</p>';
+  frame(o);
+}
+function ntFixTab(n, o){
+  const L = ntFxOf(n).sort((a, b) => a.d < b.d ? -1 : 1), up = L.filter(f => !f.s), done = L.filter(f => f.s).reverse();
+  const row = f => { const u = f.h === n, op = u ? f.a : f.h, r = f.s ? ntRes(f, n) : null;
+    return `<tr><td>${fmtDate(f.d)}<span class="mo small dim">${esc(f.comp)}</span></td><td class="mh small dim">${esc(f.k || f.g != null ? ntLabel(f) : f.comp)}</td><td>${flag(op)}<b class="lk" data-nt="${esc(op)}">${esc(op)}</b></td><td class="mh">${f.n ? 'Neutral' : u ? 'Home' : 'Away'}</td><td>${r ? `<span class="form"><span class="${r}">${r}</span></span> ${f.s[0]}-${f.s[1]}${f.p ? ` (${f.p[0]}-${f.p[1]} p)` : ''}` : ''}</td></tr>`; };
+  const head = '<thead><tr><th>Date</th><th class="mh">Competition</th><th>Opponents</th><th class="mh">Venue</th><th>Result</th></tr></thead>';
+  o.body = `<div class="ptitle">Coming up</div>${up.length ? `<div class="tw"><table>${head}<tbody>${up.map(row).join('')}</tbody></table></div>` : '<p class="dim">Nothing arranged yet.</p>'}
+    <div class="ptitle">Results</div>${done.length ? `<div class="tw"><table>${head}<tbody>${done.slice(0, 80).map(row).join('')}</tbody></table></div>` : '<p class="dim">No matches yet.</p>'}`;
+  frame(o);
+}
+function ntHistTab(n, o){
+  const F = ntFxOf(n).filter(f => f.s), by = {};
+  for (const f of F){ const k = f.comp.replace(/ \d{4}$/, '').replace(/ play-offs?$/, ''), r = ntRes(f, n), x = by[k] = by[k] || { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 }, u = f.h === n; x.p++; x[r === 'W' ? 'w' : r === 'D' ? 'd' : 'l']++; x.gf += f.s[u ? 0 : 1]; x.ga += f.s[u ? 1 : 0]; }
+  const J = S.ntJob, R = J && J.n === n ? J.rec || [] : [];
+  o.body = `<div class="ptitle">Trophy cabinet</div>${ntCabinet(ntHonOf(n))}
+    <div class="ptitle">Record in the game, by competition</div>${Object.keys(by).length ? `<div class="tw"><table><thead><tr><th>Competition</th><th class="c">P</th><th class="c">W</th><th class="c">D</th><th class="c">L</th><th class="c">GF</th><th class="c">GA</th></tr></thead><tbody>${Object.entries(by).map(([k, x]) => `<tr><td>${esc(k)}</td><td class="c">${x.p}</td><td class="c">${x.w}</td><td class="c">${x.d}</td><td class="c">${x.l}</td><td class="c">${x.gf}</td><td class="c">${x.ga}</td></tr>`).join('')}</tbody></table></div>` : '<p class="dim">No matches yet.</p>'}
+    ${R.length ? `<div class="ptitle">With you in charge</div><p>${R.length} matches: won ${R.filter(x => x.r === 'W').length}, drawn ${R.filter(x => x.r === 'D').length}, lost ${R.filter(x => x.r === 'L').length}.</p>` : ''}`;
+  frame(o);
+}
+function ntInfoTab(n, o){
+  const conf = NT_CONF()[n] || '', R = S.nl2 ? nl2Ranking() : nlRanking(), rk = R.indexOf(n), lg = (S.nl2 && nlLeague2(n)) || nlLeague(n), all = NT_POOL().get(n) || [];
+  const abroad = all.filter(p => (club(p.club).ctry || '') !== (Object.entries(NAT3).find(([, v]) => v === n) || [''])[0]).length;
+  o.body = `<div class="cols2"><div><div class="ptitle">General Info</div><dl class="kv"><dt>Confederation</dt><dd>${esc(conf)}</dd>${lg ? `<dt>Nations League</dt><dd>League ${lg}</dd>` : ''}${rk >= 0 ? `<dt>UEFA ranking</dt><dd>${ordinal(rk + 1)} <span class="small dim">(by the Nations League)</span></dd>` : ''}${ntVal(n) != null ? `<dt>Squad value</dt><dd>${cash(ntVal(n) * 1e6 / EUR)} <span class="small dim">(Transfermarkt)</span></dd>` : ''}
+    <dt>Players in the game</dt><dd>${all.length}${all.length ? `, ${abroad} playing abroad` : ''}</dd><dt>Coach</dt><dd>${S.ntJob && S.ntJob.n === n ? 'You' : 'Not in the game'}</dd>${S.ntVac && S.ntVac[n] ? '<dt>Job</dt><dd class="yel">The federation are looking for a coach</dd>' : ''}</dl></div>
+    <div><div class="ptitle">Colours</div><div style="display:flex;gap:12px;align-items:center">${shirt(...kitN(n))}<span class="small dim">Home shirt</span></div></div></div>`;
+  frame(o);
+}
+function ntPlayersTab(n, o){
+  const L = allPlayers().filter(p => ntName(p.nat) === n || ntName(p.nat2) === n);
   const R = resTable(L, [{ k: 'name', label: 'Name', v: p => surname(p.n), h: p => `<b>${esc(cmName(p.n))}</b>` }, { k: 'club', label: 'Club', v: p => club(p.club).name, h: p => `${crest(p.club, 'mcr')}${esc(club(p.club).name)}`, cls: 'sky' },
     { k: 'based', label: 'Based', v: p => basedOf(p.club), h: p => esc(basedOf(p.club)), cls: 'yel mh' }, { k: 'pos', label: 'Position', v: p => ['GK', 'DEF', 'MID', 'FWD'].indexOf(GROUP[p.prim]) * 100 + POS_ORDER.indexOf(p.prim), h: p => esc(cmPos(p.pos)) },
-    { k: 'age', label: 'Age', v: p => p.age, h: p => p.age, cls: 'r' }, { k: 'val', label: 'Value', v: p => p.val || 0, h: p => valueOf(p), cls: 'r', desc: true }], { def: 'val', attrs: p => `class="click" data-pl="${p.id}"` });
-  frame({ title: `${flag(n)}${esc(n)}`, short: esc(n), body: `${top}<div class="ptitle">${L.length} player${L.length === 1 ? '' : 's'} in the game</div>${R.html}` });
-  document.querySelectorAll('[data-nt]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); go({ s: 'nation', n: el.dataset.nt }); }));
-  R.wire(); wirePlayers(R.rows.map(p => p.id));
+    { k: 'age', label: 'Age', v: p => p.age, h: p => p.age, cls: 'r' }, { k: 'caps', label: 'Caps', v: p => capR(p.id)[0], h: p => capR(p.id)[0], cls: 'r', desc: true }, { k: 'val', label: 'Value', v: p => p.val || 0, h: p => valueOf(p), cls: 'r', desc: true }], { def: 'val', attrs: p => `class="click" data-pl="${p.id}"` });
+  o.body = `<div class="ptitle">${L.length} player${L.length === 1 ? '' : 's'} in the game</div>${R.html}`;
+  frame(o); R.wire(); wirePlayers(R.rows.map(p => p.id));
 }
 function scrFind(){
   if (V.tab === 'sc1' || V.tab === 'sc2'){ scrScout(V.tab); return; }
