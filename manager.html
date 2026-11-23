@@ -907,25 +907,181 @@ function nlStage(){
 }
 // every day: the matches due are played, the stages move on
 function ntTick(){
-  nlInit(); const N = S.nl; if (!N) return;
-  for (let i = 0; i < 5; i++){ for (const f of [...N.fx, ...(N.ko || []), ...(N.fin || [])]) if (!f.s && f.d <= S.date) ntPlay(f); nlStage(); }
+  nlInit(); if (!S.nl) return; eqInit(); e28Init(); try { ntFriendlies(); } catch (e) {}
+  for (let i = 0; i < 6; i++){ for (const f of ntAllFx()) if (!f.s && f.d <= S.date) ntPlay(f); nlStage(); eqStage(); eqInit(); e28Init(); e28Stage(); }
 }
 // the men called up for this window: the squads of the nations playing in it, and for the rest those their country has called up
 function callUps(a, b){
-  const N = S.nl, playing = new Set(); if (N) for (const f of [...N.fx, ...(N.ko || []), ...(N.fin || [])]) if (f.d >= a && f.d <= b){ playing.add(f.h); playing.add(f.a); }
+  const playing = new Set(); for (const f of ntAllFx()) if (f.d >= a && f.d <= b){ playing.add(f.h); playing.add(f.a); }
   const ids = new Set(); for (const n of playing) for (const p of ntSquad(n)) ids.add(p.id);
-  for (const p of D.players) if (p.nt && !ntAll().includes(ntName(p.nat))) ids.add(p.id);
+  for (const p of D.players) if (p.nt && !ntWorld().includes(ntName(p.nat))) ids.add(p.id);
   return ids;
 }
 // how your men did for their countries in a window, after it: each man's games and goals, and his country's results
 function ntReport(a, b){
-  const N = S.nl; if (!N) return; const mine = new Set(squadOf(me()).map(p => p.id)), by = new Map();
-  for (const f of [...N.fx, ...(N.ko || []), ...(N.fin || [])].filter(f => f.s && f.d >= a && f.d <= b)) for (const side of ['h', 'a']) for (const id of ((f.pl || {})[side] || [])) if (mine.has(id)){
+  const mine = new Set(squadOf(me()).map(p => p.id)), by = new Map();
+  for (const f of ntAllFx().filter(f => f.s && f.d >= a && f.d <= b)) for (const side of ['h', 'a']) for (const id of ((f.pl || {})[side] || [])) if (mine.has(id)){
     const e = by.get(id) || by.set(id, { n: side === 'h' ? f.h : f.a, k: 0, g: 0, r: [] }).get(id), us = side === 'h' ? f.s[0] : f.s[1], th = side === 'h' ? f.s[1] : f.s[0];
     e.k++; e.g += (f.sc || []).filter(x => x[1] === id).length; e.r.push(us > th ? 'W' : us < th ? 'L' : 'D'); }
   if (!by.size) return;
   const rows = [...by].sort((x, y) => y[1].g - x[1].g || y[1].k - x[1].k).map(([id, e]) => `${flag(e.n)}<b>${esc(P.get(id).n)}</b> (${esc(e.n)}): ${e.k} game${e.k > 1 ? 's' : ''}${e.g ? `, <b>${e.g} goal${e.g > 1 ? 's' : ''}</b>` : ''} <span class="dim">${e.r.join(' ')}</span>`);
-  news('match', 'Your players on international duty', `In the Nations League:<br>${rows.join('<br>')}`);
+  news('match', 'Your players on international duty', `How they got on with their countries:<br>${rows.join('<br>')}`);
+}
+
+/* ---- internationals, part 2: the world's nations, friendlies, EURO 2028 qualifying and the EURO 2028 ----
+   Strength from Transfermarkt's national-team market values (cm.json nations, from pipeline/tm_nations.json): on the
+   clubs' scale, 56.6 + 4.1 x ln(value in EUR millions), fitted to the nations whose players are all in the game (England
+   EUR 1.48B gives 86.5, Serbia EUR 236.5M 79, Norway EUR 598.6M 82.8); nudged by its men in the game where many are. */
+Object.assign(NT_ALIAS, { "Côte d'Ivoire": ["Cote d'Ivoire", 'Ivory Coast'], 'Korea Republic': ['South Korea', 'Korea, South'], 'DR Congo': ['Congo DR', 'Democratic Republic of the Congo'], Gambia: ['The Gambia'], 'United States': ['USA'], 'Cape Verde': ['Cabo Verde'], 'Saudi Arabia': ['Saudi-Arabia'] });
+for (const [k, L] of Object.entries(NT_ALIAS)) { NT_KEY[k] = k; L.forEach(a => NT_KEY[a] = k); }
+const NT_CONF = () => { if (NT_CONF.c) return NT_CONF.c; const m = {}; for (const [cf, L] of Object.entries(D.nations || {})) for (const n of Object.keys(L)) m[n] = cf; for (const n of Object.values(NL26).flat()) m[n] = 'UEFA'; return (NT_CONF.c = m); };
+const ntVal = n => { for (const L of Object.values(D.nations || {})) if (L[n] != null) return L[n]; return null; };
+const NT_OUT = new Set(['Russia']);   // suspended
+// every nation of the game: UEFA's 54 and those Transfermarkt values elsewhere
+const ntWorld = () => Object.keys(NT_CONF()).filter(n => !NT_OUT.has(n));
+ntQ = function(n){
+  const L = (NT_POOL().get(n) || []).map(p => ovrNow(p)).sort((a, b) => b - a), v = ntVal(n), lg = nlLeague(n);
+  const base = v ? 56.6 + 4.1 * Math.log(Math.max(.05, v)) : ({ A: 80.5, B: 73, C: 66, D: 60 }[lg] || 57);
+  if (L.length < 11) return base;
+  const top = L.slice(0, 11), pq = top.reduce((t, x) => t + x, 0) / top.length, w = Math.min(.5, L.length / 40);
+  return w * pq + (1 - w) * base;
+};
+// the national colours of the rest of the world, the ones the game has players of
+Object.assign(NT_KIT, { Argentina: ['#75AADB', '#FFFFFF'], Brazil: ['#FEDD00', '#009C3B'], Uruguay: ['#5CBFEB', '#111111'], Colombia: ['#FCD116', '#003893'], Ecuador: ['#FFDD00', '#034EA2'], Paraguay: ['#D52B1E', '#FFFFFF'], Chile: ['#D52B1E', '#FFFFFF'], Peru: ['#FFFFFF', '#D91023'], Venezuela: ['#7B1E2A', '#FFFFFF'], Bolivia: ['#007934', '#FFFFFF'],
+  'United States': ['#FFFFFF', '#0A3161'], Mexico: ['#006847', '#FFFFFF'], Canada: ['#D80621', '#FFFFFF'], Morocco: ['#C1272D', '#006233'], Senegal: ['#FFFFFF', '#00853F'], "Côte d'Ivoire": ['#F77F00', '#009E60'], Nigeria: ['#008751', '#FFFFFF'], Algeria: ['#FFFFFF', '#006633'], Ghana: ['#FFFFFF', '#006B3F'], Egypt: ['#CE1126', '#FFFFFF'], Cameroon: ['#007A5E', '#CE1126'],
+  Japan: ['#0B2A6F', '#FFFFFF'], 'Korea Republic': ['#C60C30', '#FFFFFF'], Australia: ['#FFCD00', '#00843D'], 'Saudi Arabia': ['#006C35', '#FFFFFF'], Iran: ['#FFFFFF', '#DA0000'], 'New Zealand': ['#FFFFFF', '#111111'] });
+const kitN = n => NT_KIT[n] || ['#6A7B92', '#FFFFFF'];
+/* every match of the national teams, with its competition */
+function ntAllFx(){
+  const L = []; const add = (c, A) => (A || []).forEach(f => L.push(Object.assign(f, { comp: c })));
+  if (S.nl){ add('Nations League', S.nl.fx); add('Nations League', S.nl.ko); add('Nations League', S.nl.fin); }
+  if (S.eq){ add('EURO qualifying', S.eq.fx); add('EURO play-offs', S.eq.po); }
+  if (S.e28){ add('EURO 2028', S.e28.fx); add('EURO 2028', S.e28.ko); }
+  for (const k of Object.keys(S.ntFr || {})) add('Friendly', S.ntFr[k]);
+  return L;
+}
+// a double round robin on the given matchdays (four teams: six; five: ten, one resting each day)
+function ntRR(T, dates, g){
+  const t = T.slice(); if (t.length % 2) t.push(null); const n = t.length, R = [];
+  for (let r = 0; r < n - 1; r++){ const pr = []; for (let i = 0; i < n / 2; i++){ const x = t[i], y = t[n - 1 - i]; if (x && y) pr.push(r % 2 ? [y, x] : [x, y]); } R.push(pr); t.splice(1, 0, t.pop()); }
+  const all = [...R, ...R.map(pr => pr.map(([x, y]) => [y, x]))], fx = [];
+  all.forEach((pr, i) => pr.forEach(([h, a]) => fx.push({ d: dates[i], g, h, a })));
+  return fx;
+}
+const ntTable = (T, F, skip) => { const S2 = {}; for (const n of T) S2[n] = { n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  for (const f of F.filter(x => x.s && S2[x.h] && S2[x.a] && !(skip && (skip === x.h || skip === x.a)))){ const H = S2[f.h], A2 = S2[f.a]; H.p++; A2.p++; H.gf += f.s[0]; H.ga += f.s[1]; A2.gf += f.s[1]; A2.ga += f.s[0];
+    if (f.s[0] > f.s[1]){ H.w++; A2.l++; H.pts += 3; } else if (f.s[0] < f.s[1]){ A2.w++; H.l++; A2.pts += 3; } else { H.d++; A2.d++; H.pts++; A2.pts++; } }
+  return Object.values(S2).sort((x, y) => y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || ntQ(y.n) - ntQ(x.n)); };
+// the match dates of a window: two (a+3, a+6), or four in a double window (and a+10, a+13)
+const winDates = ([a, b, n]) => (n >= 4 ? [3, 6, 10, 13] : [3, 6]).map(k => day(a, k)).filter(d => d <= b);
+// UEFA's overall ranking after the Nations League (league, then place, points, goal difference): the seeding for EURO qualifying
+function nlRanking(){
+  const N = S.nl; if (!N || !N.lg) return Object.values(NL26).flat();
+  const fin = (N.fin || []).filter(f => f.k === 'SF1' || f.k === 'SF2').flatMap(f => [f.h, f.a]), qf = N.ko.filter(f => /^QF/.test(f.k)).flatMap(f => [f.h, f.a]);
+  const out = [], seen = new Set(), push = n => { if (n && !seen.has(n)){ seen.add(n); out.push(n); } };
+  fin.forEach(push); qf.forEach(push);
+  for (const L of ['A', 'B', 'C', 'D']){ const rows = Object.keys(N.groups).filter(g => g[0] === L).flatMap(g => nlTable(g).map((r, i) => ({ ...r, i }))); rows.sort((x, y) => x.i - y.i || y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga)); rows.forEach(r => push(r.n)); }
+  return out;
+}
+/* EURO 2028 qualifying: drawn on 6 December 2026 (Belfast). Twelve groups, six of five teams and six of four; the
+   Nations League's four finalists head four-team groups, its other quarter-finalists five-team groups; the hosts
+   (England, Republic of Ireland, Scotland, Wales) in separate groups. Five-team groups start in March 2027, four-team
+   groups in September; all finish in November 2027. Group winners and the eight best runners-up qualify (in five-team
+   groups the results against the last are not counted); two places are kept for hosts who miss out; the rest go to
+   play-offs in March 2028 (the four worst runners-up and the best Nations League group winners not through) */
+const EQ_HOSTS = ['England', 'Republic of Ireland', 'Scotland', 'Wales'];
+function eqInit(){
+  if (S.eq || S.date < '2026-12-06' || !S.nl || S.season > 2027) return;
+  // the draw comes before the quarter-finals: League A's group winners head four-team groups, its runners-up five-team groups
+  const R = nlRanking().filter(n => !NT_OUT.has(n)), fin = S.nl.lg ? S.nl.lg.A.map(g => g[0]) : [];
+  const G = {}; for (let i = 1; i <= 12; i++) G['Q' + i] = [];
+  const four = ['Q7', 'Q8', 'Q9', 'Q10', 'Q11', 'Q12'], five = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6'], r0 = rng(`eq-${S.season}`);
+  const p1 = R.slice(0, 12), heads = [...fin, ...p1.filter(n => !fin.includes(n))];
+  [...four.slice(0, fin.length ? 4 : 0), ...five, ...four.slice(fin.length ? 4 : 0)].forEach((g, i) => { if (heads[i]) G[g].push(heads[i]); });
+  const rest = R.slice(12), pots = [rest.slice(0, 12), rest.slice(12, 24), rest.slice(24, 36), rest.slice(36)];
+  for (const [pi, pot] of pots.entries()){
+    const P = pot.slice(); for (let i = P.length - 1; i > 0; i--){ const j = Math.floor(r0() * (i + 1)); [P[i], P[j]] = [P[j], P[i]]; }
+    const groups = pi < 3 ? [...five, ...four] : five;
+    for (const n of P){ const ok = groups.filter(g => G[g].length === pi + 1 && !(EQ_HOSTS.includes(n) && G[g].some(x => EQ_HOSTS.includes(x)))); const g = ok[0] || groups.find(g2 => G[g2].length === pi + 1); if (g) G[g].push(n); }
+  }
+  const w = y => intlWindows(y), m27 = w(2026).find(x => x[0].slice(5, 7) === '03'), j27 = (D.intl || []).find(x => x[0].startsWith('2027-06')), [sep, nov] = w(2027);
+  const d5 = [day(m27[0], 1), day(m27[0], 3), day(j27[0], 1), day(j27[0], 4), ...winDates(sep), ...winDates(nov)], d4 = [...winDates(sep), ...winDates(nov)];
+  const fx = Object.entries(G).flatMap(([g, T]) => ntRR(T, T.length === 5 ? d5 : d4, g));
+  S.eq = { groups: G, fx, po: [], stage: 'groups' };
+  // the countries of your men, and where they were drawn
+  const ours = [...new Set(squadOf(me()).map(p => ntName(p.nat)).filter(n => R.includes(n)))].slice(0, 5);
+  news('match', 'The EURO 2028 qualifying draw', `The draw in Belfast made twelve groups.${ours.map(n => { const g = Object.keys(G).find(k => G[k].includes(n)); return `<br>${flag(n)}${esc(n)}: group ${g.slice(1)} with ${G[g].filter(x => x !== n).map(esc).join(', ')}`; }).join('')}`);
+}
+function eqStage(){
+  const Q = S.eq; if (!Q) return;
+  if (Q.stage === 'groups' && Q.fx.every(f => f.s)){
+    const tabs = Object.entries(Q.groups).map(([g, T]) => [g, ntTable(T, Q.fx.filter(f => f.g === g))]);
+    const win = tabs.map(([, t]) => t[0].n), ru = tabs.map(([g, t]) => { const last = t.length === 5 ? t[4].n : null, t2 = last ? ntTable(Q.groups[g], Q.fx.filter(f => f.g === g), last) : t; return t2.find(r => r.n === t[1].n); });
+    ru.sort((x, y) => y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf);
+    const q = [...win, ...ru.slice(0, 8).map(r => r.n)], hostsOut = EQ_HOSTS.filter(n => !q.includes(n)).sort((a, b) => nlRanking().indexOf(a) - nlRanking().indexOf(b)), hs = hostsOut.slice(0, 2);
+    q.push(...hs); const spots = 24 - q.length;
+    const N = S.nl, gw = N && N.lg ? ['A', 'B', 'C', 'D'].flatMap(L => N.lg[L].map(g => g[0])) : [], cand = [...ru.slice(8).map(r => r.n).filter(n => !q.includes(n)), ...gw.filter(n => !q.includes(n) && !ru.slice(8).some(r => r.n === n))];
+    for (const n of nlRanking()) if (cand.length < spots * 4 && !q.includes(n) && !cand.includes(n) && !NT_OUT.has(n)) cand.push(n);
+    cand.length = Math.min(cand.length, spots * 4);
+    const pairs = []; for (let i = 0; i < spots; i++){ const T = cand.slice(i * 4, i * 4 + 4).sort((a, b) => ntQ(b) - ntQ(a)); if (T.length === 4) pairs.push({ d: '2028-03-23', k: `P${i + 1}a`, h: T[0], a: T[3], n: 0 }, { d: '2028-03-23', k: `P${i + 1}b`, h: T[1], a: T[2], n: 0 }); }
+    Q.qual = q; Q.po = pairs; Q.hosts = hs; Q.stage = pairs.length ? 'po' : 'done';
+    news('match', 'EURO 2028 qualifying: the groups are done', `Through to the finals: ${q.map(esc).join(', ')}${hs.length ? ` (${hs.map(esc).join(' and ')} as hosts)` : ''}. ${pairs.length ? `${spots} more places go to the play-offs in March 2028.` : ''}`);
+  }
+  if (Q.stage === 'po' && Q.po.every(f => f.s)){
+    const fins = Q.po.filter(f => /^P\d+[ab]$/.test(f.k));
+    if (!Q.po.some(f => /F$/.test(f.k))){ const n = fins.length / 2; for (let i = 1; i <= n; i++){ const a = ntWinner([Q.po.find(f => f.k === `P${i}a`)]), b = ntWinner([Q.po.find(f => f.k === `P${i}b`)]); Q.po.push({ d: '2028-03-28', k: `P${i}F`, h: ntQ(a) >= ntQ(b) ? a : b, a: ntQ(a) >= ntQ(b) ? b : a, n: 0 }); } return; }
+    for (const f of Q.po.filter(x => /F$/.test(x.k))) Q.qual.push(ntWinner([f]));
+    Q.stage = 'done'; news('match', 'EURO 2028: the last places', `Through the play-offs: ${Q.po.filter(x => /F$/.test(x.k)).map(f => esc(ntWinner([f]))).join(', ')}. The 24 are set.`);
+  }
+}
+/* the EURO 2028 itself (UK and Ireland, 9 June to 9 July 2028): six groups of four, the hosts who qualified head
+   groups A to D; the winners, runners-up and the four best thirds go to the last 16; the final at Wembley */
+const E28 = { md: ['2028-06-10', '2028-06-15', '2028-06-20'], r16: '2028-06-26', qf: '2028-07-01', sf: '2028-07-05', f: '2028-07-09' };
+function e28Init(){
+  const Q = S.eq; if (S.e28 || !Q || Q.stage !== 'done' || S.date < '2027-12-06') return;
+  const T = Q.qual.slice(), hosts = EQ_HOSTS.filter(n => T.includes(n)), others = T.filter(n => !hosts.includes(n)).sort((a, b) => ntQ(b) - ntQ(a)), r0 = rng('e28');
+  const G = {}; 'ABCDEF'.split('').forEach(g => G[g] = []); hosts.forEach((n, i) => G['ABCDEF'[i]].push(n));
+  const pots = [others.slice(0, 6 - hosts.length), ...[0, 1, 2].map(k => others.slice(6 - hosts.length + k * 6, 6 - hosts.length + (k + 1) * 6))];
+  for (const pot of pots){ const P = pot.slice(); for (let i = P.length - 1; i > 0; i--){ const j = Math.floor(r0() * (i + 1)); [P[i], P[j]] = [P[j], P[i]]; } for (const n of P){ const g = 'ABCDEF'.split('').filter(k => G[k].length === Math.min(...Object.values(G).map(x => x.length)))[0]; G[g].push(n); } }
+  const fx = []; for (const [g, L] of Object.entries(G)){ const pr = [[[0, 1], [2, 3]], [[0, 2], [3, 1]], [[3, 0], [1, 2]]]; pr.forEach((r, i) => r.forEach(([x, y]) => fx.push({ d: E28.md[i], g, h: L[x], a: L[y], n: !EQ_HOSTS.includes(L[x]) }))); }
+  S.e28 = { groups: G, fx, ko: [], stage: 'groups' };
+  news('match', 'The EURO 2028 draw', Object.entries(G).map(([g, L]) => `Group ${g}: ${L.map(esc).join(', ')}`).join('<br>'));
+}
+function e28Stage(){
+  const E = S.e28; if (!E) return;
+  const ko = (k, L, d) => { for (let i = 0; i < L.length / 2; i++){ const h = L[i], a = L[L.length - 1 - i]; E.ko.push({ d, k: `${k}${i + 1}`, h, a, n: !EQ_HOSTS.includes(h) }); } };
+  if (E.stage === 'groups' && E.fx.every(f => f.s)){
+    const t = Object.entries(E.groups).map(([g, L]) => ntTable(L, E.fx.filter(f => f.g === g)));
+    const thirds = t.map(x => x[2]).sort((x, y) => y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf).slice(0, 4);
+    const seed = [...t.map(x => x[0]), ...t.map(x => x[1]), ...thirds].map(r => r.n);
+    ko('R16-', seed, E28.r16); E.stage = 'r16'; return;
+  }
+  const next = { r16: ['QF-', E28.qf, 'qf'], qf: ['SF-', E28.sf, 'sf'], sf: ['Final', E28.f, 'final'] }[E.stage];
+  const cur = { r16: 'R16-', qf: 'QF-', sf: 'SF-', final: 'Final' }[E.stage];
+  if (cur && E.ko.filter(f => f.k.startsWith(cur)).every(f => f.s) && E.ko.some(f => f.k.startsWith(cur))){
+    const W = E.ko.filter(f => f.k.startsWith(cur)).map(f => ntWinner([f]));
+    if (E.stage === 'final'){ E.champ = W[0]; E.stage = 'done'; (S.ntHon = S.ntHon || []).push({ c: 'euro', y: 2028, n: W[0] }); const F = E.ko.find(f => f.k === 'Final1');
+      news('match', `${W[0]} are the champions of Europe`, `<b>${esc(W[0])}</b> won the EURO 2028 final at Wembley, ${F.s[0]}-${F.s[1]}${F.p ? ` (${F.p[0]}-${F.p[1]} on penalties)` : ''} against ${esc(W[0] === F.h ? F.a : F.h)}.`); return; }
+    ko(next[0], W, next[1]); E.stage = next[2];
+  }
+}
+/* friendlies: in every window a nation without an official match that day plays one, against another free nation of a
+   similar level (often its own continent) */
+function ntFriendlies(){
+  S.ntFr = S.ntFr || {};
+  for (const W of intlWindows(S.season)){
+    const [a] = W; if (S.ntFr[a] || S.date < day(a, -10) || S.date > W[1]) continue;
+    const off = ntAllFx().filter(f => f.d >= a && f.d <= W[1] && f.comp !== 'Friendly'), fx = [], r0 = rng(`fr-${a}`);
+    for (const d of winDates(W)){
+      const busy = new Set(off.filter(f => f.d === d || Math.abs(daysBetween(f.d, d)) < 2).flatMap(f => [f.h, f.a]));
+      const free = ntWorld().filter(n => !busy.has(n) && (ntVal(n) != null || ntAll().includes(n))).sort((x, y) => ntQ(y) - ntQ(x));
+      const used = new Set();
+      for (const n of free){ if (used.has(n)) continue; const near = free.filter(m => m !== n && !used.has(m) && Math.abs(ntQ(m) - ntQ(n)) < 6); if (!near.length) continue;
+        const same = near.filter(m => NT_CONF()[m] === NT_CONF()[n]), pool = same.length && r0() < .6 ? same : near, m = pool[Math.floor(r0() * Math.min(4, pool.length))];
+        used.add(n); used.add(m); fx.push(r0() < .5 ? { d, h: n, a: m } : { d, h: m, a: n }); }
+    }
+    S.ntFr[a] = fx;
+  }
 }
 
 /* ---- the screens: the Nations League (each league's groups with their tables and matches, the knockouts), the
@@ -939,13 +1095,17 @@ function nlGroupHTML(g){
 }
 function scrNT(){
   ntTick(); const N = S.nl;
-  if (!N){ frame({ title: 'Internationals', body: '<p class="empty">The Nations League of 2026/27 is over; the next competitions come in the next part.</p>' }); return; }
-  const tab = V.tab || 'A', tabs = [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(N.ko.length ? [['ko', 'Knockouts']] : []), ['hon', 'Honours']];
+  if (!N){ frame({ title: 'Internationals', body: '<p class="empty">The national teams start in the 2026/27 season.</p>' }); return; }
+  const tab = V.tab || 'A', tabs = [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(N.ko.length ? [['ko', 'Knockouts']] : []), ...(S.eq ? [['eq', 'EURO qualifying']] : []), ...(S.e28 ? [['e28', 'EURO 2028']] : []), ['fr', 'Friendlies'], ['hon', 'Honours']];
   let body = '';
+  const grp = (t, T, F, note) => `<div class="ovc nlg"><div class="ovh"><span>${t}</span></div><table class="ltab"><thead><tr><th></th><th>Nation</th><th class="c">P</th><th class="c">W</th><th class="c">D</th><th class="c">L</th><th class="c">GD</th><th class="c">Pts</th></tr></thead><tbody>${ntTable(T, F).map((r, i) => `<tr class="${note(i)}"><td class="c">${i + 1}</td><td>${flag(r.n)}<span class="lk" data-nt="${esc(r.n)}"><b>${esc(r.n)}</b></span></td><td class="c">${r.p}</td><td class="c">${r.w}</td><td class="c">${r.d}</td><td class="c">${r.l}</td><td class="c">${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="c"><b>${r.pts}</b></td></tr>`).join('')}</tbody></table><details class="nlfx"><summary class="small">Matches</summary><table><tbody>${F.map(ntRow).join('')}</tbody></table></details></div>`;
+  if (tab === 'eq'){ const Q = S.eq; body = `<div class="ovg nlgrid">${Object.entries(Q.groups).map(([g, T]) => grp(`Group ${g.slice(1)}`, T, Q.fx.filter(f => f.g === g), i => i === 0 ? 'nu' : i === 1 ? 'np' : '')).join('')}</div>${Q.po.length ? `<div class="ptitle">Play-offs (March 2028)</div><table class="ltab"><tbody>${Q.po.map(ntRow).join('')}</tbody></table>` : ''}<p class="small dim">Group winners and the eight best runners-up go to the EURO 2028 (in five-team groups the results against the last are not counted); two places are kept for hosts who miss out; the rest play off in March 2028.${Q.qual ? ` Qualified: ${Q.qual.map(esc).join(', ')}.` : ''}</p>`; }
+  if (tab === 'e28'){ const E = S.e28; body = `<div class="ovg nlgrid">${Object.entries(E.groups).map(([g, T]) => grp(`Group ${g}`, T, E.fx.filter(f => f.g === g), i => i < 2 ? 'nu' : i === 2 ? 'np' : '')).join('')}</div>${E.ko.length ? `<div class="ptitle">Knockouts</div><table class="ltab"><tbody>${E.ko.map(ntRow).join('')}</tbody></table>` : ''}${E.champ ? `<p><b>${flag(E.champ)}${esc(E.champ)}</b> are the champions of Europe.</p>` : ''}<p class="small dim">UK and Ireland, 9 June to 9 July 2028; the final at Wembley.</p>`; }
+  if (tab === 'fr'){ const L = Object.values(S.ntFr || {}).flat().sort((x, y) => x.d < y.d ? 1 : -1).slice(0, 80); body = L.length ? `<table class="ltab"><tbody>${L.map(ntRow).join('')}</tbody></table><p class="small dim">Friendlies fill the windows for nations without an official match, against a side of a similar level.</p>` : '<p class="empty">The friendlies of the next window are arranged ten days before it.</p>'; }
   if ('ABCD'.includes(tab) && tab.length === 1){
     const note = { A: 'Group winners and runners-up go to the quarter-finals (March 2027), the winners of those to the Finals (June 2027). Fourth place goes down, third plays off against a League B runner-up.', B: 'Winners go up to League A, runners-up play off against a League A third; fourth place goes down, third plays off against a League C runner-up.', C: 'Winners go up to League B, runners-up play off against a League B third; the two worst fourths play off against League D (March 2028).', D: 'Winners go up to League C; runners-up play off against League C (March 2028).' }[tab];
     body = `<div class="ovg nlgrid">${Object.keys(N.groups).filter(g => g[0] === tab).map(nlGroupHTML).join('')}</div><p class="small dim">${note} Matchdays: ${NL_MD.map(shortDate).join(', ')}.</p>`;
-  } else if (tab === 'ko'){
+  } else if (['eq', 'e28', 'fr'].includes(tab)){ /* drawn above */ } else if (tab === 'ko'){
     const sec = (t, L) => L.length ? `<div class="ptitle">${t}</div><table class="ltab"><tbody>${L.map(ntRow).join('')}</tbody></table>` : '';
     body = sec('Finals', N.fin || []) + sec('Quarter-finals (two legs)', N.ko.filter(f => /^QF/.test(f.k))) + sec('Play-off A/B (two legs)', N.ko.filter(f => /^AB/.test(f.k))) + sec('Play-off B/C (two legs)', N.ko.filter(f => /^BC/.test(f.k)))
       + (N.champ ? `<p><b>${flag(N.champ)}${esc(N.champ)}</b> are the champions.</p>` : '');
@@ -953,7 +1113,7 @@ function scrNT(){
     const H = JSON.parse(JSON.stringify(NT_HON)); for (const x of S.ntHon || []){ const L = H[x.c], e = L.find(y => y[0] === x.n); if (e) e[1].push(x.y); else L.push([x.n, [x.y]]); }
     body = `<div class="ovg">${Object.keys(H).map(k => `<div class="ovc"><div class="ovh"><span>${NT_COMP[k]}</span></div><table><tbody>${H[k].sort((a, b) => b[1].length - a[1].length || Math.max(...b[1]) - Math.max(...a[1])).map(([n, y]) => `<tr><td>${flag(n)}<b>${esc(n)}</b></td><td class="c"><b>${y.length}</b></td><td class="small dim" style="white-space:normal">${y.join(', ')}</td></tr>`).join('')}</tbody></table></div>`).join('')}</div><p class="small dim">Spain are the world champions (2026, 1-0 after extra time against Argentina in the final) and the European champions (2024); Portugal won the last Nations League (2025).</p>`;
   }
-  frame({ title: tab === 'hon' ? 'International honours' : 'UEFA Nations League', short: 'Nations League', top: tabs, topOn: tab, body });
+  frame({ title: tab === 'hon' ? 'International honours' : tab === 'eq' ? 'EURO 2028 qualifying' : tab === 'e28' ? 'UEFA EURO 2028' : tab === 'fr' ? 'Friendlies' : 'UEFA Nations League', short: 'Nations League', top: tabs, topOn: tab, body });
   document.querySelectorAll('[data-nt]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); go({ s: 'nation', n: el.dataset.nt }); }));
 }
 
@@ -2907,7 +3067,7 @@ function menuTree(o, unread){
     { id: 'comp', label: 'Competitions', v: { s: 'comp', tab: 'ov' }, kids: [['ov', 'Overview'], ['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results'], ['pstats', 'Player Stats'], ['tstats', 'Team Stats'], ['cup', cupLabel], ...(S.lc ? [['lc', LC]] : []), ['awards', 'Awards'], ['refs', 'Referees']].map(([t, n]) => ({ id: 'cp.' + t, label: n, v: { s: 'comp', tab: t } })).concat(awayKs().map(k => ({ id: 'aw.' + k, label: esc(D.lgs[k].league), v: { s: 'awl', k, tab: 'table' }, kids: [['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results']].map(([t, n]) => ({ id: `aw.${k}.${t}`, label: n, v: { s: 'awl', k, tab: t } })) }))) },
     ...(euOn() ? [{ id: 'eu', label: 'Europe', v: { s: 'eu', k: euMine() }, kids: [...EU_KEYS.filter(k => S.eu.c[k]).map(k => ({ id: 'eu.' + k, label: EU_NAME[k], v: { s: 'eu', k } })), ...(S.usc ? [{ id: 'eu.usc', label: USC, v: { s: 'eu', k: 'usc' } }] : [])] }] : []),
     // the cups between the continents, apart from Europe's
-    ...(S.nl ? [{ id: 'nt', label: 'Internationals', v: { s: 'nt' }, kids: [{ id: 'nt.nl', label: 'Nations League', v: { s: 'nt', tab: 'A' }, kids: [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(S.nl.ko.length ? [['ko', 'Knockouts']] : [])].map(([k, n]) => ({ id: 'nt.' + k, label: n, v: { s: 'nt', tab: k } })) }, { id: 'nt.hon', label: 'Honours', v: { s: 'nt', tab: 'hon' } }] }] : []),
+    ...(S.nl ? [{ id: 'nt', label: 'Internationals', v: { s: 'nt' }, kids: [{ id: 'nt.nl', label: 'Nations League', v: { s: 'nt', tab: 'A' }, kids: [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(S.nl.ko.length ? [['ko', 'Knockouts']] : [])].map(([k, n]) => ({ id: 'nt.' + k, label: n, v: { s: 'nt', tab: k } })) }, ...(S.eq ? [{ id: 'nt.eq', label: 'EURO qualifying', v: { s: 'nt', tab: 'eq' } }] : []), ...(S.e28 ? [{ id: 'nt.e28', label: 'EURO 2028', v: { s: 'nt', tab: 'e28' } }] : []), { id: 'nt.fr', label: 'Friendlies', v: { s: 'nt', tab: 'fr' } }, { id: 'nt.hon', label: 'Honours', v: { s: 'nt', tab: 'hon' } }] }] : []),
     ...(S.fic || S.cwc ? [{ id: 'wd', label: 'Intercontinental', v: { s: 'eu', k: S.fic ? 'fic' : 'cwc' }, kids: [...(S.fic ? [{ id: 'eu.fic', label: FIC, v: { s: 'eu', k: 'fic' } }] : []), ...(S.cwc ? [{ id: 'eu.cwc', label: CWC, v: { s: 'eu', k: 'cwc' } }] : [])] }] : []),
     // the club lists are browsed on the Clubs screen; the menu holds the countries, the club you are looking at and the last few you saw
     { id: 'clubs', label: 'Clubs', v: { s: 'clubs' }, kids: [
@@ -4643,10 +4803,10 @@ function scrComps(){
 function scrNation(){
   const n = ntName(V.n), L = allPlayers().filter(p => ntName(p.nat) === n || ntName(p.nat2) === n);
   const inNL = S.nl && ntAll().includes(n), g = inNL ? Object.keys(S.nl.groups).find(k => S.nl.groups[k].includes(n)) : null;
-  const sq = ntAll().includes(n) ? ntSquad(n) : [], F = inNL ? [...S.nl.fx, ...S.nl.ko, ...(S.nl.fin || [])].filter(f => f.h === n || f.a === n) : [];
+  const sq = ntWorld().includes(n) ? ntSquad(n) : [], F = ntAllFx().filter(f => f.h === n || f.a === n).sort((x, y) => x.d < y.d ? -1 : 1);
   const hon = Object.keys(NT_HON).map(k => { const e = NT_HON[k].find(x => x[0] === n), y = [...(e ? e[1] : []), ...(S.ntHon || []).filter(x => x.c === k && x.n === n).map(x => x.y)]; return y.length ? `${NT_COMP[k]} ${y.length}× (${y.join(', ')})` : ''; }).filter(Boolean);
   const top = (g ? nlGroupHTML(g) : '') + (sq.length ? `<div class="ptitle">Squad (the next call-up)</div><table class="ltab"><thead><tr><th>Name</th><th>Club</th><th>Position</th><th class="r">Age</th><th class="r">Caps</th><th class="r">Gls</th></tr></thead><tbody>${sq.map(p => `<tr class="click ${p.club === me() ? 'me' : ''}" data-pl="${p.id}"><td><b>${esc(cmName(p.n))}</b></td><td>${crest(p.club, 'mcr')}${esc(club(p.club).name)}</td><td>${esc(cmPos(p.pos))}</td><td class="r">${p.age}</td><td class="r">${ps(p.id).caps || 0}</td><td class="r">${ps(p.id).ig || 0}</td></tr>`).join('')}</tbody></table><p class="small dim">Caps and goals since the game began. Out of the game's leagues: ${23 - sq.length > 0 ? `${23 - sq.length} places filled from leagues not in the game` : 'none'}.</p>` : '')
-    + (F.length && !g ? `<table class="ltab"><tbody>${F.map(ntRow).join('')}</tbody></table>` : '') + (hon.length ? `<p><b>Honours:</b> ${hon.join('; ')}</p>` : '');
+    + (F.length ? `<div class="ptitle">Matches</div><table class="ltab"><tbody>${F.map(f => ntRow(f).replace('<td class="small dim">', `<td class="small dim">${esc(f.comp)}<br>`)).join('')}</tbody></table>` : '') + (hon.length ? `<p><b>Honours:</b> ${hon.join('; ')}</p>` : '');
   const R = resTable(L, [{ k: 'name', label: 'Name', v: p => surname(p.n), h: p => `<b>${esc(cmName(p.n))}</b>` }, { k: 'club', label: 'Club', v: p => club(p.club).name, h: p => `${crest(p.club, 'mcr')}${esc(club(p.club).name)}`, cls: 'sky' },
     { k: 'based', label: 'Based', v: p => basedOf(p.club), h: p => esc(basedOf(p.club)), cls: 'yel mh' }, { k: 'pos', label: 'Position', v: p => ['GK', 'DEF', 'MID', 'FWD'].indexOf(GROUP[p.prim]) * 100 + POS_ORDER.indexOf(p.prim), h: p => esc(cmPos(p.pos)) },
     { k: 'age', label: 'Age', v: p => p.age, h: p => p.age, cls: 'r' }, { k: 'val', label: 'Value', v: p => p.val || 0, h: p => valueOf(p), cls: 'r', desc: true }], { def: 'val', attrs: p => `class="click" data-pl="${p.id}"` });

@@ -778,6 +778,11 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             extra['intl'] = json.load(f)['windows']
     except (OSError, ValueError, KeyError):
         pass
+    try:   # national teams' market values by confederation (pipeline/tm_nations.json, Transfermarkt)
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_nations.json'), encoding='utf-8') as f:
+            extra['nations'] = json.load(f)['nations']
+    except (OSError, ValueError, KeyError):
+        pass
     # academy: a club's players that Transfermarkt's first-team list leaves out start the game in its reserves
     _cn = {c['id']: c['name'] for c in clubs}
     for x in out_players:
