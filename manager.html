@@ -800,7 +800,7 @@ const NL26 = { A1: ['Belgium', 'France', 'Türkiye', 'Italy'], A2: ['Netherlands
   C1: ['Finland', 'Albania', 'Belarus', 'San Marino'], C2: ['Armenia', 'Montenegro', 'Cyprus', 'Latvia'], C3: ['Slovakia', 'Kazakhstan', 'Faroe Islands', 'Moldova'], C4: ['Luxembourg', 'Estonia', 'Iceland', 'Bulgaria'],
   D1: ['Malta', 'Gibraltar', 'Andorra'], D2: ['Lithuania', 'Azerbaijan', 'Liechtenstein'] };
 const NL_MD = ['2026-09-25', '2026-09-28', '2026-10-02', '2026-10-05', '2026-11-13', '2026-11-16'];
-const NL_KO = { qf1: '2027-03-26', qf2: '2027-03-29', sf1: '2027-06-09', sf2: '2027-06-10', f: '2027-06-13', cd1: '2028-03-24', cd2: '2028-03-27' };
+const NL_KO = { qf1: '2027-03-26', qf2: '2027-03-29', sf1: '2027-06-09', sf2: '2027-06-10', f: '2027-06-13' };
 // the national colours (shirt, then trim), for the match screens and the charts
 const NT_KIT = { Belgium: ['#C8102E', '#FDDA24'], France: ['#1F3A93', '#FFFFFF'], 'Türkiye': ['#E30A17', '#FFFFFF'], Italy: ['#0066B3', '#FFFFFF'], Netherlands: ['#F36C21', '#FFFFFF'], Greece: ['#0D5EAF', '#FFFFFF'], Germany: ['#FFFFFF', '#111111'], Serbia: ['#C6363C', '#FFFFFF'],
   Spain: ['#C60B1E', '#FFC400'], Croatia: ['#FFFFFF', '#E1001A'], England: ['#FFFFFF', '#0C2340'], Czechia: ['#D7141A', '#FFFFFF'], Norway: ['#BA0C2F', '#FFFFFF'], Portugal: ['#9A1B1F', '#0B7A3E'], Denmark: ['#C8102E', '#FFFFFF'], Wales: ['#C8102E', '#00AB39'],
@@ -880,18 +880,34 @@ function ntWinner(L){
 /* after the league phase: League A's quarter-finals (a group winner against another group's runner-up, the runner-up at
    home first), the A/B and B/C play-offs (the higher league's third against the lower league's runner-up); the Finals
    (semi-finals, third place, final) in June; then promotion and relegation for the next edition */
+// the leagues of 2028/29 (eighteen each): League A loses its two worst fourths and the A/B play-off losers, gains
+// League B's winners and the play-off winners; League C gains all of League D
+function nlNext(N, w){
+  const lg = N.lg, col = (X, i) => X.map(g => g[i]), R = nlRanking(), tie = k => N.ko.filter(f => f.k === k), los = k => loserOf(tie(k), w(k));
+  const abW = [1, 2, 3, 4].map(i => w('AB' + i)), abL = [1, 2, 3, 4].map(i => los('AB' + i)), bcW = [1, 2, 3, 4].map(i => w('BC' + i)), bcL = [1, 2, 3, 4].map(i => los('BC' + i));
+  const inAB = new Set(N.ko.filter(f => /^AB/.test(f.k)).flatMap(f => [f.h, f.a])), rel = N.rel || [];
+  const A = [...lg.A.flat().filter(n => !inAB.has(n) && !rel.includes(n)), ...col(lg.B, 0), ...abW];
+  const B = [...rel, ...abL, ...col(lg.B, 2), ...bcW, ...col(lg.C, 0)], C = [...bcL, ...col(lg.C, 2), ...col(lg.C, 3), ...lg.D.flat()];
+  const ord = L => [...new Set(L)].filter(Boolean).sort((a, b) => R.indexOf(a) - R.indexOf(b));
+  N.next = { A: ord(A), B: ord(B), C: ord(C) };
+}
 function nlStage(){
   const N = S.nl; if (!N) return;
+  // a save from before the rebalanced play-offs: their draw is made again while none of them has been played
+  if (N.stage === 'ko' && !N.reb && !N.ko.some(f => f.s)){ N.stage = 'league'; N.ko = []; }
   if (N.stage === 'league' && N.fx.every(f => f.s)){
     const T = g => nlTable(g).map(r => r.n), A = ['A1', 'A2', 'A3', 'A4'].map(T), B = ['B1', 'B2', 'B3', 'B4'].map(T), C = ['C1', 'C2', 'C3', 'C4'].map(T);
-    const tie = (k, x, y) => [{ d: NL_KO.qf1, k, h: y, a: x }, { d: NL_KO.qf2, k, h: x, a: y }];
+    const tie = (k, x, y) => [{ d: NL_KO.qf1, k, h: y, a: x }, { d: NL_KO.qf2, k, h: x, a: y }], rk = (L, i) => rankRows(Object.keys(N.groups).filter(g => g[0] === L).map(g => nlTable(g)[i])).map(r => r.n);
+    const a3 = rk('A', 2), a4 = rk('A', 3), abA = [a3[2], a3[3], a4[0], a4[1]], abB = rk('B', 1), bcB = rk('B', 3), bcC = rk('C', 1);
     N.ko = [...tie('QF1', A[0][0], A[1][1]), ...tie('QF2', A[1][0], A[0][1]), ...tie('QF3', A[2][0], A[3][1]), ...tie('QF4', A[3][0], A[2][1]),
-      ...[0, 1, 2, 3].flatMap(i => tie('AB' + (i + 1), A[i][2], B[(i + 1) % 4][1])), ...[0, 1, 2, 3].flatMap(i => tie('BC' + (i + 1), B[i][2], C[(i + 1) % 4][1]))];
+      ...[0, 1, 2, 3].flatMap(i => tie('AB' + (i + 1), abA[i], abB[3 - i])), ...[0, 1, 2, 3].flatMap(i => tie('BC' + (i + 1), bcB[i], bcC[3 - i]))];
+    N.reb = 1; N.rel = [a4[2], a4[3]];
     N.lg = { A, B, C, D: ['D1', 'D2'].map(T) }; N.stage = 'ko';
-    news('match', 'Nations League: the league phase is over', `Into the quarter-finals: ${A.map(g => `${esc(g[0])}, ${esc(g[1])}`).join('; ')}. Promoted to League A: ${B.map(g => esc(g[0])).join(', ')}.`);
+    news('match', 'Nations League: the league phase is over', `Into the quarter-finals: ${A.map(g => `${esc(g[0])}, ${esc(g[1])}`).join('; ')}. Promoted to League A: ${B.map(g => esc(g[0])).join(', ')}. Down to League B: ${N.rel.map(esc).join(', ')}. All of League D go up to League C.`);
   }
   if (N.stage === 'ko' && N.ko.every(f => f.s)){
     const w = k => ntWinner(N.ko.filter(f => f.k === k)), q = ['QF1', 'QF2', 'QF3', 'QF4'].map(w);
+    nlNext(N, w);
     N.fin = [{ d: NL_KO.sf1, k: 'SF1', h: q[0], a: q[2], n: 1 }, { d: NL_KO.sf2, k: 'SF2', h: q[1], a: q[3], n: 1 }]; N.stage = 'sf';
     news('match', 'Nations League Finals', `The last four: ${q.map(esc).join(', ')}. The semi-finals are on ${fmtDate(NL_KO.sf1)} and ${fmtDate(NL_KO.sf2)}.`);
   }
@@ -908,7 +924,7 @@ function nlStage(){
 // every day: the matches due are played, the stages move on
 function ntTick(){
   nlInit(); if (!S.nl) return; eqInit(); e28Init(); try { ntFriendlies(); } catch (e) {}
-  for (let i = 0; i < 6; i++){ for (const f of ntAllFx()) if (!f.s && f.d <= S.date) ntPlay(f); nlStage(); eqStage(); eqInit(); e28Init(); e28Stage(); }
+  for (let i = 0; i < 6; i++){ for (const f of ntAllFx()) if (!f.s && f.d <= S.date) ntPlay(f); nlStage(); eqStage(); eqInit(); e28Init(); e28Stage(); nl2Init(); nl2Stage(); wqInit(); wqStage(); wcInit(); wcStage(); }
 }
 // the men called up for this window: the squads of the nations playing in it, and for the rest those their country has called up
 function callUps(a, b){
@@ -957,6 +973,9 @@ function ntAllFx(){
   if (S.nl){ add('Nations League', S.nl.fx); add('Nations League', S.nl.ko); add('Nations League', S.nl.fin); }
   if (S.eq){ add('EURO qualifying', S.eq.fx); add('EURO play-offs', S.eq.po); }
   if (S.e28){ add('EURO 2028', S.e28.fx); add('EURO 2028', S.e28.ko); }
+  if (S.nl2){ add('Nations League', S.nl2.fx); add('Nations League', S.nl2.ko); add('Nations League', S.nl2.fin); }
+  for (const [k, P] of Object.entries((S.wq && S.wq.p) || {})) add(k === 'IC' ? 'WC play-off' : k === 'EUPO' ? 'WC play-offs' : 'WC qualifying', P.fx);
+  if (S.wc){ add('World Cup 2030', S.wc.fx); add('World Cup 2030', S.wc.ko); }
   for (const k of Object.keys(S.ntFr || {})) add('Friendly', S.ntFr[k]);
   return L;
 }
@@ -1020,16 +1039,19 @@ function eqStage(){
     ru.sort((x, y) => y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf);
     const q = [...win, ...ru.slice(0, 8).map(r => r.n)], hostsOut = EQ_HOSTS.filter(n => !q.includes(n)).sort((a, b) => nlRanking().indexOf(a) - nlRanking().indexOf(b)), hs = hostsOut.slice(0, 2);
     q.push(...hs); const spots = 24 - q.length;
-    const N = S.nl, gw = N && N.lg ? ['A', 'B', 'C', 'D'].flatMap(L => N.lg[L].map(g => g[0])) : [], cand = [...ru.slice(8).map(r => r.n).filter(n => !q.includes(n)), ...gw.filter(n => !q.includes(n) && !ru.slice(8).some(r => r.n === n))];
+    const N = S.nl, gw = N && N.lg ? ['A', 'B', 'C', 'D'].flatMap(L => N.lg[L].map(g => g[0])) : [], cand = [...ru.slice(8).map(r => r.n).filter(n => !q.includes(n)), ...gw.filter(n => !q.includes(n) && !ru.slice(8).some(r => r.n === n) && !EQ_HOSTS.includes(n)).sort((a, b) => (nlLeague(a) === 'D') - (nlLeague(b) === 'D') || nlRanking().indexOf(a) - nlRanking().indexOf(b))];
     for (const n of nlRanking()) if (cand.length < spots * 4 && !q.includes(n) && !cand.includes(n) && !NT_OUT.has(n)) cand.push(n);
     cand.length = Math.min(cand.length, spots * 4);
-    const pairs = []; for (let i = 0; i < spots; i++){ const T = cand.slice(i * 4, i * 4 + 4).sort((a, b) => ntQ(b) - ntQ(a)); if (T.length === 4) pairs.push({ d: '2028-03-23', k: `P${i + 1}a`, h: T[0], a: T[3], n: 0 }, { d: '2028-03-23', k: `P${i + 1}b`, h: T[1], a: T[2], n: 0 }); }
+    const pairs = [], [m1, m2] = ['2028-03-23', '2028-03-26'];
+    if (spots === 4 && !hs.length){ const T = cand.slice(0, 8); for (let i = 0; i < 4; i++) pairs.push(...tie2(`T${i + 1}`, T[i], T[7 - i], m1, m2)); }
+    else for (let i = 0; i < spots; i++){ const T = cand.slice(i * 4, i * 4 + 4).sort((a, b) => ntQ(b) - ntQ(a)); if (T.length === 4) pairs.push({ d: m1, k: `P${i + 1}a`, h: T[0], a: T[3], n: 0 }, { d: m1, k: `P${i + 1}b`, h: T[1], a: T[2], n: 0 }); }
     Q.qual = q; Q.po = pairs; Q.hosts = hs; Q.stage = pairs.length ? 'po' : 'done';
     news('match', 'EURO 2028 qualifying: the groups are done', `Through to the finals: ${q.map(esc).join(', ')}${hs.length ? ` (${hs.map(esc).join(' and ')} as hosts)` : ''}. ${pairs.length ? `${spots} more places go to the play-offs in March 2028.` : ''}`);
   }
   if (Q.stage === 'po' && Q.po.every(f => f.s)){
+    if (Q.po.some(f => /^T/.test(f.k))){ const W = [1, 2, 3, 4].map(i => ntWinner(Q.po.filter(f => f.k === `T${i}`))); Q.qual.push(...W); Q.stage = 'done'; news('match', 'EURO 2028: the last places', `Through the play-offs: ${W.map(esc).join(', ')}. The 24 are set.`); return; }
     const fins = Q.po.filter(f => /^P\d+[ab]$/.test(f.k));
-    if (!Q.po.some(f => /F$/.test(f.k))){ const n = fins.length / 2; for (let i = 1; i <= n; i++){ const a = ntWinner([Q.po.find(f => f.k === `P${i}a`)]), b = ntWinner([Q.po.find(f => f.k === `P${i}b`)]); Q.po.push({ d: '2028-03-28', k: `P${i}F`, h: ntQ(a) >= ntQ(b) ? a : b, a: ntQ(a) >= ntQ(b) ? b : a, n: 0 }); } return; }
+    if (!Q.po.some(f => /F$/.test(f.k))){ const n = fins.length / 2; for (let i = 1; i <= n; i++){ const a = ntWinner([Q.po.find(f => f.k === `P${i}a`)]), b = ntWinner([Q.po.find(f => f.k === `P${i}b`)]); Q.po.push({ d: '2028-03-26', k: `P${i}F`, h: ntQ(a) >= ntQ(b) ? a : b, a: ntQ(a) >= ntQ(b) ? b : a, n: 0 }); } return; }
     for (const f of Q.po.filter(x => /F$/.test(x.k))) Q.qual.push(ntWinner([f]));
     Q.stage = 'done'; news('match', 'EURO 2028: the last places', `Through the play-offs: ${Q.po.filter(x => /F$/.test(x.k)).map(f => esc(ntWinner([f]))).join(', ')}. The 24 are set.`);
   }
@@ -1084,28 +1106,237 @@ function ntFriendlies(){
   }
 }
 
+/* ---- part 2b: the Nations League 2028/29 (three leagues of 18), World Cup 2030 qualifying on every continent, the
+   intercontinental play-off and the World Cup 2030 itself ---- */
+const winM = (y, mm) => intlWindows(y).find(w => w[0].slice(5, 7) === mm);
+const shuf = (A, r) => { const P = A.slice(); for (let i = P.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [P[i], P[j]] = [P[j], P[i]]; } return P; };
+const rankRows = L => L.slice().sort((x, y) => y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || ntQ(y.n) - ntQ(x.n));
+// a two-legged tie: the lower-ranked side at home first
+const tie2 = (k, hi, lo, d1, d2) => [{ d: d1, k, h: lo, a: hi }, { d: d2, k, h: hi, a: lo }];
+const loserOf = (L, w) => L[0].h === w ? L[0].a : L[0].h;
+// every match date of the windows that open between a and b (both inclusive), in order
+const wdates = (a, b) => { const out = []; for (let y = 2026; y <= 2030; y++) for (const W of intlWindows(y)) if (W[0] >= a && W[0] <= b) out.push(...winDates(W)); return [...new Set(out)].sort(); };
+// spreads a ranked list over k groups, a snake through the pots
+const snake = (R, k, prefix) => { const G = {}; for (let i = 0; i < k; i++) G[prefix + (i + 1)] = []; R.forEach((n, i) => { const row = Math.floor(i / k), c = i % k; G[prefix + ((row % 2 ? k - 1 - c : c) + 1)].push(n); }); return G; };
+// a round robin of every group on the given dates (double unless single), the rounds without a date left out
+const rrAll = (G, dates, single) => Object.entries(G).flatMap(([g, T]) => { const n = T.length + T.length % 2, R = n - 1, d = single ? dates.slice(0, R) : dates.slice(0, 2 * R); return ntRR(T, d, g).filter(f => f.d); });
+const grpTabs = (G, F) => Object.fromEntries(Object.entries(G).map(([g, T]) => [g, ntTable(T, F.filter(f => f.g === g))]));
+// a ranked list of the teams in one place of several groups (the best runners-up and the like)
+const placeRank = (tabs, i) => rankRows(Object.values(tabs).map(t => t[i]).filter(Boolean));
+
+/* the Nations League 2028/29: three leagues of eighteen, three groups of six in each, drawn from pots of six (two teams
+   of each pot in a group). Six matches: home and away against the other team of its own pot, one at home and one away
+   against the teams of each other pot. League A's group winners, runners-up and the two best thirds play the
+   quarter-finals (two legs, March 2029), the last four the Finals (June 2029). Sixth place goes down; the fourths and
+   fifths of the higher league play off against the runners-up and thirds of the lower one; the winners of B and C go up.
+   It also sorts the nations for World Cup qualifying: Leagues A and B make League 1, League C League 2. */
+const NL28 = { md: ['2028-09-21', '2028-09-24', '2028-09-28', '2028-10-01', '2028-11-16', '2028-11-19'], qf1: '2029-03-22', qf2: '2029-03-25', sf1: '2029-06-06', sf2: '2029-06-07', f: '2029-06-10' };
+function nl6(T, g){
+  const M = []; for (let p = 0; p < 3; p++) M.push([T[2 * p], T[2 * p + 1]], [T[2 * p + 1], T[2 * p]]);
+  for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++){ const [x1, x2, y1, y2] = [T[2 * p], T[2 * p + 1], T[2 * q], T[2 * q + 1]]; M.push([x1, y1], [y2, x1], [x2, y2], [y1, x2]); }
+  // six matchdays, each side once on each: a small search; the two meetings of the same pot are kept apart
+  const R = M.map(() => -1), busy = [...Array(6)].map(() => new Set());
+  const ok = (i, r) => !busy[r].has(M[i][0]) && !busy[r].has(M[i][1]) && !(i < 6 && i % 2 && Math.abs(R[i - 1] - r) < 2);
+  const put = i => { if (i === M.length) return true; for (let r = 0; r < 6; r++) if (ok(i, r)){ R[i] = r; busy[r].add(M[i][0]); busy[r].add(M[i][1]); if (put(i + 1)) return true; busy[r].delete(M[i][0]); busy[r].delete(M[i][1]); R[i] = -1; } return false; };
+  if (!put(0)) M.forEach((m, i) => R[i] = i % 6);
+  return M.map(([h, a], i) => ({ d: NL28.md[R[i]], g, h, a }));
+}
+function nl2Init(){
+  const N = S.nl; if (S.nl2 || !N || N.stage !== 'done' || !N.next || S.date < '2028-02-01') return;
+  const r0 = rng('nl28'), G = {}, fx = [];
+  for (const L of ['A', 'B', 'C']){
+    const T = N.next[L], pots = [T.slice(0, 6), T.slice(6, 12), T.slice(12, 18)].map(p => shuf(p, r0));
+    for (let g = 0; g < 3; g++){ const k = L + (g + 1); G[k] = pots.flatMap(p => [p[2 * g], p[2 * g + 1]]).filter(Boolean); fx.push(...nl6(G[k], k)); }
+  }
+  S.nl2 = { s: 2028, groups: G, fx, ko: [], stage: 'league' };
+  const ours = [...new Set(squadOf(me()).map(p => ntName(p.nat)))].filter(n => Object.values(G).flat().includes(n)).slice(0, 5);
+  news('match', 'The Nations League 2028/29 draw', `Three leagues of eighteen, three groups of six in each.${ours.map(n => { const g = Object.keys(G).find(k => G[k].includes(n)); return `<br>${flag(n)}${esc(n)}: group ${g} with ${G[g].filter(x => x !== n).map(esc).join(', ')}`; }).join('')}`);
+}
+function nl2Ranking(){
+  const N = S.nl2; if (!N) return [];
+  const out = [];
+  for (const L of ['A', 'B', 'C']){ const rows = Object.keys(N.groups).filter(g => g[0] === L).flatMap(g => ntTable(N.groups[g], N.fx.filter(f => f.g === g)).map((r, i) => ({ ...r, i }))); rows.sort((x, y) => x.i - y.i || y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf); out.push(...rows.map(r => r.n)); }
+  return out;
+}
+function nl2Stage(){
+  const N = S.nl2; if (!N) return;
+  if (N.stage === 'league' && N.fx.every(f => f.s)){
+    const tabs = grpTabs(N.groups, N.fx), of = L => Object.keys(tabs).filter(g => g[0] === L).map(g => tabs[g]);
+    const A = of('A'), B = of('B'), C = of('C'), at = (X, i) => rankRows(X.map(t => t[i])).map(r => r.n);
+    const qf = [...at(A, 0), ...at(A, 1), ...at(A, 2).slice(0, 2)];
+    const ab = [[...at(A, 3), ...at(A, 4)], [...at(B, 1), ...at(B, 2)]], bc = [[...at(B, 3), ...at(B, 4)], [...at(C, 1), ...at(C, 2)]];
+    N.ko = [...[0, 1, 2, 3].flatMap(i => tie2('QF' + (i + 1), qf[i], qf[7 - i], NL28.qf1, NL28.qf2)),
+      ...[0, 1, 2, 3, 4, 5].flatMap(i => tie2('AB' + (i + 1), ab[0][i], ab[1][5 - i], NL28.qf1, NL28.qf2)),
+      ...[0, 1, 2, 3, 4, 5].flatMap(i => tie2('BC' + (i + 1), bc[0][i], bc[1][5 - i], NL28.qf1, NL28.qf2))];
+    N.lg = { A: A.map(t => t.map(r => r.n)), B: B.map(t => t.map(r => r.n)), C: C.map(t => t.map(r => r.n)) }; N.stage = 'ko';
+    news('match', 'Nations League 2028/29: the league phase is over', `Into the quarter-finals: ${qf.map(esc).join(', ')}. Promoted to League A: ${at(B, 0).map(esc).join(', ')}; to League B: ${at(C, 0).map(esc).join(', ')}. Relegated from League A: ${at(A, 5).map(esc).join(', ')}.`);
+  }
+  if (N.stage === 'ko' && N.ko.every(f => f.s)){
+    const w = k => ntWinner(N.ko.filter(f => f.k === k)), q = ['QF1', 'QF2', 'QF3', 'QF4'].map(w);
+    const tie = k => N.ko.filter(f => f.k === k), lg = N.lg, col = (X, i) => X.map(g => g[i]);
+    const abW = [1, 2, 3, 4, 5, 6].map(i => w('AB' + i)), abL = [1, 2, 3, 4, 5, 6].map(i => loserOf(tie('AB' + i), w('AB' + i)));
+    const bcW = [1, 2, 3, 4, 5, 6].map(i => w('BC' + i)), bcL = [1, 2, 3, 4, 5, 6].map(i => loserOf(tie('BC' + i), w('BC' + i)));
+    N.next = { A: [...[0, 1, 2].flatMap(i => col(lg.A, i)), ...col(lg.B, 0), ...abW], B: [...col(lg.A, 5), ...abL, ...bcW, ...col(lg.C, 0)], C: [...col(lg.B, 5), ...bcL, ...[3, 4, 5].flatMap(i => col(lg.C, i))] };
+    N.fin = [{ d: NL28.sf1, k: 'SF1', h: q[0], a: q[3], n: 1 }, { d: NL28.sf2, k: 'SF2', h: q[1], a: q[2], n: 1 }]; N.stage = 'sf';
+    news('match', 'Nations League Finals 2029', `The last four: ${q.map(esc).join(', ')}. The semi-finals are on ${fmtDate(NL28.sf1)} and ${fmtDate(NL28.sf2)}.`);
+  }
+  if (N.stage === 'sf' && N.fin.every(f => f.s)){
+    const w1 = ntWinner([N.fin[0]]), w2 = ntWinner([N.fin[1]]);
+    N.fin.push({ d: NL28.f, k: '3rd', h: loserOf([N.fin[0]], w1), a: loserOf([N.fin[1]], w2), n: 1 }, { d: NL28.f, k: 'Final', h: w1, a: w2, n: 1 }); N.stage = 'final';
+  }
+  if (N.stage === 'final' && N.fin.every(f => f.s)){
+    const F = N.fin.find(f => f.k === 'Final'), ch = ntWinner([F]); N.champ = ch; N.stage = 'done';
+    (S.ntHon = S.ntHon || []).push({ c: 'nl', y: 2029, n: ch });
+    news('match', `${ch} win the Nations League`, `<b>${esc(ch)}</b> beat ${esc(loserOf([F], ch))} ${F.s[0]}-${F.s[1]}${F.p ? ` (${F.p[0]}-${F.p[1]} on penalties)` : ''} in the 2029 final.`);
+  }
+}
+
+/* World Cup 2030 (Spain, Portugal and Morocco, with the three opening matches in Uruguay, Argentina and Paraguay for the
+   centenary; 48 teams, 8 June to 21 July 2030). The six hosts are in. Qualifying, kept close to the real formats:
+   UEFA (16 with Spain and Portugal): League 1 (Nations League A and B, 36) in three groups of twelve, six matches each
+   (Swiss style), League 2 (League C, 18) in three groups of six, six matches (three opponents home and away), September
+   to November 2029. League 1's group winners (hosts aside) go through; places 2 to 7, League 2's group winners and its
+   best runner-up play eleven two-legged play-offs in March 2030.
+   CONMEBOL (3 + 1): the seven who are not hosts, home and away. CONCACAF (6 + 2): six groups, then three groups of
+   four; the top two of those go through, the two best thirds to the intercontinental play-off. CAF (8 + 1, Morocco
+   aside): six groups of four; the winners and the two best runners-up, the next one to the play-off. AFC (8 + 1): five
+   groups of five; the winners and the three best runners-up, the next one to the play-off. OFC (1 + 1): one round
+   robin. The intercontinental play-off (March 2030): six teams, the two best seeded into its finals, two places. */
+const WC_HOSTS = ['Spain', 'Portugal', 'Morocco', 'Argentina', 'Uruguay', 'Paraguay'], WC_SA = ['Argentina', 'Uruguay', 'Paraguay'];
+const WC_NOFIFA = new Set(['Martinique', 'Guadeloupe', 'French Guiana']);   // CONCACAF members, not FIFA's
+const WQ_NAME = { EU: 'UEFA', EUPO: 'UEFA play-offs', SA: 'CONMEBOL', NA1: 'CONCACAF second round', NA2: 'CONCACAF third round', AF: 'CAF', AS: 'AFC', OC: 'OFC', IC: 'Intercontinental play-off' };
+const confOf = cf => ntWorld().filter(n => NT_CONF()[n] === cf && !WC_NOFIFA.has(n));
+function wqPart(k, G, fx, extra){ S.wq.p[k] = Object.assign({ groups: G, fx, stage: 'groups' }, extra || {}); }
+function wqQual(L, how){ for (const n of L) if (n && !S.wq.qual.includes(n)){ S.wq.qual.push(n); S.wq.how[n] = how; } }
+function wqInit(){
+  if (S.date < '2027-07-01' || !S.nl) return;
+  const Q = S.wq || (S.wq = { p: {}, qual: [], how: {}, ic: [] }), byQ = L => L.slice().sort((a, b) => ntQ(b) - ntQ(a));
+  if (!Q.p.SA){ const T = byQ(confOf('CONMEBOL').filter(n => !WC_HOSTS.includes(n))); wqPart('SA', { SA: T }, rrAll({ SA: T }, wdates('2027-08-01', '2029-04-01'))); }
+  if (!Q.p.NA1){ const G = snake(byQ(confOf('CONCACAF')).slice(0, 24), 6, 'N'); wqPart('NA1', G, rrAll(G, wdates('2027-08-01', '2028-04-01'))); }
+  if (S.date >= '2028-07-01'){
+    if (!Q.p.AF){ const G = snake(byQ(confOf('CAF').filter(n => !WC_HOSTS.includes(n))).slice(0, 24), 6, 'F'); wqPart('AF', G, rrAll(G, wdates('2028-08-01', '2029-12-01'))); }
+    if (!Q.p.AS){ const G = snake(byQ(confOf('AFC')).slice(0, 25), 5, 'S'); wqPart('AS', G, rrAll(G, wdates('2028-08-01', '2029-12-01'))); }
+    if (!Q.p.OC){ const T = byQ(confOf('OFC')); wqPart('OC', { O: T }, rrAll({ O: T }, wdates('2028-08-01', '2029-12-01'), true)); }
+  }
+  if (!Q.p.EU && S.nl2 && S.nl2.stage !== 'league' && S.date >= '2028-12-01'){
+    const R = nl2Ranking().filter(n => !NT_OUT.has(n)), L1 = R.filter(n => 'AB'.includes(nlLeague2(n))), L2 = R.filter(n => nlLeague2(n) === 'C');
+    const G1 = snake(L1, 3, 'L1-'), G2 = snake(L2, 3, 'L2-'), d = wdates('2029-08-01', '2029-12-01');
+    const fx = [...Object.entries(G1).flatMap(([g, T]) => ntRR(T, d.slice(0, 6), g).filter(f => f.d)), ...Object.entries(G2).flatMap(([g, T]) => ntRR(T, [d[0], d[1], d[2], , , d[3], d[4], d[5]], g).filter(f => f.d))];
+    wqPart('EU', { ...G1, ...G2 }, fx);
+    const ours = [...new Set(squadOf(me()).map(p => ntName(p.nat)))].filter(n => R.includes(n)).slice(0, 5), G = { ...G1, ...G2 };
+    news('match', 'The World Cup 2030 qualifying draw (Europe)', `League 1 (Nations League A and B): three groups of twelve, six matches each. League 2 (League C): three groups of six.${ours.map(n => { const g = Object.keys(G).find(k => G[k].includes(n)); return `<br>${flag(n)}${esc(n)}: ${g.replace('L1-', 'League 1, group ').replace('L2-', 'League 2, group ')}`; }).join('')}`);
+  }
+}
+const nlLeague2 = n => { for (const [g, L] of Object.entries((S.nl2 && S.nl2.groups) || {})) if (L.includes(n)) return g[0]; return null; };
+function wqStage(){
+  const Q = S.wq; if (!Q) return;
+  const P = Q.p, done = k => P[k] && P[k].fx.every(f => f.s) && P[k].stage === 'groups', fin = k => { P[k].stage = 'done'; P[k].tabs = grpTabs(P[k].groups, P[k].fx); return P[k].tabs; };
+  if (done('SA')){ const t = fin('SA').SA.map(r => r.n); wqQual(t.slice(0, 3), 'CONMEBOL'); Q.ic.push(t[3]); news('match', 'World Cup 2030: South America', `Through to the World Cup: ${t.slice(0, 3).map(esc).join(', ')}, with the hosts Argentina, Uruguay and Paraguay. ${esc(t[3])} go to the intercontinental play-off.`); }
+  if (done('NA1')){ const t = fin('NA1'), up = Object.values(t).flatMap(x => x.slice(0, 2).map(r => r.n)), G = snake(rankRows(Object.values(t).flatMap(x => x.slice(0, 2))).map(r => r.n), 3, 'M');
+    const d = ['2028-06-05', '2028-06-09', ...wdates('2029-08-01', '2029-10-31')]; wqPart('NA2', G, rrAll(G, d));
+    news('match', 'World Cup 2030 qualifying: CONCACAF', `Into the third round: ${up.map(esc).join(', ')}.`); }
+  if (done('NA2')){ const t = fin('NA2'), top = Object.values(t).flatMap(x => x.slice(0, 2).map(r => r.n)), th = placeRank(t, 2).slice(0, 2).map(r => r.n); wqQual(top, 'CONCACAF'); Q.ic.push(...th);
+    news('match', 'World Cup 2030: CONCACAF', `Through to the World Cup: ${top.map(esc).join(', ')}. ${th.map(esc).join(' and ')} go to the intercontinental play-off.`); }
+  if (done('AF')){ const t = fin('AF'), win = Object.values(t).map(x => x[0].n), ru = placeRank(t, 1).map(r => r.n); wqQual([...win, ...ru.slice(0, 2)], 'CAF'); Q.ic.push(ru[2]);
+    news('match', 'World Cup 2030: Africa', `Through to the World Cup: ${[...win, ...ru.slice(0, 2)].map(esc).join(', ')}, with the hosts Morocco. ${esc(ru[2])} go to the intercontinental play-off.`); }
+  if (done('AS')){ const t = fin('AS'), win = Object.values(t).map(x => x[0].n), ru = placeRank(t, 1).map(r => r.n); wqQual([...win, ...ru.slice(0, 3)], 'AFC'); Q.ic.push(ru[3]);
+    news('match', 'World Cup 2030: Asia', `Through to the World Cup: ${[...win, ...ru.slice(0, 3)].map(esc).join(', ')}. ${esc(ru[3])} go to the intercontinental play-off.`); }
+  if (done('OC')){ const t = fin('OC').O.map(r => r.n); wqQual([t[0]], 'OFC'); Q.ic.push(t[1]); news('match', 'World Cup 2030: Oceania', `${esc(t[0])} are going to the World Cup; ${esc(t[1])} to the intercontinental play-off.`); }
+  if (done('EU')){
+    const t = fin('EU'), direct = [], po = [];
+    for (const g of ['L1-1', 'L1-2', 'L1-3']){ const L = t[g].filter(r => !WC_HOSTS.includes(r.n)); direct.push(L[0].n); po.push(...L.slice(1, 7).map((r, i) => ({ ...r, i: i + 1 }))); }
+    const l2 = ['L2-1', 'L2-2', 'L2-3'].map(g => t[g]), l2w = rankRows(l2.map(x => x[0])).map(r => ({ ...r, i: 8 })), l2r = rankRows(l2.map(x => x[1]))[0];
+    const seeds = [...po.sort((x, y) => x.i - y.i || y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga)), ...l2w, { ...l2r, i: 9 }].map(r => r.n);
+    wqQual(direct, 'UEFA'); const [m1, m2] = winDates(winM(2029, '03'));
+    wqPart('EUPO', {}, [...Array(11)].flatMap((_, i) => tie2('PO' + (i + 1), seeds[i], seeds[21 - i], m1, m2)));
+    news('match', 'World Cup 2030: the European groups are done', `Through to the World Cup: ${direct.map(esc).join(', ')}, with the hosts Spain and Portugal. Twenty-two more play eleven two-legged play-offs in March 2030.`);
+  }
+  if (done('EUPO')){ P.EUPO.stage = 'done'; const W = [...Array(11)].map((_, i) => ntWinner(P.EUPO.fx.filter(f => f.k === 'PO' + (i + 1)))); wqQual(W, 'UEFA play-offs');
+    news('match', 'World Cup 2030: the European play-offs', `Through: ${W.map(esc).join(', ')}.`); }
+  // the intercontinental play-off, once its six are known
+  if (!P.IC && Q.ic.length >= 6){
+    const T = Q.ic.slice().sort((a, b) => ntQ(b) - ntQ(a)), [m1, m2] = winDates(winM(2029, '03'));
+    wqPart('IC', {}, [{ d: m1, k: 'IC-SF1', h: T[2], a: T[5], n: 1 }, { d: m1, k: 'IC-SF2', h: T[3], a: T[4], n: 1 }], { seeds: T.slice(0, 2) });
+  }
+  if (P.IC && P.IC.stage === 'groups' && P.IC.fx.every(f => f.s)){
+    if (P.IC.fx.length === 2){ const [m1, m2] = winDates(winM(2029, '03')), w1 = ntWinner([P.IC.fx[0]]), w2 = ntWinner([P.IC.fx[1]]); P.IC.fx.push({ d: m2, k: 'IC-F1', h: P.IC.seeds[0], a: w2, n: 1 }, { d: m2, k: 'IC-F2', h: P.IC.seeds[1], a: w1, n: 1 }); }
+    else { P.IC.stage = 'done'; const W = P.IC.fx.filter(f => /^IC-F/.test(f.k)).map(f => ntWinner([f])); wqQual(W, 'intercontinental play-off'); news('match', 'World Cup 2030: the intercontinental play-off', `The last two places: ${W.map(esc).join(' and ')}.`); }
+  }
+}
+const WC30 = { sa: '2030-06-08', md: ['2030-06-13', '2030-06-18', '2030-06-23'], r32: '2030-06-28', r16: '2030-07-03', qf: '2030-07-08', sf: '2030-07-14', third: '2030-07-19', f: '2030-07-21' };
+function wcInit(){
+  const Q = S.wq; if (S.wc || !Q || Q.qual.length < 42 || S.date < '2029-12-01') return;
+  const T = [...WC_HOSTS, ...Q.qual.filter(n => !WC_HOSTS.includes(n))], rest = T.slice(6).sort((a, b) => ntQ(b) - ntQ(a)), r0 = rng('wc30'), K = 'ABCDEFGHIJKL'.split('');
+  const G = {}; K.forEach(k => G[k] = []); ['Spain', 'Portugal', 'Morocco', 'Uruguay', 'Argentina', 'Paraguay'].forEach((n, i) => G[K[i]].push(n));
+  const cf = n => NT_CONF()[n] || 'UEFA', fits = (g, n) => G[g].filter(x => cf(x) === cf(n)).length < (cf(n) === 'UEFA' ? 2 : 1);
+  const pots = [rest.slice(0, 6), rest.slice(6, 18), rest.slice(18, 30), rest.slice(30, 42)];
+  pots.forEach((pot, pi) => { for (const n of shuf(pot, r0)){ const free = K.filter(g => G[g].length === pi); const g = free.find(x => fits(x, n)) || free[0]; if (g) G[g].push(n); } });
+  const fx = []; for (const [g, L] of Object.entries(G)){ const pr = [[[0, 1], [2, 3]], [[0, 2], [3, 1]], [[3, 0], [1, 2]]];
+    pr.forEach((r, i) => r.forEach(([x, y]) => { const h = L[x], sa = WC_SA.includes(h); fx.push({ d: i === 0 && WC_SA.includes(L[0]) && x === 0 ? WC30.sa : WC30.md[i], g, h, a: L[y], n: !(WC_HOSTS.includes(h) && (!sa || i === 0)) }); })); }
+  S.wc = { groups: G, fx, ko: [], stage: 'groups' };
+  news('match', 'The World Cup 2030 draw', Object.entries(G).map(([g, L]) => `Group ${g}: ${L.map(n => flag(n) + esc(n)).join(', ')}`).join('<br>'));
+}
+function wcStage(){
+  const W = S.wc; if (!W) return;
+  const ko = (k, L, d) => { for (let i = 0; i < L.length / 2; i++) W.ko.push({ d, k: `${k}${i + 1}`, h: L[i], a: L[L.length - 1 - i], n: 1 }); };
+  if (W.stage === 'groups' && W.fx.every(f => f.s)){
+    const t = Object.values(grpTabs(W.groups, W.fx)), seed = [...rankRows(t.map(x => x[0])), ...rankRows(t.map(x => x[1])), ...rankRows(t.map(x => x[2])).slice(0, 8)].map(r => r.n);
+    ko('R32-', seed, WC30.r32); W.stage = 'r32';
+    news('match', 'World Cup 2030: the group stage is over', `Into the round of 32: ${seed.map(esc).join(', ')}.`); return;
+  }
+  const flow = { r32: ['R32-', 'R16-', WC30.r16, 'r16'], r16: ['R16-', 'QF-', WC30.qf, 'qf'], qf: ['QF-', 'SF-', WC30.sf, 'sf'], sf: ['SF-', '', WC30.f, 'final'] }[W.stage];
+  if (flow){ const cur = W.ko.filter(f => f.k.startsWith(flow[0])); if (!cur.every(f => f.s)) return; const win = cur.map(f => ntWinner([f]));
+    if (W.stage === 'sf'){ W.ko.push({ d: WC30.third, k: '3rd', h: loserOf([cur[0]], win[0]), a: loserOf([cur[1]], win[1]), n: 1 }, { d: WC30.f, k: 'Final', h: win[0], a: win[1], n: 1 }); W.stage = 'final'; return; }
+    ko(flow[1], win, flow[2]); W.stage = flow[3]; return; }
+  if (W.stage === 'final' && W.ko.filter(f => f.k === 'Final' || f.k === '3rd').every(f => f.s)){
+    const F = W.ko.find(f => f.k === 'Final'), ch = ntWinner([F]); W.champ = ch; W.stage = 'done'; (S.ntHon = S.ntHon || []).push({ c: 'wc', y: 2030, n: ch });
+    news('match', `${ch} are the world champions`, `<b>${esc(ch)}</b> won the World Cup 2030 final, ${F.s[0]}-${F.s[1]}${F.p ? ` (${F.p[0]}-${F.p[1]} on penalties)` : ''} against ${esc(loserOf([F], ch))}.`);
+  }
+}
+
 /* ---- the screens: the Nations League (each league's groups with their tables and matches, the knockouts), the
    honours; a nation's page gets its squad, its group and its matches ---- */
 const ntRow = f => `<tr class="${[f.h, f.a].some(n => (S.ntMine || []).includes(n)) ? 'me' : ''}"><td class="small dim">${fmtDate(f.d)}</td><td class="r"><span class="lk" data-nt="${esc(f.h)}">${esc(f.h)}</span>${flag(f.h)}</td><td class="c"><span class="pill">${f.s ? `${f.s[0]}-${f.s[1]}` : 'v'}</span>${f.p ? `<span class="small dim"> p ${f.p[0]}-${f.p[1]}</span>` : ''}</td><td>${flag(f.a)}<span class="lk" data-nt="${esc(f.a)}">${esc(f.a)}</span></td><td class="small dim">${f.sc && f.sc.some(x => x[1]) ? f.sc.filter(x => x[1]).map(x => `${esc(surname(P.get(x[1]).n))} ${x[2]}'`).join(', ') : ''}</td></tr>`;
 function nlGroupHTML(g){
   const T = nlTable(g), F = S.nl.fx.filter(f => f.g === g), n = T.length, lg = g[0];
-  const mark = i => lg === 'A' ? (i < 2 ? 'nu' : i === n - 1 ? 'nd' : i === 2 ? 'np' : '') : lg === 'D' ? (i === 0 ? 'nu' : i === 1 ? 'np' : '') : (i === 0 ? 'nu' : i === 1 ? 'np' : i === n - 1 ? 'nd' : i === 2 ? 'np' : '');
+  const mark = i => lg === 'A' ? (i < 2 ? 'nu' : 'np') : lg === 'D' ? 'nu' : lg === 'B' ? (i === 0 ? 'nu' : i === 1 || i === 3 ? 'np' : '') : (i === 0 ? 'nu' : i === 1 ? 'np' : '');
   return `<div class="ovc nlg"><div class="ovh"><span>Group ${g}</span></div><table class="ltab"><thead><tr><th></th><th>Nation</th><th class="c">P</th><th class="c">W</th><th class="c">D</th><th class="c">L</th><th class="c mh">GF</th><th class="c mh">GA</th><th class="c">GD</th><th class="c">Pts</th></tr></thead><tbody>${T.map((r, i) => `<tr class="${mark(i)} ${(S.ntMine || []).includes(r.n) ? 'me' : ''}"><td class="c">${i + 1}</td><td>${flag(r.n)}<span class="lk" data-nt="${esc(r.n)}"><b>${esc(r.n)}</b></span></td><td class="c">${r.p}</td><td class="c">${r.w}</td><td class="c">${r.d}</td><td class="c">${r.l}</td><td class="c mh">${r.gf}</td><td class="c mh">${r.ga}</td><td class="c">${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="c"><b>${r.pts}</b></td></tr>`).join('')}</tbody></table>
     <details class="nlfx"><summary class="small">Matches</summary><table><tbody>${F.map(ntRow).join('')}</tbody></table></details></div>`;
 }
+const ntGrpHTML = (t, T, F, note) => `<div class="ovc nlg"><div class="ovh"><span>${t}</span></div><table class="ltab"><thead><tr><th></th><th>Nation</th><th class="c">P</th><th class="c">W</th><th class="c">D</th><th class="c">L</th><th class="c">GD</th><th class="c">Pts</th></tr></thead><tbody>${ntTable(T, F).map((r, i) => `<tr class="${note(i, r)}"><td class="c">${i + 1}</td><td>${flag(r.n)}<span class="lk" data-nt="${esc(r.n)}"><b>${esc(r.n)}</b></span></td><td class="c">${r.p}</td><td class="c">${r.w}</td><td class="c">${r.d}</td><td class="c">${r.l}</td><td class="c">${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="c"><b>${r.pts}</b></td></tr>`).join('')}</tbody></table><details class="nlfx"><summary class="small">Matches</summary><table><tbody>${F.map(ntRow).join('')}</tbody></table></details></div>`;
 function scrNT(){
   ntTick(); const N = S.nl;
   if (!N){ frame({ title: 'Internationals', body: '<p class="empty">The national teams start in the 2026/27 season.</p>' }); return; }
-  const tab = V.tab || 'A', tabs = [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(N.ko.length ? [['ko', 'Knockouts']] : []), ...(S.eq ? [['eq', 'EURO qualifying']] : []), ...(S.e28 ? [['e28', 'EURO 2028']] : []), ['fr', 'Friendlies'], ['hon', 'Honours']];
+  const N2 = S.nl2, tabs = [...(N2 ? [['nl26', 'NL 2026/27']] : [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(N.ko.length ? [['ko', 'Knockouts']] : [])]), ...(S.eq ? [['eq', 'EURO qualifying']] : []), ...(S.e28 ? [['e28', 'EURO 2028']] : []),
+    ...(N2 ? [['n2A', 'NL 28/29: A'], ['n2B', 'B'], ['n2C', 'C'], ...(N2.ko.length ? [['n2ko', 'NL Knockouts']] : [])] : []), ...(S.wq ? [['wq', 'WC qualifying']] : []), ...(S.wc ? [['wc', 'World Cup 2030']] : []), ['fr', 'Friendlies'], ['hon', 'Honours']];
+  const tab = tabs.some(t => t[0] === V.tab) ? V.tab : S.wc ? 'wc' : N2 ? 'n2A' : 'A';
   let body = '';
-  const grp = (t, T, F, note) => `<div class="ovc nlg"><div class="ovh"><span>${t}</span></div><table class="ltab"><thead><tr><th></th><th>Nation</th><th class="c">P</th><th class="c">W</th><th class="c">D</th><th class="c">L</th><th class="c">GD</th><th class="c">Pts</th></tr></thead><tbody>${ntTable(T, F).map((r, i) => `<tr class="${note(i)}"><td class="c">${i + 1}</td><td>${flag(r.n)}<span class="lk" data-nt="${esc(r.n)}"><b>${esc(r.n)}</b></span></td><td class="c">${r.p}</td><td class="c">${r.w}</td><td class="c">${r.d}</td><td class="c">${r.l}</td><td class="c">${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="c"><b>${r.pts}</b></td></tr>`).join('')}</tbody></table><details class="nlfx"><summary class="small">Matches</summary><table><tbody>${F.map(ntRow).join('')}</tbody></table></details></div>`;
+  const grp = ntGrpHTML;
   if (tab === 'eq'){ const Q = S.eq; body = `<div class="ovg nlgrid">${Object.entries(Q.groups).map(([g, T]) => grp(`Group ${g.slice(1)}`, T, Q.fx.filter(f => f.g === g), i => i === 0 ? 'nu' : i === 1 ? 'np' : '')).join('')}</div>${Q.po.length ? `<div class="ptitle">Play-offs (March 2028)</div><table class="ltab"><tbody>${Q.po.map(ntRow).join('')}</tbody></table>` : ''}<p class="small dim">Group winners and the eight best runners-up go to the EURO 2028 (in five-team groups the results against the last are not counted); two places are kept for hosts who miss out; the rest play off in March 2028.${Q.qual ? ` Qualified: ${Q.qual.map(esc).join(', ')}.` : ''}</p>`; }
   if (tab === 'e28'){ const E = S.e28; body = `<div class="ovg nlgrid">${Object.entries(E.groups).map(([g, T]) => grp(`Group ${g}`, T, E.fx.filter(f => f.g === g), i => i < 2 ? 'nu' : i === 2 ? 'np' : '')).join('')}</div>${E.ko.length ? `<div class="ptitle">Knockouts</div><table class="ltab"><tbody>${E.ko.map(ntRow).join('')}</tbody></table>` : ''}${E.champ ? `<p><b>${flag(E.champ)}${esc(E.champ)}</b> are the champions of Europe.</p>` : ''}<p class="small dim">UK and Ireland, 9 June to 9 July 2028; the final at Wembley.</p>`; }
+  if (tab === 'nl26'){ const sec = (t, L) => L.length ? `<div class="ptitle">${t}</div><table class="ltab"><tbody>${L.map(ntRow).join('')}</tbody></table>` : '';
+    body = (N.champ ? `<p><b>${flag(N.champ)}${esc(N.champ)}</b> won the Nations League 2026/27.</p>` : '') + sec('Finals', N.fin || []) + sec('Quarter-finals', N.ko.filter(f => /^QF/.test(f.k))) + sec('Play-off A/B', N.ko.filter(f => /^AB/.test(f.k))) + sec('Play-off B/C', N.ko.filter(f => /^BC/.test(f.k)))
+      + `<div class="ovg nlgrid">${Object.keys(N.groups).map(nlGroupHTML).join('')}</div>`; }
+  if (/^n2[ABC]$/.test(tab)){ const L = tab[2], mk = { A: i => i < 2 ? 'nu' : i === 2 ? 'np' : i < 5 ? 'np' : 'nd', B: i => i === 0 ? 'nu' : i < 5 ? 'np' : 'nd', C: i => i === 0 ? 'nu' : i < 3 ? 'np' : '' }[L];
+    const note = { A: 'Group winners, runners-up and the two best thirds go to the quarter-finals (two legs, March 2029), the last four to the Finals (June 2029). Sixth place goes down; fourth and fifth play off against the League B runners-up and thirds.', B: 'Winners go up; runners-up and thirds play off against League A, fourths and fifths against League C; sixth place goes down.', C: 'Winners go up; runners-up and thirds play off against the League B fourths and fifths.' }[L];
+    body = `<div class="ovg nlgrid">${Object.keys(N2.groups).filter(g => g[0] === L).map(g => grp(`Group ${g}`, N2.groups[g], N2.fx.filter(f => f.g === g), mk)).join('')}</div><p class="small dim">${note} Leagues A and B make League 1 of World Cup qualifying, League C League 2. Matchdays: ${NL28.md.map(shortDate).join(', ')}.</p>`; }
+  if (tab === 'n2ko'){ const sec = (t, L) => L.length ? `<div class="ptitle">${t}</div><table class="ltab"><tbody>${L.map(ntRow).join('')}</tbody></table>` : '';
+    body = (N2.champ ? `<p><b>${flag(N2.champ)}${esc(N2.champ)}</b> are the champions.</p>` : '') + sec('Finals (June 2029)', N2.fin || []) + sec('Quarter-finals (two legs)', N2.ko.filter(f => /^QF/.test(f.k))) + sec('Play-off A/B (two legs)', N2.ko.filter(f => /^AB/.test(f.k))) + sec('Play-off B/C (two legs)', N2.ko.filter(f => /^BC/.test(f.k))); }
+  if (tab === 'wq'){
+    const Q = S.wq, P = Q.p, cf = V.cf && P[V.cf] ? V.cf : (P.EU ? 'EU' : 'SA'), host = n => WC_HOSTS.includes(n) ? ' <span class="small dim">(host)</span>' : '';
+    const nav = `<div class="tabs" id="wqnav" style="margin-bottom:10px;flex-wrap:wrap;justify-content:flex-start;gap:4px">${Object.keys(WQ_NAME).filter(k => P[k]).map(k => `<button data-cf="${k}" class="${k === cf ? 'on' : ''}">${WQ_NAME[k]}</button>`).join('')}</div>`;
+    const X = P[cf], nh = g => ntTable(X.groups[g], X.fx.filter(f => f.g === g)).map(r => r.n).filter(n => !WC_HOSTS.includes(n)), mk = { EU: (g) => { if (!g.startsWith('L1')) return i => i === 0 ? 'np' : ''; const L = nh(g); return (i, r) => { const j = L.indexOf(r.n); return j < 0 ? '' : j === 0 ? 'nu' : j < 7 ? 'np' : ''; }; }, SA: () => i => i < 3 ? 'nu' : i === 3 ? 'np' : '', NA1: () => i => i < 2 ? 'nu' : '', NA2: () => i => i < 2 ? 'nu' : i === 2 ? 'np' : '', AF: () => i => i === 0 ? 'nu' : i === 1 ? 'np' : '', AS: () => i => i === 0 ? 'nu' : i === 1 ? 'np' : '', OC: () => i => i === 0 ? 'nu' : i === 1 ? 'np' : '' }[cf];
+    const note = { EU: 'League 1 (Nations League A and B): the group winners go to the World Cup (hosts Spain and Portugal aside); places 2 to 7 go to the play-offs. League 2 (League C): the group winners and the best runner-up go to the play-offs. Spain and Portugal play but are in as hosts.', EUPO: 'Eleven two-legged ties in March 2030, the winners go to the World Cup.', SA: 'The seven who are not hosts, home and away: three go through, the fourth to the intercontinental play-off.', NA1: 'The top two of each group go to the third round.', NA2: 'The top two of each group go to the World Cup, the two best thirds to the intercontinental play-off.', AF: 'Group winners and the two best runners-up go to the World Cup (Morocco are in as hosts), the next runner-up to the intercontinental play-off.', AS: 'Group winners and the three best runners-up go to the World Cup, the next runner-up to the intercontinental play-off.', OC: 'The winner goes to the World Cup, the runner-up to the intercontinental play-off.', IC: 'Six teams, single matches: the two best seeded into the finals; two places at the World Cup.' }[cf];
+    body = nav + (Object.keys(X.groups).length ? `<div class="ovg nlgrid">${Object.entries(X.groups).map(([g, T]) => grp(cf === 'EU' ? g.replace('L1-', 'League 1, group ').replace('L2-', 'League 2, group ') : Object.keys(X.groups).length > 1 ? `Group ${g.replace(/^\D+/, '')}` : WQ_NAME[cf], T, X.fx.filter(f => f.g === g), mk(g))).join('')}</div>` : `<table class="ltab"><tbody>${X.fx.map(ntRow).join('')}</tbody></table>`)
+      + `<p class="small dim">${note}</p>` + (Q.qual.length ? `<div class="ptitle">Through to the World Cup (${Q.qual.length + 6} of 48)</div><p>${[...WC_HOSTS, ...Q.qual].map(n => `${flag(n)}<span class="lk" data-nt="${esc(n)}">${esc(n)}</span>${host(n)}`).join(', ')}</p>` : '');
+  }
+  if (tab === 'wc'){ const W = S.wc;
+    body = `<div class="ovg nlgrid">${Object.entries(W.groups).map(([g, T]) => grp(`Group ${g}`, T, W.fx.filter(f => f.g === g), i => i < 2 ? 'nu' : i === 2 ? 'np' : '')).join('')}</div>${W.ko.length ? `<div class="ptitle">Knockouts</div><table class="ltab"><tbody>${W.ko.slice().reverse().map(ntRow).join('')}</tbody></table>` : ''}${W.champ ? `<p><b>${flag(W.champ)}${esc(W.champ)}</b> are the world champions.</p>` : ''}<p class="small dim">Spain, Portugal and Morocco, 8 June to 21 July 2030; the opening matches of Uruguay, Argentina and Paraguay at home for the centenary. The top two of each group and the eight best thirds go to the round of 32.</p>`; }
   if (tab === 'fr'){ const L = Object.values(S.ntFr || {}).flat().sort((x, y) => x.d < y.d ? 1 : -1).slice(0, 80); body = L.length ? `<table class="ltab"><tbody>${L.map(ntRow).join('')}</tbody></table><p class="small dim">Friendlies fill the windows for nations without an official match, against a side of a similar level.</p>` : '<p class="empty">The friendlies of the next window are arranged ten days before it.</p>'; }
   if ('ABCD'.includes(tab) && tab.length === 1){
-    const note = { A: 'Group winners and runners-up go to the quarter-finals (March 2027), the winners of those to the Finals (June 2027). Fourth place goes down, third plays off against a League B runner-up.', B: 'Winners go up to League A, runners-up play off against a League A third; fourth place goes down, third plays off against a League C runner-up.', C: 'Winners go up to League B, runners-up play off against a League B third; the two worst fourths play off against League D (March 2028).', D: 'Winners go up to League C; runners-up play off against League C (March 2028).' }[tab];
+    const note = { A: 'Group winners and runners-up go to the quarter-finals (March 2027), the winners of those to the Finals (June 2027). The leagues grow to eighteen for 2028/29: the two worst fourths go down, the two worst thirds and the two best fourths play off (March 2027) against the League B runners-up.', B: 'Winners go up to League A, runners-up play off against League A; the fourths play off against the League C runners-up. Nobody goes down directly.', C: 'Winners go up to League B, runners-up play off against the League B fourths. Nobody goes down: League D joins League C.', D: 'League D ends with this edition: all its teams go up to League C for 2028/29.' }[tab];
     body = `<div class="ovg nlgrid">${Object.keys(N.groups).filter(g => g[0] === tab).map(nlGroupHTML).join('')}</div><p class="small dim">${note} Matchdays: ${NL_MD.map(shortDate).join(', ')}.</p>`;
-  } else if (['eq', 'e28', 'fr'].includes(tab)){ /* drawn above */ } else if (tab === 'ko'){
+  } else if (['eq', 'e28', 'fr', 'nl26', 'n2A', 'n2B', 'n2C', 'n2ko', 'wq', 'wc'].includes(tab)){ /* drawn above */ } else if (tab === 'ko'){
     const sec = (t, L) => L.length ? `<div class="ptitle">${t}</div><table class="ltab"><tbody>${L.map(ntRow).join('')}</tbody></table>` : '';
     body = sec('Finals', N.fin || []) + sec('Quarter-finals (two legs)', N.ko.filter(f => /^QF/.test(f.k))) + sec('Play-off A/B (two legs)', N.ko.filter(f => /^AB/.test(f.k))) + sec('Play-off B/C (two legs)', N.ko.filter(f => /^BC/.test(f.k)))
       + (N.champ ? `<p><b>${flag(N.champ)}${esc(N.champ)}</b> are the champions.</p>` : '');
@@ -1113,7 +1344,8 @@ function scrNT(){
     const H = JSON.parse(JSON.stringify(NT_HON)); for (const x of S.ntHon || []){ const L = H[x.c], e = L.find(y => y[0] === x.n); if (e) e[1].push(x.y); else L.push([x.n, [x.y]]); }
     body = `<div class="ovg">${Object.keys(H).map(k => `<div class="ovc"><div class="ovh"><span>${NT_COMP[k]}</span></div><table><tbody>${H[k].sort((a, b) => b[1].length - a[1].length || Math.max(...b[1]) - Math.max(...a[1])).map(([n, y]) => `<tr><td>${flag(n)}<b>${esc(n)}</b></td><td class="c"><b>${y.length}</b></td><td class="small dim" style="white-space:normal">${y.join(', ')}</td></tr>`).join('')}</tbody></table></div>`).join('')}</div><p class="small dim">Spain are the world champions (2026, 1-0 after extra time against Argentina in the final) and the European champions (2024); Portugal won the last Nations League (2025).</p>`;
   }
-  frame({ title: tab === 'hon' ? 'International honours' : tab === 'eq' ? 'EURO 2028 qualifying' : tab === 'e28' ? 'UEFA EURO 2028' : tab === 'fr' ? 'Friendlies' : 'UEFA Nations League', short: 'Nations League', top: tabs, topOn: tab, body });
+  frame({ title: tab === 'hon' ? 'International honours' : tab === 'eq' ? 'EURO 2028 qualifying' : tab === 'e28' ? 'UEFA EURO 2028' : tab === 'fr' ? 'Friendlies' : tab === 'wq' ? 'World Cup 2030 qualifying' : tab === 'wc' ? 'FIFA World Cup 2030' : /^n2/.test(tab) ? 'UEFA Nations League 2028/29' : 'UEFA Nations League', short: 'Internationals', top: tabs, topOn: tab, onTab: t => go({ s: 'nt', tab: t }), body });
+  document.querySelectorAll('#wqnav [data-cf]').forEach(b => b.addEventListener('click', () => go({ s: 'nt', tab: 'wq', cf: b.dataset.cf })));
   document.querySelectorAll('[data-nt]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); go({ s: 'nation', n: el.dataset.nt }); }));
 }
 
@@ -1122,10 +1354,10 @@ function scrNT(){
    Monday on or after 9 November and from the Monday on or after 22 March */
 function intlWindows(season){
   const known = (D.intl || []).filter(([a]) => a >= `${season}-08-01` && a < `${season + 1}-08-01`).map(([a, b, n]) => [a, b, n || 2]);
-  if (known.length) return known.filter(([a]) => a.slice(5, 7) !== '06');
   const mon = d => { while (new Date(d + 'T12:00:00Z').getUTCDay() !== 1) d = day(d, 1); return d; };
-  const a = mon(`${season}-09-21`), b = mon(`${season}-11-09`), c = mon(`${season + 1}-03-22`);
-  return [[a, day(a, 15), 4], [b, day(b, 8), 2], [c, day(c, 8), 2]];
+  const a = mon(`${season}-09-21`), b = mon(`${season}-11-09`), c = mon(`${season + 1}-03-22`), K = known.filter(([x]) => x.slice(5, 7) !== '06');
+  for (const W of [[a, day(a, 15), 4], [b, day(b, 8), 2], [c, day(c, 8), 2]]) if (!K.some(([x]) => x.slice(5, 7) === W[0].slice(5, 7))) K.push(W);
+  return K.sort((x, y) => x[0] < y[0] ? -1 : 1);
 }
 // call-ups: the players who play for their countries go when a window opens and come back when it closes, a little
 // tired, now and then hurt; they miss their club training while away
@@ -3067,7 +3299,7 @@ function menuTree(o, unread){
     { id: 'comp', label: 'Competitions', v: { s: 'comp', tab: 'ov' }, kids: [['ov', 'Overview'], ['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results'], ['pstats', 'Player Stats'], ['tstats', 'Team Stats'], ['cup', cupLabel], ...(S.lc ? [['lc', LC]] : []), ['awards', 'Awards'], ['refs', 'Referees']].map(([t, n]) => ({ id: 'cp.' + t, label: n, v: { s: 'comp', tab: t } })).concat(awayKs().map(k => ({ id: 'aw.' + k, label: esc(D.lgs[k].league), v: { s: 'awl', k, tab: 'table' }, kids: [['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results']].map(([t, n]) => ({ id: `aw.${k}.${t}`, label: n, v: { s: 'awl', k, tab: t } })) }))) },
     ...(euOn() ? [{ id: 'eu', label: 'Europe', v: { s: 'eu', k: euMine() }, kids: [...EU_KEYS.filter(k => S.eu.c[k]).map(k => ({ id: 'eu.' + k, label: EU_NAME[k], v: { s: 'eu', k } })), ...(S.usc ? [{ id: 'eu.usc', label: USC, v: { s: 'eu', k: 'usc' } }] : [])] }] : []),
     // the cups between the continents, apart from Europe's
-    ...(S.nl ? [{ id: 'nt', label: 'Internationals', v: { s: 'nt' }, kids: [{ id: 'nt.nl', label: 'Nations League', v: { s: 'nt', tab: 'A' }, kids: [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(S.nl.ko.length ? [['ko', 'Knockouts']] : [])].map(([k, n]) => ({ id: 'nt.' + k, label: n, v: { s: 'nt', tab: k } })) }, ...(S.eq ? [{ id: 'nt.eq', label: 'EURO qualifying', v: { s: 'nt', tab: 'eq' } }] : []), ...(S.e28 ? [{ id: 'nt.e28', label: 'EURO 2028', v: { s: 'nt', tab: 'e28' } }] : []), { id: 'nt.fr', label: 'Friendlies', v: { s: 'nt', tab: 'fr' } }, { id: 'nt.hon', label: 'Honours', v: { s: 'nt', tab: 'hon' } }] }] : []),
+    ...(S.nl ? [{ id: 'nt', label: 'Internationals', v: { s: 'nt' }, kids: [{ id: 'nt.nl', label: 'Nations League', v: { s: 'nt', tab: S.nl2 ? 'n2A' : 'A' }, kids: (S.nl2 ? [['n2A', '2028/29: League A'], ['n2B', '2028/29: League B'], ['n2C', '2028/29: League C'], ...(S.nl2.ko.length ? [['n2ko', '2028/29: Knockouts']] : []), ['nl26', '2026/27']] : [['A', 'League A'], ['B', 'League B'], ['C', 'League C'], ['D', 'League D'], ...(S.nl.ko.length ? [['ko', 'Knockouts']] : [])]).map(([k, n]) => ({ id: 'nt.' + k, label: n, v: { s: 'nt', tab: k } })) }, ...(S.eq ? [{ id: 'nt.eq', label: 'EURO qualifying', v: { s: 'nt', tab: 'eq' } }] : []), ...(S.e28 ? [{ id: 'nt.e28', label: 'EURO 2028', v: { s: 'nt', tab: 'e28' } }] : []), ...(S.wq ? [{ id: 'nt.wq', label: 'WC qualifying', v: { s: 'nt', tab: 'wq' } }] : []), ...(S.wc ? [{ id: 'nt.wc', label: 'World Cup 2030', v: { s: 'nt', tab: 'wc' } }] : []), { id: 'nt.fr', label: 'Friendlies', v: { s: 'nt', tab: 'fr' } }, { id: 'nt.hon', label: 'Honours', v: { s: 'nt', tab: 'hon' } }] }] : []),
     ...(S.fic || S.cwc ? [{ id: 'wd', label: 'Intercontinental', v: { s: 'eu', k: S.fic ? 'fic' : 'cwc' }, kids: [...(S.fic ? [{ id: 'eu.fic', label: FIC, v: { s: 'eu', k: 'fic' } }] : []), ...(S.cwc ? [{ id: 'eu.cwc', label: CWC, v: { s: 'eu', k: 'cwc' } }] : [])] }] : []),
     // the club lists are browsed on the Clubs screen; the menu holds the countries, the club you are looking at and the last few you saw
     { id: 'clubs', label: 'Clubs', v: { s: 'clubs' }, kids: [
@@ -4805,7 +5037,8 @@ function scrNation(){
   const inNL = S.nl && ntAll().includes(n), g = inNL ? Object.keys(S.nl.groups).find(k => S.nl.groups[k].includes(n)) : null;
   const sq = ntWorld().includes(n) ? ntSquad(n) : [], F = ntAllFx().filter(f => f.h === n || f.a === n).sort((x, y) => x.d < y.d ? -1 : 1);
   const hon = Object.keys(NT_HON).map(k => { const e = NT_HON[k].find(x => x[0] === n), y = [...(e ? e[1] : []), ...(S.ntHon || []).filter(x => x.c === k && x.n === n).map(x => x.y)]; return y.length ? `${NT_COMP[k]} ${y.length}× (${y.join(', ')})` : ''; }).filter(Boolean);
-  const top = (g ? nlGroupHTML(g) : '') + (sq.length ? `<div class="ptitle">Squad (the next call-up)</div><table class="ltab"><thead><tr><th>Name</th><th>Club</th><th>Position</th><th class="r">Age</th><th class="r">Caps</th><th class="r">Gls</th></tr></thead><tbody>${sq.map(p => `<tr class="click ${p.club === me() ? 'me' : ''}" data-pl="${p.id}"><td><b>${esc(cmName(p.n))}</b></td><td>${crest(p.club, 'mcr')}${esc(club(p.club).name)}</td><td>${esc(cmPos(p.pos))}</td><td class="r">${p.age}</td><td class="r">${ps(p.id).caps || 0}</td><td class="r">${ps(p.id).ig || 0}</td></tr>`).join('')}</tbody></table><p class="small dim">Caps and goals since the game began. Out of the game's leagues: ${23 - sq.length > 0 ? `${23 - sq.length} places filled from leagues not in the game` : 'none'}.</p>` : '')
+  const g2 = S.nl2 && Object.keys(S.nl2.groups).find(k => S.nl2.groups[k].includes(n));
+  const top = (g2 ? ntGrpHTML(`Nations League 2028/29, group ${g2}`, S.nl2.groups[g2], S.nl2.fx.filter(f => f.g === g2), () => '') : g ? nlGroupHTML(g) : '') + (sq.length ? `<div class="ptitle">Squad (the next call-up)</div><table class="ltab"><thead><tr><th>Name</th><th>Club</th><th>Position</th><th class="r">Age</th><th class="r">Caps</th><th class="r">Gls</th></tr></thead><tbody>${sq.map(p => `<tr class="click ${p.club === me() ? 'me' : ''}" data-pl="${p.id}"><td><b>${esc(cmName(p.n))}</b></td><td>${crest(p.club, 'mcr')}${esc(club(p.club).name)}</td><td>${esc(cmPos(p.pos))}</td><td class="r">${p.age}</td><td class="r">${ps(p.id).caps || 0}</td><td class="r">${ps(p.id).ig || 0}</td></tr>`).join('')}</tbody></table><p class="small dim">Caps and goals since the game began. Out of the game's leagues: ${23 - sq.length > 0 ? `${23 - sq.length} places filled from leagues not in the game` : 'none'}.</p>` : '')
     + (F.length ? `<div class="ptitle">Matches</div><table class="ltab"><tbody>${F.map(f => ntRow(f).replace('<td class="small dim">', `<td class="small dim">${esc(f.comp)}<br>`)).join('')}</tbody></table>` : '') + (hon.length ? `<p><b>Honours:</b> ${hon.join('; ')}</p>` : '');
   const R = resTable(L, [{ k: 'name', label: 'Name', v: p => surname(p.n), h: p => `<b>${esc(cmName(p.n))}</b>` }, { k: 'club', label: 'Club', v: p => club(p.club).name, h: p => `${crest(p.club, 'mcr')}${esc(club(p.club).name)}`, cls: 'sky' },
     { k: 'based', label: 'Based', v: p => basedOf(p.club), h: p => esc(basedOf(p.club)), cls: 'yel mh' }, { k: 'pos', label: 'Position', v: p => ['GK', 'DEF', 'MID', 'FWD'].indexOf(GROUP[p.prim]) * 100 + POS_ORDER.indexOf(p.prim), h: p => esc(cmPos(p.pos)) },
