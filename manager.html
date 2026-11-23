@@ -1474,6 +1474,9 @@ function ntJobsTick(){
   // the squad for the next matches: a reminder ten days before
   const nx = ntEvents()[0]; if (nx && daysBetween(S.date, nx.date) <= 10){ const key = nx.date.slice(0, 7); J.rem = J.rem || {};
     if (!J.rem[key]){ J.rem[key] = 1; news('board', `${J.n}: name your squad`, `${J.n} play ${esc(nx.f.h === J.n ? nx.f.a : nx.f.h)} on ${fmtDate(nx.date)} (${esc(ntLabel(nx.f))}). Name your squad on the national team's screen, or leave it to your assistant.`); } }
+  if (nx && daysBetween(S.date, nx.date) <= 3){ const key = 'a' + nx.date.slice(0, 7); J.rem = J.rem || {};
+    if (!J.rem[key]){ J.rem[key] = 1; const sq = ntSquadOf(J.n), G = { GK: 'Goalkeepers', DEF: 'Defenders', MID: 'Midfielders', FWD: 'Forwards' };
+      news('board', `${J.n}: the squad`, `${(J.sq || []).length ? 'Your squad' : 'Your assistant\'s squad'} for ${esc(nx.f.h === J.n ? nx.f.a : nx.f.h)} (${esc(ntLabel(nx.f))}): ${Object.entries(G).map(([g, t]) => { const L = sq.filter(p => GROUP[p.prim] === g); return L.length ? `<br><b>${t}:</b> ${L.map(p => `${esc(p.n)} <span class="dim">(${esc(club(p.club).name)})</span>`).join(', ')}` : ''; }).join('')}`); } }
   ntReview();
 }
 // after a campaign: through, or out when the federation expected more
@@ -2967,8 +2970,8 @@ const frOpps = () => everyClub().filter(c => !LG.has(c.id) && c.id !== me() && c
 function frPreseason(){
   S.frs = (S.frs || []).filter(f => f.d < S.date || f.res);
   const start = S.rounds[0].date, r = rng(`fr-${S.seed}-${S.season}`), q = club(me()).q, L = frOpps(), used = new Set();
-  let d = day(S.date, 9), n = 0;
-  while (n < 5 && d < day(start, -6)){
+  let d = day(S.date, 4), n = 0;
+  while (n < 5 && d < day(start, -4)){
     const wd = new Date(d + 'T12:00:00Z').getUTCDay();
     if ((wd === 6 || wd === 3) && !frBusy(d)){
       const tgt = q - 12 + n * 4 + (r() - .5) * 4, near = L.filter(id => !used.has(id)).sort((a, b) => Math.abs(club(a).q - tgt) - Math.abs(club(b).q - tgt)).slice(0, 4), o = near[Math.floor(r() * near.length)];
@@ -2983,10 +2986,11 @@ const frEvents = () => { const f = (S.frs || []).filter(x => !x.res && !x.x && x
 function finishFr(M, f){
   if (!M) M = playOut(newMatch(f.h, f.a, { cup: 'Friendly', date: f.d, noPens: true }));
   const x = summary(M); f.res = { s: x.s, w: x.w };
+  if (f.h === me()){ const c = club(me()), gate = Math.round((c.cap || 30000) * .5 * (20 + (c.q - 70) * 1.2)); f.res.g = gate; S.fin.gate += gate; S.fin.bal += gate; }
   for (const s of [M.H, M.A]){ for (const y of s.on){ const q = ps(y.id); q.cond = clamp(q.cond - (100 - y.e) * .45, 35, 100); }
     for (const j of s.inj) ps(j.id).injD = Math.max(ps(j.id).injD, Math.round(j.d)); }
   const us = f.h === me(), sc0 = x.hs.filter(g => (g.side === 'h') === us).map(g => surname(P.get(g.id).n));
-  news('match', `Friendly: ${x.w === me() ? 'win' : x.w ? 'defeat' : 'draw'} ${us ? 'v' : 'at'} ${club(us ? f.a : f.h).name}`, `${esc(club(f.h).name)} ${x.s[0]}-${x.s[1]} ${esc(club(f.a).name)}.${sc0.length ? ` Scorers: ${[...new Set(sc0)].join(', ')}.` : ''}${M.H.inj.concat(M.A.inj).some(j => P.get(j.id) && P.get(j.id).club === me()) ? ` Injured: ${M.H.inj.concat(M.A.inj).filter(j => P.get(j.id) && P.get(j.id).club === me()).map(j => esc(P.get(j.id).n)).join(', ')}.` : ''}`);
+  news('match', `Friendly: ${x.w === me() ? 'win' : x.w ? 'defeat' : 'draw'} ${us ? 'v' : 'at'} ${club(us ? f.a : f.h).name}`, `${esc(club(f.h).name)} ${x.s[0]}-${x.s[1]} ${esc(club(f.a).name)}.${sc0.length ? ` Scorers: ${[...new Set(sc0)].join(', ')}.` : ''}${f.res.g ? ` The gate: ${cash(f.res.g)}.` : ''}${M.H.inj.concat(M.A.inj).some(j => P.get(j.id) && P.get(j.id).club === me()) ? ` Injured: ${M.H.inj.concat(M.A.inj).filter(j => P.get(j.id) && P.get(j.id).club === me()).map(j => esc(P.get(j.id).n)).join(', ')}.` : ''}`);
 }
 function scrFriendlies(){
   const L = (S.frs || []).filter(f => !f.x).sort((a, b) => a.d < b.d ? -1 : 1), last = S.rounds.length ? S.rounds[S.rounds.length - 1].date : day(S.date, 200);
@@ -5842,14 +5846,21 @@ function liveSave(force){
   const L = LIVE; if (!L || !L.started || !S) return;
   const mark = `${L.M.half}-${L.M.min}-${L.M.over}-${L.paused}`; if (!force && mark === LIVE_SAVED) return; LIVE_SAVED = mark;
   const all = [L.M, ...L.others]; all.forEach(m => [m.H, m.A].forEach(s => { s._ts = s.t === S.tac[s.cid]; }));
-  try { localStorage.setItem(LIVE_KEY, JSON.stringify({ v: 1, club: me(), date: S.date, season: S.season, slot: S.slot || '', tab: MTAB === 'tactics' ? (L.tabBack || 'overview') : MTAB,
+  try { localStorage.setItem(LIVE_KEY, JSON.stringify({ v: 1, club: S.club, date: S.date, season: S.season, slot: S.slot || '', tab: MTAB === 'tactics' ? (L.tabBack || 'overview') : MTAB,
     L: { ...L, args: null, peek: false, wasRun: false, why: null } }, (k, v) => typeof v === 'function' ? undefined : k === 'p' && v && typeof v === 'object' && v.id != null ? undefined : v)); } catch (e) {}
 }
 const liveDrop = () => { LIVE_SAVED = null; try { localStorage.removeItem(LIVE_KEY); } catch (e) {} };
 function liveLoad(){
   let o = null; try { o = JSON.parse(localStorage.getItem(LIVE_KEY) || 'null'); } catch (e) {}
-  if (!o || o.v !== 1 || !S || o.club !== me() || o.date !== S.date || o.season !== S.season || (o.slot || '') !== (S.slot || '')) { if (o) liveDrop(); return false; }
-  const L = o.L; for (const m of [L.M, ...(L.others || [])]) for (const s of [m.H, m.A]){
+  if (!o || o.v !== 1 || !S || o.club !== S.club || o.date !== S.date || o.season !== S.season || (o.slot || '') !== (S.slot || '')) { if (o) liveDrop(); return false; }
+  const L = o.L;
+  // a national match, a qualifier, a friendly: back to the fixture itself (the copy in the browser is only its picture); the
+  // nations' sides as the engine knew them (the made-up men too, the same each time)
+  const same = (x, y) => x && y && x.d === y.d && x.h === y.h && x.a === y.a;
+  if (L.nt){ const f = ntAllFx().find(x => same(x, L.nt)); if (!f || f.s || !S.ntJob){ liveDrop(); return false; } L.nt = f; ntClub(f.h); ntClub(f.a); squadOf(NTC(f.h)); squadOf(NTC(f.a)); }
+  if (L.euq){ const f = S.euq && S.euq.fx.find(x => same(x, L.euq)); if (!f || f.res){ liveDrop(); return false; } L.euq = f; }
+  if (L.fr){ const f = (S.frs || []).find(x => same(x, L.fr)); if (!f || f.res){ liveDrop(); return false; } L.fr = f; }
+  for (const m of [L.M, ...(L.others || [])]) for (const s of [m.H, m.A]){
     s.on.forEach(x => { x.p = P.get(x.id); }); if (s.on.some(x => !x.p)) { liveDrop(); return false; }
     if (s._ts && S.tac[s.cid]){ Object.assign(S.tac[s.cid], s.t); s.t = S.tac[s.cid]; } delete s._ts; }
   L.paused = true; L.pre = false; LIVE = L; MTAB = o.tab || 'overview';
