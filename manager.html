@@ -329,7 +329,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
 .tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
-.cgt{table-layout:fixed;width:100%}.cgt td{overflow:hidden}.cgt .btn{white-space:nowrap}.mtg{display:flex;flex-direction:column;gap:6px}.mtr{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:8px}.mtr div{display:flex;gap:6px;flex-wrap:wrap}.clg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 10px;max-width:720px;margin:4px auto 8px}.clg label{display:flex;flex-direction:column;gap:2px}.clg .dd{width:100%}.tsg{display:grid;grid-template-columns:1fr 1fr;gap:4px}.tsg .sb{padding:5px 3px;font-size:11.5px;margin:0}.tsg .sb:disabled{opacity:.4;cursor:default}.tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.cgt{table-layout:fixed;width:100%}.cgt td{overflow:hidden}.cgt .btn{white-space:nowrap}.ddclock{display:flex;align-items:center;gap:16px;max-width:760px;margin:4px auto 6px}.ddclock b{display:block;font-size:34px;font-variant-numeric:tabular-nums;line-height:1.1}.ddt td{padding:4px 6px}.mtg{display:flex;flex-direction:column;gap:6px}.mtr{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:8px}.mtr div{display:flex;gap:6px;flex-wrap:wrap}.clg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 10px;max-width:720px;margin:4px auto 8px}.clg label{display:flex;flex-direction:column;gap:2px}.clg .dd{width:100%}.tsg{display:grid;grid-template-columns:1fr 1fr;gap:4px}.tsg .sb{padding:5px 3px;font-size:11.5px;margin:0}.tsg .sb:disabled{opacity:.4;cursor:default}.tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 @media(max-width:520px){.tok{width:68px}.tok .nm{font-size:10.5px;max-width:68px}.tok .dot{width:30px;height:30px}.tbrow{grid-template-columns:34px minmax(0,1fr) 26px 30px 46px 22px}.tbrow .nm .small{display:none}.tbrow .cnd .sqc{display:none}}
 .instr{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;align-items:center}
 @media(max-width:520px){.instr{grid-template-columns:1fr 1fr}}
@@ -2554,10 +2554,14 @@ function onContinue(){
   // unread messages: Continue reads them one by one, the oldest first, before the day moves on
   const un = S.news.map((n, i) => n.n ? i : -1).filter(i => i >= 0).pop();
   if (un != null){ if (V.s === 'news' && (V.f || 'all') === 'all') V = { ...V, i: un }; else go({ s: 'news', f: 'all', i: un }); view(); return; }
+  // deadline day: played hour by hour on its own screen until the window shuts
+  const dl = me() && !CTX ? ddDate() : null;
+  if (dl === S.date && !(S.dd && S.dd.d === dl && S.dd.over)){ ddStart(); save(); go({ s: 'deadline' }); return; }
   const todo = pendingActs();
   if (todo.length){ const a = todo[0]; choice('Waiting for your answer', `${todo.length > 1 ? `${todo.length} things need your answer before the game goes on. The first: ` : 'This needs your answer before the game goes on: '}${a.txt}`, [[a.btn, () => go(a.v), 'go']]); return; }
   const ev = events()[0]; if (!ev){ endSeason(); view(); return; }
-  if (ev.date > S.date){ passDays(daysBetween(S.date, nextStop(ev.date))); monthly(); save(); view(); return; }
+  if (ev.date > S.date){ let tg = nextStop(ev.date); if (dl && dl > S.date && dl < tg && !(S.dd && S.dd.d === dl)) tg = dl;   // the game stops on deadline day
+    passDays(daysBetween(S.date, tg)); monthly(); save(); view(); return; }
   if (ev.k === 'nt'){ ntLive(ev.f); return; }
   if (ev.k === 'euq'){ readyTactic(me()); const f = S.euq.fx.find(x => x.d === ev.date && !x.res && (x.h === me() || x.a === me()));
     if (f){ startLive(f.h, f.a, { cup: euqLabel(f), euq: f, mo: () => euqOptsF(f) }); return; } finishEUQ(null); save(); view(); return; }
@@ -3740,7 +3744,7 @@ function view(){
   if (!S || SETUP_OPEN){ viewSetup(); return; }
   CTX = LIVE && LIVE.nt && !LIVE.peek ? LIVE.ntC : null;
   if (LIVE && !LIVE.peek){ viewMatch(); return; }
-  ({ home: scrHome, press: scrPress, nt: scrNT, ntjob: scrNTJob, friendlies: scrFriendlies, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
+  ({ home: scrHome, press: scrPress, deadline: scrDeadline, nt: scrNT, ntjob: scrNTJob, friendlies: scrFriendlies, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
   linkify(document.body); autoSort();
 }
 /* every table sorts: a table with a header and no sorting of its own sorts by any column on a click on its head (again
@@ -5489,7 +5493,7 @@ function moveP(p, to, fee, note){
   for (const cid of [from, to]){ const t = S.tac[cid]; if (!t) continue; t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); }
   if (from !== me() && S.tac[from]) S.tac[from] = Object.assign(S.tac[from], bestXI(from, S.tac[from].form));
   if (to !== me() && S.tac[to]) S.tac[to] = Object.assign(S.tac[to], bestXI(to, S.tac[to].form));
-  (S.transfers = S.transfers || []).push({ d: S.date, n: p.n, from: fc.name, to: tc.name, fee: note || (fee ? cash(fee) : 'Free'), id: p.id, ...(fee > 0 ? { f: fee } : {}) });
+  (S.transfers = S.transfers || []).push({ d: S.date, n: p.n, from: fc.name, to: tc.name, fee: note || (fee ? cash(fee) : 'Free'), id: p.id, ...(fee > 0 ? { f: fee } : {}), ...(S.dd && S.dd.d === S.date && !S.dd.over ? { h: S.dd.h } : {}) });
   if (fee > 0){ const W = ((D.league_facts || {}).records_world || []), top = W.length ? W[0].eur * 1e6 / EUR : Infinity;
     const brit = Math.max(0, ...W.filter(x => /Premier League/.test(x.tl)).map(x => x.eur * 1e6 / EUR), ...(S.transfers || []).slice(0, -1).filter(t => t.f && LG.has(lfClub(t.to) || -1)).map(t => t.f));
     if (fee > top) news('comp', 'A world record fee', `<b>${esc(p.n)}</b> joins ${esc(tc.name)} from ${esc(fc.name)} for ${cash(fee)}, the biggest fee ever paid for a footballer.`);
@@ -5517,6 +5521,85 @@ function rumours(open){
   const riv = derbyOf(me(), c.id), lines = [`${esc(c.name)} are said to be watching <b>${esc(x.n)}</b> closely.`, `Reports claim <b>${esc(x.n)}</b> is on ${esc(c.name)}'s shortlist.`, `${esc(c.name)} sent scouts to see <b>${esc(x.n)}</b>, the papers say.`];
   news('club', `Rumour: ${c.name} watching ${x.n}`, `${lines[Math.floor(Math.random() * lines.length)]}${riv ? ` A move to a rival would not go down well with the fans.` : ''} Nothing has been offered yet.`);
 }
+/* ---- deadline day: the last day of a window is played hour by hour, from nine in the morning to the eleven o'clock
+   deadline. The game stops on the day; each step moves the clock on two hours. Clubs answer your bids within the hour,
+   late offers come in for your men (open until the deadline), and the clubs around you do their last business, all on a
+   ticker of the day's done deals. At eleven the window shuts: what is not signed lapses ---- */
+const ddDate = () => { const w = WINDOWS().find(([a, b]) => S.date >= a && S.date <= b); return w ? w[1] : null; };
+const ddOn = () => !!(S.dd && S.dd.d === S.date && !S.dd.over);
+const ddHour = h => `${String(h).padStart(2, '0')}:00`;
+function ddStart(){
+  if (S.dd && S.dd.d === S.date) return;
+  S.dd = { d: S.date, h: 9, over: false, n0: (S.transfers || []).length };
+  news('club', 'Deadline day', `The transfer window shuts at 23:00 tonight. Clubs answer bids within the hour, late offers may come in for your players, and everything not signed by the deadline falls through. The day is on the Deadline Day screen.`);
+}
+// the other clubs' last business: a man who would play for the buyer and does not for the seller
+function ddDeal(){ const sz = new Map(); for (const p of D.pool) sz.set(p.club, (sz.get(p.club) || 0) + 1); for (let t = 0; t < 6; t++) if (ddDeal1(sz)) return true; return false; }
+function ddDeal1(sz){
+  const others = D.clubs.filter(c => c.id !== me()), to = others[Math.floor(Math.random() * others.length)];
+  const need = squadOf(to.id).sort((a, b) => ovrNow(b) - ovrNow(a))[13], bar = need ? ovrNow(need) : 70;
+  if ((sz.get(to.id) || 0) >= 38) return false;
+  const cap = Math.max(15e6, ((to.q || 70) - 65) * 4e6);   // what the buyer can pay
+  const pool = D.pool.filter(p => p.club !== to.id && p.club !== me() && (sz.get(p.club) || 0) > 20 && p.val * 1e6 <= cap && !(S.moves || {})[p.id] && !onLoan(p) && ovrNow(p) >= bar - 2 && ovrNow(p) <= bar + 6 && (!LG.has(p.club) && p.age <= 28 || squadRank(p) >= 7));
+  const p = pool[Math.floor(Math.random() * pool.length)]; if (!p) return false; sz.set(to.id, (sz.get(to.id) || 0) + 1); sz.set(p.club, (sz.get(p.club) || 0) - 1);
+  const loan = p.age <= 23 && Math.random() < .3, fee = loan ? 0 : roundFee(p.val * 1e6 * (1 + Math.random() * .5));   // deadline prices
+  S.con[p.id] = S.con[p.id] || { y: S.season + 3, w: wageDemand(p) }; if (!loan) S.con[p.id] = { y: S.season + 2 + Math.floor(Math.random() * 3), w: wageDemand(p) };
+  moveP(p, to.id, fee, loan ? 'Loan' : undefined); return true;
+}
+function ddStep(){
+  if (!ddOn()) return;
+  S.offers = S.offers || []; S.bids = S.bids || [];
+  const D0 = S.dd; D0.h = Math.min(23, D0.h + 2);
+  // your bids: answered within the hour
+  for (const b of S.bids || []) if (b.st === 'wait'){ const p = P.get(b.id); if (p) answerBid(b, p); else b.st = 'off'; }
+  // the clubs around you: busier as the clock runs down
+  const n = (D0.h >= 19 ? 3 : 2) + (Math.random() < .5 ? 1 : 0); for (let k = 0; k < n; k++) try { ddDeal(); } catch (e) { console.warn(e); }
+  // a late offer for one of yours, open until the deadline
+  if (Math.random() < (D0.h >= 17 ? .35 : .22)){
+    const mine = squadOf(me()).filter(p => !onLoan(p) && !(S.loans || {})[p.id] && !S.offers.some(o => o.id === p.id && o.st === 'open')).sort((a, b) => b.val - a.val).slice(0, 18);
+    const wants = mine.filter(p => ps(p.id).req === S.season), p = wants.length && Math.random() < .6 ? wants[0] : mine[Math.floor(Math.pow(Math.random(), 1.4) * mine.length)];
+    const buyers = p ? D.allClubs.filter(c => c.id !== me() && (LG.has(c.id) ? c.q >= ovrNow(p) - 6 : c.q >= ovrNow(p) - 3 && c.q <= ovrNow(p) + 5)) : [];
+    if (p && buyers.length){ const c = buyers[Math.floor(Math.random() * buyers.length)], fee = roundFee(p.val * 1e6 * (1 + Math.random() * .6));
+      S.offers.push({ id: p.id, from: c.id, fee, d: S.date, st: 'open', dd: 1 });
+      news('club', `Late bid: ${c.name} for ${p.n}`, `At ${ddHour(D0.h)}, ${esc(c.name)} have offered ${cash(fee)} for <b>${esc(p.n)}</b>. The offer stands until the deadline.`, { id: p.id }); } }
+  if (D0.h >= 23) ddClose();
+}
+function ddClose(){
+  const D0 = S.dd; if (!D0 || D0.over) return; D0.over = true; D0.h = 23;
+  for (const b of S.bids || []) if (['wait', 'counter', 'yes'].includes(b.st)){ b.st = 'off'; const p = P.get(b.id); if (p) news('club', `Too late for ${p.n}`, `The deal for <b>${esc(p.n)}</b> was not done by the deadline.`); }
+  for (const o of S.offers || []) if (o.st === 'open'){ o.st = 'gone'; try { bidRefused(o, true); } catch (e) {} }
+  const T = (S.transfers || []).filter(t => t.d === S.date), name = club(me()).name, ours = T.filter(t => t.to === name || t.from === name);
+  news('club', 'The window has shut', `The transfer window is closed. ${T.length} deal${T.length === 1 ? '' : 's'} on deadline day${ours.length ? `, ${ours.length} of them yours` : ''}. The next window opens on ${(windowNext() || [])[0] ? fmtDate(windowNext()[0]) : 'next season'}.`);
+}
+function scrDeadline(){
+  const D0 = S.dd || { h: 9, over: true, d: S.date }, h = D0.h, left = Math.max(0, 23 - h), name = club(me()).name;
+  const T = (S.transfers || []).filter(t => t.d === D0.d).slice().reverse();
+  const tick = T.length ? `<table class="ddt"><tbody>${T.map(t => { const ours = t.to === name || t.from === name; return `<tr class="${ours ? 'me' : ''}"><td><span class="pill">${t.h != null ? ddHour(t.h) : 'am'}</span></td><td><b class="lk" data-lp="${t.id}">${esc(t.n)}</b></td><td class="small">${esc(t.from)} <span class="dim">to</span> <b>${esc(t.to)}</b></td><td class="r yel">${esc(t.fee)}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">No deals yet today.</p>';
+  const bids = (S.bids || []).filter(b => ['wait', 'counter', 'yes'].includes(b.st)).map(b => { const p = P.get(b.id); return p ? `<tr class="click" data-ddp="${p.id}"><td><b>${esc(p.n)}</b><br><span class="small dim">${esc(club(p.club).name)}</span></td><td class="small">${b.st === 'wait' ? `Your bid of ${cash(b.fee)}: they answer within the hour` : b.st === 'counter' ? `They want <b class="yel">${cash(b.ask)}</b>` : '<b style="color:var(--win)">Accepted</b>: agree his terms'}</td></tr>` : ''; }).join('');
+  const offs = (S.offers || []).filter(o => o.st === 'open' && P.get(o.id) && P.get(o.id).club === me()).map(o => { const p = P.get(o.id); return `<tr><td><b class="lk" data-lp="${p.id}">${esc(p.n)}</b><br><span class="small dim">${esc(club(o.from).name)}${o.dd ? ', a late bid' : ''}</span></td><td class="r yel">${cash(o.fee)}</td><td class="r"><button class="btn sm" data-ddp="${p.id}">Answer</button></td></tr>`; }).join('');
+  const sl = (S.short || []).map(x => P.get(x.id)).filter(p => p && p.club !== me()).slice(0, 8);
+  const body = `<div class="ddclock"><div><span class="small dim">${D0.over ? 'The window has shut' : 'Deadline day'}</span><b>${ddHour(h)}</b></div><div class="meter" style="flex:1"><i style="width:${Math.round((h - 9) / 14 * 100)}%;background:${left <= 4 ? 'var(--loss)' : 'var(--warn)'}"></i></div><div class="r"><span class="small dim">Deadline</span><b>23:00</b></div></div>
+    <p class="c">${D0.over ? `The window is closed. ${T.length} deals today.` : `${left} hour${left === 1 ? '' : 's'} to go. Funds: <b>${cash(S.fin.budget)}</b>.`}</p>
+    ${D0.over ? '' : `<div class="tools" style="justify-content:center"><button class="btn y" id="ddnext">Two hours on (${ddHour(Math.min(23, h + 2))})</button><button class="btn" id="ddend">To the deadline</button><button class="btn" data-hv='${JSON.stringify({ s: 'find' })}'>Find players</button></div>`}
+    <div class="ovgrid"><div class="ovc"><div class="ovh"><span>Your bids</span></div>${bids ? `<table><tbody>${bids}</tbody></table>` : '<p class="dim">None open. Bid for a player on his Transfer screen: today they answer within the hour.</p>'}</div>
+    <div class="ovc"><div class="ovh"><span>Offers for your players</span></div>${offs ? `<table><tbody>${offs}</tbody></table>` : '<p class="dim">None.</p>'}</div>
+    ${sl.length ? `<div class="ovc"><div class="ovh"><span>Your shortlist</span></div><table><tbody>${sl.map(p => `<tr class="click" data-ddp="${p.id}"><td><b>${esc(p.n)}</b></td><td class="small">${esc(club(p.club).name)}</td><td class="r small">${valueOf(p)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    <div class="ovc"><div class="ovh"><span>Done deals today</span></div>${tick}</div></div>`;
+  frame({ title: 'Deadline Day', short: 'Deadline', body });
+  const nx = $('#ddnext'); if (nx) nx.addEventListener('click', () => { ddStep(); save(); view(); });
+  const en = $('#ddend'); if (en) en.addEventListener('click', () => choice('To the deadline', 'Let the clock run to 23:00? Bids still open and offers not answered fall through.', [['Run the clock', () => { while (ddOn()) ddStep(); save(); view(); }, 'go'], ['Stay', () => {}]]));
+  document.querySelectorAll('[data-ddp]').forEach(r => r.addEventListener('click', e => { if (e.target.closest('.lk')) return; go({ s: 'player', id: +r.dataset.ddp, tab: 'tr' }); }));
+  document.querySelectorAll('[data-hv]').forEach(b => b.addEventListener('click', () => go(JSON.parse(b.dataset.hv))));
+}
+// the selling club's answer to a bid of yours (a day later; on deadline day within the hour)
+function answerBid(b, p){
+    // a rival (a derby of yours) sells to you only at a premium, and says so
+  const riv = derbyOf(me(), p.club), ask0 = Math.round(askingPrice(p) * (riv ? 1.4 : 1)), c = club(p.club), bf = 1 + (b.ao || 0) * .6 + (b.so || 0) * .5, ask = roundFee(ask0 / bf);
+  if (squadOf(p.club).length <= 18){ b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} will not sell <b>${esc(p.n)}</b>: their squad is too thin as it is.`); }
+  else if (b.fee >= ask){ b.st = 'yes'; b.w = wageDemand(p); news('club', `${c.name} accept your bid`, `${esc(c.name)} have accepted your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b>. Agree personal terms with him on his Transfer screen.`, { id: p.id }); }
+  else if (b.fee >= ask * .8){ b.st = 'counter'; b.ask = ask; news('club', `${c.name} want more for ${p.n}`, `${esc(c.name)} turn down ${cash(b.fee)} for <b>${esc(p.n)}</b> but would sell for ${cash(ask)}${riv ? `: selling to a rival (the ${esc(riv)}) comes at a price` : ''}.`, { id: p.id }); }
+  else { b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} have rejected your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b> out of hand${riv ? `: they do not sell cheaply to a rival (the ${esc(riv)})` : ''}.`); }
+  }
 function transferTick(){
   if (!S.fin) return;
   S.bids = S.bids || []; S.offers = S.offers || [];
@@ -5526,12 +5609,7 @@ function transferTick(){
     const p = P.get(b.id); if (!p) { b.st = 'off'; continue; }
     if (['wait', 'counter', 'yes'].includes(b.st) && !open){ b.st = 'off'; news('club', `Bid for ${p.n} lapses`, `The transfer window has closed before the deal for <b>${esc(p.n)}</b> could be done.`); continue; }
     if (b.st !== 'wait' || daysBetween(b.d, S.date) < 1) continue;
-    // a rival (a derby of yours) sells to you only at a premium, and says so
-    const riv = derbyOf(me(), p.club), ask0 = Math.round(askingPrice(p) * (riv ? 1.4 : 1)), c = club(p.club), bf = 1 + (b.ao || 0) * .6 + (b.so || 0) * .5, ask = roundFee(ask0 / bf);
-    if (squadOf(p.club).length <= 18){ b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} will not sell <b>${esc(p.n)}</b>: their squad is too thin as it is.`); }
-    else if (b.fee >= ask){ b.st = 'yes'; b.w = wageDemand(p); news('club', `${c.name} accept your bid`, `${esc(c.name)} have accepted your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b>. Agree personal terms with him on his Transfer screen.`, { id: p.id }); }
-    else if (b.fee >= ask * .8){ b.st = 'counter'; b.ask = ask; news('club', `${c.name} want more for ${p.n}`, `${esc(c.name)} turn down ${cash(b.fee)} for <b>${esc(p.n)}</b> but would sell for ${cash(ask)}${riv ? `: selling to a rival (the ${esc(riv)}) comes at a price` : ''}.`, { id: p.id }); }
-    else { b.st = 'no'; news('club', `${c.name} reject your bid`, `${esc(c.name)} have rejected your bid of ${cash(b.fee)} for <b>${esc(p.n)}</b> out of hand${riv ? `: they do not sell cheaply to a rival (the ${esc(riv)})` : ''}.`); }
+    answerBid(b, p);
   }
   // other clubs' bids for your players, open a week
   for (const o of S.offers) if (o.st === 'open' && (daysBetween(o.d, S.date) > 7 || !open)){ o.st = 'gone'; try { bidRefused(o, true); } catch (e) { console.warn(e); } }
@@ -5581,8 +5659,8 @@ function transferTab(p){
   const opts = [.75, .9, 1, 1.15, 1.3, 1.5, 1.75, 2].map(f => roundFee(p.val * 1e6 * f));
   let act = '';
   if (!open) act = '';
-  else if (!b || b.st === 'no' || b.st === 'done' && false) act = `<div class="ptitle">Make an Offer</div><p class="small dim">Funds: ${cash(S.fin.budget)}. ${esc(club(p.club).name)} answer the next day. An add-on (paid after 25 games for you) or a share of the profit when you sell him on makes a smaller fee easier for them to take.</p><div class="clg"><label><span class="small dim">Add-on after 25 games</span><select class="dd" id="bao"><option value="0">None</option><option value=".1">10% of the fee</option><option value=".25">25% of the fee</option></select></label><label><span class="small dim">Sell-on (share of the profit)</span><select class="dd" id="bso"><option value="0">None</option><option value=".1">10%</option><option value=".2">20%</option></select></label></div><div class="tools">${opts.map(f => `<button class="btn sm" data-bid="${f}" ${f > S.fin.budget ? 'disabled' : ''}>${cash(f)}</button>`).join('')}</div>${b && b.st === 'no' ? '<p class="small dim">They turned down your last bid.</p>' : ''}`;
-  else if (b.st === 'wait') act = `<p>Your bid of <b class="yel">${cash(b.fee)}</b>${bidCl(b)} is with ${esc(club(p.club).name)}. They answer tomorrow.</p><div class="tools"><button class="btn sm" id="bidoff">Withdraw</button></div>`;
+  else if (!b || b.st === 'no' || b.st === 'done' && false) act = `<div class="ptitle">Make an Offer</div><p class="small dim">Funds: ${cash(S.fin.budget)}. ${esc(club(p.club).name)} answer ${ddOn() ? 'within the hour (deadline day)' : 'the next day'}. An add-on (paid after 25 games for you) or a share of the profit when you sell him on makes a smaller fee easier for them to take.</p><div class="clg"><label><span class="small dim">Add-on after 25 games</span><select class="dd" id="bao"><option value="0">None</option><option value=".1">10% of the fee</option><option value=".25">25% of the fee</option></select></label><label><span class="small dim">Sell-on (share of the profit)</span><select class="dd" id="bso"><option value="0">None</option><option value=".1">10%</option><option value=".2">20%</option></select></label></div><div class="tools">${opts.map(f => `<button class="btn sm" data-bid="${f}" ${f > S.fin.budget ? 'disabled' : ''}>${cash(f)}</button>`).join('')}</div>${b && b.st === 'no' ? '<p class="small dim">They turned down your last bid.</p>' : ''}`;
+  else if (b.st === 'wait') act = `<p>Your bid of <b class="yel">${cash(b.fee)}</b>${bidCl(b)} is with ${esc(club(p.club).name)}. They answer ${ddOn() ? 'within the hour: move the clock on in Deadline Day' : 'tomorrow'}.</p>${ddOn() ? `<div class="tools"><button class="btn sm" data-hv='${JSON.stringify({ s: 'deadline' })}'>Deadline Day</button></div>` : ''}<div class="tools"><button class="btn sm" id="bidoff">Withdraw</button></div>`;
   else if (b.st === 'counter') act = `<p>${esc(club(p.club).name)} want <b class="yel">${cash(b.ask)}</b>${bidCl(b)}.</p><div class="tools"><button class="btn sm y" id="bidask" ${b.ask > S.fin.budget ? 'disabled' : ''}>Pay ${cash(b.ask)}</button><button class="btn sm" id="bidoff">Walk away</button></div>`;
   else if (b.st === 'yes'){ const cl = clFrom(V.tcl, b.w, p), w4 = clWage(p, b.w, 4, cl); act = `<p>${esc(club(p.club).name)} have accepted ${cash(b.fee)}${bidCl(b)}. ${esc(cmName(p.n))} asks for <b class="yel">${wage(b.w)}</b>.</p><div class="ptitle" style="font-size:12px">Clauses</div>${clUI(V.tcl, b.w, p)}${Object.keys(cl).length ? `<p class="small c">With these clauses he would take about <b class="yel">${wage(w4)}</b> (on a four-year deal).</p>` : ''}<div class="tools">${[3, 4, 5].map(y => `<button class="btn sm y" data-sign="${y}">Sign until 30.6.${String(S.season + y).slice(2)}</button>`).join('')}<button class="btn sm" id="bidoff">Walk away</button></div>`; }
   const loanable = open && p.age <= 23 && squadRank(p) >= 12 && !(S.loans || {})[p.id] && !(S.loanAsk || {})[p.id];
@@ -5591,6 +5669,7 @@ function transferTab(p){
   return `<div class="ptitle">Transfer</div><p>${when}</p><dl class="kv" style="max-width:520px"><dt>Club</dt><dd>${crest(p.club)}${esc(fullName(p.club))}</dd><dt>Value</dt><dd>${known(p) ? valueOf(p) : 'about ' + cash(roundFee(p.val * 1e6))}</dd><dt>Contract</dt><dd>${S.con[p.id] ? 'until 30.6.' + String(S.con[p.id].y).slice(2) : '-'}</dd></dl>${act}`;
 }
 function wireTransfer(p){
+  document.querySelectorAll('[data-hv]').forEach(b => b.addEventListener('click', () => go(JSON.parse(b.dataset.hv))));
   const on = (sel, f) => document.querySelectorAll(sel).forEach(el => el.addEventListener('click', () => { f(el); save(); view(); }));
   S.bids = S.bids || [];
   const cur = () => S.bids.slice().reverse().find(x => x.id === p.id && x.st !== 'off');
