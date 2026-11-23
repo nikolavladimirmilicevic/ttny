@@ -329,7 +329,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
 .tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
-.mtg{display:flex;flex-direction:column;gap:6px}.mtr{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:8px}.mtr div{display:flex;gap:6px;flex-wrap:wrap}.clg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 10px;max-width:720px;margin:4px auto 8px}.clg label{display:flex;flex-direction:column;gap:2px}.clg .dd{width:100%}.tsg{display:grid;grid-template-columns:1fr 1fr;gap:4px}.tsg .sb{padding:5px 3px;font-size:11.5px;margin:0}.tsg .sb:disabled{opacity:.4;cursor:default}.tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.cgt{table-layout:fixed;width:100%}.cgt td{overflow:hidden}.cgt .btn{white-space:nowrap}.mtg{display:flex;flex-direction:column;gap:6px}.mtr{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:8px}.mtr div{display:flex;gap:6px;flex-wrap:wrap}.clg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 10px;max-width:720px;margin:4px auto 8px}.clg label{display:flex;flex-direction:column;gap:2px}.clg .dd{width:100%}.tsg{display:grid;grid-template-columns:1fr 1fr;gap:4px}.tsg .sb{padding:5px 3px;font-size:11.5px;margin:0}.tsg .sb:disabled{opacity:.4;cursor:default}.tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 @media(max-width:520px){.tok{width:68px}.tok .nm{font-size:10.5px;max-width:68px}.tok .dot{width:30px;height:30px}.tbrow{grid-template-columns:34px minmax(0,1fr) 26px 30px 46px 22px}.tbrow .nm .small{display:none}.tbrow .cnd .sqc{display:none}}
 .instr{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;align-items:center}
 @media(max-width:520px){.instr{grid-template-columns:1fr 1fr}}
@@ -1456,7 +1456,7 @@ function ntAfter(f){
   news('match', `${n}: ${won ? 'win' : drew ? 'draw' : 'defeat'} ${us ? 'v' : 'at'} ${opp}`, `${ntLabel(f)}. ${flag(f.h)}${esc(f.h)} ${f.s[0]}-${f.s[1]} ${esc(f.a)}${flag(f.a)}${f.p ? ` (${f.p[0]}-${f.p[1]} on penalties)` : ''}.${sc.length ? ` Scorers: ${[...new Set(sc)].map(s => s + (sc.filter(y => y === s).length > 1 ? ` (${sc.filter(y => y === s).length})` : '')).join(', ')}.` : ''}`);
 }
 // the federations: who is looking for a coach, an offer now and then, how big a name each wants
-const ntBar = () => club(S.club).q + 2 + 2 * (REP_SCORE[S.rep] ?? 1) + Math.min(6, (S.ntJob && S.ntJob.hon || 0) * 2);
+const ntBar = () => club(S.club).q + 2 + 2 * (REP_SCORE[S.rep] ?? 1) + Math.min(6, (S.ntJob && S.ntJob.hon || 0) * 2) + Math.min(4, (typeof cgPts === 'function' && S.cg ? cgPts() : 0) / 15);   // a career's goals count with the federations
 const ntFits = n => ntQ(n) <= ntBar();
 function ntJobsTick(){
   S.ntVac = S.ntVac || {};
@@ -2447,6 +2447,7 @@ function passDays(n){
   scoutTick();
   transferTick();
   try { promTick(); sqPromTick(); relTick(); visEnsure(); } catch (e) { console.warn(e); }
+  try { cgTick(); } catch (e) { console.warn(e); }
   contractWarn();
   if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
   intlTick(); ntTick();
@@ -3581,6 +3582,7 @@ function endSeason(){
   const aw = {}; for (const k of awayKs()){ const f = awFinish(k); if (f) aw[k] = f; }
   const verdict = rel ? 'Relegated. The board have decided to make a change. You leave the club.' : pos <= aim.pos ? (pos === 1 ? 'Champions! The board are overjoyed.' : 'The board are pleased: you met their expectations.') : pos <= aim.pos + 3 ? 'The board are disappointed, but you keep your job.' : 'The board have decided to make a change. You leave the club.';
   let vadj = 0; if (!rel) try { vadj = visReview(pos); } catch (e) { console.warn(e); }
+  if (!rel) try { cgSeason(pos, aim.pos); } catch (e) { console.warn(e); }
   S.rep = pos <= aim.pos - 3 ? 'Very good' : pos <= aim.pos ? 'Good' : pos <= aim.pos + 3 ? 'Average' : 'Poor';
   (S.hist = S.hist || []).push({ d: S.date, c: me(), t: pos === 1 ? 'Won the league' : `Finished ${ordinal(pos)} in the league` });
   S.next = pos <= aim.pos + 3 + (vadj >= 8 ? 2 : vadj >= 4 ? 1 : 0) - (vadj <= -10 ? 2 : vadj <= -5 ? 1 : 0) && !S.sacked && !rel;   // the club vision tips the balance
@@ -3784,7 +3786,7 @@ function menuTree(o, unread){
       { id: 'home', label: 'Home', v: { s: 'home' } },
       { id: 'news', label: 'News', v: { s: 'news', f: 'all' }, kids: [['all', 'All'], ['club', 'Club &amp; Board'], ['comp', 'Competitions'], ['inj', 'Injuries &amp; Bans']].map(([f, n]) => ({ id: 'n.' + f, label: n, v: { s: 'news', f } })) },
       { id: 'career', label: 'Career', v: { s: 'manager', tab: 'hist' }, kids: [
-        { id: 'k.hist', label: 'History', v: { s: 'manager', tab: 'hist' } }, { id: 'k.con', label: 'Contract', v: { s: 'manager', tab: 'con' } },
+        { id: 'k.hist', label: 'History', v: { s: 'manager', tab: 'hist' } }, { id: 'k.goals', label: 'Career Goals', v: { s: 'manager', tab: 'goals' } }, { id: 'k.con', label: 'Contract', v: { s: 'manager', tab: 'con' } },
         { id: 'k.jobs', label: 'Jobs', v: { s: 'managers', tab: 'jobs' } }, { id: 'k.rep', label: 'Manager Rankings', v: { s: 'managers', tab: 'rep' } },
         { id: 'k.hall', label: 'Hall of Fame', act: () => { SETUP_OPEN = true; SETUP = 'hall'; view(); } }] }] },
     ...(mine ? [{ id: 'my', cls: 'myclub', label: esc(club(mine).name), v: cv(mine, 'ov'), kids: clubKids(mine) }] : []),
@@ -6456,6 +6458,101 @@ function scrTransfers(){
    career in numbers (every season, every trophy, the clubs), the latest of the news; one click to anywhere ---- */
 // a season's record is kept when it ends: matches, goals, the league place, the biggest win
 const officialRes = cid => fixtureRows(cid).filter(x => x.m && x.rr && x.rr.s && x.comp !== 'Friendly').map(x => ({ h: x.m.h, a: x.m.a, s: x.rr.s, w: x.rr.w, date: x.date }));
+/* ---- career goals: what a career is measured by. Thirty goals in five groups (trophies, clubs and countries, the
+   international game, the numbers, the feats), each worth one to three stars, picked up as they happen and kept for
+   good. Up to three of them can be your ambitions: shown on Home with how far you are, worth double, told in the news
+   when you reach them. The stars add up to a career score that federations look at ---- */
+const seasonOf = d => +d.slice(0, 4) - (+d.slice(5, 7) < 7 ? 1 : 0);
+function trophyKind(t){
+  if (!/^Won the /.test(t)) return null; if (/^Won the league/.test(t)) return 'lg'; if (/ with [A-Z]/.test(t)) return /World Cup|EURO/.test(t) ? 'ntbig' : 'nt';
+  const k = Object.entries(EU_NAME).find(([, n]) => t === `Won the ${n}`); if (k) return k[0];
+  if (t === `Won the ${USC}`) return 'usc'; if (t === `Won the ${CWC}`) return 'cwc'; if (t === `Won the ${FIC}`) return 'fic';
+  if (Object.values(LG_RULES).some(r => r.shield && t === `Won the ${r.shield}`) || t === `Won the ${SHIELD}`) return 'shield';
+  return 'cup';
+}
+function cgFacts(){
+  const H = S.hist || [], T = H.filter(h => trophyKind(h.t)).map(h => ({ ...h, k: trophyKind(h.t), s: seasonOf(h.d) }));
+  const clubs = [...new Set(H.filter(h => h.c != null && club(h.c).name !== '?' && !/national coach|^Left .* for|Resigned as .* coach/.test(h.t)).map(h => h.c).concat(me() ? [me()] : []))];
+  const ctry = c => leagueOf(c) || HOME, countries = [...new Set(clubs.map(ctry))];
+  const cur = me() && !CTX ? officialRes(me()) : [], past = (S.mcar || []).filter(x => x.s !== S.season);
+  const pM = past.reduce((t, x) => t + x.p, 0) + cur.length, pW = past.reduce((t, x) => t + x.w, 0) + cur.filter(r => r.w === me()).length;
+  const nt = S.ntJob ? S.ntJob.rec || [] : []; if (S.ntJob){ const C0 = S.cg = S.cg || { done: {}, amb: [] }; (C0.ntRec = C0.ntRec || {})[S.ntJob.n + '|' + S.ntJob.from] = nt.filter(x => x.r === 'W').length; } const ntW = Object.values((S.cg || {}).ntRec || {}).reduce((t, x) => t + x, 0);
+  let run = 0, best = 0, bigW = 0, giant = 0; for (const r of cur){ if (r.w === me()){ run++; best = Math.max(best, run); const us = r.h === me(), d = us ? r.s[0] - r.s[1] : r.s[1] - r.s[0], o = us ? r.a : r.h; bigW = Math.max(bigW, d); if ((club(o).q || 0) >= club(me()).q + 8) giant = 1; } else run = 0; }
+  let stay = 0; if (me()){ const L = (S.mcar || []).slice().sort((a, b) => b.s - a.s); for (const x of L){ if (x.c === me()) stay++; else break; } if (!L.some(x => x.s === S.season)) stay++; }
+  return { T, clubs, countries, ctry, ntW, pM: pM + nt.length, pW: pW + nt.filter(x => x.r === 'W').length, best, bigW, giant, stay, ntJobs: H.filter(h => /^Became the .* national coach/.test(h.t)).length };
+}
+const CG = [
+  ['Trophies', [
+    ['t1', 1, 'Win your first trophy', F => [F.T.length > 0]],
+    ['lg', 2, 'Win a league title', F => [F.T.some(t => t.k === 'lg')]],
+    ['cup', 1, 'Win a domestic cup', F => [F.T.some(t => t.k === 'cup')]],
+    ['dbl', 2, 'Win the Double: the league and a cup in one season', F => [F.T.some(a => a.k === 'lg' && F.T.some(b => b.k === 'cup' && b.s === a.s && b.c === a.c))]],
+    ['ucl', 3, 'Win the Champions League', F => [F.T.some(t => t.k === 'ucl')]],
+    ['uel', 2, 'Win the Europa League or the Conference League', F => [F.T.some(t => t.k === 'uel' || t.k === 'uecl')]],
+    ['cwc', 2, 'Win the Club World Cup', F => [F.T.some(t => t.k === 'cwc')]],
+    ['tre', 3, 'Win the Treble: league, cup and Champions League in a season', F => [F.T.some(a => a.k === 'lg' && F.T.some(b => b.k === 'cup' && b.s === a.s) && F.T.some(b => b.k === 'ucl' && b.s === a.s))]],
+    ['t10', 3, 'Win ten trophies', F => [F.T.length >= 10, `${Math.min(F.T.length, 10)} of 10`]]]],
+  ['Clubs and countries', [
+    ['c3', 1, 'Manage three clubs', F => [F.clubs.length >= 3, `${Math.min(3, F.clubs.length)} of 3`]],
+    ['tc2', 2, 'Win a trophy with two different clubs', F => { const n = new Set(F.T.filter(t => t.k !== 'nt' && t.k !== 'ntbig').map(t => t.c)).size; return [n >= 2, `${Math.min(2, n)} of 2`]; }],
+    ['n2', 1, 'Manage in two countries', F => [F.countries.length >= 2, `${Math.min(2, F.countries.length)} of 2`]],
+    ['n3', 2, 'Manage in three countries', F => [F.countries.length >= 3, `${Math.min(3, F.countries.length)} of 3`]],
+    ['lg2', 3, 'Win the league in two countries', F => { const n = new Set(F.T.filter(t => t.k === 'lg').map(t => F.ctry(t.c))).size; return [n >= 2, `${Math.min(2, n)} of 2`]; }],
+    ['s5', 1, 'Five seasons at one club', F => [F.stay >= 5, `${Math.min(5, F.stay)} of 5`]],
+    ['s10', 2, 'Ten seasons at one club', F => [F.stay >= 10, `${Math.min(10, F.stay)} of 10`]]]],
+  ['The international game', [
+    ['ntj', 1, 'Become a national coach', F => [F.ntJobs > 0 || !!S.ntJob]],
+    ['ntw', 1, 'Win ten internationals', F => [F.ntW >= 10, `${Math.min(10, F.ntW)} of 10`]],
+    ['ntt', 2, 'Win the Nations League', F => [F.T.some(t => t.k === 'nt' && /Nations League/.test(t.t))]],
+    ['ntb', 3, 'Win the World Cup or the EURO', F => [F.T.some(t => t.k === 'ntbig')]]]],
+  ['The numbers', [
+    ['m100', 1, 'Manage 100 matches', F => [F.pM >= 100, `${Math.min(F.pM, 100)} of 100`]],
+    ['m300', 2, 'Manage 300 matches', F => [F.pM >= 300, `${Math.min(F.pM, 300)} of 300`]],
+    ['w100', 1, 'Win 100 matches', F => [F.pW >= 100, `${Math.min(F.pW, 100)} of 100`]],
+    ['w250', 2, 'Win 250 matches', F => [F.pW >= 250, `${Math.min(F.pW, 250)} of 250`]]]],
+  ['The feats', [
+    ['run10', 2, 'Win ten matches in a row', F => [F.best >= 10, `best run this season ${F.best}`]],
+    ['big7', 1, 'Win a match by seven goals', F => [F.bigW >= 7, `biggest margin this season ${F.bigW}`]],
+    ['giant', 1, 'Beat a far stronger side', F => [!!F.giant]],
+    ['unb', 3, 'Go a league season unbeaten', () => [false]],
+    ['p100', 2, 'Reach 100 points in a league season (or as many a game)', () => [false]],
+    ['fairy', 3, 'Win the league with a club expected to finish eighth or lower', () => [false]]]],
+];
+const CG_ALL = CG.flatMap(([g, L]) => L.map(x => ({ g, k: x[0], st: x[1], n: x[2], f: x[3] })));
+const cgPts = () => Object.keys((S.cg || {}).done || {}).reduce((t, k) => { const x = CG_ALL.find(y => y.k === k); return t + (x ? x.st * ((S.cg.done[k].amb) ? 2 : 1) : 0); }, 0);
+function cgMark(k, note){
+  const C = S.cg = S.cg || { done: {}, amb: [] }; if (C.done[k]) return; const x = CG_ALL.find(y => y.k === k); if (!x) return;
+  const amb = C.amb.includes(k); C.done[k] = { d: S.date, c: S.club || null, amb: amb ? 1 : 0, ...(note ? { note } : {}) }; C.amb = C.amb.filter(y => y !== k);
+  news('board', amb ? 'An ambition fulfilled' : 'Career goal', `${amb ? 'One of your ambitions: ' : ''}<b>${esc(x.n)}</b>. ${'★'.repeat(x.st)}${amb ? ' (counts double)' : ''}. Your career score is now ${cgPts()}.`);
+  (S.hist = S.hist || []).push({ d: S.date, c: S.club, t: `Career goal: ${x.n.split(':')[0]}` });
+}
+// each day: what has happened since
+function cgTick(){
+  if (!S) return; const C = S.cg = S.cg || { done: {}, amb: [] }; const F = cgFacts();
+  for (const x of CG_ALL){ if (C.done[x.k]) continue; let ok = false; try { ok = x.f(F)[0]; } catch (e) {} if (ok) cgMark(x.k); }
+}
+// at the end of a league season: the feats only a whole season shows
+function cgSeason(pos, aimPos){
+  if (!me() || CTX) return; const row = standings().find(r => r.id === me()); if (!row) return; const g = row.p || 1;
+  if (!row.l && g >= 20) cgMark('unb'); if (row.pts >= 100 || row.pts / g >= 100 / 38) cgMark('p100'); if (pos === 1 && aimPos >= 8) cgMark('fairy');
+}
+function cgTab(){
+  const C = S.cg = S.cg || { done: {}, amb: [] }, F = cgFacts(), done = Object.keys(C.done).length;
+  const row = x => { const d = C.done[x.k], r = (() => { try { return x.f(F); } catch (e) { return [false]; } })();
+    return `<tr><td>${esc(x.n)}</td><td class="yel">${'★'.repeat(x.st)}</td><td>${d ? `<span style="color:var(--win);font-weight:700">Achieved</span> <span class="small dim">${shortDate(d.d)}${d.c != null && club(d.c).name !== '?' ? ', ' + esc(club(d.c).name) : ''}${d.amb ? ', an ambition' : ''}</span>` : `<span class="small">${r[1] || ''}</span>`}</td><td class="r">${d ? '' : C.amb.includes(x.k) ? `<button class="btn sm" data-amb-off="${x.k}">Drop</button>` : C.amb.length < 3 ? `<button class="btn sm" data-amb="${x.k}">+ Ambition</button>` : ''}</td></tr>`; };
+  return `<dl class="kv" style="max-width:520px;margin:0 auto"><dt>Career goals</dt><dd><b>${done}</b> of ${CG_ALL.length}</dd><dt>Career score</dt><dd><b>${cgPts()}</b> <span class="small dim">(stars; an ambition reached counts double)</span></dd></dl>
+  <div class="ptitle">Your ambitions</div>${C.amb.length ? `<table class="cgt">${CGCOL}<tbody>${C.amb.map(k => row(CG_ALL.find(x => x.k === k))).join('')}</tbody></table>` : '<p class="dim c">None. Pick up to three goals below: they go on Home and count double when you reach them.</p>'}
+  ${CG.map(([g, L]) => `<div class="ptitle">${g}</div><table class="cgt">${CGCOL}<tbody>${L.map(x => row(CG_ALL.find(y => y.k === x[0]))).join('')}</tbody></table>`).join('')}`;
+}
+const CGCOL = '<colgroup><col style="width:50%"><col style="width:9%"><col style="width:29%"><col style="width:12%"></colgroup>';
+function cgWire(){
+  document.querySelectorAll('[data-amb]').forEach(b => b.addEventListener('click', () => { const C = S.cg; if (C.amb.length < 3 && !C.amb.includes(b.dataset.amb)) C.amb.push(b.dataset.amb); save(); view(); }));
+  document.querySelectorAll('[data-amb-off]').forEach(b => b.addEventListener('click', () => { S.cg.amb = S.cg.amb.filter(k => k !== b.dataset.ambOff); save(); view(); }));
+}
+function ambBox(){
+  const C = S.cg || { amb: [] }, F = cgFacts();
+  return C.amb.length ? `<table><tbody>${C.amb.map(k => { const x = CG_ALL.find(y => y.k === k), r = (() => { try { return x.f(F); } catch (e) { return [false]; } })(); return `<tr><td>${esc(x.n)}</td><td class="yel small">${'★'.repeat(x.st)}</td><td class="small r">${r[1] || ''}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">No ambitions set. Choose up to three in Career Goals.</p>';
+}
 function careerSnap(){
   const all = officialRes(me()), C2 = S.mcar = S.mcar || [];
   if (C2.some(x => x.s === S.season)) return;
@@ -6661,7 +6758,7 @@ function scrHome(){
     ${box('Form', formH, lnk({ s: 'club', cid, tab: 'last' }, 'Last match'))}${box('This season', seasonH, lnk({ s: 'comp', tab: 'table' }, 'Table'))}
     ${J ? box(`${flag(J.n)} ${esc(J.n)}`, ntH, lnk({ s: 'nation', n: J.n }, 'National team')) : ''}${box('The squad', pulseH, lnk({ s: 'club', cid, tab: 'squad' }, 'Squad'))}
     ${box(`Inbox${un ? ` <span class="badge">${un}</span>` : ''}`, newsH, lnk({ s: 'news', f: 'all' }, 'All news'))}${box('Trophy cabinet', cab, lnk({ s: 'manager', tab: 'hist' }, 'Career'))}
-    ${box('Career, season by season', careerH)}${box('Records', recH)}${box('Milestones', tlH, lnk({ s: 'manager', tab: 'hist' }, 'History'))}
+    ${box('Career, season by season', careerH)}${box('Records', recH)}${box('Milestones', tlH, lnk({ s: 'manager', tab: 'hist' }, 'History'))}${box(`Ambitions <span class="small dim">career score ${cgPts()}</span>`, ambBox(), lnk({ s: 'manager', tab: 'goals' }, 'Career goals'))}
   </div>`;
   frame(ofClub(cid, { title: 'Home', short: 'Home', sub: esc(S.manager), body }));
   document.querySelectorAll('[data-hv]').forEach(b => b.addEventListener('click', () => go(JSON.parse(b.dataset.hv))));
@@ -6676,9 +6773,11 @@ function scrManager(){
   let body = '';
   if (tab === 'hist') body = `<div class="ptitle">Career</div><table><tbody>${H.map(x => `<tr><td><span class="pill">${shortDate(x.d)}</span></td><td><b>${esc(club(x.c).name)}</b></td><td class="yel">${esc(x.t)}</td></tr>`).join('')}</tbody></table>
     <div class="ptitle" style="margin-top:14px">This season</div><dl class="kv"><dt>Matches</dt><dd>${all.length}: won ${w}, drawn ${d}, lost ${l}</dd><dt>Goals</dt><dd>${gf} for, ${ga} against</dd><dt>Win rate</dt><dd>${all.length ? Math.round(100 * w / all.length) : 0}%</dd></dl>`;
+  if (tab === 'goals') body = cgTab();
   if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv"><dt>Club</dt><dd>${esc(club(me()).name)}</dd><dt>Wage</dt><dd>${wage(Math.round(club(me()).q * 900 / 5) * 5)}</dd><dt>Expires</dt><dd>30.6.${String(S.season + 2).slice(2)}</dd>${S.nat ? `<dt>Nationality</dt><dd>${esc(S.nat)}</dd>` : ''}<dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
-  frame(ofClub(me(), { title: `${esc(S.manager)} (${esc(club(me()).name)})`, top: [['inj', 'Injuries &amp; Bans', true], ['con', 'Contract'], ['tr', 'Transfer', true], ['hist', 'History']], topOn: tab, onTab: k => { if (k === 'hall'){ SETUP_OPEN = true; SETUP = 'hall'; view(); return; } if (k === 'stats' || k === 'jobs'){ go({ s: 'managers', tab: k === 'jobs' ? 'jobs' : 'rep' }); return; } V = { s: 'manager', tab: k }; view(); }, body,
+  frame(ofClub(me(), { title: `${esc(S.manager)} (${esc(club(me()).name)})`, top: [['inj', 'Injuries &amp; Bans', true], ['con', 'Contract'], ['goals', 'Career Goals'], ['tr', 'Transfer', true], ['hist', 'History']], topOn: tab, onTab: k => { if (k === 'hall'){ SETUP_OPEN = true; SETUP = 'hall'; view(); return; } if (k === 'stats' || k === 'jobs'){ go({ s: 'managers', tab: k === 'jobs' ? 'jobs' : 'rep' }); return; } V = { s: 'manager', tab: k }; view(); }, body,
     bottom: [['jobs', 'Jobs'], ['stats', 'Manager Rankings'], ['hall', 'Hall of Fame']] }));
+  if (tab === 'goals') cgWire();
 }
 
 /* =====================================================================================================================
