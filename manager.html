@@ -1447,7 +1447,7 @@ function ntAfter(f){
   const n = ntMine(); if (!n || !f.s) return;
   const us = f.h === n, gf = f.s[us ? 0 : 1], ga = f.s[us ? 1 : 0], won = gf > ga || (f.pw === n), drew = gf === ga && !f.pw, opp = us ? f.a : f.h;
   (S.ntJob.rec = S.ntJob.rec || []).push({ d: f.d, o: opp, h: us ? 1 : 0, s: [gf, ga], r: won ? 'W' : drew ? 'D' : 'L', c: ntLabel(f) });
-  const sc = (f.sc || []).filter(g => g[0] === (us ? 'h' : 'a') && g[1]).map(g => surname(P.get(g[1]).n));
+  const sc = (f.sc || []).filter(g => g[0] === (us ? 'h' : 'a') && g[1] && P.get(g[1])).map(g => `<span class="lk" data-lp="${g[1]}">${esc(surname(P.get(g[1]).n))}</span>`);
   news('match', `${n}: ${won ? 'win' : drew ? 'draw' : 'defeat'} ${us ? 'v' : 'at'} ${opp}`, `${ntLabel(f)}. ${flag(f.h)}${esc(f.h)} ${f.s[0]}-${f.s[1]} ${esc(f.a)}${flag(f.a)}${f.p ? ` (${f.p[0]}-${f.p[1]} on penalties)` : ''}.${sc.length ? ` Scorers: ${[...new Set(sc)].map(s => s + (sc.filter(y => y === s).length > 1 ? ` (${sc.filter(y => y === s).length})` : '')).join(', ')}.` : ''}`);
 }
 // the federations: who is looking for a coach, an offer now and then, how big a name each wants
@@ -2053,7 +2053,7 @@ function who(side, kind, attr, not){
   for (let i = 0; i < L.length; i++){ r -= ws[i]; if (r <= 0) return L[i]; }
   return L[0];
 }
-const nm = x => esc(surname(x.p.n));
+const nm = x => typeof x.id === 'number' ? `<span class="lk" data-lp="${x.id}">${esc(surname(x.p.n))}</span>` : esc(surname(x.p.n));
 // commentary: a line is not used again while it is still fresh (its form, whatever the names), so a match does not repeat itself
 const T_RECENT = [];
 const T = L => { const keyOf = i => L.length + ':' + i + ':' + L[0].length; const fresh = L.map((_, i) => i).filter(i => !T_RECENT.includes(keyOf(i)));
@@ -2100,7 +2100,7 @@ function goal(M, S1, S2, x, how, assist){
   S1.goals++; evAdd(S1, x, 'g'); rateAdd(S1, x, 1.1); if (assist){ evAdd(S1, assist, 'a'); rateAdd(S1, assist, .6); }
   S2.on.filter(y => ['GK', 'CB', 'FB'].includes(ROLE[y.pos])).forEach(y => rateAdd(S2, y, -.25));
   M.hs.push({ m: M.min, l: label(M), side: sideKey(M, S1), id: x.id, as: assist ? assist.id : null, how });
-  M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'goal', t: `${surname(x.p.n)}${how === 'pen' ? ' (pen)' : ''}` });
+  M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'goal', id: x.id, t: `${surname(x.p.n)}${how === 'pen' ? ' (pen)' : ''}` });
   const sc = `${M.H.goals}-${M.A.goals}`;
   const lines = {
     open: [`GOAL! ${nm(x)} finishes it${assist ? ` after ${nm(assist)}'s pass` : ''}. ${sc}.`, `GOAL! ${nm(x)} drills it low into the corner${assist ? `, ${nm(assist)} the provider` : ''}. ${sc}.`, `GOAL! ${nm(x)} keeps his head and slots it home${assist ? ` from ${nm(assist)}'s cut-back` : ''}. ${sc}.`, `GOAL! ${nm(x)} lifts it over the keeper. ${sc}.`, `GOAL! ${nm(x)} turns in the box and fires home${assist ? `, set up by ${nm(assist)}` : ''}. ${sc}.`, `GOAL! A scramble in the six-yard box and ${nm(x)} pokes it in. ${sc}.`, `GOAL! ${nm(x)} side-foots it past the keeper${assist ? ` after a lovely ball from ${nm(assist)}` : ''}. ${sc}.`],
@@ -2630,7 +2630,7 @@ function teamOfSeason(L, avg){
   if (!B[0].length || !shapes.length) return;
   const sh = shapes.reduce((a, s) => tot(s) > tot(a) + 1e-9 ? s : a), xi = [B[0].slice(0, 1), B[1].slice(0, sh[0]), B[2].slice(0, sh[1]), B[3].slice(0, sh[2])];
   for (const x of xi.flat()) S.awards.push({ s: S.season, k: 'Team of the Season', id: x.id, c: x.c, why: `average rating ${x.r.toFixed(2)}` });
-  const line = L2 => L2.map(x => `${esc(cmName(P.get(x.id).n))} <span class="dim">(${esc(club(x.c).name)}, ${x.r.toFixed(2)}${tw[x.id] ? `, ${tw[x.id]}× in the Team of the Week` : ''})</span>`).join(', ');
+  const line = L2 => L2.map(x => `<span class="lk" data-lp="${x.id}">${esc(cmName(P.get(x.id).n))}</span> <span class="dim">(${esc(club(x.c).name)}, ${x.r.toFixed(2)}${tw[x.id] ? `, ${tw[x.id]}× in the Team of the Week` : ''})</span>`).join(', ');
   const mine = xi.flat().filter(x => x.c === me());
   news('match', `Team of the Season`, `<b>Shape:</b> ${sh.join('-')}.<br><b>Goalkeeper:</b> ${line(xi[0])}.<br><b>Defence:</b> ${line(xi[1])}.<br><b>Midfield:</b> ${line(xi[2])}.<br><b>Attack:</b> ${line(xi[3])}.${mine.length ? `<br>${mine.length === 1 ? `<b>${esc(P.get(mine[0].id).n)}</b> of yours makes it.` : `${mine.length} of yours make it.`}` : ''}`);
 }
@@ -2663,7 +2663,7 @@ function teamOfWeek(Ms, n){
   if (!B[0].length || !shapes.length) return;
   const tot = s => sum(B[1], s[0], 1) + sum(B[2], s[1], 2) + sum(B[3], s[2], 3), sh = shapes.reduce((a, s) => tot(s) > tot(a) + 1e-9 ? s : a);
   const xi = [B[0].slice(0, 1), B[1].slice(0, sh[0]), B[2].slice(0, sh[1]), B[3].slice(0, sh[2])];
-  const line = L => L.map(x => `${esc(cmName(P.get(x.id).n))} <span class="dim">(${esc(club(x.c).name)}, ${x.r.toFixed(1)}${x.g ? `, ${x.g} goal${x.g > 1 ? 's' : ''}` : ''})</span>`).join(', ');
+  const line = L => L.map(x => `<span class="lk" data-lp="${x.id}">${esc(cmName(P.get(x.id).n))}</span> <span class="dim">(${esc(club(x.c).name)}, ${x.r.toFixed(1)}${x.g ? `, ${x.g} goal${x.g > 1 ? 's' : ''}` : ''})</span>`).join(', ');
   const mine = xi.flat().filter(x => x.c === me()), star = xi.flat().sort((a, b) => b.r - a.r)[0];
   (S.totw = S.totw || []).push({ s: S.season, n, f: sh.join('-'), xi: xi.flat().map(x => x.id) });
   for (const x of mine){ const q = ps(x.id); q.mor = clamp(q.mor + 2, 15, 100); q.totw = (q.totw || 0) + 1; }
@@ -2995,7 +2995,7 @@ function finishFr(M, f){
   if (f.h === me()){ const c = club(me()), gate = Math.round((c.cap || 30000) * .5 * (20 + (c.q - 70) * 1.2)); f.res.g = gate; S.fin.gate += gate; S.fin.bal += gate; }
   for (const s of [M.H, M.A]){ for (const y of s.on){ const q = ps(y.id); q.cond = clamp(q.cond - (100 - y.e) * .45, 35, 100); }
     for (const j of s.inj) ps(j.id).injD = Math.max(ps(j.id).injD, Math.round(j.d)); }
-  const us = f.h === me(), sc0 = x.hs.filter(g => (g.side === 'h') === us).map(g => surname(P.get(g.id).n));
+  const us = f.h === me(), sc0 = x.hs.filter(g => (g.side === 'h') === us && P.get(g.id)).map(g => `<span class="lk" data-lp="${g.id}">${esc(surname(P.get(g.id).n))}</span>`);
   news('match', `Friendly: ${x.w === me() ? 'win' : x.w ? 'defeat' : 'draw'} ${us ? 'v' : 'at'} ${club(us ? f.a : f.h).name}`, `${esc(club(f.h).name)} ${x.s[0]}-${x.s[1]} ${esc(club(f.a).name)}.${sc0.length ? ` Scorers: ${[...new Set(sc0)].join(', ')}.` : ''}${f.res.g ? ` The gate: ${cash(f.res.g)}.` : ''}${M.H.inj.concat(M.A.inj).some(j => P.get(j.id) && P.get(j.id).club === me()) ? ` Injured: ${M.H.inj.concat(M.A.inj).filter(j => P.get(j.id) && P.get(j.id).club === me()).map(j => esc(P.get(j.id).n)).join(', ')}.` : ''}`);
 }
 function scrFriendlies(){
@@ -3235,8 +3235,8 @@ function afterMatchday(res, kind, stage){
   if (mine){ S.seen = S.seen || []; const opp = mine.h === me() ? mine.a : mine.h; if (!S.seen.includes(opp)) S.seen.push(opp); }
   if (mine){
     const us = mine.h === me(), opp = club(us ? mine.a : mine.h), won = mine.w === me(), drew = mine.w == null;
-    const sc0 = mine.hs.filter(g => (g.side === 'h') === us).map(g => g.id), sc = [...new Set(sc0)].map(id => { const k = sc0.filter(x => x === id).length; return surname(P.get(id).n) + (k > 1 ? ` (${k})` : ''); });
-    news('match', `${kind === 'cup' || kind === 'eu' ? stage + ': ' : ''}${won ? 'Win' : drew ? 'Draw' : 'Defeat'} ${us ? 'v' : 'at'} ${opp.name}`, `${esc(club(mine.h).name)} ${mine.s[0]}-${mine.s[1]} ${esc(club(mine.a).name)}${mine.p ? ` (${mine.p[0]}-${mine.p[1]} on penalties)` : ''}. ${sc.length ? 'Scorers: ' + esc(sc.join(', ')) + '.' : ''}${mine.mom ? ` Man of the match: ${esc(P.get(mine.mom).n)}.` : ''}`);
+    const sc0 = mine.hs.filter(g => (g.side === 'h') === us).map(g => g.id), sc = [...new Set(sc0)].map(id => { const k = sc0.filter(x => x === id).length; return `<span class="lk" data-lp="${id}">${esc(surname(P.get(id).n))}</span>` + (k > 1 ? ` (${k})` : ''); });
+    news('match', `${kind === 'cup' || kind === 'eu' ? stage + ': ' : ''}${won ? 'Win' : drew ? 'Draw' : 'Defeat'} ${us ? 'v' : 'at'} ${opp.name}`, `${esc(club(mine.h).name)} ${mine.s[0]}-${mine.s[1]} ${esc(club(mine.a).name)}${mine.p ? ` (${mine.p[0]}-${mine.p[1]} on penalties)` : ''}. ${sc.length ? 'Scorers: ' + sc.join(', ') + '.' : ''}${mine.mom ? ` Man of the match: <span class="lk" data-lp="${mine.mom}">${esc(P.get(mine.mom).n)}</span>.` : ''}`);
     // the board's confidence: the result against what it promised, and the league position against the target
     const exp = clamp(.5 + (club(me()).q - opp.q) / 14 + (us ? .08 : -.08), .1, .9), got = won ? 1 : drew ? .45 : 0;
     S.conf = clamp(S.conf + (got - exp) * (kind === 'eu' ? 3.5 : 7), 0, 100);   // a European night counts for half: the board judge the season by the league
@@ -3623,11 +3623,18 @@ function compLinks(){
   for (const k of awayKs()){ const L = D.lgs[k]; add(L.league, 'awl:' + k); if (L.secName) add(L.secName, 'awl:' + k); }
   if (S.eu && S.eu.c) for (const k of Object.keys(S.eu.c)) add(EU_NAME[k], 'eu:' + k);
   if (S.cwc) add(CWC, 'eu:cwc'); if (S.fic) add(FIC, 'eu:fic'); if (S.usc) add(USC, 'eu:usc');
+  // the national teams' competitions
+  if (S.nl){ add('Nations League', S.nl2 ? 'nt:n2A' : 'nt:A'); add('UEFA Nations League', S.nl2 ? 'nt:n2A' : 'nt:A'); }
+  if (S.eq){ add('EURO qualifying', 'nt:eq'); add('EURO play-offs', 'nt:eq'); add(`EURO ${S.eq.E || 2028} qualifying`, 'nt:eq'); }
+  if (S.e28) add(`EURO ${S.e28.E || 2028}`, 'nt:e28');
+  if (S.wq){ add('WC qualifying', 'nt:wq'); add('WC play-offs', 'nt:wq'); add('WC play-off', 'nt:wq'); add(`World Cup ${wqW()} qualifying`, 'nt:wq'); }
+  if (S.wc) add(`World Cup ${S.wc.W || 2030}`, 'nt:wc');
+  add('World Cup', 'nt:hon');
   return m;
 }
 function linkIndex(){
   // every player the game knows, the foreign clubs' too: a name two of them share links to neither unless the row says which
-  const all = [...new Map([...(D.pool || D.players), ...(D.euAll || [])].map(p => [p.id, p])).values()], key = `${all.length}|${S.season}|${HOME}|${awayKs().join()}|${!!S.cwc}${!!S.fic}${!!S.usc}`; if (LKN && LKN.key === key) return LKN;
+  const all = [...new Map([...(D.pool || D.players), ...(D.euAll || [])].map(p => [p.id, p])).values()], key = `${all.length}|${S.season}|${HOME}|${awayKs().join()}|${!!S.cwc}${!!S.fic}${!!S.usc}|${!!S.nl2}${!!S.eq}${!!S.e28}${!!S.wq}${!!S.wc}`; if (LKN && LKN.key === key) return LKN;
   // M: names found in running text; B: also a one-word name, when a bold word is exactly it ("Rodri", "Nice")
   const M = new Map(), B = new Map(), dup = new Set(), AMB = new Map();
   for (const p of all) for (const k of new Set([p.n, cmName(p.n)])){ const v = 'p:' + p.id; (AMB.get(k) || AMB.set(k, new Set()).get(k)).add(p.id); if (B.has(k) && B.get(k) !== v) dup.add(k); else B.set(k, v); }
@@ -3635,9 +3642,12 @@ function linkIndex(){
   for (const [k, v] of B) if (/[ ,]/.test(k.trim())) M.set(k, v);
   for (const k of [...AMB.keys()]) if (!dup.has(k)) AMB.delete(k);
   const word = new Set(['Nice', 'Athletic', 'Racing', 'Sporting', 'Hearts', 'Inter']);   // a club whose name is also an everyday word
-  for (const c of everyClub()) for (const n of [c.name, c.full]) if (n){ if (!B.has(n) || B.get(n)[0] === 'p') B.set(n, 'c:' + c.id); if (!word.has(n) && !M.has(n)) M.set(n, 'c:' + c.id); }
+  const W = new Map();   // such a club standing alone in its cell or line (a table's 'Inter') is still it
+  for (const c of everyClub()) for (const n of [c.name, c.full]) if (n){ if (!B.has(n) || B.get(n)[0] === 'p') B.set(n, 'c:' + c.id); if (!word.has(n) && !M.has(n)) M.set(n, 'c:' + c.id); if (word.has(n) && !W.has(n)) W.set(n, 'c:' + c.id); }
   for (const [n, v] of compLinks()){ M.set(n, 'm:' + v); B.set(n, 'm:' + v); }
-  LKN = { key, M, B, AMB };
+  // the nations: a country's name opens its national team (a club of that name keeps it)
+  for (const n of new Set([...ntWorld(), ...Object.keys(NT_KIT)])) if (n && !M.has(n)){ M.set(n, 'n:' + n); B.set(n, 'n:' + n); }
+  LKN = { key, M, B, AMB, W };
   return LKN;
 }
 const LK_TOK = /[\p{L}\p{N}]+/gu;
@@ -3648,9 +3658,9 @@ function linkMatches(txt, M){
     if (v){ out.push([st[i], en[j], v]); i = j; break; } }
   return out;
 }
-const LK_SKIP = 'a,button,select,option,input,textarea,label,[data-lp],[data-lc],[data-lm],[data-tp],.mtree,.tok,.tbrow,.strip2,.box,thead,.dghost,.nl,.side,.mdl .tools,.tabs,.seg,svg';
+const LK_SKIP = 'a,button,select,option,input,textarea,label,[data-lp],[data-lc],[data-lm],[data-ln],[data-nt],[data-tp],[data-dp],.mbx,.pitch,.mtree,.tok,.tbrow,.strip2,.box,thead,.dghost,.nl,.side,.mdl .tools,.tabs,.seg,svg';
 function lkEl(v, text){ const sp = document.createElement('span'); sp.className = 'lk'; const [t0, ...r] = v.split(':'), x = r.join(':');
-  if (t0 === 'p') sp.dataset.lp = x; else if (t0 === 'c') sp.dataset.lc = x; else sp.dataset.lm = x; sp.textContent = text; return sp; }
+  if (t0 === 'p') sp.dataset.lp = x; else if (t0 === 'c') sp.dataset.lc = x; else if (t0 === 'n') sp.dataset.ln = x; else sp.dataset.lm = x; sp.textContent = text; return sp; }
 /* a name two players share ("Riquelme, R": Rodrigo of Betis, Ramon of Miami): the row it stands in decides, by the player
    the row is (his data-pl) or by a club named in it; with nothing to go on it stays plain */
 function lkResolve(el, v, text){
@@ -3662,16 +3672,19 @@ function lkResolve(el, v, text){
   return hit.length === 1 ? 'p:' + hit[0] : null;
 }
 // a row of a player or a club opens him already: his own name stays plain there
-const lkOwn = (n, v) => { const r = n.closest('[data-pl],[data-cv],[data-prof]'); if (!r) return false; return (r.dataset.pl && v === 'p:' + r.dataset.pl) || (r.dataset.prof && v === 'p:' + r.dataset.prof) || (r.dataset.cv && v === 'c:' + r.dataset.cv); };
+// (now only a player's own profile header: in a row, his name is a link like any other, to the same place the row goes)
+const lkOwn = (n, v) => { const r = n.closest('[data-prof]'); if (!r) return false; return (r.dataset.pl && v === 'p:' + r.dataset.pl) || (r.dataset.prof && v === 'p:' + r.dataset.prof) || (r.dataset.cv && v === 'c:' + r.dataset.cv); };
 function linkify(root){
-  if (!root || !D || !S || LIVE) return; const { M, B } = linkIndex();
+  if (!root || !D || !S || (LIVE && !LIVE.peek && LIVE.started && !LIVE.paused && !LIVE.M.over)) return; const { M, B } = linkIndex();
   const scope = [...root.querySelectorAll('.main, .mdl')]; if (!scope.length) return;
   for (const sc of scope){
     sc.querySelectorAll('b, strong').forEach(el => { if (el.children.length || el.closest(LK_SKIP)) return; const v = B.get(el.textContent.trim()); if (!v || M.has(el.textContent.trim()) || lkOwn(el, v)) return;
-      const [t0, ...r] = v.split(':'); el.dataset[t0 === 'p' ? 'lp' : t0 === 'c' ? 'lc' : 'lm'] = r.join(':'); el.classList.add('lk'); });
+      const [t0, ...r] = v.split(':'); el.dataset[t0 === 'p' ? 'lp' : t0 === 'c' ? 'lc' : t0 === 'n' ? 'ln' : 'lm'] = r.join(':'); el.classList.add('lk'); });
     const w = document.createTreeWalker(sc, NodeFilter.SHOW_TEXT, { acceptNode: n => !n.nodeValue.trim() || n.parentElement.closest(LK_SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT }), nodes = [];
     while (w.nextNode()) nodes.push(w.currentNode);
-    for (const n of nodes){ const txt = n.nodeValue, ms = linkMatches(txt, M).map(([a, b, v]) => [a, b, lkResolve(n.parentElement, v, txt.slice(a, b))]).filter(([, , v]) => v && !lkOwn(n.parentElement, v)); if (!ms.length) continue;
+    const { W } = LKN;
+    for (const n of nodes){ const t1 = n.nodeValue.trim(); if (W && W.has(t1) && !n.parentElement.closest('p')){ const sp = lkEl(W.get(t1), n.nodeValue); n.replaceWith(sp); continue; }
+      const txt = n.nodeValue, ms = linkMatches(txt, M).map(([a, b, v]) => [a, b, lkResolve(n.parentElement, v, txt.slice(a, b))]).filter(([, , v]) => v && !lkOwn(n.parentElement, v)); if (!ms.length) continue;
       const fr = document.createDocumentFragment(); let last = 0;
       for (const [a, b, v] of ms){ fr.append(txt.slice(last, a)); fr.append(lkEl(v, txt.slice(a, b))); last = b; }
       fr.append(txt.slice(last)); n.replaceWith(fr); } }
@@ -3681,9 +3694,9 @@ document.addEventListener('click', e => { if (Date.now() - (window.__dragT || 0)
 // a tag beside a name (Ctr, Bid, Wrd, Inj...) opens that player's screen on the page it is about
 document.addEventListener('click', e => { const el = e.target.closest('[data-tp]'); if (!el || LIVE) return; e.stopImmediatePropagation(); e.preventDefault();
   const [id, tab] = el.dataset.tp.split(':'); go({ s: 'player', id: +id, tab: tab === 'talk' && P.get(+id).club !== me() ? 'profile' : tab }); }, true);
-document.addEventListener('click', e => { const el = e.target.closest('[data-lp],[data-lc],[data-lm]'); if (!el || LIVE) return; e.stopPropagation(); e.preventDefault();
-  if (el.dataset.lp) go({ s: 'player', id: +el.dataset.lp }); else if (el.dataset.lc) go({ s: 'club', cid: +el.dataset.lc, tab: 'ov' });
-  else { const [s, k] = el.dataset.lm.split(':'); go(s === 'comp' ? { s: 'comp', tab: k } : s === 'awl' ? { s: 'awl', k, tab: 'table' } : { s: 'eu', k }); } }, true);
+document.addEventListener('click', e => { const el = e.target.closest('[data-lp],[data-lc],[data-lm],[data-ln]'); if (!el) return; if (LIVE && el.closest('.side')) return; e.stopPropagation(); e.preventDefault();
+  if (el.dataset.lp){ if (!P.get(+el.dataset.lp)) return; go({ s: 'player', id: +el.dataset.lp }); } else if (el.dataset.lc) go({ s: 'club', cid: +el.dataset.lc, tab: 'ov' }); else if (el.dataset.ln) go({ s: 'nation', n: el.dataset.ln });
+  else { const [s, k] = el.dataset.lm.split(':'); go(s === 'comp' ? { s: 'comp', tab: k } : s === 'awl' ? { s: 'awl', k, tab: 'table' } : s === 'nt' ? { s: 'nt', tab: k } : { s: 'eu', k }); } }, true);
 /* a double click on a player, wherever he is shown, opens him. During a match the match waits (paused): his screen and
    any other can be looked at, and Back to Match returns to it */
 function openPlayer(id){ if (!P.get(+id)) return;
@@ -4455,7 +4468,7 @@ function clubLast(cid, o){
   const [kh, kh2] = kitOf(rr.h), [ka, ka2] = kitOf(rr.a);
   o.body = `<div class="mteams"><div class="t" style="background:${kh};color:${kh2}">${crest(rr.h, 'mcr')}<span>${esc(club(rr.h).name)}</span><b>${rr.s[0]}</b></div><div class="t" style="background:${ka};color:${ka2}">${crest(rr.a, 'mcr')}<span>${esc(club(rr.a).name)}</span><b>${rr.s[1]}</b></div></div>
     ${rr.p ? `<p class="c yel"><b>${rr.p[0]}-${rr.p[1]} on penalties</b></p>` : ''}
-    <div class="cols2" style="margin-top:8px"><div><div class="ptitle">Match Report</div><div class="inc">${(rr.inc || []).map(x => `<div class="h">${x.side === 'h' ? icon(x.k) + esc(x.t) : ''}</div><div class="m">${x.l}'</div><div>${x.side === 'a' ? icon(x.k) + esc(x.t) : ''}</div>`).join('') || '<div></div><div class="m">-</div><div></div>'}</div>
+    <div class="cols2" style="margin-top:8px"><div><div class="ptitle">Match Report</div><div class="inc">${(rr.inc || []).map(x => `<div class="h">${x.side === 'h' ? icon(x.k) + incT(x) : ''}</div><div class="m">${x.l}'</div><div>${x.side === 'a' ? icon(x.k) + incT(x) : ''}</div>`).join('') || '<div></div><div class="m">-</div><div></div>'}</div>
       <dl class="kv" style="margin-top:10px">${rr.mom ? `<dt>Man of the match</dt><dd>${esc(P.get(rr.mom).n)}</dd>` : ''}${rr.ref ? `<dt>Referee</dt><dd>${esc(rr.ref)}</dd>` : ''}${rr.att ? `<dt>Attendance</dt><dd>${rr.att.toLocaleString('en-GB')}</dd>` : ''}<dt>Weather</dt><dd>${esc(rr.wx || '')}</dd></dl></div>
       <div><div class="ptitle">Match Stats</div>${statBars(rr.st, rr.h, rr.a)}</div></div>`;
   frame(o);
@@ -4751,7 +4764,7 @@ function playerCard(p, q, con, born){
   const sim = D.players.filter(x => x.id !== p.id && x.prim === p.prim).map(x => [x, dist(x)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
   const real = '';   // the game starts with the current season: last season's real numbers are not shown
   // under the tabs, as in CM 01/02: born, age, nationality (career caps are not in the data, so none are shown)
-  const nat = p.nat ? `${flag(p.nat)}${esc(DEMONYM[p.nat] || p.nat)}.${capR(p.id)[0] ? ` <span class="dim">${capR(p.id)[0]} cap${capR(p.id)[0] > 1 ? 's' : ''}, ${capR(p.id)[1]} goal${capR(p.id)[1] === 1 ? '' : 's'} for ${esc(ntName(p.nat))} since the game began.</span>` : ''}` : '';
+  const nat = p.nat ? `${flag(p.nat)}<span class="lk" data-ln="${esc(ntName(p.nat))}">${esc(DEMONYM[p.nat] || p.nat)}</span>.${capR(p.id)[0] ? ` <span class="dim">${capR(p.id)[0]} cap${capR(p.id)[0] > 1 ? 's' : ''}, ${capR(p.id)[1]} goal${capR(p.id)[1] === 1 ? '' : 's'} for ${esc(ntName(p.nat))} since the game began.</span>` : ''}` : '';
   return `<div class="born cmborn">${born}. ${nat}${onLoan(p) ? `<div class="loanl">On loan at <b>${esc(p.lo)}</b> until June ${D.season + 1}</div>` : ''}</div>
     <div class="cmattr">${col(0)}${col(1)}${col(2)}</div>
     <div class="strip pstrip"><div>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</div><div>Apps<b>${q.apps || '-'}</b></div><div>Gls<b>${q.apps ? q.g : '-'}</b></div><div>Asts<b>${q.apps ? q.a : '-'}</b></div><div>MoM<b>${q.apps ? q.mom : '-'}</b></div><div>Yel<b>${q.apps ? q.yc : '-'}</b></div><div>Av R<b class="avr">${q.apps ? avgRt(q) : '-'}</b></div></div>${formSpark(q)}
@@ -5980,16 +5993,18 @@ function liveLoad(){
   return true;
 }
 addEventListener('pagehide', () => liveSave(true)); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') liveSave(true); });
+// an incident's text, the player in it a link when it is one man (a goal, a card, an injury)
+const incT = x => typeof x.id === 'number' && P.get(x.id) && x.k !== 'sub' ? `<span class="lk" data-lp="${x.id}">${esc(x.t)}</span>` : esc(x.t);
 const icon = k => ({ goal: '⚽ ', red: '🟥 ', yel: '🟨 ', inj: '✚ ', sub: '⇄ ' })[k] || '';
 function mframe(side, body){
   const L = LIVE, M = L.M;
   $('#app').innerHTML = `${header()}${dayStrip()}<div class="cm"><aside class="side">${side}</aside><div class="main">${body}</div></div>`;
-  stripAnim();
+  stripAnim(); linkify(document.body);
 }
 function viewPre(){
   CTX = LIVE && LIVE.nt ? LIVE.ntC : null;
   const L = LIVE, M = L.M, opp = M.h === me() ? M.a : M.h, st = standings(), [kh, kh2] = kitOf(M.h), [ka, ka2] = kitOf(M.a);
-  const line = s => s.on.map(x => `<div class="arow"><span><span class="yel small" style="display:inline-block;width:34px">${x.pos}</span>${esc(cmName(x.p.n))}</span><span></span></div>`).join('');
+  const line = s => s.on.map(x => `<div class="arow"><span><span class="yel small" style="display:inline-block;width:34px">${x.pos}</span>${typeof x.id === 'number' ? `<span class="lk" data-lp="${x.id}">${esc(cmName(x.p.n))}</span>` : esc(cmName(x.p.n))}</span><span></span></div>`).join('');
   const strict = M.ref.s >= 13 ? 'strict, quick to book' : M.ref.s <= 7 ? 'lenient, lets the game flow' : 'fair';
   const wxNote = M.wk === 2 ? ' (a heavy pitch: short passing and ball control suffer)' : M.wk === 3 ? ' (long and direct passing suffer)' : M.wk === 5 ? ' (players will tire faster)' : M.wk === 6 ? ' (a slippery pitch)' : '';
   mframe(`<button class="sb go" id="tomatch">Go to Match</button><button class="sb" id="totac">${esc(club(me()).name)} Tactics</button>`,
@@ -6123,7 +6138,7 @@ function teamTalk(k){
    (two notes from a poor judge, four from a good one); a pointer, never an order */
 function asstNotes(M){
   const a = (S.staff || []).find(x => x.role === 'ass'), ju = a ? a.ju || 8 : 8, us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, d = us.goals - them.goals;
-  const rt = (s, id) => clamp(6.3 + (s.rate[id] || 0), 1, 10), nm = id => esc(surname(P.get(id).n)), out = [];
+  const rt = (s, id) => clamp(6.3 + (s.rate[id] || 0), 1, 10), nm = id => typeof id === 'number' ? `<span class="lk" data-lp="${id}">${esc(surname(P.get(id).n))}</span>` : esc(surname(P.get(id).n)), out = [];
   const tot = (us.poss + them.poss) || 1, pos = Math.round(100 * us.poss / tot);
   // the game as a whole
   if (d < 0 && us.sh <= them.sh) out.push([5, `We are behind and not creating enough (${us.sh} shots to their ${them.sh}). A more attacking approach could help.`]);
@@ -6186,14 +6201,14 @@ function ftPanel(){
   const mine = [...new Set([...us.on.map(x => x.id), ...us.subbed.flatMap(x => [x[0], x[1]])])].map(id => ({ id, p: P.get(id), r: us.rate[id] || 0, ev: us.ev[id] || {}, x: us.on.find(y => y.id === id), out: us.subbed.find(z => z[0] === id), inj: us.inj.find(j => j.id === id) })).filter(o => o.p).sort((a, b) => b.r - a.r);
   const rc = v => v >= 7.5 ? 'var(--win)' : v >= 6.5 ? 'var(--gold)' : v >= 5.8 ? 'var(--text)' : 'var(--loss)';
   const pct = Math.round(100 * M.H.poss / Math.max(1, M.H.poss + M.A.poss));
-  const moments = M.inc.filter(x => x.k !== 'sub' || true).map(x => `<div class="ftm ${x.side === 'h' ? 'h' : 'a'}"><span class="m">${x.l}'</span><span>${icon(x.k)}${esc(x.t)}</span></div>`).join('');
+  const moments = M.inc.filter(x => x.k !== 'sub' || true).map(x => `<div class="ftm ${x.side === 'h' ? 'h' : 'a'}"><span class="m">${x.l}'</span><span>${icon(x.k)}${incT(x)}</span></div>`).join('');
   return `<div class="ft">
     <div class="ft-hero ${won ? 'win' : drew ? 'draw' : 'loss'}"><div class="ft-r">${won ? 'Victory' : drew ? 'Draw' : 'Defeat'}</div><div class="ft-s"><span>${esc(club(M.h).name)}</span><b>${M.H.goals} - ${M.A.goals}</b><span>${esc(club(M.a).name)}</span></div>
       ${M.pens ? `<div class="small">${M.pens[0]}-${M.pens[1]} on penalties</div>` : ''}<div class="ft-g"><span>${sc('h')}</span><span></span><span>${sc('a')}</span></div>
       ${mom ? `<div class="ft-mom">★ Man of the match: <b>${esc(mom.n)}</b> <span class="dim">${esc(club(mom.club).name)}</span></div>` : ''}<div class="ft-b ${board[0]}">${L.nt ? board[1].replace('The board', 'The federation').replace('the board', 'the federation') : board[1]}</div></div>
     <div style="margin-top:10px">${ftTalkPanel(M)}</div>
     ${momentum(M)}
-    <div class="ft-g3"><div><div class="ptitle">Your players</div><table class="ftp"><tbody>${mine.map(o => `<tr><td><span class="yel small">${o.x ? o.x.pos : o.out ? 'off' : ''}</span></td><td><b>${esc(cmName(o.p.n))}</b>${o.ev.g ? ' ' + '⚽'.repeat(Math.min(4, o.ev.g)) : ''}${o.ev.a ? ` <span class="small dim">${o.ev.a} ast</span>` : ''}${o.ev.yc ? ' 🟨' : ''}${o.ev.rc ? ' 🟥' : ''}${o.inj ? ` <span class="tag inj">out ${Math.max(1, Math.round(o.inj.d / 7))}w</span>` : ''}${o.out ? ` <span class="small dim">off ${o.out[2]}'</span>` : ''}</td><td class="r small dim">${o.x ? Math.round(o.x.e) + '%' : ''}</td><td class="r"><b style="color:${rc(o.r)}">${o.r.toFixed(1)}</b></td></tr>`).join('')}</tbody></table></div>
+    <div class="ft-g3"><div><div class="ptitle">Your players</div><table class="ftp"><tbody>${mine.map(o => `<tr><td><span class="yel small">${o.x ? o.x.pos : o.out ? 'off' : ''}</span></td><td><b class="lk" data-lp="${o.id}">${esc(cmName(o.p.n))}</b>${o.ev.g ? ' ' + '⚽'.repeat(Math.min(4, o.ev.g)) : ''}${o.ev.a ? ` <span class="small dim">${o.ev.a} ast</span>` : ''}${o.ev.yc ? ' 🟨' : ''}${o.ev.rc ? ' 🟥' : ''}${o.inj ? ` <span class="tag inj">out ${Math.max(1, Math.round(o.inj.d / 7))}w</span>` : ''}${o.out ? ` <span class="small dim">off ${o.out[2]}'</span>` : ''}</td><td class="r small dim">${o.x ? Math.round(o.x.e) + '%' : ''}</td><td class="r"><b style="color:${rc(o.r)}">${o.r.toFixed(1)}</b></td></tr>`).join('')}</tbody></table></div>
       <div><div class="ptitle">Key moments</div><div class="ftms">${moments || '<p class="dim small">A quiet one.</p>'}</div>
         <div class="ptitle">The numbers</div>${statBars({ poss: [pct, 100 - pct], sh: [M.H.sh, M.A.sh], sot: [M.H.sot, M.A.sot], cor: [M.H.corners, M.A.corners], fou: [M.H.fouls, M.A.fouls], yc: [M.H.yc, M.A.yc], rc: [M.H.rc, M.A.rc] }, M.h, M.a)}</div>
       ${L.others.length ? `<div><div class="ptitle">Elsewhere</div><table><tbody>${L.others.map(o => `<tr><td class="r">${esc(club(o.h).name)}</td><td class="c"><span class="pill">${o.H.goals} - ${o.A.goals}</span></td><td>${esc(club(o.a).name)}</td></tr>`).join('')}</tbody></table></div>` : ''}</div></div>`;
@@ -6230,9 +6245,9 @@ function cupPanel(L, M){
 function mPanel(){
   const L = LIVE, M = L.M, us = M.h === me() ? M.H : M.A;
   const pct = Math.round(100 * M.H.poss / Math.max(1, M.H.poss + M.A.poss));
-  if (MTAB === 'report') return `${momentum(M)}<div class="cols2" style="margin-top:10px"><div><div class="ptitle">Incidents</div><div class="inc">${M.inc.map(x => `<div class="h">${x.side === 'h' ? icon(x.k) + esc(x.t) : ''}</div><div class="m">${x.l}'</div><div>${x.side === 'a' ? icon(x.k) + esc(x.t) : ''}</div>`).join('') || '<div></div><div class="m">-</div><div></div>'}</div></div><div><div class="ptitle">Commentary</div><div class="feed">${M.feed.slice().reverse().map(f => `<p class="${f.c} ${f.side === 'them' ? 'them' : ''}"><span class="m">${f.m ? f.m + "'" : ''}</span>${f.t}</p>`).join('')}</div></div></div>`;
+  if (MTAB === 'report') return `${momentum(M)}<div class="cols2" style="margin-top:10px"><div><div class="ptitle">Incidents</div><div class="inc">${M.inc.map(x => `<div class="h">${x.side === 'h' ? icon(x.k) + incT(x) : ''}</div><div class="m">${x.l}'</div><div>${x.side === 'a' ? icon(x.k) + incT(x) : ''}</div>`).join('') || '<div></div><div class="m">-</div><div></div>'}</div></div><div><div class="ptitle">Commentary</div><div class="feed">${M.feed.slice().reverse().map(f => `<p class="${f.c} ${f.side === 'them' ? 'them' : ''}"><span class="m">${f.m ? f.m + "'" : ''}</span>${f.t}</p>`).join('')}</div></div></div>`;
   if (MTAB === 'stats') return statBars({ poss: [pct, 100 - pct], pas: [Math.round(100 * M.H.pc / Math.max(1, M.H.pa)), Math.round(100 * M.A.pc / Math.max(1, M.A.pa))], sh: [M.H.sh, M.A.sh], sot: [M.H.sot, M.A.sot], cor: [M.H.corners, M.A.corners], fou: [M.H.fouls, M.A.fouls], off: [M.H.off, M.A.off], yc: [M.H.yc, M.A.yc], rc: [M.H.rc, M.A.rc] }, M.h, M.a);
-  if (MTAB === 'ratings'){ const col = s => { const ids = [...s.on.map(x => x.id), ...s.subbed.map(x => x[0])].filter((id, i, a) => a.indexOf(id) === i); return ids.map(id => { const v = M.over ? s.rate[id] : clamp(6.3 + (s.rate[id] || 0), 1, 10), x = s.on.find(y => y.id === id); return `<div class="arow" data-dp="${id}"><span>${esc(cmName(P.get(id).n))} <span class="small yel">${x ? x.pos : 'off'}</span>${id === M.mom ? ' ★' : ''}</span><span class="av">${v.toFixed(1)}</span></div>`; }).join(''); };
+  if (MTAB === 'ratings'){ const col = s => { const ids = [...s.on.map(x => x.id), ...s.subbed.map(x => x[0])].filter((id, i, a) => a.indexOf(id) === i); return ids.map(id => { const v = M.over ? s.rate[id] : clamp(6.3 + (s.rate[id] || 0), 1, 10), x = s.on.find(y => y.id === id); return `<div class="arow" data-dp="${id}"><span><span class="lk" data-lp="${id}">${esc(cmName(P.get(id).n))}</span> <span class="small yel">${x ? x.pos : 'off'}</span>${id === M.mom ? ' ★' : ''}</span><span class="av">${v.toFixed(1)}</span></div>`; }).join(''); };
     return `<div class="cols2"><div><div class="ptitle">${esc(club(M.h).name)}</div>${col(M.H)}</div><div><div class="ptitle">${esc(club(M.a).name)}</div>${col(M.A)}</div></div>`; }
   if (MTAB === 'zones'){ const cur = (M.half - 1) * 100 + M.min, z = from => { const L2 = M.zones.filter(([m, h]) => (h - 1) * 100 + m > from); const c = [0, 0, 0]; L2.forEach(([, , k]) => c[k]++); const t = Math.max(1, L2.length); return c.map(v => Math.round(100 * v / t)); };
     const show = (t, v) => `<div class="ptitle">${t}</div><div class="zones"><div>${v[0]}%<small>${esc(club(M.h).name)} half</small></div><div>${v[1]}%<small>Midfield</small></div><div>${v[2]}%<small>${esc(club(M.a).name)} half</small></div></div>`;
