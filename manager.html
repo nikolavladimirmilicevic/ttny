@@ -2445,7 +2445,7 @@ function passDays(n){
   chTick(); awTick();
   scoutTick();
   transferTick();
-  try { promTick(); relTick(); } catch (e) { console.warn(e); }
+  try { promTick(); relTick(); visEnsure(); } catch (e) { console.warn(e); }
   contractWarn();
   if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
   intlTick(); ntTick();
@@ -3560,6 +3560,8 @@ function newSeason(){
   try { frPreseason(); } catch (e) { console.warn(e); }
   S.bids = (S.bids || []).filter(b => b.st === 'done'); S.offers = [];
   S.aim = aimFor(expRank(me())); S.conf = Math.max(45, Math.min(75, S.conf));
+  if (S.visAdj){ S.conf = clamp(S.conf + S.visAdj * .5, 0, 100); S.visAdj = 0; }   // last summer's review of the club vision carries into the new season
+  if (S.vis && S.season > S.vis.to) S.vis = null; try { visEnsure(); } catch (e) { console.warn(e); }
   const q = club(me()).q; S.fin.budget = Math.round(S.fin.budget * .5 + Math.max(12, (q - 70) * 9) * 1e6);
   for (const id of ids) S.tac[id] = id === me() ? Object.assign(S.tac[id], bestXI(id, S.tac[id].form, false, judge())) : autoTactic(id);
   const pv = S.past[S.past.length - 1], a = AIMS[S.aim];
@@ -3577,9 +3579,10 @@ function endSeason(){
   S.down = down;
   const aw = {}; for (const k of awayKs()){ const f = awFinish(k); if (f) aw[k] = f; }
   const verdict = rel ? 'Relegated. The board have decided to make a change. You leave the club.' : pos <= aim.pos ? (pos === 1 ? 'Champions! The board are overjoyed.' : 'The board are pleased: you met their expectations.') : pos <= aim.pos + 3 ? 'The board are disappointed, but you keep your job.' : 'The board have decided to make a change. You leave the club.';
+  let vadj = 0; if (!rel) try { vadj = visReview(pos); } catch (e) { console.warn(e); }
   S.rep = pos <= aim.pos - 3 ? 'Very good' : pos <= aim.pos ? 'Good' : pos <= aim.pos + 3 ? 'Average' : 'Poor';
   (S.hist = S.hist || []).push({ d: S.date, c: me(), t: pos === 1 ? 'Won the league' : `Finished ${ordinal(pos)} in the league` });
-  S.next = pos <= aim.pos + 3 && !S.sacked && !rel;
+  S.next = pos <= aim.pos + 3 + (vadj >= 8 ? 2 : vadj >= 4 ? 1 : 0) - (vadj <= -10 ? 2 : vadj <= -5 ? 1 : 0) && !S.sacked && !rel;   // the club vision tips the balance
   if (!S.next && !S.sacked){ S.sacked = true; S.vac = S.vac || {}; S.vac[me()] = { d: S.date }; }
   (S.past = S.past || []).push({ s: S.season, table: st.map(r => [r.id, r.pts]), champ, cup: S.cup.stage >= CN() ? S.cup.alive[0] : null, club: me(), pos, aim: aim.pos, aimN: aim.name, ...(S.shield && S.shield.res ? { shield: S.shield.res.w } : {}), ...(S.lc && S.lc.stage >= 6 ? { lc: S.lc.alive[0] } : {}), ...(euOn() ? { eu: Object.fromEntries(Object.values(S.eu.c).map(c => [c.k, c.win])) } : {}), ...(S.usc && S.usc.res ? { usc: S.usc.res.w } : {}), ...(S.fic && S.fic.win ? { fic: S.fic.win } : {}), ...(S.cwc && S.cwc.win ? { cwc: S.cwc.win } : {}), ...(S.ch && S.ch.up ? { up: S.ch.up, down, cht: chTable().map(r => [r.id, r.pts]) } : {}), home: HOME, aw });
   if (S.ch && S.ch.up){ const bar = (S.ch.po || []).find(x => x.bar), nl = L => L.map(id => `<b>${esc(club(id).name)}</b>`), up = nl(S.ch.up);
@@ -5335,7 +5338,84 @@ function seasonLine(){
     <text x="${pl}" y="${H - 6}" font-size="9" fill="var(--muted)">Round 1</text><text x="${W - pr}" y="${H - 6}" font-size="9" fill="var(--muted)" text-anchor="end">Round ${R}</text></svg>
     <p class="small dim c" style="margin-top:2px"><span style="color:#3FBF7F">━</span> league place &nbsp; <span style="color:#C9A0FF">┅</span> board confidence</p>`;
 }
+/* ---- the club vision: the board's five-year plan, drawn up when you take the job. A long-term league target within
+   three seasons (essential), and four more: a trophy, young players given a chance or signed, a style (attacking or hard
+   to beat), the wage bill, a transfer profit, chosen and weighted by what kind of club it is. The board review it every
+   summer: targets reached or missed and each season's met or not move their confidence, more for the essential ones, and
+   tip the balance when your job is on the line. After five seasons a new vision ---- */
+const VIS_IMP = [['Essential', 6], ['Important', 3], ['Desired', 1.5]];
+function visBuild(cid){
+  const n = D.clubs.length, er = expRank(cid) || n - 3, R = LG_RULES[HOME] || LG_RULES.ENG, ucl = R.quota.ucl, eu = ucl + R.quota.uel + 1, r = rng(`vis-${cid}-${S.season}-${S.seed}`);
+  const tgt = Math.max(1, er - (er <= 3 ? 1 : 2));
+  const lg = tgt === 1 ? 'Win the league' : tgt <= ucl ? `Reach the Champions League places (${ordinal(tgt)} or better)` : tgt <= eu ? `Reach the European places (${ordinal(tgt)} or better)` : tgt <= Math.ceil(n / 2) ? `Establish the club in the top half (${ordinal(tgt)} or better)` : `Establish the club in the league (${ordinal(tgt)} or better)`;
+  const pool = [];
+  if (er <= 7) pool.push({ k: 'troph', n: 'Win a trophy within three seasons', by: S.season + 2, imp: er <= 3 ? 0 : 1, w: 3 });
+  pool.push({ k: 'youth', n: 'Give young players a chance: two of 21 or under with ten or more games a season', imp: er > 10 ? 1 : 2, w: er > 10 ? 2 : 1 });
+  pool.push({ k: 'ysign', n: 'Sign young players with potential: one of 23 or under a season', imp: 2, w: 1.5 });
+  pool.push({ k: r() < .55 ? 'att' : 'solid', imp: er <= 6 ? 1 : 2, w: 2 });
+  if (er > 6) pool.push({ k: 'wage', n: 'Keep the wage bill within a tenth of where it starts each season', imp: er > 12 ? 1 : 2, w: er > 12 ? 2 : 1 });
+  if (er > 8) pool.push({ k: 'profit', n: 'Make a profit in the transfer market each season', imp: er > 14 ? 1 : 2, w: er > 14 ? 2 : 1 });
+  for (const x of pool){ if (x.k === 'att') x.n = 'Play attacking football: at least 1.6 league goals a game'; if (x.k === 'solid') x.n = 'Be hard to beat: fewer than 1.2 league goals conceded a game'; }
+  const pick = pool.map(x => ({ x, s: r() * x.w })).sort((a, b) => b.s - a.s).slice(0, 4).map(o => { const { w, ...x } = o.x; return x; });
+  if (pick.length && !pick.some(x => x.imp <= 1)) pick[0].imp = 1;   // something beyond the league that matters to them
+  return { cid, from: S.season, to: S.season + 4, d0: S.date, items: [{ k: 'lg', n: `${lg} within three seasons`, tgt, by: S.season + 2, imp: 0 }, ...pick], log: [] };
+}
+function visEnsure(){
+  if (!S || !me() || CTX) return null;
+  if (!S.vis || S.vis.cid !== me()){ S.vis = visBuild(me()); news('board', 'The club vision', `The board have set out their vision for ${esc(club(me()).name)} over the next five seasons: ${S.vis.items.map(x => `<b>${esc(x.n)}</b> (${VIS_IMP[x.imp][0].toLowerCase()})`).join('; ')}. It is on the Board screen.`); }
+  if (S.vis.ws !== S.season){ S.vis.ws = S.season; S.vis.w0 = wageBill(); }
+  return S.vis;
+}
+const wageBill = () => squadOf(me()).reduce((t, p) => t + ((S.con[p.id] || {}).w || 0), 0);
+// how each objective stands this season
+function visStat(x){
+  const V0 = S.vis, row = standings().find(r => r.id === me()), pld = row ? row.p || (row.w + row.d + row.l) || 0 : 0, pos = standings().findIndex(r => r.id === me()) + 1, early = S.round < 5;
+  const sq = squadOf(me()).filter(p => !onLoan(p)), name = club(me()).name, from = `${S.season}-07-01`;
+  const tro = (S.hist || []).filter(h => h.c === me() && /^Won the/.test(h.t) && h.d >= V0.d0).length;
+  const T = (S.transfers || []).filter(t => t.d >= from);
+  if (x.k === 'lg'){ if (x.done) return ['Achieved', `${ordinal(x.done)} in ${x.dS}/${String((x.dS + 1) % 100).padStart(2, '0')}`];
+    if (x.fail) return ['Missed', `Best: ${x.best ? ordinal(x.best) : '-'}`];
+    return [early ? 'Too early to say' : pos <= x.tgt ? 'On track' : 'Behind', `${S.round && pos ? `Now ${ordinal(pos)}` : 'Not started'}${x.best ? `, best ${ordinal(x.best)}` : ''}; by ${x.by}/${String((x.by + 1) % 100).padStart(2, '0')}`]; }
+  if (x.k === 'troph') return x.done || tro ? ['Achieved', `${tro} trophy${tro === 1 ? '' : 'ies'}`] : x.fail ? ['Missed', 'No trophy'] : ['Not yet', `by ${x.by}/${String((x.by + 1) % 100).padStart(2, '0')}`];
+  if (x.k === 'youth'){ const n = sq.filter(p => p.age <= 21 && ps(p.id).apps >= 10).length, m = sq.filter(p => p.age <= 21 && ps(p.id).apps > 0).length; return [n >= 2 ? 'Met' : 'Not yet', `${n} of 2 (${m} young player${m === 1 ? '' : 's'} used)`]; }
+  if (x.k === 'ysign'){ const n = T.filter(t => t.to === name && t.fee !== 'Loan' && P.get(t.id) && P.get(t.id).age <= 23).length; return [n ? 'Met' : 'Not yet', `${n} signed this season`]; }
+  if (x.k === 'att'){ const g = pld ? row.gf / pld : 0; return [early ? 'Too early to say' : g >= 1.6 ? 'On track' : 'Behind', pld ? `${g.toFixed(2)} a game` : 'Not started']; }
+  if (x.k === 'solid'){ const g = pld ? row.ga / pld : 0; return [early ? 'Too early to say' : g < 1.2 ? 'On track' : 'Behind', pld ? `${g.toFixed(2)} conceded a game` : 'Not started']; }
+  if (x.k === 'wage'){ const w = wageBill(), lim = (V0.w0 || w) * 1.1; return [w <= lim ? 'On track' : 'Over', `${wage(w)} against ${wage(Math.round(lim / 500) * 500)}`]; }
+  if (x.k === 'profit'){ const net = T.reduce((t, x2) => t + (x2.f || 0) * (x2.from === name ? 1 : x2.to === name ? -1 : 0), 0); return [net >= 0 ? 'On track' : 'Behind', `${net >= 0 ? '+' : '-'}${cash(Math.abs(net))} this season`]; }
+  return ['', ''];
+}
+const visGood = st => ['Achieved', 'On track', 'Met'].includes(st);
+// at the end of the season: the board's review. Returns what it did to their confidence
+function visReview(pos){
+  const V0 = visEnsure(); if (!V0) return 0;
+  let adj = 0; const lines = [];
+  for (const x of V0.items){ const pts = VIS_IMP[x.imp][1], st = visStat(x)[0];
+    if (x.k === 'lg' || x.k === 'troph'){ if (x.done || x.fail) continue;
+      if (x.k === 'lg') x.best = Math.min(x.best || 99, pos);
+      const ok = x.k === 'lg' ? pos <= x.tgt : st === 'Achieved';
+      if (ok){ x.done = x.k === 'lg' ? pos : 1; x.dS = S.season; adj += pts * 1.5; lines.push(`${x.n}: achieved`); }
+      else if (S.season >= x.by){ x.fail = 1; adj -= pts * 1.5; lines.push(`${x.n}: missed`); }
+      continue; }
+    const ok = x.k === 'att' || x.k === 'solid' || x.k === 'wage' || x.k === 'profit' ? visGood(st) : st === 'Met';
+    (x.rec = x.rec || []).push([S.season, ok ? 1 : 0]); adj += ok ? pts * .6 : -pts * .6; lines.push(`${x.n}: ${ok ? 'met' : 'not met'} this season`); }
+  adj = Math.round(adj * 10) / 10;
+  V0.log.unshift({ s: S.season, adj, lines });
+  S.conf = clamp(S.conf + adj, 0, 100); S.visAdj = adj;
+  news('board', 'The board review the club vision', `${adj >= 4 ? 'The board are pleased with the progress of their plan.' : adj <= -4 ? 'The board are disappointed with the progress of their plan.' : 'The board see mixed progress on their plan.'}<br>${lines.map(l => '• ' + esc(l)).join('<br>')}`);
+  return adj;
+}
+function visTab(){
+  const V0 = visEnsure(); if (!V0) return '<p class="dim">No vision.</p>';
+  const yrs = y => `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
+  return `<p>The board's plan for ${esc(club(me()).name)}, ${yrs(V0.from)} to ${yrs(V0.to)}. They review it at the end of every season: reaching or missing a target, and each season's record on the rest, moves their confidence in you, more for what is essential, and it counts when your job is in the balance.</p>
+  <table><thead><tr><th>Objective</th><th>Importance</th><th>Timescale</th><th>Status</th><th>Progress</th></tr></thead><tbody>${V0.items.map(x => { const [st, pr] = visStat(x), col = visGood(st) ? 'var(--win)' : ['Missed', 'Behind', 'Over'].includes(st) ? 'var(--loss)' : 'inherit';
+    return `<tr><td>${esc(x.n)}</td><td class="${x.imp === 0 ? 'yel' : ''}">${VIS_IMP[x.imp][0]}</td><td class="small">${x.by ? `By ${yrs(x.by)}` : 'Every season'}</td><td style="color:${col};font-weight:700">${st}</td><td class="small">${pr}${x.rec && x.rec.length ? ` <span class="dim">(met ${x.rec.filter(r => r[1]).length} of ${x.rec.length} seasons)</span>` : ''}</td></tr>`; }).join('')}</tbody></table>
+  ${V0.log.length ? `<div class="ptitle">Reviews</div>${V0.log.map(l => `<p><b>${yrs(l.s)}</b> <span style="color:${l.adj >= 0 ? 'var(--win)' : 'var(--loss)'}">${l.adj >= 0 ? 'Pleased' : 'Disappointed'}</span><br><span class="small dim">${l.lines.map(esc).join('; ')}</span></p>`).join('')}` : ''}`;
+}
+
 function clubBoard(cid, o){
+  visEnsure();
   const aim = AIMS[S.aim], c = S.conf, pos = standings().findIndex(r => r.id === me()) + 1, col = c >= 62 ? 'var(--ok)' : c >= 40 ? 'var(--warn)' : 'var(--hot)';
   const sub = V.sub || 'conf', month = S.date.slice(0, 7), asked = (S.req || {}).m === month, fac = S.fac || {};
   const words = c >= 80 ? `The ${esc(club(me()).name)} directors are delighted with the way things are going, and look forward to a long and successful era under your management.` : c >= 62 ? `The ${esc(club(me()).name)} directors are pleased with your work so far.` : c >= 45 ? 'The board are satisfied, for now.' : c >= 28 ? 'The board are concerned by recent results.' : 'The board are very unhappy. Things must improve quickly.';
@@ -5343,10 +5423,11 @@ function clubBoard(cid, o){
   const cw = c >= 80 ? 'Delighted' : c >= 62 ? 'Pleased' : c >= 45 ? 'Satisfied' : c >= 28 ? 'Concerned' : 'Very unhappy';
   if (sub === 'conf') body = `<div class="confh"><span>Board confidence</span><b style="color:${col}">${cw} · ${Math.round(c)}%</b></div><div class="meter" style="max-width:520px;margin:4px auto 14px"><i style="width:${c}%;background:${col}"></i></div><p style="font-size:17px;line-height:1.5">${S.round ? words : `The ${esc(club(me()).name)} directors are looking forward to a long and successful era under your management.`}</p>${S.ultimatum ? '<p style="color:var(--hot);font-weight:700">The board have issued an ultimatum. Results must improve.</p>' : ''}
     <dl class="kv" style="margin-top:12px"><dt>Expectation</dt><dd><b>${aim.name}</b>: ${aim.text}</dd><dt>Position</dt><dd>${S.round ? ordinal(pos) : 'the season has not started'}</dd><dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>${seasonLine()}`;
+  else if (sub === 'vis') body = visTab();
   else body = `<p>Ask the board for something. They decide on your standing with them and on the money: ${cash(S.fin.bal)} in the bank. One request a month.</p>
     <div class="lg">${REQS.map(r => `<div><b>${r.n}</b><span>${cash(r.cost)}</span><span class="dim small">${r.txt}</span><span>${fac[r.k] ? '<span class="yel">Done</span>' : `<button class="btn sm" data-req="${r.k}" ${asked ? 'disabled' : ''}>Ask</button>`}</span></div>`).join('')}</div>
     ${asked ? `<p class="small dim">You have asked the board this month: ${esc(S.req.r)}</p>` : ''}`;
-  o.title = esc(club(me()).name); o.tools = `<span class="seg"><button data-bs="conf" class="${sub === 'conf' ? 'on' : ''}">Board Confidence</button><button data-bs="req" class="${sub === 'req' ? 'on' : ''}">Board Request</button></span>`;
+  o.title = esc(club(me()).name); o.tools = `<span class="seg"><button data-bs="conf" class="${sub === 'conf' ? 'on' : ''}">Board Confidence</button><button data-bs="vis" class="${sub === 'vis' ? 'on' : ''}">Club Vision</button><button data-bs="req" class="${sub === 'req' ? 'on' : ''}">Board Request</button></span>`;
   o.body = body; frame(o);
   document.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { V = { ...V, sub: b.dataset.bs }; view(); }));
   document.querySelectorAll('[data-req]').forEach(b => b.addEventListener('click', () => { const r = REQS.find(x => x.k === b.dataset.req);
@@ -6166,7 +6247,7 @@ function takeJob(cid){
   if (!S.sacked && old){ S.vac = S.vac || {}; S.vac[old] = { d: S.date }; }
   delete S.ntOnly;
   if (S.vac) delete S.vac[cid];
-  S.club = cid; S.sacked = false; S.ultimatum = null; S.conf = 60; S.aim = aimFor(expRank(cid));
+  S.club = cid; S.sacked = false; S.ultimatum = null; S.conf = 60; S.aim = aimFor(expRank(cid)); S.vis = null;
   if (!S.tac[cid]) S.tac[cid] = autoTactic(cid);
   S.fin = { ...S.fin, bal: Math.round((40 + (q - 70) * 6) * 1e6), budget: Math.round(Math.max(12, (q - 70) * 9) * 1e6) };
   const over = S.round >= S.rounds.length && S.cup.stage >= CN();
@@ -6477,7 +6558,7 @@ function scrHome(){
   const ntH = J ? `<div class="small dim">${ntRec.length} match${ntRec.length === 1 ? '' : 'es'} in charge: ${ntRec.filter(x => x.r === 'W').length} won, ${ntRec.filter(x => x.r === 'D').length} drawn, ${ntRec.filter(x => x.r === 'L').length} lost</div>${ntNext ? `<p style="margin:6px 0">Next: ${ntNext.h === J.n ? 'v' : 'at'} ${flag(ntNext.h === J.n ? ntNext.a : ntNext.h)}<span class="lk" data-ln="${esc(ntNext.h === J.n ? ntNext.a : ntNext.h)}">${esc(ntNext.h === J.n ? ntNext.a : ntNext.h)}</span>, ${fmtDate(ntNext.d)} <span class="small dim">(${esc(ntLabel(ntNext))})</span></p>` : '<p class="dim">Nothing arranged yet.</p>'}<div class="form">${ntRec.slice(-6).map(x => `<span class="${x.r}" title="${esc(x.o)} ${x.s[0]}-${x.s[1]}">${x.r}</span>`).join('')}</div>` : '';
   const formH = last.length ? `<table><tbody>${last.slice().reverse().map(x => { const r = x.rr.w === cid ? 'W' : x.rr.w == null ? 'D' : 'L', h = x.m.h === cid; return `<tr><td><span class="form"><span class="${r}">${r}</span></span></td><td>${h ? '' : '<span class="dim">at</span> '}<span class="lk" data-lc="${opp(x)}">${esc(club(opp(x)).name)}</span></td><td class="small dim">${esc(String(x.comp).replace(/<[^>]+>/g, '').replace(/^League$/, D.league).replace(/, matchday.*$/, ''))}</td><td class="r">${x.rr.s[0]}-${x.rr.s[1]}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">No matches yet.</p>';
   const confW = S.conf >= 75 ? 'Delighted' : S.conf >= 60 ? 'Pleased' : S.conf >= 45 ? 'Satisfied' : S.conf >= 30 ? 'Concerned' : 'Losing patience';
-  const boardH = `<div class="hmeter"><i style="width:${Math.round(S.conf)}%;background:${S.conf >= 60 ? 'var(--win)' : S.conf >= 40 ? 'var(--gold)' : 'var(--loss)'}"></i></div><dl class="kv" style="margin-top:8px"><dt>The board</dt><dd><b>${confW}</b></dd><dt>Expectation</dt><dd>${esc(aim.name)}</dd><dt>League position</dt><dd>${S.round && pos ? `<b>${ordinal(pos)}</b> <span class="small dim">(aim: ${ordinal(aim.pos)} or better)</span>` : 'Not started'}</dd><dt>Job security</dt><dd>${esc(sec)}</dd><dt>Balance</dt><dd>${cash(S.fin.bal)}</dd><dt>Transfer budget</dt><dd>${cash(S.fin.budget)}</dd></dl>`;
+  const boardH = `<div class="hmeter"><i style="width:${Math.round(S.conf)}%;background:${S.conf >= 60 ? 'var(--win)' : S.conf >= 40 ? 'var(--gold)' : 'var(--loss)'}"></i></div><dl class="kv" style="margin-top:8px"><dt>The board</dt><dd><b>${confW}</b></dd><dt>Expectation</dt><dd>${esc(aim.name)}</dd><dt>League position</dt><dd>${S.round && pos ? `<b>${ordinal(pos)}</b> <span class="small dim">(aim: ${ordinal(aim.pos)} or better)</span>` : 'Not started'}</dd><dt>Job security</dt><dd>${esc(sec)}</dd>${(() => { const V0 = visEnsure(); if (!V0) return ''; const n = V0.items.filter(x => visGood(visStat(x)[0])).length; return `<dt>Club vision</dt><dd><button class="lnk" data-hv='${JSON.stringify({ s: 'club', cid: me(), tab: 'board', sub: 'vis' })}'>${n} of ${V0.items.length} on track</button></dd>`; })()}<dt>Balance</dt><dd>${cash(S.fin.bal)}</dd><dt>Transfer budget</dt><dd>${cash(S.fin.budget)}</dd></dl>`;
   const seasonH = `<dl class="kv"><dt>${esc(D.league)}</dt><dd>${S.round && row ? `${ordinal(pos)}, ${row.w * 3 + row.d} points from ${row.p}` : 'Not started'}</dd><dt>All matches</dt><dd>${cur.p}: ${cur.w} won, ${cur.d} drawn, ${cur.p - cur.w - cur.d} lost</dd><dt>Goals</dt><dd>${cur.gf} for, ${cur.ga} against</dd>${euOn() && euCompOf(cid) ? `<dt>Europe</dt><dd><span class="lk" data-lm="eu:${euCompOf(cid)}">${EU_NAME[euCompOf(cid)]}</span></dd>` : ''}${topSc ? `<dt>Top scorer</dt><dd><span class="lk" data-lp="${topSc.id}">${esc(cmName(topSc.n))}</span>, ${q(topSc).g}</dd>` : ''}${inForm ? `<dt>In form</dt><dd><span class="lk" data-lp="${inForm.id}">${esc(cmName(inForm.n))}</span>, ${avgR(inForm).toFixed(2)} average</dd>` : ''}</dl>`;
   const pulseH = `<dl class="kv"><dt>Players</dt><dd>${sq.length}</dd><dt>Morale</dt><dd>${morWord(mor)}</dd><dt>Injured</dt><dd>${inj || 'None'}</dd>${unh ? `<dt>Unhappy</dt><dd class="yel">${unh}</dd>` : ''}${(() => { const L = (S.prom || []).filter(x => P.get(x.id) && P.get(x.id).club === cid), u = L.filter(x => promState(x).urgent).length; return L.length ? `<dt>Promises</dt><dd><button class="lnk" data-hv='${JSON.stringify({ s: 'club', cid, tab: 'dress' })}'>${L.length} to keep</button>${u ? ` <span class="yel">(${u} due soon)</span>` : ''}</dd>` : ''; })()}${away ? `<dt>With their countries</dt><dd>${away}</dd>` : ''}<dt>Contracts ending</dt><dd>${exp ? `<span class="yel">${exp}</span> this season` : 'None this season'}</dd></dl>`;
   const seasons = [...past, { s: S.season, c: cid, ...cur, pos: S.round ? pos : null, now: 1 }].slice().reverse();
