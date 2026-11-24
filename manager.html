@@ -2298,6 +2298,7 @@ function minute(M){
   } else if (r < (M.derby ? .755 : .72)) foul(M, def, att);
   M.zones.push([M.min, M.half, zone]);
   if (Math.random() < .0016 * 1.6){ const sd = Math.random() < .5 ? H : Aw; if (Math.random() < (sd.cid === me() ? injSideMul(sd) : 1) / 1.6) injure(M, sd); }   // your players' injury risk counts
+  try { minuteMisc(M); } catch (e) {}
   aiManage(M, H); aiManage(M, Aw);
 }
 function step(M){
@@ -2367,11 +2368,11 @@ function apply(M, kind){
       if (dm < 0 && s.cid === me()) dm *= 1.2 - manMgmt() * .02;   // a good man-manager softens the blows
       q.mor = clamp(q.mor + dm, 15, 100); }
   }
-  if ((M.h === me() || M.a === me()) && kind !== 'friendly') try { fanMatch(M, kind); socMatch(M); } catch (e) { console.warn(e); }
+  if ((M.h === me() || M.a === me()) && kind !== 'friendly') try { fanMatch(M, kind); socMatch(M); identMatch(M); if (M.spat){ const fine = M.stands ? 40000 : 15000; S.fin.bal -= fine; S.conf = Math.max(0, S.conf - (M.stands ? 2 : 1)); news('board', M.stands ? 'Sent to the stands' : 'Words with the other bench', `${M.stands ? 'You were sent to the stands' : 'You had words with the other bench'} against ${esc(club(M.h === me() ? M.a : M.h).name)}. The FA have fined you ${cash(fine)}.`); } for (const p of squadOf(me())){ const q = ps(p.id); if (q.injD > 0 || q.sus > 0) q.miss = (q.miss || 0) + 1; } } catch (e) { console.warn(e); }
   // the gate: your home matches fill the stadium by how the season is going; TV money for every match
   if (M.h === me() || M.a === me()){
     const home = M.h === me(), c = club(me()), fill = clamp(.82 + (S.conf - 50) / 400 + ((S.fans ?? 60) - 60) / 300 + Math.random() * .08, .6, 1), price = 38 + (c.q - 70) * 2.2;
-    const gate = home ? Math.round((c.cap || 30000) * (1 + ((S.fac || {}).ground || 0) * .07) * fill * price) : 0, tv = kind === 'eu' ? 0 : 1.9e6 + (kind === 'cup' ? .5e6 : 0);
+    const gate = home ? Math.round((c.cap || 30000) * (S.capMul || 1) * (S.build && S.build.k !== 'none' ? .92 : 1) * (1 + ((S.fac || {}).ground || 0) * .07) * fill * price) : 0, tv = kind === 'eu' ? 0 : 1.9e6 + (kind === 'cup' ? .5e6 : 0);
     S.fin.gate += gate; S.fin.tv += tv; S.fin.bal += gate + tv;
     M.att = Math.round((club(M.h).cap || 30000) * (M.derby ? Math.max(fill, .985) : home ? fill : clamp(fill, .75, 1)));
     // every meeting of yours, by opponent, for the preview's head to head
@@ -2491,7 +2492,7 @@ function passDays(n){
   scoutTick();
   transferTick();
   try { promTick(); sqPromTick(); relTick(); visEnsure(); } catch (e) { console.warn(e); }
-  try { cgTick(); fanTick(); affTick(); agTick(); respTick(); dofTick(); } catch (e) { console.warn(e); }
+  try { cgTick(); fanTick(); affTick(); agTick(); respTick(); dofTick(); buildTick(); trialTick(); } catch (e) { console.warn(e); }
   contractWarn();
   if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
   intlTick(); ntTick();
@@ -2566,6 +2567,7 @@ function pendingActs(){
   for (const b of S.bids || []) if (['counter', 'yes'].includes(b.st)){ const p = P.get(b.id); if (!p || p.club === me()){ b.st = 'off'; continue; }
     out.push({ txt: b.fa && b.st === 'yes' ? `<b>${esc(p.n)}</b> (free agent) is waiting for your contract offer. Agree his terms or walk away.` : b.st === 'yes' ? `${esc(club(p.club).name)} have accepted your bid for <b>${esc(p.n)}</b>. Agree his terms or walk away.` : `${esc(club(p.club).name)} want ${cash(b.ask)} for <b>${esc(p.n)}</b>. Pay it or walk away.`, btn: 'To his Transfer screen', v: { s: 'player', id: p.id, tab: 'tr' } }); }
   if (S.press && !S.press.done) out.push({ txt: 'The press are waiting for you.', btn: 'To the press room', v: { s: 'press', id: 'press' } });
+  if (S.evt) out.push({ txt: 'A matter in the dressing room needs your answer.', btn: 'Deal with it', v: { s: 'event', id: 'evt' } });
   if (S.ntOffer) out.push({ txt: `The <b>${esc(S.ntOffer.n)}</b> federation want you as their coach. Accept or decline.`, btn: 'To the offer', v: { s: 'ntjob', tab: 'job', id: 'nto' } });
   for (const [id, d] of Object.entries(S.word || {})){ const p = P.get(+id);
     if (!p || p.club !== me() || onLoan(p)){ delete S.word[id]; continue; }
@@ -2603,6 +2605,7 @@ function onContinue(){
   const todo = pendingActs();
   if (todo.length){ const a = todo[0]; choice('Waiting for your answer', `${todo.length > 1 ? `${todo.length} things need your answer before the game goes on. The first: ` : 'This needs your answer before the game goes on: '}${a.txt}`, [[a.btn, () => go(a.v), 'go']]); return; }
   const ev = events()[0]; if (!ev){ endSeason(); view(); return; }
+  if (S.mode === 'dof' && ev.date <= S.date && ev.k !== 'nt'){ S.hol = { until: S.date, pick: 'ass', buy: false, dof: 1 }; try { autoStep(); } finally { S.hol = null; } save(); view(); return; }   // upstairs: the head coach takes the match
   if (ev.date > S.date){ let tg = nextStop(ev.date); if (dl && dl > S.date && dl < tg && !(S.dd && S.dd.d === dl)) tg = dl;   // the game stops on deadline day
     passDays(daysBetween(S.date, tg)); monthly(); save(); view(); return; }
   if (ev.k === 'nt'){ ntLive(ev.f); return; }
@@ -2652,6 +2655,7 @@ function monthly(){
     q.dp = q.dn || {}; q.dn = snap; }
   ensureStaff(); const wages = (squadOf(me()).reduce((t, p) => t + S.con[p.id].w, 0) + S.staff.reduce((t, x) => t + x.w, 0)) * 4.3;
   S.fin.bal -= wages; S.fin.wages += wages;
+  try { spEnsure(); spMonth(); loanMonth(); ownerMonth(); mgrMonth(); debtMonth(); evtMonth(); } catch (e) { console.warn(e); }
   S.fin.wk.push({ m: S.date.slice(0, 7), bal: S.fin.bal });
   if (S.round >= 3) news('board', 'A word from the board', boardComment());
 }
@@ -3392,9 +3396,10 @@ function boardComment(){
   return `${how} The club are ${ordinal(pos)}; the target is ${aim.name.toLowerCase()} (${ordinal(aim.pos)} or better).`;
 }
 function checkJob(){
-  if (S.round < 10 || S.sacked) return;
-  if (S.conf < 18 && !S.ultimatum){ S.ultimatum = { from: S.round }; news('board', 'An ultimatum from the board', 'The chairman has made it clear: results must improve over the next few matches, or you will be relieved of your duties.'); }
-  else if (S.ultimatum && S.round - S.ultimatum.from >= 5){ if (S.conf < 22){ S.sacked = true; S.done = true; (S.hist = S.hist || []).push({ d: S.date, c: me(), t: 'Sacked' }); news('board', 'Sacked', `The board have run out of patience and have terminated your contract. ${esc(club(me()).name)} thank you for your efforts.`); } else { S.ultimatum = null; news('board', 'The board', 'The board are pleased to see an improvement. The ultimatum has been lifted.'); } }
+  if (S.round < 10 || S.sacked || S.mode === 'owner') return;
+  const pat = ((S.owner || {}).pat || 3) - 3;   // a patient owner waits longer
+  if (S.conf < 18 - pat * 3 && !S.ultimatum){ S.ultimatum = { from: S.round }; news('board', 'An ultimatum from the board', 'The chairman has made it clear: results must improve over the next few matches, or you will be relieved of your duties.'); }
+  else if (S.ultimatum && S.round - S.ultimatum.from >= 5){ if (S.conf < 22 - pat * 3){ S.sacked = true; S.done = true; (S.hist = S.hist || []).push({ d: S.date, c: me(), t: 'Sacked' }); news('board', 'Sacked', `The board have run out of patience and have terminated your contract. ${esc(club(me()).name)} thank you for your efforts.`); } else { S.ultimatum = null; news('board', 'The board', 'The board are pleased to see an improvement. The ultimatum has been lifted.'); } }
 }
 /* the Championship, in the background: 24 clubs from Transfermarkt's squads, 46 rounds spread over the league's season,
    each result drawn from the two clubs' strength (Poisson goals, a home edge). The top two go up with the winner of the
@@ -3573,7 +3578,7 @@ function chTick(all){
     S.ch.log.push({ n: k + 1, res }); if (S.ch.log.length > 6) S.ch.log.shift(); }
 }
 const chTable = () => S.ch ? Object.entries(S.ch.t).map(([id, t]) => ({ id: +id, ...t, gd: t.gf - t.ga, pts: t.w * 3 + t.d })).sort((x, y) => y.pts - x.pts || y.gd - x.gd || y.gf - x.gf || club(x.id).name.localeCompare(club(y.id).name)) : [];
-function standings(){ return splitOrder(Object.entries(S.table).map(([id, t]) => ({ id: +id, ...t, gd: t.gf - t.ga, pts: t.w * 3 + t.d })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || club(a.id).name.localeCompare(club(b.id).name)), S.split); }
+function standings(){ return splitOrder(Object.entries(S.table).map(([id, t]) => ({ id: +id, ...t, gd: t.gf - t.ga, pts: t.w * 3 + t.d - (((S.ded || {})[id]) || 0) })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || club(a.id).name.localeCompare(club(b.id).name)), S.split); }
 /* the end of a career and the start of one: at each new season the oldest may retire (from 35, all at 38), and every
    club brings two or three youngsters (16 or 17) through from its academy, made in the shape of a real player in that
    position, scaled down to a youngster's level; they grow with training like anyone young */
@@ -3637,6 +3642,7 @@ function retireAndIntake(){
 function newSeason(){
   if (S.press) S.press.done = true;
   try { careerSnap(); } catch (e) { console.warn(e); }
+  try { const pos0 = standings().findIndex(r => r.id === me()) + 1; spSeason(pos0); identSeason(pos0); if (pos0 === 1 && S.mode !== 'owner') S.mcash = (S.mcash || 0) + mWage() * 20; S.ded = {}; } catch (e) { console.warn(e); }
   clRises(); S.prom = (S.prom || []).filter(x => x.k === 'pay' || x.k === 'go');   // promises of football are for the season they were made in
   // up and down: the league's bottom three swap places with the Championship's top two and its play-off winner
   if (S.ch && S.ch.up && (S.down || []).length && prOK(HOME, S.down, S.ch.up)){ const dn = S.down;
@@ -3658,7 +3664,7 @@ function newSeason(){
   const ids = D.clubs.map(c => c.id), was = S.season;
   for (const id in S.pl){ const q = S.pl[id], p = P.get(+id);
     if (q.apps) (q.hs = q.hs || []).push({ s: was, c: p ? p.club : null, apps: q.apps, g: q.g, a: q.a, lg: q.lg || 0, la: q.la || 0, rt: q.rt.length ? +(q.rt.reduce((x, y) => x + y, 0) / q.rt.length).toFixed(2) : null });
-    Object.assign(q, { apps: 0, sub: 0, g: 0, a: 0, lg: 0, la: 0, rt: [], mom: 0, yc: 0, rc: 0, cs: 0, sus: 0, cond: 100, sh: 0, xg: 0 }); }
+    Object.assign(q, { apps: 0, sub: 0, g: 0, a: 0, lg: 0, la: 0, rt: [], mom: 0, yc: 0, rc: 0, cs: 0, sus: 0, cond: 100, sh: 0, xg: 0, miss: 0 }); }
   // loans end: everyone goes back to his club
   for (const [id, ln] of Object.entries(S.loans || {})){ const p = P.get(+id); if (p && p.club === ln.to && C.has(ln.from)){ moveP(p, ln.from, 0, 'Loan return'); if (ln.from === me() || ln.to === me()) news('club', `${p.n} returns`, `<b>${esc(p.n)}</b>'s loan is over and he goes back to ${esc(club(ln.from).name)}.`); } }
   S.loans = {}; S.loanAsk = {};
@@ -3703,6 +3709,7 @@ function endSeason(){
   S.rep = pos <= aim.pos - 3 ? 'Very good' : pos <= aim.pos ? 'Good' : pos <= aim.pos + 3 ? 'Average' : 'Poor';
   (S.hist = S.hist || []).push({ d: S.date, c: me(), t: pos === 1 ? 'Won the league' : `Finished ${ordinal(pos)} in the league` });
   S.next = pos <= aim.pos + 3 + (vadj >= 8 ? 2 : vadj >= 4 ? 1 : 0) - (vadj <= -10 ? 2 : vadj <= -5 ? 1 : 0) && !S.sacked && !rel;   // the club vision tips the balance
+  if (S.mode === 'owner' && !rel) S.next = true;
   if (!S.next && !S.sacked){ S.sacked = true; S.vac = S.vac || {}; S.vac[me()] = { d: S.date }; }
   (S.past = S.past || []).push({ s: S.season, table: st.map(r => [r.id, r.pts]), champ, cup: S.cup.stage >= CN() ? S.cup.alive[0] : null, club: me(), pos, aim: aim.pos, aimN: aim.name, ...(S.shield && S.shield.res ? { shield: S.shield.res.w } : {}), ...(S.lc && S.lc.stage >= 6 ? { lc: S.lc.alive[0] } : {}), ...(euOn() ? { eu: Object.fromEntries(Object.values(S.eu.c).map(c => [c.k, c.win])) } : {}), ...(S.usc && S.usc.res ? { usc: S.usc.res.w } : {}), ...(S.fic && S.fic.win ? { fic: S.fic.win } : {}), ...(S.cwc && S.cwc.win ? { cwc: S.cwc.win } : {}), ...(S.ch && S.ch.up ? { up: S.ch.up, down, cht: chTable().map(r => [r.id, r.pts]) } : {}), home: HOME, aw });
   if (S.ch && S.ch.up){ const bar = (S.ch.po || []).find(x => x.bar), nl = L => L.map(id => `<b>${esc(club(id).name)}</b>`), up = nl(S.ch.up);
@@ -3854,7 +3861,7 @@ function view(){
   if (!S || SETUP_OPEN){ viewSetup(); return; }
   CTX = LIVE && LIVE.nt && !LIVE.peek ? LIVE.ntC : null;
   if (LIVE && !LIVE.peek){ viewMatch(); return; }
-  ({ home: scrHome, press: scrPress, deadline: scrDeadline, nt: scrNT, ntjob: scrNTJob, friendlies: scrFriendlies, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
+  ({ home: scrHome, press: scrPress, event: scrEvent, deadline: scrDeadline, nt: scrNT, ntjob: scrNTJob, friendlies: scrFriendlies, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers })[V.s]();
   linkify(document.body); autoSort();
 }
 /* every table sorts: a table with a header and no sorting of its own sorts by any column on a click on its head (again
@@ -3903,7 +3910,7 @@ function menuTree(o, unread){
       { id: 'home', label: 'Home', v: { s: 'home' } },
       { id: 'news', label: 'News', v: { s: 'news', f: 'all' }, kids: [['all', 'All'], ['club', 'Club &amp; Board'], ['comp', 'Competitions'], ['inj', 'Injuries &amp; Bans'], ['social', 'Social']].map(([f, n]) => ({ id: 'n.' + f, label: n, v: { s: 'news', f } })) },
       { id: 'career', label: 'Career', v: { s: 'manager', tab: 'hist' }, kids: [
-        { id: 'k.hist', label: 'History', v: { s: 'manager', tab: 'hist' } }, { id: 'k.goals', label: 'Career Goals', v: { s: 'manager', tab: 'goals' } }, { id: 'k.con', label: 'Contract', v: { s: 'manager', tab: 'con' } },
+        { id: 'k.hist', label: 'History', v: { s: 'manager', tab: 'hist' } }, { id: 'k.goals', label: 'Career Goals', v: { s: 'manager', tab: 'goals' } }, { id: 'k.wealth', label: 'Wealth', v: { s: 'manager', tab: 'wealth' } }, { id: 'k.con', label: 'Contract', v: { s: 'manager', tab: 'con' } },
         { id: 'k.jobs', label: 'Jobs', v: { s: 'managers', tab: 'jobs' } }, { id: 'k.rep', label: 'Manager Rankings', v: { s: 'managers', tab: 'rep' } }, { id: 'k.aw', label: 'Coach Awards', v: { s: 'managers', tab: 'aw' } },
         { id: 'k.hall', label: 'Hall of Fame', act: () => { SETUP_OPEN = true; SETUP = 'hall'; view(); } }] }] },
     ...(mine ? [{ id: 'my', cls: 'myclub', label: esc(club(mine).name), v: cv(mine, 'ov'), kids: clubKids(mine) }] : []),
@@ -4712,12 +4719,12 @@ function clubInfo(cid, o){
   const pos = standings().findIndex(r => r.id === cid) + 1;
   let fin = '';
   if (mine){ const f = S.fin, max = Math.max(...f.wk.map(y => Math.abs(y.bal)), 1);
-    fin = `<div><div class="ptitle">Finances</div><dl class="kv"><dt>Balance</dt><dd><b>${cash(f.bal)}</b></dd><dt>Transfer budget</dt><dd>${cash(f.budget)}</dd><dt>Wage bill</dt><dd>${wage(wk)}</dd><dt>Gate receipts</dt><dd>${cash(f.gate)}</dd><dt>TV and prize money</dt><dd>${cash(f.tv)}</dd><dt>Wages paid</dt><dd>${cash(f.wages)}</dd></dl>
+    fin = `<div><div class="ptitle">Finances</div><dl class="kv"><dt>Balance</dt><dd><b>${cash(f.bal)}</b></dd><dt>Transfer budget</dt><dd>${cash(f.budget)}</dd><dt>Wage bill</dt><dd>${wage(wk)}</dd><dt>Gate receipts</dt><dd>${cash(f.gate)}</dd><dt>TV and prize money</dt><dd>${cash(f.tv)}</dd><dt>Sponsors</dt><dd>${cash(f.spon || 0)}</dd>${S.sloan ? `<dt>Stadium loan</dt><dd>${cash(S.sloan.m)} a month, ${S.sloan.left} left</dd>` : ''}${S.embargo ? '<dt>Embargo</dt><dd style="color:var(--loss)">Transfer embargo</dd>' : ''}<dt>Wages paid</dt><dd>${cash(f.wages)}</dd></dl>
       ${f.wk.length ? (() => { const vals = f.wk.map(x => x.bal), lo = Math.min(...vals), hi = Math.max(...vals), span = Math.max(1, hi - lo), base = lo - span * .6;   // bars from a floor below the lowest month, so the changes show
         return `<div class="small dim" style="margin-top:12px">Balance at the start of each month</div><div class="finch">${f.wk.map((x, k) => { const prev = k ? f.wk[k - 1].bal : null, dlt = prev == null ? '' : x.bal - prev;
           return `<div title="${cash(x.bal)}"><span class="fv">${cash(x.bal)}</span>${dlt !== '' ? `<span class="fd ${dlt >= 0 ? 'up' : 'dn'}">${dlt >= 0 ? '+' : '−'}${cash(Math.abs(dlt))}</span>` : '<span class="fd"></span>'}<i style="height:${Math.round(18 + 62 * (x.bal - base) / (hi - base || 1))}px;background:${x.bal >= 0 ? 'var(--ok)' : 'var(--hot)'}"></i><span class="small dim">${new Date(x.m + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'short' })}</span></div>`; }).join('')}</div>`; })() : ''}</div>`; }
-  o.body = `<div class="cols2"><div><div class="ptitle">General Info</div><dl class="kv"><dt>Stadium</dt><dd>${esc(c.venue || '')}</dd><dt>Capacity</dt><dd>${(c.cap || 0).toLocaleString('en-GB')}${c.att ? ` <span class="small dim">(${c.att[1]}% full last season)</span>` : ''}</dd>${!mine && c.coach ? `<dt>Manager</dt><dd>${esc(c.coach)}</dd>` : ''}${c.last === 'promoted' || (c.last && c.last.pos) ? `<dt>Last season</dt><dd>${c.last === 'promoted' ? 'Promoted' : `${ordinal(c.last.pos)}, ${c.last.pts} pts`}</dd>` : ''}${c.kitm ? `<dt>Kit</dt><dd>${esc(c.kitm)}${c.sponsor ? ', ' + esc(c.sponsor) : ''}</dd>` : ''}${c.city ? `<dt>City</dt><dd>${esc(c.city)}</dd>` : ''}${EU.has(cid) ? `<dt>Country</dt><dd>${esc(c.ctry || '-')}</dd>` : ''}${euOn() ? (k => k ? `<dt>Europe</dt><dd>${EU_NAME[k]}</dd>` : '')(EU_KEYS.find(k => S.eu.c[k] && S.eu.c[k].teams.includes(cid))) : ''}${LG.has(cid) ? `<dt>League</dt><dd>${esc(D.league)}, ${S.round ? ordinal(pos) : '-'}</dd>` : ''}<dt>Squad</dt><dd>${sq.length} players, average age ${(sq.reduce((t, p) => t + p.age, 0) / Math.max(1, sq.length)).toFixed(1)}</dd><dt>Squad value</dt><dd>${cash(sq.reduce((t, p) => t + p.val, 0) * 1e6)}</dd>${mine ? `<dt>Board expect</dt><dd>${AIMS[S.aim].name}</dd>` : `<dt>Usual shape</dt><dd>${esc((S.tac[cid] || autoTactic(cid)).form)}</dd>`}</dl></div>${fin}</div>`;
-  frame(o);
+  o.body = `<div class="cols2"><div><div class="ptitle">General Info</div><dl class="kv"><dt>Stadium</dt><dd>${esc(mine && S.stadName ? S.stadName : c.venue || '')}${mine && S.build ? ` <span class="small dim">(works until ${shortDate(S.build.done)})</span>` : ''}</dd><dt>Capacity</dt><dd>${Math.round((c.cap || 0) * (mine ? S.capMul || 1 : 1)).toLocaleString('en-GB')}${c.att ? ` <span class="small dim">(${c.att[1]}% full last season)</span>` : ''}</dd>${!mine && c.coach ? `<dt>Manager</dt><dd>${esc(c.coach)}</dd>` : ''}${c.last === 'promoted' || (c.last && c.last.pos) ? `<dt>Last season</dt><dd>${c.last === 'promoted' ? 'Promoted' : `${ordinal(c.last.pos)}, ${c.last.pts} pts`}</dd>` : ''}${c.kitm ? `<dt>Kit</dt><dd>${esc(c.kitm)}${c.sponsor ? ', ' + esc(c.sponsor) : ''}</dd>` : ''}${c.city ? `<dt>City</dt><dd>${esc(c.city)}</dd>` : ''}${EU.has(cid) ? `<dt>Country</dt><dd>${esc(c.ctry || '-')}</dd>` : ''}${euOn() ? (k => k ? `<dt>Europe</dt><dd>${EU_NAME[k]}</dd>` : '')(EU_KEYS.find(k => S.eu.c[k] && S.eu.c[k].teams.includes(cid))) : ''}${LG.has(cid) ? `<dt>League</dt><dd>${esc(D.league)}, ${S.round ? ordinal(pos) : '-'}</dd>` : ''}<dt>Squad</dt><dd>${sq.length} players, average age ${(sq.reduce((t, p) => t + p.age, 0) / Math.max(1, sq.length)).toFixed(1)}</dd><dt>Squad value</dt><dd>${cash(sq.reduce((t, p) => t + p.val, 0) * 1e6)}</dd>${mine ? `<dt>Board expect</dt><dd>${AIMS[S.aim].name}</dd>` : `<dt>Usual shape</dt><dd>${esc((S.tac[cid] || autoTactic(cid)).form)}</dd>`}</dl>${mine ? identHTML() : ''}</div>${fin}</div>${mine ? spHTML() : ''}`;
+  frame(o); if (mine) spWire();
 }
 function lastResult(cid){ const L = allResults().filter(r => r.h === cid || r.a === cid).sort((a, b) => a.date < b.date ? -1 : 1); return L[L.length - 1]; }
 function clubLast(cid, o){
@@ -5434,7 +5441,9 @@ function scrOptions(){
       <select class="dd" id="hpick"><option value="mine">Use my tactics and side</option><option value="ass">Let my assistant pick the side</option></select>
       <label class="small"><input type="checkbox" id="hbuy"> Buy short-listed players</label><button class="btn y" id="hgo">Go on Holiday</button></div>
     <p class="small dim">The games are played while you are away; you come back to the news. With "buy", your assistant signs players from your short list at their asking price while a window is open and the money is there.</p>
+    <div class="ptitle" style="margin-top:14px">Random events</div><label class="small"><input type="checkbox" id="oevt" ${S.noEvents ? '' : 'checked'}> Things happen: players in the papers, rows in training, fines for the supporters, betting probes</label>
     <div class="ptitle" style="margin-top:14px">Game Settings</div>${settingsBody()}<div class="ptitle" style="margin-top:14px">Keys</div><p class="small dim" style="margin:4px 2px"><b>Enter</b> or <b>Space</b>: the green button on the left (Continue Game, Go to Match, Kick Off). <b>Esc</b>: Back. <b>Alt + ← / →</b>: the screens you came through.</p>` });
+  $('#oevt').addEventListener('change', e => { S.noEvents = !e.target.checked; save(); });
   $('#hgo').addEventListener('click', () => { const d = $('#hdur').value; goHoliday(d === 'end' ? '9999-12-31' : day(S.date, +d), $('#hpick').value, $('#hbuy').checked); });
   wireSettings(view);
   $('#sgo').addEventListener('click', () => { if (saveAs($('#sname').value)) toast('Game saved.'); view(); });
@@ -5546,7 +5555,7 @@ function firstTeam(cid){ if (ntOfC(cid)) return new Set(squadOf(cid).map(p => p.
   for (const id of [...t.xi, ...t.bench]) if (id) keep.add(id); return keep; }
 
 /* ---- attribute masking ---- */
-const known = p => !S.mask || p.club === me() || (S.kn || {})[p.id] || (S.seen || []).includes(p.club) || (S.short || []).some(x => x.id === p.id && daysBetween(x.d, S.date) >= 7);
+const known = p => !S.mask || p.club === me() || (S.kn || {})[p.id] || onTrial(p.id) || (S.seen || []).includes(p.club) || (S.short || []).some(x => x.id === p.id && daysBetween(x.d, S.date) >= 7);
 // a player you do not know yet: some of his attributes are known (about two in five, the same ones all game), the rest hidden
 const seenA = (p, k) => known(p) || (k != null && rng(`mk-${p.id}-${k}`)() < .4);
 const showA = (p, v, k) => seenA(p, k) ? `${v}` : '<span class="msk" title="Not known yet">?</span>';
@@ -5560,8 +5569,10 @@ const REQS = [
   { k: 'scout', n: 'A wider scouting network', cost: 2.5e6, max: 1, txt: 'Scout reports come in after ten days instead of fourteen.' },
   { k: 'aff', n: 'An affiliate club', cost: 0, max: 1, txt: 'A smaller club abroad takes your young players on loan and gives you first refusal on its best youngster each summer.' },
   { k: 'funds', n: 'More money for transfers', cost: 0, max: 0, txt: 'The board top up the transfer budget, once a season, if the money is there.' },
+  { k: 'newstad', n: 'A new stadium', cost: 0, max: 1, txt: 'Almost half as many seats again, built in a year and a half and paid off over three years (a quarter up front).' },
 ];
-const reqLvl = k => k === 'aff' ? (S.aff ? 1 : 0) : +((S.fac || {})[k] || 0);
+const reqLvl = k => k === 'aff' ? (S.aff ? 1 : 0) : k === 'newstad' ? (S.capMul || (S.build && S.build.k === 'newstad') ? 1 : 0) : +((S.fac || {})[k] || 0);
+const stadCost = () => Math.round(Math.max(60, (club(me()).cap || 30000) / 1000 * 4) * 1e6);
 const reqCost = r => Math.round(r.cost * (reqLvl(r.k) ? 1.6 : 1));
 // the board's answer: their confidence in you and the money; a second level asks for more of both
 function reqAnswer(r){
@@ -5571,9 +5582,12 @@ function reqAnswer(r){
     return [true, '', () => { S.fin.budget += amt; S.reqFunds = S.season; return `more money for transfers. ${cash(amt)} goes into your transfer budget.`; }]; }
   if (r.k === 'aff'){ if (S.conf < 50) return [false, 'Win them over first.']; const c = affPick(); if (!c) return [false, 'They could not find a suitable club.'];
     return [true, '', () => { S.aff = c.id; return `an affiliate club. ${esc(c.name)} (${esc(ctryName(c))}) are now your affiliate club.`; }]; }
+  if (r.k === 'newstad'){ const c = stadCost(); if (S.conf < 75) return [false, 'Only a manager they trust completely gets a new stadium.']; if (S.fin.bal < c * .3) return [false, 'The club cannot raise the first quarter.']; if (S.build) return [false, 'There are works going on already.'];
+    return [true, '', () => { S.fin.bal -= c * .25; S.sloan = { m: Math.round(c * .75 / 36), left: 36 }; S.build = { k: 'newstad', done: day(S.date, 540) }; return `a new stadium, ${cash(c)}: a quarter now, the rest over three years. It opens ${shortDate(day(S.date, 540))}.`; }]; }
+  if (r.k === 'ground' && S.build) return [false, 'There are works going on already.'];
   if (S.conf < (lv ? 66 : 55)) return [false, lv ? 'They want more success before they spend again on it.' : 'Win them over first.'];
   if (S.fin.bal < cost * 1.5) return [false, 'The club cannot afford it.'];
-  return [true, '', () => { S.fac = S.fac || {}; S.fac[r.k] = lv + 1; S.fin.bal -= cost; return `${r.n.toLowerCase()}${lv ? ' (a second stage)' : ''}. It costs the club ${cash(cost)}.`; }];
+  return [true, '', () => { S.fin.bal -= cost; if (r.k === 'ground'){ S.build = { k: 'ground', lv: lv + 1, done: day(S.date, 180) }; return `${r.n.toLowerCase()}${lv ? ' (a second stage)' : ''}. It costs the club ${cash(cost)}; the new seats are ready ${shortDate(day(S.date, 180))}.`; } S.fac = S.fac || {}; S.fac[r.k] = lv + 1; return `${r.n.toLowerCase()}${lv ? ' (a second stage)' : ''}. It costs the club ${cash(cost)}.`; }];
 }
 // the season's line: the league place round by round (1st at the top) and the board's confidence, on one small chart
 function seasonLine(){
@@ -5678,10 +5692,11 @@ function clubBoard(cid, o){
     <dl class="kv" style="margin-top:12px"><dt>Expectation</dt><dd><b>${aim.name}</b>: ${aim.text}</dd><dt>Position</dt><dd>${S.round ? ordinal(pos) : 'the season has not started'}</dd><dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>${seasonLine()}`;
   else if (sub === 'vis') body = visTab();
   else if (sub === 'fans') body = fansTab();
+  else if (sub === 'owner') body = ownerTab();
   else body = `<p>Ask the board for something. They decide on your standing with them and on the money: ${cash(S.fin.bal)} in the bank. One request a month.</p>
     <div class="lg">${REQS.map(r => { const lv = reqLvl(r.k), done = r.max && lv >= r.max; return `<div><b>${r.n}${lv && r.max > 1 ? ` <span class="small dim">(stage ${lv} of ${r.max})</span>` : ''}</b><span>${r.cost ? cash(reqCost(r)) : ''}</span><span class="dim small">${r.txt}${r.k === 'aff' && S.aff ? ` Your affiliate: <b>${esc(club(S.aff).name)}</b>.` : ''}</span><span>${done ? '<span class="yel">Done</span>' : r.k === 'funds' && S.reqFunds === S.season ? '<span class="dim small">This season: done</span>' : `<button class="btn sm" data-req="${r.k}" ${asked ? 'disabled' : ''}>Ask</button>`}</span></div>`; }).join('')}</div>
     ${asked ? `<p class="small dim">You have asked the board this month: ${esc(S.req.r)}</p>` : ''}`;
-  o.title = esc(club(me()).name); o.tools = `<span class="seg"><button data-bs="conf" class="${sub === 'conf' ? 'on' : ''}">Board Confidence</button><button data-bs="vis" class="${sub === 'vis' ? 'on' : ''}">Club Vision</button><button data-bs="fans" class="${sub === 'fans' ? 'on' : ''}">Supporters</button><button data-bs="req" class="${sub === 'req' ? 'on' : ''}">Board Request</button></span>`;
+  o.title = esc(club(me()).name); o.tools = `<span class="seg"><button data-bs="conf" class="${sub === 'conf' ? 'on' : ''}">Board Confidence</button><button data-bs="vis" class="${sub === 'vis' ? 'on' : ''}">Club Vision</button><button data-bs="owner" class="${sub === 'owner' ? 'on' : ''}">Owner</button><button data-bs="fans" class="${sub === 'fans' ? 'on' : ''}">Supporters</button><button data-bs="req" class="${sub === 'req' ? 'on' : ''}">Board Request</button></span>`;
   o.body = body; frame(o);
   document.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { V = { ...V, sub: b.dataset.bs }; view(); }));
   document.querySelectorAll('[data-req]').forEach(b => b.addEventListener('click', () => { const r = REQS.find(x => x.k === b.dataset.req), [ok, why, act] = reqAnswer(r);
@@ -5722,7 +5737,7 @@ const squadRank = p => squadOf(p.club).sort((a, b) => ovrNow(b) - ovrNow(a)).ind
 // what the selling club wants: his value, more for a first-choice player, less with little left on his contract
 function askingPrice(p){
   const r = squadRank(p), key = r < 5 ? 1.6 : r < 11 ? 1.35 : r < 16 ? 1.15 : 1, con = S.con[p.id], yrs = con ? con.y - S.season : 2;
-  return roundFee(p.val * 1e6 * key * (yrs <= 1 ? .7 : yrs >= 4 ? 1.15 : 1) * ((S.affDisc || {})[p.id] === S.season && p.club === S.aff ? .75 : 1) * ((S.agOff || {})[p.id] === S.season ? .9 : 1));
+  return roundFee(p.val * 1e6 * key * (yrs <= 1 ? .7 : yrs >= 4 ? 1.15 : 1) * ((S.affDisc || {})[p.id] === S.season && p.club === S.aff ? .75 : 1) * ((S.agOff || {})[p.id] === S.season ? .9 : 1) * ((S.trialDisc || {})[p.id] === S.season ? .9 : 1));
 }
 // his wage demand from a club: a rise on what he earns now, more the bigger his part
 const wageDemand = p => { const now = (S.con[p.id] || contractFor(p)).w; return Math.round(Math.max(now * 1.2, p.val * 1700) / 500) * 500; };
@@ -5731,7 +5746,7 @@ function moveP(p, to, fee, note){
   if (FAP.has(p.id)) p = faSign(p);
   const from = p.club, fc = club(from), tc = club(to);
   if (S.club && from === me() && to !== me() && !(S.loans || {})[p.id] || S.club && from === me() && note === 'Loan') dynLeave(p);
-  try { if (S.club && note !== 'Loan' && (to === me() || from === me()) && from !== to) socMove(p, from, to, fee); } catch (e) {}
+  try { if (S.club && note !== 'Loan' && (to === me() || from === me()) && from !== to){ socMove(p, from, to, fee); identMove(p, from, to, fee); } } catch (e) {}
   try { if (S.club && from === me() && fee > 0 && (fanFav() || {}).id === p.id) fanAdd(-6, `Sold their favourite, ${p.n}`); else if (S.club && to === me() && fee >= 25e6) fanAdd(3, `Signed ${p.n}`); } catch (e) {}
   p.club = to; S.moves = S.moves || {}; S.moves[p.id] = to;
   // across the divisions: a player going to the Championship leaves the league's list, one coming up joins it
@@ -5907,7 +5922,9 @@ function transferTab(p){
   const b = (S.bids || []).slice().reverse().find(x => x.id === p.id && !['off'].includes(x.st));
   const opts = [.75, .9, 1, 1.15, 1.3, 1.5, 1.75, 2].map(f => roundFee(p.val * 1e6 * f));
   let act = '';
-  if (FAP.has(p.id) && !(b && b.st === 'yes')) act = faOfferHTML(p);
+  const trialB = trialOK(p) ? (onTrial(p.id) ? `<p class="small">He is with you on trial until ${shortDate(S.trials.find(x => x.id === p.id).until)}.</p>` : `<div class="tools" style="margin-top:6px"><button class="btn sm" id="trialgo" ${(S.trials || []).length >= 3 ? 'disabled title="Three on trial already"' : ''}>Invite him on trial (two weeks)</button></div>`) : '';
+  if (S.embargo && !FAP.has(p.id) && p.club !== me()) act = '<p style="color:var(--loss)">The club are under a transfer embargo: no fees until the books balance. Free agents are still allowed.</p>';
+  else if (FAP.has(p.id) && !(b && b.st === 'yes')) act = faOfferHTML(p);
   else if (!open && !(b && b.fa)) act = '';
   else if (!b || b.st === 'no' || b.st === 'done' && false) act = `<div class="ptitle">Make an Offer</div><p class="small dim">Funds: ${cash(S.fin.budget)}. ${esc(club(p.club).name)} answer ${ddOn() ? 'within the hour (deadline day)' : 'the next day'}. An add-on (paid after 25 games for you) or a share of the profit when you sell him on makes a smaller fee easier for them to take.</p><div class="clg"><label><span class="small dim">Add-on after 25 games</span><select class="dd" id="bao"><option value="0">None</option><option value=".1">10% of the fee</option><option value=".25">25% of the fee</option></select></label><label><span class="small dim">Sell-on (share of the profit)</span><select class="dd" id="bso"><option value="0">None</option><option value=".1">10%</option><option value=".2">20%</option></select></label></div><div class="tools">${opts.map(f => `<button class="btn sm" data-bid="${f}" ${f > S.fin.budget ? 'disabled' : ''}>${cash(f)}</button>`).join('')}</div>${b && b.st === 'no' ? '<p class="small dim">They turned down your last bid.</p>' : ''}`;
   else if (b.st === 'wait') act = `<p>Your bid of <b class="yel">${cash(b.fee)}</b>${bidCl(b)} is with ${esc(club(p.club).name)}. They answer ${ddOn() ? 'within the hour: move the clock on in Deadline Day' : 'tomorrow'}.</p>${ddOn() ? `<div class="tools"><button class="btn sm" data-hv='${JSON.stringify({ s: 'deadline' })}'>Deadline Day</button></div>` : ''}<div class="tools"><button class="btn sm" id="bidoff">Withdraw</button></div>`;
@@ -5916,7 +5933,7 @@ function transferTab(p){
   const loanable = open && p.age <= 23 && squadRank(p) >= 12 && !(S.loans || {})[p.id] && !(S.loanAsk || {})[p.id];
   if (loanable) act += `<div class="ptitle">Loan</div><p class="small dim">${esc(club(p.club).name)} may let a young player who is not a regular go on loan until the end of the season. You pay his wage (${wage((S.con[p.id] || contractFor(p)).w)}).</p><div class="tools"><button class="btn sm" id="loanin">Ask to take him on loan</button></div>`;
   else if ((S.loanAsk || {})[p.id] === 'no') act += '<p class="small dim">They will not loan him out.</p>';
-  return `<div class="ptitle">Transfer</div><p>${when}</p><dl class="kv" style="max-width:520px"><dt>Club</dt><dd>${crest(p.club)}${esc(fullName(p.club))}</dd><dt>Value</dt><dd>${known(p) ? valueOf(p) : 'about ' + cash(roundFee(p.val * 1e6))}</dd><dt>Contract</dt><dd>${S.con[p.id] ? 'until 30.6.' + String(S.con[p.id].y).slice(2) : '-'}</dd></dl>${act}`;
+  return `<div class="ptitle">Transfer</div><p>${when}</p><dl class="kv" style="max-width:520px"><dt>Club</dt><dd>${crest(p.club)}${esc(fullName(p.club))}</dd><dt>Value</dt><dd>${known(p) ? valueOf(p) : 'about ' + cash(roundFee(p.val * 1e6))}</dd><dt>Contract</dt><dd>${S.con[p.id] ? 'until 30.6.' + String(S.con[p.id].y).slice(2) : '-'}</dd></dl>${act}${trialB}`;
 }
 function wireTransfer(p){
   document.querySelectorAll('[data-hv]').forEach(b => b.addEventListener('click', () => go(JSON.parse(b.dataset.hv))));
@@ -5925,13 +5942,14 @@ function wireTransfer(p){
   const cur = () => S.bids.slice().reverse().find(x => x.id === p.id && x.st !== 'off');
   on('[data-bid]', el => { const ao = +(($('#bao') || {}).value || 0), so = +(($('#bso') || {}).value || 0); S.bids.push({ id: p.id, fee: +el.dataset.bid, d: S.date, st: 'wait', ...(ao ? { ao } : {}), ...(so ? { so } : {}) }); toast(`Bid sent to ${club(p.club).name}.`); });
   on('#bidoff', () => { const b = cur(); if (b) b.st = 'off'; });
+  on('#trialgo', () => { (S.trials = S.trials || []).push({ id: p.id, d: S.date, until: day(S.date, 14) }); news('club', `${p.n} on trial`, `<b>${esc(p.n)}</b> is with you on a two-week trial.`, { id: p.id }); });
   on('#faoffer', () => { S.bids.push({ id: p.id, fee: 0, d: S.date, st: 'yes', w: faWage(p), fa: 1 }); });
   on('#bidask', () => { const b = cur(); if (b){ b.fee = b.ask; b.st = 'yes'; b.w = wageDemand(p); } });
   on('[data-sign]', el => { const b = cur(); if (!b) return; const y = +el.dataset.sign;
     // a player at a much bigger club may not want to come
     if (b.fa){ const up = ovrNow(p) - club(me()).q;   // a free agent much better than your side would rather wait for a bigger club
       if (up > 5 && rng(`fa-${p.id}-${me()}`)() < Math.min(.85, .25 + up * .08)){ b.st = 'off'; news('club', `${p.n} turns you down`, `<b>${esc(p.n)}</b> would rather wait for an offer from a bigger club than ${esc(club(me()).name)}.`); toast(`${cmName(p.n)} does not want to join.`); return; } }
-    const step = (S.agOff || {})[p.id] === S.season ? -99 : club(p.club).q - club(me()).q, star = !b.fa && (S.agOff || {})[p.id] !== S.season && squadRank(p) < 4;
+    const step = (S.agOff || {})[p.id] === S.season || (S.trialDisc || {})[p.id] === S.season ? -99 : club(p.club).q - club(me()).q, star = !b.fa && (S.agOff || {})[p.id] !== S.season && squadRank(p) < 4;
     if ((step > 5 && rng(`w-${p.id}-${S.season}`)() < .7) || (star && step > 2 && rng(`s-${p.id}`)() < .5)){ b.st = 'off'; news('club', `${p.n} turns you down`, `<b>${esc(p.n)}</b> does not want to leave ${esc(club(p.club).name)} for ${esc(club(me()).name)}.`); toast(`${cmName(p.n)} does not want to join.`); return; }
     const cl = clFrom(V.tcl, b.w, p), w = clWage(p, b.w, y, cl), from = p.club, af = agFee(p, b.fee, w);
     if (b.fee + af > S.fin.budget){ toast('There is not enough in the transfer budget (with the agent\'s fee).'); return; }
@@ -6382,7 +6400,7 @@ function concerns(p){
   if (p.club !== me() || (S.loans || {})[p.id] || onLoan(p)) return [];
   const q = ps(p.id), R = S.round, out = [], role = roleOf(p), c = S.con[p.id], pr = promOf(p), has = k => pr.some(x => x.k === k);
   const need = role ? ROLES.find(r => r[0] === role)[2] : squadRank(p) < 16 && !inRes(p) ? .35 : 0;
-  if (R >= 6 && need && !q.injD && q.apps < R * need && !has('time'))
+  if (R >= 6 && need && !q.injD && q.apps < Math.max(0, R - (q.miss || 0)) * need && !has('time'))   // games he could not play (injured, banned) do not count against him
     out.push({ k: 'time', t: role && need > .3 ? `His contract made him a ${roleName(role).toLowerCase()}, and he is not playing like one.` : 'He wants more first-team football.' });
   if (R >= 6 && inRes(p) && p.age >= 18 && p.age <= 21 && squadRank(p) < 22 && !q.injD && !has('youth'))
     out.push({ k: 'res', t: 'He feels ready for the first team and wants his chance.' });
@@ -6897,6 +6915,214 @@ function dofTick(){
     const XI = squadOf(me()).filter(p => ft.has(p.id)), G = ['DEF', 'MID', 'FWD'].map(g => [g, XI.filter(p => GROUP[p.prim] === g)]).filter(x => x[1].length).map(([g, L]) => [g, L.reduce((t, p) => t + seen(p), 0) / L.length]).sort((a, b) => a[1] - b[1])[0];
     if (G){ const have = new Set((S.short || []).map(x => x.id)), L = (D.players.concat(D.pool || [])).filter(p => p.club !== me() && C.has(p.club) && GROUP[p.prim] === G[0] && p.age <= 29 && !have.has(p.id) && askingPrice(p) <= S.fin.budget).map(p => [p, seen(p)]).filter(x => x[1] > G[1] + 2).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
       if (L.length && (S.short || []).filter(x => x.dof).length < 6){ S.short = S.short || []; for (const p of L) S.short.push({ id: p.id, d: S.date, dof: 1 }); news('club', 'Recruitment', `${esc(d.n)} thinks your ${({ DEF: 'defence', MID: 'midfield', FWD: 'attack' })[G[0]]} needs strengthening and has put ${L.map(p => `<span class="lk" data-lp="${p.id}">${esc(p.n)}</span> (${esc(club(p.club).name)}, ${cash(askingPrice(p))})`).join(', ')} on your short list.`); } } }
+}
+/* ---- sponsors: the shirt (the club's real sponsor, on a deal the game invents), the sleeve and the stadium's name.
+   When a slot is free (or a deal runs out in the summer) three companies (invented) make offers: so much a season, for
+   so many seasons, with a bonus if the season goes well. Ask for more once: some agree, some walk away. Paid monthly;
+   the bonus at the end of the season. Renaming the ground upsets the supporters ---- */
+const SP_A = ['Nova', 'Apex', 'Blue Harbour', 'Kestrel', 'Meridian', 'Orbitel', 'Vanta', 'Halcyon', 'Northgate', 'Sable', 'Quantra', 'Redline', 'Lumen', 'Corvid', 'Atlasway', 'Brightwater'];
+const SP_B = ['Air', 'Energy', 'Bank', 'Motors', 'Telecom', 'Tyres', 'Logistics', 'Insurance', 'Mobile', 'Foods', 'Travel', 'Cloud', 'Pay', 'Homes'];
+const SP_SLOT = { shirt: ['Shirt', 1], sleeve: ['Sleeve', .3], stadium: ['Stadium name', .25] };
+const SP_BON = [['eu', 'qualifying for Europe'], ['top', 'a top-half finish'], ['title', 'winning the league'], ['cup', 'winning a cup']];
+const spBase = () => Math.max(1.5e6, Math.max(0, (club(me()).q - 62) / 24) ** 2.2 * 6e7) * (1 + ((S.fans ?? 60) - 60) / 250);   // a top club's shirt is worth about £60M a season, a small one's a few million
+function spOffers(k){
+  const r = rng(`spo-${k}-${S.season}-${me()}-${(S.spOffN || 0)}`), base = spBase() * SP_SLOT[k][1];
+  return [0, 1, 2].map(i => { const amt = Math.round(base * (.85 + r() * .3) / 5e4) * 5e4, y = 1 + Math.floor(r() * 4), b = SP_BON[Math.floor(r() * SP_BON.length)];
+    return { n: `${SP_A[Math.floor(r() * SP_A.length)]} ${SP_B[Math.floor(r() * SP_B.length)]}`, amt, y, bk: b[0], ba: Math.round(amt * (.15 + r() * .25) / 5e4) * 5e4, asked: 0 }; });
+}
+function spEnsure(){
+  if (!S.spon || S.spon.club !== me()){ const c = club(me()); S.spon = { club: me(), shirt: c.sponsor ? { n: c.sponsor, amt: Math.round(spBase() / 1e5) * 1e5, y: S.season + 1, bk: 'top', ba: Math.round(spBase() * .15 / 1e5) * 1e5, real: 1 } : null, sleeve: null, stadium: null }; S.spOff = {}; }
+  S.spOff = S.spOff || {}; for (const k of Object.keys(SP_SLOT)) if (!S.spon[k] && !S.spOff[k]) S.spOff[k] = spOffers(k);
+}
+function spMonth(){ if (!S.spon) return; const m = +S.date.slice(5, 7); if (m === 6 || m === 7) return; let t = 0; for (const k of Object.keys(SP_SLOT)) if (S.spon[k]) t += S.spon[k].amt / 10;
+  S.fin.bal += t; S.fin.spon = (S.fin.spon || 0) + t; }
+function spSeason(pos){
+  if (!S.spon) return; let bon = 0; const won = { eu: pos && pos <= 6, top: pos && pos <= Math.ceil(S.lg.length / 2), title: pos === 1, cup: (S.past || []).length && false };
+  try { won.cup = S.cup.stage >= CN() && S.cup.alive[0] === me(); } catch (e) {}
+  for (const k of Object.keys(SP_SLOT)){ const d = S.spon[k]; if (!d) continue; if (won[d.bk]) bon += d.ba;
+    if (d.y <= S.season + 1){ news('club', `${SP_SLOT[k][0]} deal over`, `The ${SP_SLOT[k][0].toLowerCase()} deal with ${esc(d.n)} has run out. New offers are waiting (Finances &amp; Info).`); S.spon[k] = null; if (k === 'stadium') S.stadName = null; } }
+  if (bon){ S.fin.bal += bon; S.fin.spon = (S.fin.spon || 0) + bon; news('club', 'Sponsors pay their bonuses', `The sponsors pay ${cash(bon)} in bonuses for the season.`); }
+  S.spOff = {}; S.spOffN = (S.spOffN || 0) + 1;
+}
+function spHTML(){
+  spEnsure(); const row = (k, d) => `<tr><td><b>${SP_SLOT[k][0]}</b></td><td>${d ? `${esc(d.n)}` : '<span class="dim">No sponsor</span>'}</td><td class="r">${d ? cash(d.amt) + ' a season' : ''}</td><td class="small dim">${d ? `until summer ${d.y}${d.ba ? `, bonus ${cash(d.ba)} for ${SP_BON.find(x => x[0] === d.bk)[1]}` : ''}` : ''}</td></tr>`;
+  const offs = Object.entries(S.spOff || {}).filter(([k, L]) => !S.spon[k] && L && L.length);
+  return `<div class="ptitle">Sponsors</div><table><tbody>${Object.keys(SP_SLOT).map(k => row(k, S.spon[k])).join('')}</tbody></table>
+    ${offs.map(([k, L]) => `<div class="ptitle">Offers: ${SP_SLOT[k][0].toLowerCase()}</div><table><tbody>${L.map((o, i) => `<tr><td><b>${esc(o.n)}</b></td><td class="r yel">${cash(o.amt)} a season</td><td class="small">${o.y} season${o.y > 1 ? 's' : ''}, bonus ${cash(o.ba)} for ${SP_BON.find(x => x[0] === o.bk)[1]}</td><td class="r"><button class="btn sm y" data-spacc="${k}|${i}">Accept</button>${o.asked ? '' : ` <button class="btn sm" data-spask="${k}|${i}">Ask for more</button>`}</td></tr>`).join('')}</tbody></table>${k === 'stadium' ? '<p class="small dim">The ground would carry the sponsor\'s name: the supporters will not like it.</p>' : ''}`).join('')}
+    <p class="small dim">Sponsors pay monthly through the season, the bonus at its end. The figures are the game's own.</p>`;
+}
+function spWire(){
+  document.querySelectorAll('[data-spacc]').forEach(b => b.addEventListener('click', () => { const [k, i] = b.dataset.spacc.split('|'), o = S.spOff[k][+i];
+    S.spon[k] = { n: o.n, amt: o.amt, y: S.season + o.y, bk: o.bk, ba: o.ba }; delete S.spOff[k];
+    if (k === 'stadium'){ S.stadName = `${o.n} Stadium`; try { fanAdd(-4, `The ground renamed the ${S.stadName}`); } catch (e) {} }
+    news('club', 'New sponsor', `${esc(o.n)} are the club's new ${SP_SLOT[k][0].toLowerCase()} sponsor: ${cash(o.amt)} a season for ${o.y} season${o.y > 1 ? 's' : ''}.`); save(); view(); }));
+  document.querySelectorAll('[data-spask]').forEach(b => b.addEventListener('click', () => { const [k, i] = b.dataset.spask.split('|'), L = S.spOff[k], o = L[+i];
+    if (rng(`spk-${o.n}-${S.date}`)() < .5){ o.amt = Math.round(o.amt * 1.1 / 5e4) * 5e4; o.asked = 1; toast(`${o.n} agree to ${cash(o.amt)} a season.`); }
+    else { L.splice(+i, 1); toast(`${o.n} have walked away.`); } save(); view(); }));
+}
+/* ---- the stadium: a bigger ground is built over months, not overnight (a little less room while the works go on); a new
+   stadium (a board request for a club that can borrow) takes a year and a half, paid off over three years ---- */
+function buildTick(){
+  const B = S.build; if (!B || S.date < B.done) return; S.build = null;
+  if (B.k === 'ground'){ S.fac = S.fac || {}; S.fac.ground = B.lv; news('club', 'The new stand is open', `The works are finished: ${esc(club(me()).name)} have more seats.`); }
+  if (B.k === 'newstad'){ S.capMul = 1.45; news('club', 'A new stadium', `${esc(club(me()).name)} move into their new stadium: almost half as many seats again.`); try { fanAdd(6, 'The new stadium opens'); } catch (e) {} }
+}
+function loanMonth(){ const L = S.sloan; if (!L || L.left <= 0) return; S.fin.bal -= L.m; L.left--; if (!L.left){ S.sloan = null; news('club', 'Stadium paid off', 'The club have made the last payment on the stadium loan.'); } }
+/* ---- debt: a club in the red month after month feels it: a warning from the board, then a transfer embargo (no fees;
+   free agents still allowed), then the board sell your most valuable player, then six points are taken off you, and in
+   the end administration. Back in the black, it is lifted ---- */
+function debtMonth(){
+  if (S.fin.bal >= 0){ if (S.embargo) news('board', 'Embargo lifted', 'The club are back in the black and the transfer embargo has been lifted.'); S.debtM = 0; S.embargo = false; return; }
+  const m = S.debtM = (S.debtM || 0) + 1;
+  if (S.owner && S.owner.w >= 4 && S.mode !== 'owner'){ const amt = Math.round(-S.fin.bal * .6 / 1e5) * 1e5; S.fin.bal += amt; news('board', 'The owner steps in', `${esc(S.owner.n)} has put ${cash(amt)} into the club to cover its losses.`); if (S.fin.bal >= 0){ S.debtM = 0; return; } }
+  if (m === 1) news('board', 'In the red', `The club are ${cash(-S.fin.bal)} in debt. The board expect it to be dealt with.`);
+  if (m >= 2 && !S.embargo){ S.embargo = true; S.fin.budget = 0; news('board', 'Transfer embargo', 'With the club in debt for a second month, the league have placed it under a transfer embargo: no fees until the books balance. Free agents are still allowed.'); }
+  if (m >= 3 && windowOpen() && S.forcedS !== S.season){ const p = squadOf(me()).filter(x => !onLoan(x)).sort((a, b) => b.val - a.val)[0], to = p && (D.allClubs || []).filter(c => c.id !== me() && c.q >= ovrNow(p) - 4 && squadOf(c.id).length < 32).sort((a, b) => b.q - a.q)[0];
+    if (p && to){ S.forcedS = S.season; const fee = roundFee(p.val * 1e6 * .85); S.con[p.id] = { y: S.season + 4, w: wageDemand(p) }; moveP(p, to.id, fee); news('board', 'A forced sale', `To pay the debts the board have sold <b>${esc(p.n)}</b> to ${esc(to.name)} for ${cash(fee)}, over your head.`); } }
+  if (m >= 5 && (S.ded || {})[me()] == null){ (S.ded = S.ded || {})[me()] = 6; S.conf = Math.max(0, S.conf - 15); news('board', 'Six points deducted', `${esc(club(me()).name)} have been docked six points for failing to pay their debts.`); }
+  if (m === 7){ S.conf = Math.max(0, S.conf - 25); news('board', 'Administration', `${esc(club(me()).name)} have gone into administration. Everything is for sale, including the club.`); if (S.mode !== 'owner') ownerTakeover(true); }
+}
+/* ---- the owner: who owns the club (invented people; their kind fits the club: a local businessman, a foreign investor,
+   a consortium, a supporters' trust, a state-backed fund), how rich and how patient. A rich one covers losses; a patient
+   one gives you longer when results are poor. Now and then a club is sold, more likely when it is in trouble ---- */
+const OWN_T = { local: ['A local businessman', 2, 3], investor: ['A foreign investor', 4, 2], consortium: ['A consortium', 3, 3], trust: ["The supporters' trust", 1, 5], state: ['A state-backed fund', 5, 1], strip: ['An asset-stripping group', 1, 2] };
+function ownerMake(t, r){ const g = `${SP_A[Math.floor(r() * SP_A.length)]} ${['Capital', 'Holdings', 'Partners', 'Group', 'Sports'][Math.floor(r() * 5)]}`;
+  const n = t === 'local' ? `${COACH_FIRST[Math.floor(r() * COACH_FIRST.length)]} ${COACH_LAST[Math.floor(r() * COACH_LAST.length)]}` : t === 'trust' ? `The ${club(me()).name} Supporters' Trust` : g;
+  return { n, t, w: OWN_T[t][1], pat: OWN_T[t][2], since: S.date }; }
+function ownerEnsure(){ if (S.owner && S.owner.club === me()) return; const r = rng(`own-${me()}-${S.seed}`), q = club(me()).q;
+  const t = q >= 84 ? ['investor', 'consortium', 'state'][Math.floor(r() * 3)] : q >= 74 ? ['investor', 'consortium', 'local'][Math.floor(r() * 3)] : ['local', 'consortium', 'trust'][Math.floor(r() * 3)];
+  S.owner = { ...ownerMake(t, r), club: me() }; S.ownHist = []; }
+function ownerTakeover(force){
+  if (S.mode === 'owner') return; const r = rng(`tko-${S.date}`), old = S.owner, t = ['investor', 'consortium', 'local', 'state', 'strip', 'trust'][Math.floor(r() * (force ? 6 : 5))];
+  (S.ownHist = S.ownHist || []).push({ n: old.n, t: old.t, until: S.date }); S.owner = { ...ownerMake(t, r), club: me() };
+  let what = '';
+  if (t === 'investor' || t === 'state'){ const amt = Math.round((20 + r() * 60) * Math.max(.5, (club(me()).q - 60) / 20) * 1e6 / 1e6) * 1e6; S.fin.budget += amt; S.fin.bal += amt; S.conf = Math.max(0, S.conf - 6); what = `They have put ${cash(amt)} into the club, and they expect results.`; }
+  else if (t === 'strip'){ S.fin.budget = Math.round(S.fin.budget * .3); S.conf = Math.max(0, S.conf - 4); what = 'Your transfer budget has been cut. The supporters fear the worst.'; try { fanAdd(-8, 'The club sold to an asset-stripping group'); } catch (e) {} }
+  else if (t === 'trust'){ S.conf = Math.min(100, S.conf + 5); what = 'The supporters own their club: little money, plenty of patience.'; try { fanAdd(8, 'The supporters take over the club'); } catch (e) {} }
+  else what = 'They have promised to back you.';
+  news('board', 'Takeover', `${esc(club(me()).name)} have been bought by ${esc(OWN_T[t][0].toLowerCase())}: <b>${esc(S.owner.n)}</b>. ${what}`);
+}
+function ownerMonth(){ ownerEnsure(); if (S.mode === 'owner') return; const p = .006 + ((S.debtM || 0) >= 3 ? .04 : 0); if (rng(`tk-${S.date}-${me()}`)() < p) ownerTakeover(false); }
+const wWord = w => ['', 'Hardly any money', 'Some money', 'Comfortable', 'Rich', 'Very rich'][w];
+const pWord = w => ['', 'Very impatient', 'Impatient', 'Patient enough', 'Patient', 'Very patient'][w];
+function ownerTab(){
+  ownerEnsure(); const o = S.owner, me0 = S.mode === 'owner';
+  return `<div class="ptitle">The owner</div><dl class="kv"><dt>Owner</dt><dd><b>${esc(me0 ? S.manager + ' (you)' : o.n)}</b></dd>${me0 ? `<dt>Your money</dt><dd>${cash(S.mcash || 0)}</dd>` : `<dt>Who</dt><dd>${OWN_T[o.t][0]}</dd><dt>Money</dt><dd>${wWord(o.w)}</dd><dt>Patience</dt><dd>${pWord(o.pat)}</dd>`}<dt>Since</dt><dd>${shortDate(o.since)}</dd></dl>
+    ${me0 ? `<div class="tools">${[1e6, 5e6, 2e7].map(a => `<button class="btn sm" data-oinj="${a}" ${(S.mcash || 0) < a ? 'disabled' : ''}>Put in ${cash(a)}</button>`).join('')}</div><p class="small dim">Money you put in goes into the bank and the transfer budget. As the owner, nobody can sack you.</p>` : `<p class="small dim">${o.w >= 4 ? 'A rich owner covers the club\'s losses. ' : ''}${o.pat >= 4 ? 'A patient one gives you longer when results are poor.' : o.pat <= 2 ? 'An impatient one will not wait long when results are poor.' : ''}</p>`}
+    ${(S.ownHist || []).length ? `<div class="ptitle">Before</div><table><tbody>${S.ownHist.slice().reverse().map(x => `<tr><td>${esc(x.n)}</td><td class="small dim">${OWN_T[x.t] ? OWN_T[x.t][0] : ''}</td><td class="small">until ${shortDate(x.until)}</td></tr>`).join('')}</tbody></table>` : ''}`;
+}
+/* ---- the manager's own money: his wage (most of it goes on tax and living), bonuses for trophies, and what he spends it
+   on. A house near the training ground shows the board you are staying; a charity foundation wins the supporters; funding
+   the academy helps the youngsters for a season. Enough saved, and he can lead a takeover of a club ---- */
+const mWage = () => Math.round(club(me()).q * 900 / 5) * 5;
+const LIFE = [['flat', 'A flat in town', 4e5, 'Somewhere to live.'], ['house', 'A house near the training ground', 1.5e6, 'The board see that you mean to stay.'], ['car', 'A sports car', 2.5e5, 'The papers notice it, especially when results are poor.'], ['villa', 'A villa by the sea', 6e6, 'A place to switch off.'],
+  ['found', 'A charity foundation', 1e6, 'The supporters love it.'], ['acad', 'Fund the academy this season', 2e6, 'The young players grow faster this season.'], ['classic', 'A classic car collection', 2.5e6, 'Pure indulgence.']];
+function mgrMonth(){ if (S.mode === 'owner') return; S.mcash = Math.round((S.mcash || 0) + mWage() * 4.3 * .55); }
+function mgrBuy(k){
+  const L = LIFE.find(x => x[0] === k); if (!L || (S.mcash || 0) < L[2]) return; if (k !== 'acad' && (S.life || {})[k]) return;
+  S.mcash -= L[2]; (S.life = S.life || {})[k] = k === 'acad' ? S.season : S.date;
+  if (k === 'house') S.conf = Math.min(100, S.conf + 3); if (k === 'found') try { fanAdd(5, `${S.manager} starts a charity foundation`); } catch (e) {}
+  if (k === 'car' && S.conf < 40) try { fanAdd(-2, 'The manager\'s new sports car, with results like these'); } catch (e) {}
+  news('board', 'Bought', `You have bought ${L[1].toLowerCase()}.`);
+}
+const clubPrice = cid => Math.round(Math.max(15, (club(cid).q - 55) ** 2 * .3) * 1e6);
+function wealthTab(){
+  const own = S.life || {}, mine = S.mode, buyable = [...LG].filter(id => clubPrice(id) * .1 <= (S.mcash || 0) * 3 || id === me()).sort((a, b) => clubPrice(a) - clubPrice(b)).slice(0, 10);
+  return `<div class="ptitle">Your money</div><dl class="kv"><dt>Savings</dt><dd><b class="yel">${cash(S.mcash || 0)}</b></dd><dt>Wage</dt><dd>${mine === 'owner' ? 'None: you own the club' : wage(mWage())}</dd><dt>Role</dt><dd>${mine === 'dof' ? `Director of football (head coach: ${esc(S.hc || 'the assistant')})` : mine === 'owner' ? 'Owner and manager' : 'Manager'}</dd></dl>
+    <p class="small dim">Most of the wage goes on tax and living; what is left builds up here, with a bonus for each trophy.</p>
+    <div class="ptitle">Spend it</div><table><tbody>${LIFE.map(([k, n, c, t]) => { const has = k === 'acad' ? own.acad === S.season : !!own[k]; return `<tr><td><b>${n}</b><br><span class="small dim">${t}</span></td><td class="r">${cash(c)}</td><td class="r">${has ? '<span class="yel">Yours</span>' : `<button class="btn sm" data-life="${k}" ${(S.mcash || 0) < c ? 'disabled' : ''}>Buy</button>`}</td></tr>`; }).join('')}</tbody></table>
+    <div class="ptitle">Upstairs</div>
+    <p><b>${mine === 'dof' ? 'Return to the dugout' : 'Become the director of football'}</b><br><span class="small dim">${mine === 'dof' ? 'Pick the side and the tactics yourself again.' : 'You run transfers, contracts and the staff; a head coach picks the side and runs the matches (your assistant\'s judgement). The board still judge the results.'}</span></p>
+    ${mine === 'owner' ? '' : `<div class="tools"><button class="btn sm" id="mdof" ${mine !== 'dof' && S.conf < 50 ? 'disabled title="The board need more confidence in you"' : ''}>${mine === 'dof' ? 'Back to the dugout' : 'Step upstairs'}</button></div>`}
+    ${mine === 'owner' ? '' : `<div class="ptitle">Lead a takeover</div><p class="small dim">You put in a tenth of the price; partners put in the rest. You become owner and manager: nobody can sack you, and you can put your own money into the club.</p><table><tbody>${buyable.map(id => `<tr><td>${crest(id)}<b>${esc(club(id).name)}</b>${id === me() ? ' <span class="tag">Your club</span>' : ''}</td><td class="r">${cash(clubPrice(id))}</td><td class="r small">your part ${cash(clubPrice(id) * .1)}</td><td class="r"><button class="btn sm" data-buyc="${id}" ${(S.mcash || 0) < clubPrice(id) * .1 ? 'disabled' : ''}>Buy</button></td></tr>`).join('')}</tbody></table>`}`;
+}
+function wealthWire(){
+  document.querySelectorAll('[data-life]').forEach(b => b.addEventListener('click', () => { mgrBuy(b.dataset.life); save(); view(); }));
+  const d = $('#mdof'); if (d) d.addEventListener('click', () => { if (S.mode === 'dof'){ S.mode = null; news('board', 'Back in the dugout', 'You are back in charge of the team.'); } else { S.mode = 'dof'; const r = rng(`hc-${S.date}`); S.hc = `${COACH_FIRST[Math.floor(r() * COACH_FIRST.length)]} ${COACH_LAST[Math.floor(r() * COACH_LAST.length)]}`; news('board', 'Director of football', `You have moved upstairs: <b>${esc(S.hc)}</b> is the new head coach. You run transfers, contracts and the staff.`); } save(); view(); });
+  document.querySelectorAll('[data-buyc]').forEach(b => b.addEventListener('click', () => { const id = +b.dataset.buyc, cost = clubPrice(id) * .1; if ((S.mcash || 0) < cost) return; S.mcash -= cost;
+    if (id !== me()) takeJob(id); S.mode = 'owner'; S.owner = { n: S.manager, t: 'you', w: 3, pat: 5, since: S.date, club: id }; (S.hist = S.hist || []).push({ d: S.date, c: id, t: 'Led a takeover: owner and manager' });
+    news('board', 'You own the club', `You have led a takeover of ${esc(club(id).name)} for ${cash(clubPrice(id))}. Nobody can sack you now.`); save(); go({ s: 'manager', tab: 'wealth' }); }));
+}
+/* ---- drama: now and then something happens that a manager has to deal with: a player out at a nightclub, two players at
+   each other's throats in training, flares and a pitch invasion (a fine), a betting probe (a ban), a player asking for
+   time off. Some need your answer; each answer pleases someone and costs something. Random events can be switched off
+   (Options) ---- */
+const EVT = {
+  night: { t: p => `${p.n} was photographed leaving a nightclub at four in the morning, two days before a match. The papers have the pictures.`, o: [['fine', 'Fine him two weeks\' wages', 'He sulks; the board approve.'], ['defend', 'Defend him in public', 'He is grateful; the board are not.'], ['quiet', 'Deal with it quietly', 'Nothing much changes.']] },
+  row: { t: (p, x) => `${p.n} and ${x.n} came to blows in training. The squad is waiting to see what you do.`, o: [['p1', 'Side with the first', ''], ['p2', 'Side with the second', ''], ['both', 'Punish them both', 'Both are unhappy; the squad respect it.']] },
+  leave: { t: p => `${p.n} asks for three days off for a family occasion in the middle of a busy week.`, o: [['yes', 'Let him go', 'He is grateful, and misses training.'], ['no', 'Refuse', 'He is hurt.']] },
+};
+function evtMonth(){
+  if (S.noEvents || S.done || rng(`ev-${S.date}`)() > .32 || S.evt) return;
+  const r = rng(`evk-${S.date}`), sq = squadOf(me()).filter(p => !onLoan(p) && !ps(p.id).injD), k = ['night', 'row', 'leave', 'fans', 'fans', 'bet'][Math.floor(r() * 6)];
+  if (!sq.length) return; const p = sq[Math.floor(r() * sq.length)];
+  if (k === 'fans'){ const fine = Math.round((50 + r() * 200) * 1e3 / 1e4) * 1e4; S.fin.bal -= fine; S.conf = Math.max(0, S.conf - 1); news('board', 'Fined for the supporters', `Flares were thrown and supporters ran onto the pitch at a recent ${esc(club(me()).name)} match. The club have been fined ${cash(fine)}.`); return; }
+  if (k === 'bet'){ if (r() > .3) return; const q = ps(p.id); q.sus = (q.sus || 0) + 6; q.mor = clamp(q.mor - 10, 15, 100); news('club', `${p.n} banned`, `<b>${esc(p.n)}</b> has been banned for six matches after an investigation into bets he placed on football.`, { id: p.id }); return; }
+  const x = k === 'row' ? sq.filter(y => y.id !== p.id)[Math.floor(r() * (sq.length - 1))] : null; if (k === 'row' && !x) return;
+  S.evt = { k, id: p.id, x: x ? x.id : null, d: S.date };
+  news('club', k === 'night' ? `${p.n} in the papers` : k === 'row' ? 'A fight in training' : `${p.n} asks for time off`, EVT[k].t(p, x) + ' It needs your answer.');
+}
+function evtAnswer(o){
+  const E = S.evt; if (!E) return; const p = P.get(E.id), x = E.x ? P.get(E.x) : null, q = p && ps(p.id); S.evt = null; if (!p) return;
+  let t = '';
+  if (E.k === 'night'){ if (o === 'fine'){ q.mor = clamp(q.mor - 8, 15, 100); S.conf = Math.min(100, S.conf + 2); t = `${p.n} has been fined.`; } else if (o === 'defend'){ q.mor = clamp(q.mor + 5, 15, 100); S.conf = Math.max(0, S.conf - 3); t = `You stood by ${p.n}.`; } else { q.mor = clamp(q.mor - 2, 15, 100); t = 'You dealt with it behind closed doors.'; } }
+  if (E.k === 'row' && x){ const qx = ps(x.id); if (o === 'p1'){ q.mor = clamp(q.mor + 5, 15, 100); qx.mor = clamp(qx.mor - 9, 15, 100); t = `You backed ${p.n}; ${x.n} is furious.`; } else if (o === 'p2'){ qx.mor = clamp(qx.mor + 5, 15, 100); q.mor = clamp(q.mor - 9, 15, 100); t = `You backed ${x.n}; ${p.n} is furious.`; } else { q.mor = clamp(q.mor - 4, 15, 100); qx.mor = clamp(qx.mor - 4, 15, 100); for (const y of squadOf(me())) if (y.id !== p.id && y.id !== x.id) ps(y.id).mor = Math.min(100, ps(y.id).mor + 1); t = 'Both have been punished.'; } }
+  if (E.k === 'leave'){ if (o === 'yes'){ q.mor = clamp(q.mor + 6, 15, 100); q.cond = Math.max(60, q.cond - 5); t = `${p.n} is grateful.`; } else { q.mor = clamp(q.mor - 7, 15, 100); t = `${p.n} is hurt.`; } }
+  news('club', 'Dealt with', t);
+}
+function scrEvent(){
+  const E = S.evt; if (!E){ go({ s: 'news' }); return; } const p = P.get(E.id), x = E.x ? P.get(E.x) : null, D0 = EVT[E.k];
+  const opts = D0.o.map(([k, n, h]) => [k, E.k === 'row' ? (k === 'p1' ? `Side with ${cmName(p.n)}` : k === 'p2' ? `Side with ${cmName(x.n)}` : n) : n, h]);
+  frame({ title: 'A matter to deal with', body: `<p>${esc(D0.t(p, x))}</p><div class="menu" style="max-width:560px">${opts.map(([k, n, h]) => `<button data-evo="${k}"><b>${esc(n)}</b>${h ? `<span class="small dim"> ${esc(h)}</span>` : ''}</button>`).join('')}</div>` });
+  document.querySelectorAll('[data-evo]').forEach(b => b.addEventListener('click', () => { evtAnswer(b.dataset.evo); save(); go({ s: 'news' }); }));
+}
+/* ---- the club's identity: labels earned by how you play and how you run the club, season by season: a high-pressing
+   side, possession, counter-attacks, a direct game, loyal to the academy, buys young and sells high, big spenders, thrifty,
+   a defensive rock, entertainers. Shown on the club's info page; earning one is in the news ---- */
+const ID_L = { press: 'High-pressing side', poss: 'Possession-focused', counter: 'Counter-attacking', direct: 'Direct', acad: 'Loyal to the academy', young: 'Buys young, sells high', spend: 'Big spenders', thrift: 'Thrifty', rock: 'Defensive rock', fun: 'Entertainers' };
+function idCur(){ if (!S.idt || S.idt.s !== S.season || S.idt.c !== me()) S.idt = { s: S.season, c: me(), n: 0, press: 0, poss: 0, counter: 0, direct: 0, yx: 0, xi: 0, buyA: [], spent: 0, got: 0, high: 0, gf: 0, ga: 0 }; return S.idt; }
+function identMatch(M){ const I = idCur(), us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, t = us.t; I.n++; if (t.press) I.press++; if (t.pass === 2 && t.tempo !== 2) I.poss++; if (t.counter) I.counter++; if (t.pass === 3 || t.pass === 1) I.direct++;
+  for (const x of us.on.concat(us.subbedOff || [])) { I.xi++; if (x.p.age <= 21) I.yx++; } I.gf += us.goals; I.ga += them.goals; }
+function identMove(p, from, to, fee){ const I = idCur(); if (to === me()){ I.buyA.push(p.age); I.spent += fee; } else if (from === me()){ I.got += fee; if (p.age <= 24 && fee >= p.val * 1e6 * 1.15) I.high++; } }
+function idLabels(I){ if (!I || I.n < 8) return []; const L = [], f = k => I[k] / I.n;
+  if (f('press') >= .65) L.push('press'); if (f('poss') >= .6) L.push('poss'); if (f('counter') >= .6) L.push('counter'); if (f('direct') >= .6 && f('poss') < .3) L.push('direct');
+  if (I.xi && I.yx / I.xi >= .12) L.push('acad'); if (I.buyA.length >= 2 && I.buyA.reduce((a, b) => a + b, 0) / I.buyA.length <= 23 && I.high >= 1) L.push('young');
+  if (I.spent - I.got >= 5e7) L.push('spend'); else if (I.got > 0 && I.spent - I.got <= 0) L.push('thrift');
+  if (I.ga / I.n <= .9) L.push('rock'); if ((I.gf + I.ga) / I.n >= 3.2) L.push('fun'); return L; }
+function identSeason(pos){ const I = S.idt; if (!I || I.c !== me()) return; const L = idLabels(I); (S.idHist = S.idHist || []).push({ s: I.s, c: me(), L });
+  const old = new Set((S.idHist.slice(0, -1).filter(x => x.c === me()).pop() || { L: [] }).L), nw = L.filter(k => !old.has(k));
+  if (nw.length) news('club', 'Club identity', `${esc(club(me()).name)} are known now as: ${nw.map(k => `<b>${ID_L[k]}</b>`).join(', ')}.`); if (L.includes('acad')) try { fanAdd(2, 'Young players from the academy in the side'); } catch (e) {} }
+function identHTML(){ const now = idLabels(S.idt && S.idt.c === me() ? S.idt : null), past = (S.idHist || []).filter(x => x.c === me()).slice(-3).reverse();
+  return `<div class="ptitle">Club identity</div>${now.length ? `<p>${now.map(k => `<span class="tag">${ID_L[k]}</span>`).join(' ')} <span class="small dim">this season so far</span></p>` : '<p class="small dim">Nothing that marks you out yet this season.</p>'}${past.length ? `<table><tbody>${past.map(x => `<tr><td class="dim">${x.s}/${String((x.s + 1) % 100).padStart(2, '0')}</td><td>${x.L.length ? x.L.map(k => ID_L[k]).join(', ') : '<span class="dim">-</span>'}</td></tr>`).join('')}</tbody></table>` : ''}`; }
+/* ---- booked for the rest of it: time-wasting by a side holding on to a lead late on, diving, dissent after a decision;
+   and now and then words with the other bench, which can send you to the stands (no more shouts) and bring a fine ---- */
+function bookFor(M, S1, x, why){
+  const already = (S1.ev[x.id] || {}).yc; S1.yc++; evAdd(S1, x, 'yc'); rateAdd(S1, x, -.25);
+  if (already){ S1.rc++; evAdd(S1, x, 'rc'); say(M, S1, 'red', `Second yellow card for ${nm(x)}, ${why}, and ${esc(club(S1.cid).name)} are down to ${S1.on.length - 1}.`); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', id: x.p.id, t: surname(x.p.n) + ' (2nd yellow)' }); off(S1, x); return; }
+  say(M, S1, 'card', `Yellow card for ${nm(x)}, ${why}.`); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'yel', id: x.p.id, t: surname(x.p.n) });
+}
+function minuteMisc(M){
+  const H = M.H, Aw = M.A, d = H.goals - Aw.goals, lead = d > 0 ? H : d < 0 ? Aw : null;
+  if (lead && M.min >= 70 && Math.random() < .004 * (lead.t.men <= 1 ? 1.5 : 1) * (M.ref ? M.ref.s / 10.5 : 1)){ const gk = lead.on.find(y => y.pos === 'GK'), x = gk && Math.random() < .55 ? gk : lead.on[Math.floor(Math.random() * lead.on.length)]; if (x) bookFor(M, lead, x, 'for time-wasting'); }
+  if (Math.random() < .0016){ const sd = Math.random() < .5 ? H : Aw, fw = sd.on.filter(y => ['ST', 'W', 'AM'].includes(ROLE[y.pos])); if (fw.length){ const x = fw[Math.floor(Math.random() * fw.length)]; say(M, sd, 'minor', `${nm(x)} goes down in the box… no penalty.`); bookFor(M, sd, x, 'for diving'); } }
+  if (Math.random() < .0012){ const sd = Math.random() < .5 ? H : Aw, x = sd.on[Math.floor(Math.random() * sd.on.length)]; if (x) bookFor(M, sd, x, 'for dissent'); }
+  if ((M.h === me() || M.a === me()) && !M.stands && Math.random() < (M.derby ? .0005 : .00015)){ const us = M.h === me() ? H : Aw;
+    if (Math.random() < .35){ M.stands = true; say(M, us, 'card', `Words with the other bench, and the referee sends ${esc(S.manager)} to the stands!`); } else say(M, us, 'minor', 'Words are exchanged between the two benches; the fourth official steps in.');
+    M.spat = (M.spat || 0) + 1; }
+}
+/* ---- trialists: invite a free agent, or a fringe player at a club outside your league, on a two-week trial. While he
+   is with you, you see him in full; at the end your coaches give their verdict (their judgement, with its error). A
+   club player's club then let him go for a little less, and he will not turn you down ---- */
+const trialOK = p => p && p.club !== me() && (FAP.has(p.id) || (p.club && C.has(p.club) && !LG.has(p.club) && squadRank(p) >= 14 && !onLoan(p)));
+const onTrial = id => (S.trials || []).some(x => x.id === id);
+function trialTick(){
+  const L = S.trials || []; if (!L.length) return;
+  for (const x of L.filter(y => S.date >= y.until)){ const p = P.get(x.id); if (!p) continue; (S.kn = S.kn || {})[p.id] = 1;
+    const co = Math.max(8, ...(S.staff || []).filter(y => y.role === 'coach').map(y => y.co)), seen = ovrNow(p) + (rng(`tr-${p.id}`)() * 2 - 1) * (3 + (20 - co) * .4), q0 = club(me()).q;
+    const v = seen >= q0 + 3 ? 'would walk into the side' : seen >= q0 - 2 ? 'would be a useful squad player' : seen >= q0 - 7 ? 'is one for the future at best' : 'is not good enough';
+    if (!FAP.has(p.id)) (S.trialDisc = S.trialDisc || {})[p.id] = S.season;
+    news('club', `${p.n}'s trial is over`, `Your coaches think <span class="lk" data-lp="${p.id}">${esc(p.n)}</span> ${v}. ${FAP.has(p.id) ? 'He is still a free agent: make him an offer if you want him.' : `${esc(club(p.club).name)} would let him go for a little less, and he would come.`}`, { id: p.id }); }
+  S.trials = L.filter(y => S.date < y.until);
 }
 function clubDressing(cid, o){
   const sq = squadOf(me()).filter(p => !onLoan(p)), L = (S.prom || []).filter(x => P.get(x.id) && P.get(x.id).club === me());
@@ -7507,10 +7733,12 @@ function scrManager(){
   if (tab === 'hist') body = `<div class="ptitle">Career</div><table><tbody>${H.map(x => `<tr><td><span class="pill">${shortDate(x.d)}</span></td><td><b>${esc(club(x.c).name)}</b></td><td class="yel">${esc(x.t)}</td></tr>`).join('')}</tbody></table>
     <div class="ptitle" style="margin-top:14px">This season</div><dl class="kv"><dt>Matches</dt><dd>${all.length}: won ${w}, drawn ${d}, lost ${l}</dd><dt>Goals</dt><dd>${gf} for, ${ga} against</dd><dt>Win rate</dt><dd>${all.length ? Math.round(100 * w / all.length) : 0}%</dd></dl>`;
   if (tab === 'goals') body = cgTab();
+  if (tab === 'wealth') body = wealthTab();
   if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv"><dt>Club</dt><dd>${esc(club(me()).name)}</dd><dt>Wage</dt><dd>${wage(Math.round(club(me()).q * 900 / 5) * 5)}</dd><dt>Expires</dt><dd>30.6.${String(S.season + 2).slice(2)}</dd>${S.nat ? `<dt>Nationality</dt><dd>${esc(S.nat)}</dd>` : ''}<dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
-  frame(ofClub(me(), { title: `${esc(S.manager)} (${esc(club(me()).name)})`, top: [['inj', 'Injuries &amp; Bans', true], ['con', 'Contract'], ['goals', 'Career Goals'], ['tr', 'Transfer', true], ['hist', 'History']], topOn: tab, onTab: k => { if (k === 'hall'){ SETUP_OPEN = true; SETUP = 'hall'; view(); return; } if (k === 'stats' || k === 'jobs'){ go({ s: 'managers', tab: k === 'jobs' ? 'jobs' : 'rep' }); return; } V = { s: 'manager', tab: k }; view(); }, body,
+  frame(ofClub(me(), { title: `${esc(S.manager)} (${esc(club(me()).name)})`, top: [['inj', 'Injuries &amp; Bans', true], ['con', 'Contract'], ['goals', 'Career Goals'], ['wealth', 'Wealth'], ['tr', 'Transfer', true], ['hist', 'History']], topOn: tab, onTab: k => { if (k === 'hall'){ SETUP_OPEN = true; SETUP = 'hall'; view(); return; } if (k === 'stats' || k === 'jobs'){ go({ s: 'managers', tab: k === 'jobs' ? 'jobs' : 'rep' }); return; } V = { s: 'manager', tab: k }; view(); }, body,
     bottom: [['jobs', 'Jobs'], ['stats', 'Manager Rankings'], ['hall', 'Hall of Fame']] }));
   if (tab === 'goals') cgWire();
+  if (tab === 'wealth') wealthWire();
 }
 
 /* =====================================================================================================================
@@ -7724,6 +7952,7 @@ function shoutNow(k){
 function shoutTick(M){ for (const s of [M.H, M.A]) if (s.shout && (absMin(M) > s.shout.until || M.half > s.shout.h)) s.shout = null; }   // half-time ends it
 function shoutBox(){
   const L = LIVE, M = L.M; if (!L.started || M.over || L.atHT || L.pre) return '';
+  if (M.stands) return '<div class="shbox"><span class="small dim">You have been sent to the stands: no more shouts in this match.</span></div>';
   const us = M.h === me() ? M.H : M.A, a = (S.staff || []).find(x => x.role === 'ass'), ju = a ? a.ju || 8 : 8, ab = absMin(M);
   const wait = M.shoutAt != null && M.half === M.shoutH ? Math.max(0, 5 - (ab - M.shoutAt)) : 0;
   const best = SHOUTS.map(([k]) => [k, shoutFit(M, k) + (rng(`sh-${k}-${M.half}-${Math.floor(absMin(M) / 10)}`)() * 2 - 1) * assSpread() * .03]).sort((x, y) => y[1] - x[1])[0];   // his read of the game, not always right
