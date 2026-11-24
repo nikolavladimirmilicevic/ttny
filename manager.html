@@ -2466,7 +2466,7 @@ function passDays(n){
     if (q.injD){ q.injD = Math.max(0, q.injD - n * (p.club === me() ? physioRate() : 1)); if (!q.injD){ q.light = 1; if (p.club === me()) news('injury', `${p.n} is fit again`, `${esc(p.n)} has recovered and is back in training. He may not be at his sharpest for his first game back.`); } }
   }
   const to = day(S.date, n);
-  while (daysBetween(f.last, to) >= 7){ f.last = day(f.last, 7); trainWeek(f.last); }
+  while (daysBetween(f.last, to) >= 7){ f.last = day(f.last, 7); trainWeek(f.last); try { mentWeek(f.last); } catch (e) { console.warn(e); } }
   S.date = to;
   chTick(); awTick();
   scoutTick();
@@ -4059,7 +4059,8 @@ function rebuildPlayers(){
   applyMoves(); setLeagues(S && S.lg); faAttach();
 }
 function applyMoves(){ const yrs = S ? (S.season || D.season) - D.season : 0;
-  for (const p of D.pool || D.players){ p.club = p._c0 ?? p.club; p.no = p._n0 ?? p.no; if (p._a0 == null) p._a0 = p.age; p.age = p._a0 + yrs; }
+  for (const p of D.pool || D.players){ p.club = p._c0 ?? p.club; p.no = p._n0 ?? p.no; if (p._a0 == null) p._a0 = p.age; p.age = p._a0 + yrs; if (p._st0 === undefined) p._st0 = p.style ?? null; p.style = p._st0; }
+  for (const [id, st] of Object.entries((S && S.styOv) || {})){ const p = P.get(+id); if (p) p.style = st; }
   for (const [id, cid] of Object.entries((S && S.moves) || {})){ const p = P.get(+id); if (p && C.has(cid)) p.club = cid; }
   for (const [id, n] of Object.entries((S && S.nos) || {})){ const p = P.get(+id); if (p) p.no = n; }
   if (D.pool && D.pl0) setLeagues(S && S.lg); }
@@ -5035,7 +5036,7 @@ function playerCard(p, q, con, born){
     return [TT(ATTR_NAME[k]), `${kn ? arrow(recentD(p, k)) + ' ' : ''}<span class="${vcls(v)}">${showA(p, v, k)}</span>`]; });
   if (p.inj) rows.push(['Injury Resistance', `<span class="${vcls([90, 75, 55][p.inj - 1])}">${4 - p.inj}</span>`]);
   rows.sort((x, y) => x[0].localeCompare(y[0]));
-  const tail = [['Height', p.ht ? p.ht + ' cm' : '-'], ['Weight', p.wt ? p.wt + ' kg' : '-'], ...(p.ft ? [['Preferred Foot', { L: 'Left', R: 'Right', B: 'Either' }[p.ft]]] : []), ['Playing Style', esc(p.style || '-')], ['Morale', morWord(q.mor)], ['Condition', Math.round(q.cond) + '%']].map(([n, v]) => [n, `<span class="org">${v}</span>`]);
+  const tail = [['Height', p.ht ? p.ht + ' cm' : '-'], ['Weight', p.wt ? p.wt + ' kg' : '-'], ...(p.ft ? [['Preferred Foot', { L: 'Left', R: 'Right', B: 'Either' }[p.ft]]] : []), ['Playing Style', esc(p.style || '-')], ...(() => { const x = (S.ment || []).find(z => z.y === p.id), L = (S.ment || []).filter(z => z.m === p.id); return x && P.get(x.m) ? [['Mentor', esc(cmName(P.get(x.m).n))]] : L.length ? [['Mentoring', L.map(z => P.get(z.y) ? esc(cmName(P.get(z.y).n)) : '').join(', ')]] : []; })(), ['Morale', morWord(q.mor)], ['Condition', Math.round(q.cond) + '%']].map(([n, v]) => [n, `<span class="org">${v}</span>`]);
   const per = Math.ceil(rows.length / 3), crow = ([n, v]) => `<div class="crow"><span>${n}</span><b>${v}</b></div>`;
   const col = i => `<div>${rows.slice(i * per, (i + 1) * per).map(crow).join('')}</div>`;
   // positions: coloured by how his real starts split over the positions he is registered in
@@ -6430,6 +6431,64 @@ function meetHTML(){
   return `<div class="ptitle">Team meeting</div><p class="small dim">The whole squad, once a fortnight. Pick a topic and how to put it; the leaders (${L.map(p => `<span class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</span>`).join(', ')}) sway the room.</p>${pr}${last}
   ${w ? '' : hint}${w ? `<p class="dim c">The next meeting in ${w} day${w > 1 ? 's' : ''}.</p>` : `<div class="mtg">${T.map(t => `<div class="mtr"><b>${MEET_T[t].n}</b><div>${MEET_T[t].tones.map(([k, n]) => `<button class="btn sm" data-meet="${t}|${k}">${n}</button>`).join('')}</div></div>`).join('')}</div>`}`;
 }
+/* ---- mentoring: an experienced player (26 or older) takes one or two of your youngsters (21 or under) under his wing.
+   Week by week the young man picks up what the older one does better in the attributes of his own role, a little faster
+   the bigger the gap and the younger he is; after a few months he may take on his mentor's way of playing (his Playing
+   Style, when they play in the same part of the pitch). An unhappy mentor is a bad influence: the youngster's morale
+   suffers. A pair ends when one of them leaves, is loaned out, or the young man turns 24. Your assistant can suggest
+   pairs, read with his judging error like all his advice ---- */
+const MENT_MAX = 6;
+const mentOK = (m, y) => m && y && m.club === me() && y.club === me() && !onLoan(m) && !onLoan(y) && !(S.loans || {})[m.id] && !(S.loans || {})[y.id] && m.age >= 26 && y.age <= 23 && m.id !== y.id;
+const mentees = () => squadOf(me()).filter(p => p.age <= 21 && !onLoan(p) && !(S.loans || {})[p.id]);
+const mentors = () => squadOf(me()).filter(p => p.age >= 26 && !onLoan(p) && !(S.loans || {})[p.id] && p.prim);
+const mentKeys = y => (KEYS_OF[ROLE[y.prim]] || []).concat(GROUP[y.prim] === 'GK' ? [] : ['oa', 'da'].filter(k => !(KEYS_OF[ROLE[y.prim]] || []).includes(k)));
+function mentPair(mid, yid){
+  S.ment = (S.ment || []).filter(x => x.y !== yid); const m = P.get(mid), y = P.get(yid);
+  if (!mentOK(m, y)) return 'They cannot be paired.';
+  if (S.ment.filter(x => x.m === mid).length >= 2) return `${cmName(m.n)} already has two youngsters to look after.`;
+  if (S.ment.length >= MENT_MAX) return `No more than ${MENT_MAX} pairs at a time.`;
+  S.ment.push({ m: mid, y: yid, d: S.date, w: 0 });
+  news('club', `${y.n} has a mentor`, `<b>${esc(m.n)}</b> will take <b>${esc(y.n)}</b> under his wing.`); return null;
+}
+// once a week, after training
+function mentWeek(wk){
+  if (!S.ment || !S.ment.length) return;
+  S.ment = S.ment.filter(x => { const m = P.get(x.m), y = P.get(x.y); if (mentOK(m, y)) return true;
+    if (m && y && y.club === me() && y.age > 23) news('club', `${y.n} has outgrown his mentor`, `<b>${esc(y.n)}</b> no longer needs <b>${esc(m.n)}</b> to look after him. They spent ${x.w} weeks together.`);
+    return false; });
+  for (const x of S.ment){ const m = P.get(x.m), y = P.get(x.y), qy = ps(y.id), qm = ps(m.id), r = rng(`mt-${x.y}-${wk}`); x.w++;
+    if (qy.injD) continue;
+    const gaps = mentKeys(y).map(k => [k, A(m, k) - A(y, k)]).filter(([, g]) => g >= 6);
+    if (gaps.length){ const [k, g] = gaps[Math.floor(r() * gaps.length)]; qy.d[k] = Math.round(((qy.d[k] || 0) + Math.min(.25, .05 + g / 160) * (y.age <= 19 ? 1.25 : 1) * (.6 + r() * .8)) * 100) / 100; }
+    if (qm.mor < 45) qy.mor = Math.max(20, qy.mor - .8); else if (qy.mor < 75) qy.mor = Math.min(75, qy.mor + .3);
+    if (x.w >= 16 && !x.sty && m.style && m.style !== y.style && GROUP[m.prim] === GROUP[y.prim] && r() < .03){ x.sty = 1; (S.styOv = S.styOv || {})[y.id] = m.style; y.style = m.style;
+      news('club', `${y.n} learns from ${surname(m.n)}`, `<b>${esc(y.n)}</b> has picked up <b>${esc(m.n)}</b>'s way of playing: his Playing Style is now <b>${esc(m.style)}</b>.`, { id: y.id }); }
+  }
+}
+// the assistant's pairs: for each youngster without a mentor, the older player he thinks has most to teach him
+function mentSuggest(){
+  const have = new Set((S.ment || []).map(x => x.y)), load = {}; for (const x of S.ment || []) load[x.m] = (load[x.m] || 0) + 1;
+  const out = [];
+  for (const y of mentees().filter(p => !have.has(p.id)).sort((a, b) => a.age - b.age)){
+    const best = mentors().filter(m => (load[m.id] || 0) < 2 && ps(m.id).mor >= 50).map(m => ({ m, v: mentKeys(y).reduce((t, k) => t + Math.max(0, assA(m, k) - assA(y, k)), 0) + (GROUP[m.prim] === GROUP[y.prim] ? 8 : 0) })).sort((a, b) => b.v - a.v)[0];
+    if (best && best.v > 10){ out.push({ m: best.m, y }); load[best.m.id] = (load[best.m.id] || 0) + 1; }
+    if (out.length + (S.ment || []).length >= MENT_MAX) break; }
+  return out;
+}
+function mentHTML(){
+  const L = (S.ment || []).filter(x => P.get(x.m) && P.get(x.y)), pl = p => `<span class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</span>`, a = assOf();
+  const sug = V.msug ? mentSuggest() : null, ys = mentees().filter(p => !L.some(x => x.y === p.id)), ms = mentors().filter(m => L.filter(x => x.m === m.id).length < 2);
+  return `<div class="ptitle">Mentoring</div><p class="small dim">An experienced player (26 or older) can take one or two youngsters (21 or under) under his wing: they pick up what he does better in their own role, and in time maybe his way of playing. An unhappy mentor is a bad influence. Up to ${MENT_MAX} pairs.</p>
+    ${L.length ? `<table><thead><tr><th>Mentor</th><th>Youngster</th><th>Since</th><th class="r"></th></tr></thead><tbody>${L.map(x => { const m = P.get(x.m), y = P.get(x.y); return `<tr><td>${pl(m)} <span class="small dim">${cmPos(m.pos)}, ${m.age}</span>${ps(m.id).mor < 45 ? ' <span class="small" style="color:var(--loss)">unhappy</span>' : ''}</td><td>${pl(y)} <span class="small dim">${cmPos(y.pos)}, ${y.age}</span></td><td class="small">${shortDate(x.d)} <span class="dim">(${x.w} wk)</span></td><td class="r"><button class="btn sm" data-ment-off="${x.y}">End</button></td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">No pairs yet.</p>'}
+    ${ys.length && ms.length && L.length < MENT_MAX ? `<div class="tools" style="margin-top:8px"><select class="dd" id="mtm">${ms.map(m => `<option value="${m.id}">${esc(cmName(m.n))} (${cmPos(m.pos)}, ${m.age})</option>`).join('')}</select><span class="small dim">mentors</span><select class="dd" id="mty">${ys.map(y => `<option value="${y.id}">${esc(cmName(y.n))} (${cmPos(y.pos)}, ${y.age})</option>`).join('')}</select><button class="btn sm y" id="mtgo">Pair them</button>${a ? `<button class="btn sm" id="mtask">Ask ${esc(surname(a.n))}</button>` : ''}</div>` : ''}
+    ${sug ? (sug.length ? `<div class="small" style="margin-top:8px">${a ? esc(a.n) : 'Your assistant'} suggests:</div><table><tbody>${sug.map(x => `<tr><td>${pl(x.m)} <span class="small dim">${cmPos(x.m.pos)}</span> → ${pl(x.y)} <span class="small dim">${cmPos(x.y.pos)}, ${x.y.age}</span></td><td class="r"><button class="btn sm" data-ment="${x.m.id}|${x.y.id}">Pair</button></td></tr>`).join('')}</tbody></table>` : '<p class="small dim">Your assistant sees no good pair just now.</p>') : ''}`;
+}
+function mentWire(){
+  document.querySelectorAll('[data-ment-off]').forEach(b => b.addEventListener('click', () => { S.ment = (S.ment || []).filter(x => x.y !== +b.dataset.mentOff); save(); view(); }));
+  document.querySelectorAll('[data-ment]').forEach(b => b.addEventListener('click', () => { const [m, y] = b.dataset.ment.split('|').map(Number); const e = mentPair(m, y); if (e) toast(e); save(); view(); }));
+  const g = $('#mtgo'); if (g) g.addEventListener('click', () => { const e = mentPair(+$('#mtm').value, +$('#mty').value); if (e) toast(e); save(); view(); });
+  const k = $('#mtask'); if (k) k.addEventListener('click', () => { V = { ...V, msug: 1 }; view(); });
+}
 function clubDressing(cid, o){
   const sq = squadOf(me()).filter(p => !onLoan(p)), L = (S.prom || []).filter(x => P.get(x.id) && P.get(x.id).club === me());
   const lowM = sq.slice().sort((a, b) => ps(a.id).mor - ps(b.id).mor).slice(0, 8), avgM = sq.length ? sq.reduce((t, p) => t + ps(p.id).mor, 0) / sq.length : 65;
@@ -6440,12 +6499,14 @@ function clubDressing(cid, o){
     <div class="ovc"><div class="ovh"><span>Wants a word</span></div>${words.length ? `<table><tbody>${words.map(x => `<tr class="click" data-dtalk="${x.p.id}"><td>${pl(x.p)}</td><td class="small">${esc(x.cs[0].t)}</td></tr>`).join('')}</tbody></table>` : '<p class="dim">No one. The dressing room is settled.</p>'}</div>
   </div>
   ${meetHTML()}
+  ${mentHTML()}
   <div class="ptitle">Promises</div>${L.length ? `<table><thead><tr><th>Player</th><th>You promised</th><th>Made</th><th>So far</th><th>Due</th></tr></thead><tbody>${L.map(x => { const s = promState(x), p = P.get(x.id); return `<tr><td>${pl(p)}</td><td>${esc(promSay(x))}</td><td class="small">${x.d ? shortDate(x.d) : ''}</td><td>${s.prog}</td><td class="${s.urgent ? 'yel' : ''}">${s.due}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">You have promised nothing to anyone. Promises are made in a player\'s Talk screen.</p>'}
   <div class="ptitle">Lowest morale</div><table><tbody>${lowM.map(p => `<tr class="click" data-dtalk="${p.id}"><td>${pl(p)}</td><td>${cmPos(p.pos)}</td><td class="r">${morWord(ps(p.id).mor)}</td></tr>`).join('')}</tbody></table>
   ${(S.promLog || []).length ? `<div class="ptitle">Promise record</div><table><tbody>${S.promLog.slice(0, 10).map(x => `<tr><td><span class="pill">${shortDate(x.d)}</span></td><td>${P.get(x.id) ? pl(P.get(x.id)) : esc(x.n)}</td><td>${esc((PROMS[x.k] || { say: '' }).say)}</td><td class="r" style="color:${x.how === 'broken' ? 'var(--loss)' : x.how === 'kept' ? 'var(--win)' : 'inherit'}">${x.how === 'kept' ? 'Kept' : x.how === 'broken' ? 'Broken' : 'Lapsed'}</td></tr>`).join('')}</tbody></table>` : ''}`;
   frame(o);
   document.querySelectorAll('[data-dtalk]').forEach(r => r.addEventListener('click', e => { if (e.target.closest('.lk')) return; go({ s: 'player', id: +r.dataset.dtalk, tab: 'talk' }); }));
   document.querySelectorAll('[data-meet]').forEach(b => b.addEventListener('click', () => { const [t, k] = b.dataset.meet.split('|'); holdMeeting(t, k); save(); view(); }));
+  mentWire();
 }
 // a new contract: his agent asks for a wage, a length and a role; you offer, he answers. Three bad offers and the talks are off
 function negAsk(p){ S.neg = S.neg || {}; let n = S.neg[p.id];
