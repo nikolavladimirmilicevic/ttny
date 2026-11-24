@@ -2045,6 +2045,7 @@ function eff(side, x){
   v *= famMul(side);   // how well the side knows its shape and style
   if (side.shout) v *= 1 + SH_V[side.shout.k] * side.shout.r;   // a word from the touchline
   if (side.cid === me() && S.pressMod && S.pressMod.d === S.date) v *= 1 + S.pressMod.v;   // what you told the press
+  if (S.mgMod && S.mgMod.d === S.date && side.cid === S.mgMod.opp) v *= 1 + S.mgMod.v;   // your mind games, on their side
   if (side.cid === me() && S.meetMod && S.meetMod.d === S.date) v *= 1 + S.meetMod.v;   // the last team meeting
   if (S.prep && S.prep.k === 'danger' && S.prep.d === S.date && side.cid === S.prep.opp && x.id === S.prep.pid) v *= S.prep.fit ? .92 : .95;   // studied all week
   if (side.vsMe && S.oi && S.oi[side.cid]){ const o = S.oi[side.cid][x.id]; if (o) v *= oiMul(x.p, o); }   // your opposition instructions on him
@@ -2376,7 +2377,7 @@ function apply(M, kind){
     const played = new Set([...s.on.map(x => x.id), ...s.subbed.flatMap(x => [x[0], x[1]])]);
     for (const x of s.on){ const q = ps(x.id); q.cond = clamp(q.cond - (100 - x.e) * .55, 30, 100); }
     for (const [o] of s.subbed){ const q = ps(o); q.cond = clamp(q.cond - 22, 30, 100); }
-    for (const id of played){ const q = ps(id), ev = s.ev[id] || {}; if (s.cid === me()) milestone(id, ev, q, M, s, kind); q.apps++; if (s.subbed.some(x => x[1] === id)) q.sub++; q.g += ev.g || 0; q.a += ev.a || 0; if (ev.sh){ q.sh = (q.sh || 0) + ev.sh; q.xg = Math.round(((q.xg || 0) + (ev.xg || 0)) * 100) / 100; } if (s.cid === me()){ (q.md = q.md || []).push(S.date); if (q.md.length > 6) q.md.shift(); } if (kind === 'league'){ q.lg = (q.lg || 0) + (ev.g || 0); q.la = (q.la || 0) + (ev.a || 0); } if (s.rate[id]) q.rt.push(s.rate[id]); if (M.mom === id) q.mom++; q.light = 0;
+    for (const id of played){ const q = ps(id), ev = s.ev[id] || {}; if (s.cid === me()) milestone(id, ev, q, M, s, kind); q.apps++; q.min = (q.min || 0) + minsOf(s, id, ev, M); if (s.subbed.some(x => x[1] === id)) q.sub++; q.g += ev.g || 0; q.a += ev.a || 0; if (ev.sh){ q.sh = (q.sh || 0) + ev.sh; q.xg = Math.round(((q.xg || 0) + (ev.xg || 0)) * 100) / 100; } if (s.cid === me()){ (q.md = q.md || []).push(S.date); if (q.md.length > 6) q.md.shift(); } if (kind === 'league'){ q.lg = (q.lg || 0) + (ev.g || 0); q.la = (q.la || 0) + (ev.a || 0); } if (s.rate[id]) q.rt.push(s.rate[id]); if (M.mom === id) q.mom++; q.light = 0;
       if (P.get(id).prim === 'GK' && !(s === H ? ag : hg) && !s.subbed.some(x => x[0] === id || x[1] === id)) q.cs = (q.cs || 0) + 1; if (ev.rc) q.rc = (q.rc || 0) + 1;
       if (s.cid === me()) clMatch(id, ev, !(s === H ? ag : hg));
       if (kind === 'eu'){ if (ev.yc) q.eyc = (q.eyc || 0) + ev.yc; }   // European bookings: no bans at home
@@ -3685,7 +3686,7 @@ function newSeason(){
   const ids = D.clubs.map(c => c.id), was = S.season;
   for (const id in S.pl){ const q = S.pl[id], p = P.get(+id);
     if (q.apps) (q.hs = q.hs || []).push({ s: was, c: p ? p.club : null, apps: q.apps, g: q.g, a: q.a, lg: q.lg || 0, la: q.la || 0, rt: q.rt.length ? +(q.rt.reduce((x, y) => x + y, 0) / q.rt.length).toFixed(2) : null });
-    Object.assign(q, { apps: 0, sub: 0, g: 0, a: 0, lg: 0, la: 0, rt: [], mom: 0, yc: 0, rc: 0, cs: 0, sus: 0, cond: 100, sh: 0, xg: 0, miss: 0 }); }
+    Object.assign(q, { apps: 0, sub: 0, g: 0, a: 0, lg: 0, la: 0, rt: [], mom: 0, yc: 0, rc: 0, cs: 0, sus: 0, cond: 100, sh: 0, xg: 0, miss: 0, min: 0 }); }
   // loans end: everyone goes back to his club
   try { loanOptEnd(); } catch (e) { console.warn(e); }
   for (const [id, ln] of Object.entries(S.loans || {})){ const p = P.get(+id); if (p && p.club === ln.to && C.has(ln.from)){ moveP(p, ln.from, 0, 'Loan return'); if (ln.from === me() || ln.to === me()) news('club', `${p.n} returns`, `<b>${esc(p.n)}</b>'s loan is over and he goes back to ${esc(club(ln.from).name)}.`); } }
@@ -5934,7 +5935,7 @@ function transferTab(p){
   else if (b.st === 'yes' && b.loan) act = `<p>${esc(c.name)} agree to let him join on loan until the end of the season${lnTxt(b)}.</p><div class="tools"><button class="btn sm y" id="lndone" ${(b.lfee || 0) > S.fin.budget ? 'disabled' : ''}>Complete the loan</button><button class="btn sm" id="bidoff">Walk away</button></div>`;
   else if (b.st === 'yes'){ const n = (S.cn || {})[p.id], live = n && n.s === S.season && n.ctx === 'sign' && !n.end;
     act = `<p>${b.fa ? 'No fee: he is a free agent.' : `${esc(c.name)} have accepted ${cash(b.fee)}${dealCl(b)}.`}</p><div class="ptitle">Contract Talks</div>${live ? cnHTML(p, 'sign', b) : `<p>Sit down with ${esc(agentOf(p).n)}, his agent, to agree his personal terms: wage, length, squad status, bonuses and the agent's own fee.</p><div class="tools"><button class="btn sm y" id="cnopen">Open talks</button><button class="btn sm" id="bidoff">Walk away</button></div>`}`; }
-  return `<div class="ptitle">Transfer</div><p>${when}</p><dl class="kv" style="max-width:520px"><dt>Club</dt><dd>${crest(p.club)}${esc(fullName(p.club))}</dd><dt>Value</dt><dd>${known(p) ? valueOf(p) : 'about ' + cash(roundFee(p.val * 1e6))}</dd><dt>Contract</dt><dd>${S.con[p.id] ? 'until 30.6.' + String(S.con[p.id].y).slice(2) : '-'}</dd><dt>Status</dt><dd>${({ tl: 'Transfer listed', loan: 'Available for loan', free: 'Free agent' })[aiList(p)] || 'Not for sale'}</dd></dl>${act}${trialB}`;
+  return `<div class="ptitle">Transfer</div><p>${when}</p><dl class="kv" style="max-width:520px"><dt>Club</dt><dd>${crest(p.club)}${esc(fullName(p.club))}</dd><dt>Value</dt><dd>${known(p) ? valueOf(p) : 'about ' + cash(roundFee(p.val * 1e6))}</dd><dt>Contract</dt><dd>${S.con[p.id] ? 'until 30.6.' + String(S.con[p.id].y).slice(2) : '-'}</dd><dt>Status</dt><dd>${({ tl: 'Transfer listed', loan: 'Available for loan', free: 'Free agent' })[aiList(p)] || 'Not for sale'}</dd>${wpNeeded(p) ? `<dt>Work permit</dt><dd>${wpHTML(p)}</dd>` : ''}</dl>${act}${trialB}`;
 }
 function wireTransfer(p){
   document.querySelectorAll('[data-hv]').forEach(b => b.addEventListener('click', () => go(JSON.parse(b.dataset.hv))));
@@ -5949,6 +5950,7 @@ function wireTransfer(p){
   on('#bidask', () => { const b = cur(); if (b){ b.fee = b.ask; if (b.ct) Object.assign(b, b.ct); b.st = 'yes'; b.w = wageDemand(p); } });
   on('#rebid', () => { const b = cur(); if (!b) return; const ct = b.ct || {}; V.rebid = 1; V.ob = { id: p.id, t: 'buy', fee: b.ask || b.fee, up: ct.up ?? b.up ?? 1, inst: ct.inst || b.inst || 12, ao: ct.ao ?? b.ao ?? 0, aog: ct.aog ?? b.aog ?? 0, so: ct.so ?? b.so ?? 0, swap: ct.swap ?? b.swap ?? 0, lfee: 0, lw: 1, opt: 0, obl: 0 }; });
   on('#lndone', () => { const b = cur(); if (!b || !b.loan || b.st !== 'yes') return; const from = p.club;
+    if (wpGate(p) !== 'ok'){ b.st = 'off'; news('club', `No work permit for ${p.n}`, `<b>${esc(p.n)}</b> has been refused a work permit: the loan is off.`, { id: p.id }); toast('Work permit refused.'); return; }
     (S.loans = S.loans || {})[p.id] = { from, to: me(), ...(b.lw < 1 ? { ws: b.lw } : {}), ...(b.opt ? { opt: b.opt, obl: b.obl || 0 } : {}) };
     if (b.lfee){ S.fin.bal -= b.lfee; S.fin.budget = Math.max(0, S.fin.budget - b.lfee); } b.st = 'done'; moveP(p, me(), 0, 'Loan');
     news('club', `${p.n} arrives on loan`, `<b>${esc(p.n)}</b> joins on loan from ${esc(club(from).name)} until the end of the season${lnTxt(b)}.`, { id: p.id }); toast(`${cmName(p.n)} joins on loan.`); });
@@ -5957,6 +5959,62 @@ function wireTransfer(p){
     if (S.cn) delete S.cn[p.id]; cnOpen(p, 'sign', b); V.cd = null; V.cnr = null; });
   const b = cur(); if (b && b.st === 'yes' && !b.loan) cnWire(p, 'sign', b);
 }
+/* ==== work permits: a club in England needs one for any player who is not British or Irish. Points, roughly as the
+   real rules give them: for his senior international football (more for a stronger nation), the level of the league
+   he comes from, how much he plays there, and a young talent's promise. Enough points and it is granted; a middling
+   count goes to the exceptions panel, which may say yes or no; too few and it is refused. A man refused can still
+   join you if you have an affiliate abroad, where he goes on loan for the season ==== */
+const UK_IE = new Set(['England', 'Scotland', 'Wales', 'Northern Ireland', 'Republic of Ireland', 'Ireland']);
+const inEng = cid => C.has(cid) && !club(cid).nt && (club(cid).ctry || 'ENG') === 'ENG' && (LG.has(cid) || !!club(cid).ctry);
+// a man already playing in England has his permit; the rest need one to come
+const wpNeeded = p => !!p && !UK_IE.has(p.nat) && inEng(me()) && !(p.club && inEng(p.club));
+function wpOf(p){
+  const nq = ntQ(ntName(p.nat)), intl = p.nt || (capOf(p.id)[0] || 0) >= 3, fa = FAP.has(p.id), cq = fa ? 0 : (club(p.club).q || 65);
+  const parts = [['Senior international football', intl ? (nq >= 79 ? 15 : nq >= 75 ? 12 : nq >= 70 ? 9 : 6) : 0], ['The league he comes from', fa ? 2 : cq >= 74 ? 10 : cq >= 70 ? 8 : cq >= 66 ? 6 : 3],
+    ['Games for his club', fa ? 0 : squadRank(p) < 11 ? 8 : squadRank(p) < 16 ? 4 : 0], ['A young talent', p.age <= 21 && youthProj(p) >= (club(me()).q || 75) ? 4 : 0]];
+  const pts = parts.reduce((t, x) => t + x[1], 0), v = pts >= 15 ? 'ok' : pts >= 10 ? 'panel' : 'no', pass = v === 'ok' || (v === 'panel' && rng(`wp-${p.id}-${S.season}`)() < .5 + (pts - 10) * .08);
+  return { pts, parts, v, pass }; }
+function wpHTML(p){ const w = wpOf(p), tip = w.parts.map(([n, v]) => `${n}: ${v}`).join(', ');
+  return `<span title="${esc(tip)}" style="color:${w.v === 'ok' ? 'var(--win)' : w.v === 'panel' ? '#f2a65a' : 'var(--loss)'}">${w.v === 'ok' ? 'Would be granted' : w.v === 'panel' ? 'Would go to the exceptions panel: it could go either way' : `Would be refused${S.aff ? '; he could go on loan to your affiliate' : ''}`}</span> <span class="small dim">(${w.pts} points)</span>`; }
+// at the signing: 'ok', 'aff' (refused, but your affiliate can take him on loan) or 'no'
+function wpGate(p){ if (!wpNeeded(p)) return 'ok'; const w = wpOf(p); if (w.pass) return 'ok'; return S.aff && C.has(S.aff) ? 'aff' : 'no'; }
+/* ==== other managers and you: what you say about them in the press (praise, mind games, a swipe) and how your sides
+   meet makes them like you or not. A manager who dislikes you drives a harder bargain for his players and may have a
+   go at you in the papers; mind games before a match can unsettle his side, or fire it up ==== */
+const relOf = n => (n && (S.rel || {})[n]) || 0;
+function relAdd(n, v, why){ if (!n || / manager$/.test(n)) return; S.rel = S.rel || {}; S.rel[n] = clamp(Math.round(((S.rel[n] || 0) + v) * 10) / 10, -10, 10); (S.relLog = S.relLog || []).unshift({ d: S.date, n, v, why }); S.relLog = S.relLog.slice(0, 40); }
+const relWord = v => v >= 6 ? ['Likes you', 'var(--win)'] : v >= 2 ? ['Gets on with you', '#9AD07A'] : v > -2 ? ['Neutral', 'var(--muted)'] : v > -6 ? ['Wary of you', '#f2a65a'] : ['Dislikes you', 'var(--loss)'];
+const relPrice = cid => { const v = relOf(coachOf(cid)); return v < 0 ? 1 - v * .015 : 1 - v * .008; };   // a manager's say in what his club asks of you
+const thinSkin = n => rng(`skin-${n}`)() < .45;   // some take mind games to heart, others feed on them
+function relQ(ctx, r){ if (!ctx.opp) return null; const n = coachOf(ctx.opp); if (!n || / manager$/.test(n)) return null;
+  const said = [`says his side have nothing to fear`, `says your side are there to be beaten`, `says it will be a hard game for both sides`, `has praised your work`][Math.floor(r() * 4)];
+  return { q: `${n} ${said}. Your response?`, a: [{ t: 'I have a lot of respect for him and his work.', tone: 'Respectful', fx: { rel: 3 } }, { t: 'All the pressure is on them, not on us.', tone: 'Mind games', fx: { rel: -2, mg: 1 } },
+    { t: 'He should worry about his own team.', tone: 'Combative', fx: { rel: -4, mg: 2, t: 1 } }, { t: 'No comment.', tone: 'Evasive', fx: {} }] }; }
+function relAnswer(Pz, fx){ const opp = Pz.ctx.opp, n = coachOf(opp); if (!n) return null;
+  if (fx.rel) relAdd(n, fx.rel, fx.rel > 0 ? 'praised him in the press' : fx.mg >= 2 ? 'had a go at him in the press' : 'played mind games');
+  if (fx.mg){ const v = (thinSkin(n) ? -.012 : .008) * fx.mg; S.mgMod = { d: Pz.ctx.d, opp, v }; return 'We will see how he takes it.'; }
+  return fx.rel > 0 ? `${n} will appreciate that.` : null; }
+// after a game against a manager: a handshake, a swipe, or praise
+function relAfter(x){ if (!x || !me()) return; const us = x.h === me(), opp = us ? x.a : x.h, n = coachOf(opp); if (!n || / manager$/.test(n)) return;
+  const v = relOf(n), gd = x.s[us ? 0 : 1] - x.s[us ? 1 : 0], r = rng(`rela-${S.seed}-${S.date}-${opp}`);
+  if (v <= -5 && r() < .35){ relAdd(n, -.5, 'had a swipe at you'); news('club', `${n} hits out`, `${esc(n)} of ${esc(club(opp).name)} has had a go at you after the game: ${gd > 0 ? '"They got lucky today, and he knows it."' : gd < 0 ? '"Maybe now he will keep quiet."' : '"He sets his teams up not to lose."'}`); }
+  else if (v >= 5 && r() < .2) news('club', `${n} praises your side`, `${esc(n)} of ${esc(club(opp).name)} had kind words for your side after the game.`);
+  else if (gd >= 4 && r() < .4) relAdd(n, -1, 'his side took a beating from yours'); }
+function relHTML(){
+  const L = [...new Set([...D.clubs.map(c => coachOf(c.id)), ...Object.keys(S.rel || {})])].filter(n => n && !/ manager$/.test(n) && n !== S.manager);
+  const clubOfC = n => everyClub().find(c => coachOf(c.id) === n), last = n => (S.relLog || []).find(x => x.n === n);
+  const rows = L.map(n => ({ n, v: relOf(n), c: clubOfC(n), l: last(n) })).sort((a, b) => Math.abs(b.v) - Math.abs(a.v) || (a.c ? a.c.name : '').localeCompare(b.c ? b.c.name : ''));
+  return `<div class="ptitle">Relationships</div><table><thead><tr><th>Manager</th><th>Club</th><th>Feeling</th><th>Last</th></tr></thead><tbody>${rows.map(x => { const w = relWord(x.v); return `<tr><td><b>${esc(x.n)}</b></td><td>${x.c ? `${crest(x.c.id)}${esc(x.c.name)}` : '<span class="dim">Out of work</span>'}</td><td style="color:${w[1]}">${w[0]}</td><td class="small dim">${x.l ? `${shortDate(x.l.d)}: you ${esc(x.l.why)}` : ''}</td></tr>`; }).join('')}</tbody></table>
+    <p class="small dim">What you say about other managers in the press, and how your sides meet, decides how they feel about you. One who dislikes you asks more for his players and may have a go at you in the papers; one who likes you is easier to deal with. Mind games before a match unsettle some managers' sides and fire up others.</p>`; }
+/* ==== minutes and per-90 figures: how much each man plays, and what he does per 90 minutes ==== */
+function minsOf(s, id, ev, M){ const end = Math.max(90, M.min || 90), sIn = s.subbed.find(x => x[1] === id), sOut = s.subbed.find(x => x[0] === id);
+  const st = sIn ? sIn[2] : 0, en = sOut ? sOut[2] : ev.rc ? Math.min(end, Math.max(st + 1, ev.rcm || 70)) : end; return Math.max(1, Math.round(en - st)); }
+const p90 = (q, k) => q.min >= 90 ? ((q[k] || 0) * 90 / q.min) : null;
+function per90HTML(){
+  const L = D.players.filter(p => LG.has(p.club) && (ps(p.id).min || 0) >= 450), r2 = v => v == null ? '-' : v.toFixed(2);
+  const top = (k, f, lab) => { const R = L.map(p => [p, f(ps(p.id))]).filter(x => x[1] != null).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    return `<div class="ovc"><div class="ovh"><span>${lab}</span></div><table><tbody>${R.map(([p, v]) => `<tr><td><span class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</span> <span class="small dim">${esc(club(p.club).name)}</span></td><td class="r"><b>${r2(v)}</b></td></tr>`).join('') || '<tr><td class="dim">Nobody yet</td></tr>'}</tbody></table></div>`; };
+  return L.length ? `<div class="ovgrid">${top('g', q => p90(q, 'g'), 'Goals per 90')}${top('xg', q => p90(q, 'xg'), 'xG per 90')}${top('a', q => p90(q, 'a'), 'Assists per 90')}${top('ga', q => q.min >= 90 ? ((q.g || 0) + (q.a || 0)) * 90 / q.min : null, 'Goals and assists per 90')}${top('sh', q => p90(q, 'sh'), 'Shots per 90')}${top('gx', q => q.min >= 450 ? ((q.g || 0) - (q.xg || 0)) * 90 / q.min : null, 'Goals above xG per 90')}</div><p class="small dim">League players with at least 450 minutes this season.</p>` : '<p class="empty">Nobody has played 450 minutes yet this season.</p>'; }
 /* ==== tactical familiarity: a side needs time to learn a shape and a way of playing. Every week the shape and the
    style you use grow more familiar (faster with tactics sessions in the training week), the ones you leave alone fade.
    An unfamiliar shape or style costs your players a little in every game; the other clubs play what they know ==== */
@@ -6468,7 +6526,8 @@ function bidWorth(b, p, c){
   return v; }
 // the selling club's answer to a bid of yours (a day later; on deadline day within the hour), with its reasons
 function answerBid(b, p){
-  const riv = derbyOf(me(), p.club), c = club(p.club), ask = Math.round(askingPrice(p) * (riv ? 1.4 : 1)); b.rd = (b.rd || 0) + 1; b.why = [];
+  const riv = derbyOf(me(), p.club), c = club(p.club), ask = Math.round(askingPrice(p) * (riv ? 1.4 : 1) * relPrice(p.club)); b.rd = (b.rd || 0) + 1; b.why = [];
+  if (relOf(coachOf(p.club)) <= -5) b.why.push(`Their manager, ${coachOf(p.club)}, does not like you, and it shows in the price.`);
   if (b.loan) return answerLoan(b, p, c);
   const sw = b.swap && P.get(b.swap);
   if (sw && !swapOK(sw, c)){ b.why.push(`They have no interest in ${sw.n} as part of the deal.`); b.swap = 0; }
@@ -6701,6 +6760,8 @@ function cnDone(p, ctx, b, o){
     news('club', `${p.n} signs a new contract`, `${esc(p.n)} has signed until 30.6.${String(S.season + o.y).slice(2)} on ${wage(o.w)}, as a ${roleName(o.role).toLowerCase()}${af ? `; his agent takes ${cash(af)}` : ''}.`, { id: p.id }); return true; }
   const from = p.club, def = b.fee && (b.up ?? 1) < 1 && b.inst ? roundFee(b.fee * (1 - b.up)) : 0, now = (b.fee || 0) - def + af + (cl.sign || 0);
   if (now > S.fin.budget){ toast('There is not enough in the transfer budget (with the agent\'s fee and the signing-on fee).'); return false; }
+  const wg = wpGate(p);
+  if (wg === 'no'){ b.st = 'off'; if (n) n.end = 2; news('club', `No work permit for ${p.n}`, `<b>${esc(p.n)}</b> has been refused a work permit (${wpOf(p).pts} points${wpOf(p).v === 'panel' ? ', and the exceptions panel said no' : ''}). The deal is off.`, { id: p.id }); toast('Work permit refused: the deal is off.'); return false; }
   S.fin.budget -= af; S.fin.bal -= af;
   S.con[p.id] = { y: S.season + o.y, w: o.w, ...clx }; b.st = 'done'; moveP(p, me(), b.fee || 0); clSign(p, cl);
   if (def){ S.fin.bal += def; S.fin.budget += def; instAdd(p, from, def, b.inst, -1); }
@@ -6709,6 +6770,7 @@ function cnDone(p, ctx, b, o){
   if (b.so) (S.sellOut = S.sellOut || []).push({ id: p.id, to: from, pct: b.so, fee: b.fee + (b.ao ? roundFee(b.fee * b.ao) : 0) });
   const sw = b.swap && P.get(b.swap); if (sw && sw.club === me() && !b.fa){ S.con[sw.id] = { y: S.season + 3, w: wageDemand(sw) }; moveP(sw, from, 0, 'Exchange'); }
   (S.role = S.role || {})[p.id] = o.role; if (n) n.end = 1;
+  if (wg === 'aff'){ (S.loans = S.loans || {})[p.id] = { from: me(), to: S.aff }; moveP(p, S.aff, 0, 'Loan'); news('club', `${p.n} goes to ${club(S.aff).name}`, `<b>${esc(p.n)}</b> has been refused a work permit, so he joins your affiliate ${esc(club(S.aff).name)} on loan for the season.`, { id: p.id }); }
   news('club', `${p.n} signs`, `<b>${esc(p.n)}</b> joins ${esc(club(me()).name)} ${b.fa ? 'on a free transfer' : `for ${cash(b.fee)}${dealCl(b)}`} on ${wage(o.w)}, as a ${roleName(o.role).toLowerCase()}${af ? ` (his agent, ${esc(agentOf(p).n)}, takes ${cash(af)})` : ''}, until 30.6.${String(S.season + o.y).slice(2)}.`, { id: p.id });
   return true; }
 // before the talks: a man who thinks your club beneath him may not sit down at all
@@ -7584,11 +7646,12 @@ function clubData(cid, o){
     const L = {}; for (const r of S.results || []) for (const x of r.res || []){ if (!x.st || !x.st.xg) continue; for (const [id, k] of [[x.h, 0], [x.a, 1]]){ const t = L[id] = L[id] || { id, n: 0, gf: 0, ga: 0, xg: 0, xa: 0 }; t.n++; t.gf += x.s[k]; t.ga += x.s[1 - k]; t.xg += x.st.xg[k]; t.xa += x.st.xg[1 - k]; } }
     const R = Object.values(L).filter(t => LG.has(t.id)).sort((a, b) => (b.xg - b.xa) / b.n - (a.xg - a.xa) / a.n);
     body = R.length ? `<div class="tw"><table><thead><tr><th>Club</th><th class="r">P</th><th class="r">Goals</th><th class="r">xG</th><th class="r">Against</th><th class="r">xG against</th><th class="r">xG diff</th></tr></thead><tbody>${R.map(t => `<tr class="${t.id === me() ? 'me' : ''}"><td>${crest(t.id)}<b>${esc(club(t.id).name)}</b></td><td class="r">${t.n}</td><td class="r">${t.gf}</td><td class="r">${r1(t.xg)}</td><td class="r">${t.ga}</td><td class="r">${r1(t.xa)}</td><td class="r" style="color:${t.xg >= t.xa ? 'var(--win)' : 'var(--loss)'}">${t.xg >= t.xa ? '+' : ''}${r1(t.xg - t.xa)}</td></tr>`).join('')}</tbody></table></div><p class="small dim">League games of this season, best expected-goal difference per game first.</p>` : '<p class="empty">No league games yet this season.</p>';
+  } else if (tab === 'p90'){ body = per90HTML();
   } else {
     const sq = squadOf(me()).filter(p => ps(p.id).apps).sort((a, b) => (ps(b.id).xg || 0) - (ps(a.id).xg || 0));
-    body = sq.length ? `<div class="tw"><table><thead><tr><th>Player</th><th>Pos</th><th class="r">Apps</th><th class="r">Shots</th><th class="r">xG</th><th class="r">Goals</th><th class="r">Goals − xG</th><th class="r">Assists</th><th class="r">Av R</th></tr></thead><tbody>${sq.map(p => { const q = ps(p.id), d = q.g - (q.xg || 0); return `<tr><td><span class="lk" data-lp="${p.id}">${esc(p.n)}</span></td><td>${cmPos(p.pos)}</td><td class="r">${q.apps}</td><td class="r">${q.sh || 0}</td><td class="r">${r1(q.xg || 0)}</td><td class="r">${q.g}</td><td class="r" style="color:${d >= 0 ? 'var(--win)' : 'var(--loss)'}">${d >= 0 ? '+' : ''}${r1(d)}</td><td class="r">${q.a}</td><td class="r">${avgRt(q)}</td></tr>`; }).join('')}</tbody></table></div><p class="small dim">Every competition this season. Goals − xG above zero: he finishes better than his chances say.</p>` : '<p class="empty">Nobody has played yet this season.</p>';
+    body = sq.length ? `<div class="tw"><table><thead><tr><th>Player</th><th>Pos</th><th class="r">Apps</th><th class="r">Mins</th><th class="r">Shots</th><th class="r">xG</th><th class="r">Goals</th><th class="r">Goals − xG</th><th class="r">Assists</th><th class="r">xG/90</th><th class="r">G+A/90</th><th class="r">Av R</th></tr></thead><tbody>${sq.map(p => { const q = ps(p.id), d = q.g - (q.xg || 0); return `<tr><td><span class="lk" data-lp="${p.id}">${esc(p.n)}</span></td><td>${cmPos(p.pos)}</td><td class="r">${q.apps}</td><td class="r">${q.min || '-'}</td><td class="r">${q.sh || 0}</td><td class="r">${r1(q.xg || 0)}</td><td class="r">${q.g}</td><td class="r" style="color:${d >= 0 ? 'var(--win)' : 'var(--loss)'}">${d >= 0 ? '+' : ''}${r1(d)}</td><td class="r">${q.a}</td><td class="r">${p90(q, 'xg') != null ? p90(q, 'xg').toFixed(2) : '-'}</td><td class="r">${q.min >= 90 ? ((q.g + q.a) * 90 / q.min).toFixed(2) : '-'}</td><td class="r">${avgRt(q)}</td></tr>`; }).join('')}</tbody></table></div><p class="small dim">Every competition this season. Goals − xG above zero: he finishes better than his chances say.</p>` : '<p class="empty">Nobody has played yet this season.</p>';
   }
-  o.tools = `<span class="seg" id="dhs">${[['team', 'Team'], ['league', 'League'], ['players', 'Players']].map(([k, n]) => `<button data-v="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</span>`;
+  o.tools = `<span class="seg" id="dhs">${[['team', 'Team'], ['league', 'League'], ['players', 'Players'], ['p90', 'League per 90']].map(([k, n]) => `<button data-v="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</span>`;
   o.body = body; frame(o);
   document.querySelectorAll('#dhs button').forEach(b => b.addEventListener('click', () => { V = { ...V, dh: b.dataset.v }; view(); }));
 }
@@ -8506,6 +8569,7 @@ function pressQs(kind, ctx){
     if (ctx.opp && opF.length >= 3) add(pressPts(opF) >= 10 ? `${oc} have won ${opF.filter(x => x === 'W').length} of their last ${opF.length}. Are you worried?` : `${oc} have struggled lately. Is this a game you expect to win?`,
       pressPts(opF) >= 10 ? [A("We respect them, but we look at ourselves.", 'Calm', { t: 1, n: .005 }), A("Form goes out of the window on the day.", 'Confident', { t: 1, n: .006 }), A("They'll have to be at their best to beat us.", 'Bold', { t: 2, n: .01, bold: 1 }), A('No comment.', 'Evasive', { m: -1 })]
         : [A("There are no easy games at this level.", 'Calm', { t: 1, n: .006 }), A("We expect to win, yes.", 'Bold', { t: 1, n: .006, bold: 1 }), A("A wounded side is a dangerous side.", 'Cautious', { t: 0, n: .008 })]);
+    { const rq = (ctx.derby || ctx.big || r() < .45) && relQ(ctx, r); if (rq) add(rq.q, rq.a); }
     const hot = sq.filter(p => avgR(p) >= 7.2).sort((a, b) => avgR(b) - avgR(a))[0], cold = sq.filter(p => (q(p).apps || 0) >= 3 && avgR(p) && avgR(p) < 6.4).sort((a, b) => avgR(a) - avgR(b))[0];
     if (hot && r() < .7) add(`${hot.n} has been outstanding. Can he keep it up?`, [A("He's in the form of his life. Long may it continue.", 'Praise', { p: [hot.id, 5], t: 1 }), A("He has to keep working; nobody has a place guaranteed.", 'Demanding', { p: [hot.id, -2], n: .004 }), A("It's about the team, not one player.", 'Calm', { t: 1 })]);
     else if (cold) add(`${cold.n} has struggled for form. Does he still have your trust?`, [A("Completely. He'll come good.", 'Backing', { p: [cold.id, 6] }), A("He knows he has to do better.", 'Demanding', { p: [cold.id, -4], t: 0 }), A("I don't discuss individuals.", 'Evasive', { p: [cold.id, -1] })]);
@@ -8551,6 +8615,7 @@ function pressOpen(kind, ctx){
 }
 // after a result that makes headlines
 function pressAfter(x, kind, stage){
+  try { if (S && !S.hol && x && !x.bg && (x.h === me() || x.a === me())) relAfter(x); } catch (e) {}
   if (!S || S.hol || (S.press && !S.press.done) || !x || x.bg) return;
   const us = x.h === me(), opp = us ? x.a : x.h, gf = x.s[us ? 0 : 1], ga = x.s[us ? 1 : 0], won = x.w === me(), drew = x.w == null, gd = gf - ga;
   const bold = S.pressBold && S.pressBold.d === S.date ? S.pressBold.t : null, red = (x.inc || []).find(i => i.k === 'red' && i.side === (us ? 'h' : 'a') && typeof i.id === 'number');
@@ -8564,6 +8629,7 @@ function pressAnswer(i){
   if (fx.p){ const q = ps(fx.p[0]); q.mor = clamp(q.mor + fx.p[1], 15, 100); }
   if (fx.b && !Pz.ctx.nt) S.conf = clamp(S.conf + fx.b, 0, 100);
   const nx = (fx.n || 0) + (fx.n2 || 0); if (nx) S.pressMod = { d: Pz.kind === 'pre' ? Pz.ctx.d : Pz.ctx.nt ? ((ntEvents()[0] || {}).date) : (fixtureRows(me()).find(x => x.m && !x.rr && x.date > S.date) || {}).date, v: ((S.pressMod && S.pressMod.d === Pz.ctx.d) ? S.pressMod.v : 0) + nx };
+  if ((fx.rel || fx.mg) && !Pz.ctx.nt){ const t = relAnswer(Pz, fx); if (t) lines.push(t); }
   if (fx.bold && Pz.kind === 'pre') S.pressBold = { d: Pz.ctx.d, t: `"${a.t.replace(/\.$/, '')}"`, nt: !!Pz.ctx.nt };
   if (fx.t >= 2) lines.push('The squad liked that.'); else if (fx.t <= -2) lines.push('Some in the squad did not take it well.');
   if (fx.p) lines.push(fx.p[1] > 0 ? `${P.get(fx.p[0]).n} will be pleased.` : `${P.get(fx.p[0]).n} won't like that.`);
@@ -8687,8 +8753,9 @@ function scrManager(){
   if (tab === 'goals') body = cgTab();
   if (tab === 'wealth') body = wealthTab();
   if (tab === 'lic') body = licHTML();
+  if (tab === 'rel') body = relHTML();
   if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv"><dt>Club</dt><dd>${esc(club(me()).name)}</dd><dt>Wage</dt><dd>${wage(Math.round(club(me()).q * 900 / 5) * 5)}</dd><dt>Expires</dt><dd>30.6.${String(S.season + 2).slice(2)}</dd>${S.nat ? `<dt>Nationality</dt><dd>${esc(S.nat)}</dd>` : ''}<dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
-  frame(ofClub(me(), { title: `${esc(S.manager)} (${esc(club(me()).name)})`, top: [['inj', 'Injuries &amp; Bans', true], ['con', 'Contract'], ['goals', 'Career Goals'], ['wealth', 'Wealth'], ['tr', 'Transfer', true], ['lic', 'Coaching Badges'], ['hist', 'History']], topOn: tab, onTab: k => { if (k === 'hall'){ SETUP_OPEN = true; SETUP = 'hall'; view(); return; } if (k === 'stats' || k === 'jobs'){ go({ s: 'managers', tab: k === 'jobs' ? 'jobs' : 'rep' }); return; } V = { s: 'manager', tab: k }; view(); }, body,
+  frame(ofClub(me(), { title: `${esc(S.manager)} (${esc(club(me()).name)})`, top: [['inj', 'Injuries &amp; Bans', true], ['con', 'Contract'], ['goals', 'Career Goals'], ['wealth', 'Wealth'], ['tr', 'Transfer', true], ['lic', 'Coaching Badges'], ['rel', 'Relationships'], ['hist', 'History']], topOn: tab, onTab: k => { if (k === 'hall'){ SETUP_OPEN = true; SETUP = 'hall'; view(); return; } if (k === 'stats' || k === 'jobs'){ go({ s: 'managers', tab: k === 'jobs' ? 'jobs' : 'rep' }); return; } V = { s: 'manager', tab: k }; view(); }, body,
     bottom: [['jobs', 'Jobs'], ['stats', 'Manager Rankings'], ['hall', 'Hall of Fame']] }));
   if (tab === 'goals') cgWire();
   if (tab === 'wealth') wealthWire();
