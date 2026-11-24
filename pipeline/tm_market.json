@@ -1,88 +1,6 @@
 {
- "about": "Transfermarkt pages Nikola supplied 24.11.2026 (free agents: all, England, France, Italy, Spain, Germany, Serbia; available managers: all, England, France, Italy, Spain, Germany, Serbia; World's Best Club Coach and World's Best National Team Coach), and Wikipedia's 2026-27 season pages of the playable leagues and their second tiers (Nikola, 24.11.2026) for the head coach in post when each league's season started (in-season changes rolled back, Transfermarkt's dates of departure checked). Free agents: Transfermarkt's facts only (no ability: the game derives it from value and age). Managers: those out of work; one who left after 1 August 2026 was in post at the start and is free only if he loses a job in the game.",
+ "about": "Transfermarkt pages Nikola supplied 24.11.2026 (free agents: all, England, France, Italy, Spain, Germany, Serbia; available managers: all, England, France, Italy, Spain, Germany, Serbia; World's Best Club Coach and World's Best National Team Coach), and Wikipedia's 2026-27 season pages of the playable leagues and their second tiers (Nikola, 24.11.2026) for the head coach in post now. Free agents: Transfermarkt's facts only (no ability: the game derives it from value and age). Managers: those out of work now, all free from the game's first day.",
  "updated": "2026-11-24",
- "start_coaches": {
-  "CH": {
-   "Birmingham City": "Chris Davies",
-   "Bristol City": "Michael Skubala",
-   "Burnley": "Nicky Hayen",
-   "Charlton Athletic": "Nathan Jones",
-   "Derby County": "John Eustace",
-   "Middlesbrough": "Kim Hellberg",
-   "Millwall": "Alex Neil",
-   "Norwich City": "Philippe Clement",
-   "Portsmouth": "John Mousinho",
-   "Preston": "Paul Heckingbottom",
-   "QPR": "Julien Stéphan",
-   "Sheffield Utd": "Chris Wilder",
-   "Southampton": "Tonda Eckert",
-   "Stoke City": "Mark Robins",
-   "Swansea City": "Vítor Matos",
-   "Watford": "Alessio Dionisi",
-   "West Brom": "James Morrison",
-   "West Ham United": "Nuno Espírito Santo",
-   "Wolves": "César Peixoto",
-   "Wrexham": "Phil Parkinson"
-  },
-  "FRA": {
-   "Lens": "Dino Toppmöller",
-   "Le Havre": "Didier Digard",
-   "Lyon": "Paulo Fonseca"
-  },
-  "FRA2": {
-   "Nantes": "Michel Der Zakarian",
-   "Metz": "Luc Holtz",
-   "Dunkerque": "Albert Sánchez",
-   "Boulogne": "Fabien Dagneaux"
-  },
-  "ITA": {
-   "Fiorentina": "Fabio Grosso",
-   "Bologna": "Domenico Tedesco",
-   "Parma": "Carlos Cuesta",
-   "Venezia": "Giovanni Stroppa",
-   "Udinese": "Kosta Runjaić",
-   "Sassuolo": "Alberto Aquilani"
-  },
-  "ITA2": {
-   "Carrarese": "Gabriele Cioffi",
-   "Empoli": "Guido Pagliuca",
-   "Sampdoria": "Bernardo Corradi",
-   "Catanzaro": "Giorgio Gorgone",
-   "Cremonese": "Marco Giampaolo"
-  },
-  "ESP": {
-   "Osasuna": "Luis Miguel Ramis",
-   "Espanyol": "Manolo González",
-   "Valencia": "Carlos Corberán"
-  },
-  "ESP2": {
-   "Ceuta": "José Juan Romero",
-   "Albacete": "Alberto González",
-   "Eldense": "Claudio Barragán",
-   "Leganés": "Rubén Albés",
-   "Cádiz": "Albert Celades",
-   "Oviedo": "Julián Calero",
-   "Eibar": "Jokin Aranbarri",
-   "Las Palmas": "Rubén de la Barrera"
-  },
-  "GER": {
-   "Gladbach": "Eugen Polanski"
-  },
-  "GER2": {
-   "Hannover": "Christian Titz",
-   "Holstein Kiel": "Tim Walter"
-  },
-  "SRB": {
-   "Crvena Zvezda": "Dejan Stanković",
-   "Partizan": "Sasa Ilic",
-   "Vojvodina": "Miroslav Tanjga",
-   "Čukarički": "Marko Jaksic",
-   "Novi Pazar": "Strahinja Pandurovic",
-   "Radnički Niš": "Marko Nedjic",
-   "Zemun": "Gjorgji Mojsov",
-   "OFK Beograd": "Radoslav Batak"
-  }
- },
  "free_agents": [
   {
    "n": "Jadon Sancho",
@@ -6145,5 +6063,59 @@
     "Germany"
    ]
   ]
- }
+ },
+ "coaches": {
+  "CH": {
+   "Birmingham City": "Chris Davies",
+   "Blackburn Rovers": "Mike Dodds",
+   "Bristol City": "Michael Skubala",
+   "Burnley": "Fabio Celestini",
+   "Charlton Athletic": "Nathan Jones",
+   "Derby County": "John Eustace",
+   "Middlesbrough": "Kim Hellberg",
+   "Millwall": "Alex Neil",
+   "Norwich City": "Philippe Clement",
+   "Portsmouth": "John Mousinho",
+   "Preston": "Graham Alexander",
+   "QPR": "Julien Stéphan",
+   "Sheffield Utd": "Chris Wilder",
+   "Southampton": "Tonda Eckert",
+   "Stoke City": "Mark Robins",
+   "Swansea City": "Ashley Williams",
+   "Watford": null,
+   "West Brom": "James Morrison",
+   "West Ham United": "Scott Parker",
+   "Wolves": "César Peixoto",
+   "Wrexham": "Phil Parkinson"
+  },
+  "FRA2": {
+   "Boulogne": "Fabien Dagneaux"
+  },
+  "GER": {
+   "Gladbach": "Alexander Blessin"
+  },
+  "ESP": {
+   "Osasuna": "Luis Miguel Ramis",
+   "Espanyol": "Manolo González",
+   "Valencia": "Carlos Corberán"
+  },
+  "ESP2": {
+   "Ceuta": "José Juan Romero",
+   "Albacete": "Alberto González",
+   "Eldense": "Claudio Barragán",
+   "Leganés": "Rubén Albés",
+   "Cádiz": "Albert Celades",
+   "Oviedo": "Julián Calero",
+   "Eibar": "Jokin Aranbarri",
+   "Las Palmas": "Rubén de la Barrera"
+  },
+  "GER2": {
+   "Hannover": "Christian Titz",
+   "Holstein Kiel": "Tim Walter"
+  },
+  "FRA": {
+   "Strasbourg": "Vítor Matos"
+  }
+ },
+ "coaches_note": "The head coach in post now (Wikipedia's 2026-27 pages, 24.11.2026), where the league's own source has none: the game starts with today's coaches, not those of the season's first day. None: no coach in post (Watford: Dionisi sacked on 22 November, successor to be named), the club starts looking for one. ESP, ESP2 and GER2 still hold the coach of the season's first day until a page with today's coach comes (Transfermarkt's managers pages of LaLiga, LaLiga2 and the 2. Bundesliga)."
 }

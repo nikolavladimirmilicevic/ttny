@@ -742,7 +742,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
                     c[k] = h[k]
         ko = {(f[0], f[1], f[2]): f[3:] for f in hb.get('fixtures') or []}
         fixtures = [f + ([ko[(f[0], f[2], f[3])][0], ko[(f[0], f[2], f[3])][1]] if (f[0], f[2], f[3]) in ko else []) for f in fixtures]
-    # Transfermarkt's staff pages: the head coach (if he was in post when the game starts, mid-August) and the backroom
+    # Transfermarkt's staff pages: the head coach in post now (the game starts with today's coaches) and the backroom
     # staff by name; a club with nobody in post on Transfermarkt keeps the handbook's coach
     try:
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_facts.json'), encoding='utf-8') as f:
@@ -752,12 +752,9 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     for c in clubs:
         k = (_tm.get('coaches') or {}).get(c['name'])
         if k and k.get('n'):
-            since = k.get('since') or ''
-            ymd = f'{since[6:10]}-{since[3:5]}-{since[0:2]}' if len(since) == 10 else ''
-            if not ymd or ymd <= f'{season}-08-15':
-                c['coach'] = k['n']
-                if k.get('until'):
-                    c['coach_until'] = k['until']
+            c['coach'] = k['n']
+            if k.get('until'):
+                c['coach_until'] = k['until']
         st = (_tm.get('staff') or {}).get(c['name'])
         if st:
             c['staff'] = st
@@ -829,9 +826,10 @@ def game_clubs(cmd):
 
 
 def apply_market(cmd):
-    """Transfermarkt and Wikipedia pages Nikola supplied (pipeline/tm_market.json): the head coach in post when each league's
-    season started, the players without a club and the managers out of work at the start, the national teams' coaches who left
-    after the World Cup (with the day), and the World's Best Club and National Team Coach awards. A free agent's ability is
+    """Transfermarkt and Wikipedia pages Nikola supplied (pipeline/tm_market.json): the head coach in post now where a league's
+    own source has none (the game starts with today's coaches and squads; None: nobody in post, the club starts looking), the
+    players without a club and the managers out of work now, the national teams' coaches who left after the World Cup, and
+    the World's Best Club and National Team Coach awards. A free agent's ability is
     derived from his value and age (the same fit as the Championship's squads): Transfermarkt gives no ability."""
     try:
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_market.json'), encoding='utf-8') as f:
@@ -842,12 +840,14 @@ def apply_market(cmd):
     for k, L in (cmd.get('leagues') or {}).items():
         groups[k] = L.get('clubs') or []
         groups[k + '2'] = (L.get('second') or {}).get('clubs') or []
-    for k, sc in (m.get('start_coaches') or {}).items():
+    for k, sc in (m.get('coaches') or {}).items():
         by = {c['name']: c for c in groups.get(k, [])}
         for name, coach in sc.items():
             if name in by:
                 by[name]['coach'] = coach
                 by[name].pop('coach_until', None)
+                if coach is None:
+                    by[name]['vacant'] = 1
     fa = []
     for p in m.get('free_agents') or []:
         q = dict(p)
@@ -1086,16 +1086,16 @@ SR_CODE = {'Red Star Belgrade': 'CZV', 'FK Partizan Belgrade': 'PAR', 'FK Vojvod
 
 
 def _srb_src(src):
-    """tm_superliga.json in build_league's shape: the clubs by full name with tier, id, short name, stadium, coach (only one
-    in charge from the start of the season: the Super liga began on 17 July, the Prva liga on 31 July), value and last
-    season's place where known (Red Star champions, Zemun and Macva promoted)."""
+    """tm_superliga.json in build_league's shape: the clubs by full name with tier, id, short name, stadium, coach (the one
+    in charge now: the game starts with today's coaches), value and last season's place where known (Red Star champions,
+    Zemun and Macva promoted)."""
     f = src.get('facts') or {}
     clubs = {}
-    for tier, rows, start in ((1, src.get('clubs') or [], '2026-07-17'), (2, src.get('second_clubs') or [], '2026-07-31')):
+    for tier, rows in ((1, src.get('clubs') or []), (2, src.get('second_clubs') or [])):
         for c in rows:
             full = c['name']
             clubs[full] = {'tier': tier, 'id': SR_IDS.get(full), 'short': SR_SHORT.get(full, full), 'venue': c.get('venue'), 'cap': c.get('cap'),
-                           'value': c.get('value'), 'coach': c.get('coach_now') if (c.get('coach_from') or '9999') <= start else None,
+                           'value': c.get('value'), 'coach': c.get('coach_now'),
                            **({'last': 1} if full == f.get('reigning') and tier == 1 else {'last': 'promoted'} if full in (f.get('promoted') or []) else {})}
     return {**src, 'clubs': clubs, 'facts': {**f, 'record_titles': f.get('record_titles')}}
 
