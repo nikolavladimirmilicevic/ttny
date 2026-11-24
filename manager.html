@@ -2042,7 +2042,7 @@ function eff(side, x){
   v *= 1 + x.cf;
   if (side.talk) v *= 1 + side.talk;   // the half-time team talk, for better or worse
   if (x.tp) v *= 1 + x.tp; if (x.th) v *= 1 + x.th;   // how he took the team talks
-  v *= famMul(side);   // how well the side knows its shape and style
+  v *= famMul(side) * bondMul(side, x);   // how well the side knows its shape and style; friends and quarrels on the pitch
   if (side.shout) v *= 1 + SH_V[side.shout.k] * side.shout.r;   // a word from the touchline
   if (side.cid === me() && S.pressMod && S.pressMod.d === S.date) v *= 1 + S.pressMod.v;   // what you told the press
   if (S.mgMod && S.mgMod.d === S.date && side.cid === S.mgMod.opp) v *= 1 + S.mgMod.v;   // your mind games, on their side
@@ -2676,7 +2676,7 @@ function monthly(){
     q.dp = q.dn || {}; q.dn = snap; }
   ensureStaff(); const wages = (squadOf(me()).reduce((t, p) => t + S.con[p.id].w, 0) + S.staff.reduce((t, x) => t + x.w, 0)) * 4.3;
   S.fin.bal -= wages; S.fin.wages += wages;
-  try { instMonth(); devSnap(); youthMonth(); loanMonth2(); } catch (e) { console.warn(e); }
+  try { instMonth(); devSnap(); youthMonth(); loanMonth2(); relMonth(); } catch (e) { console.warn(e); }
   try { spEnsure(); spMonth(); loanMonth(); ownerMonth(); mgrMonth(); debtMonth(); evtMonth(); } catch (e) { console.warn(e); }
   S.fin.wk.push({ m: S.date.slice(0, 7), bal: S.fin.bal });
   if (S.round >= 3) news('board', 'A word from the board', boardComment());
@@ -5959,6 +5959,68 @@ function wireTransfer(p){
     if (S.cn) delete S.cn[p.id]; cnOpen(p, 'sign', b); V.cd = null; V.cnr = null; });
   const b = cur(); if (b && b.st === 'yes' && !b.loan) cnWire(p, 'sign', b);
 }
+/* ==== relationships between people. Each of your players has an opinion of you, built by what you do: talks, promises
+   kept and broken, how you handle a row, putting him on the list, a new contract, the football he gets. Players have
+   friendships and fall-outs with one another: compatriots and men who share a language get on, so do men who came from
+   the same club or have been team-mates for years; a mentor and his pupil grow close; a row in training makes enemies.
+   And a player remembers the clubs he played for. All of it matters: a man who rates you listens to you, asks less to
+   stay and would play for you again; one who does not, will not. Friends play a little better together, men at odds a
+   little worse, and a man whose friend is sold misses him ==== */
+const rkey = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+const opOf = id => clamp((S.op || {})[id] || 0, -10, 10);
+function opAdd(id, v){ if (!id || !v) return; S.op = S.op || {}; S.op[id] = clamp(Math.round(((S.op[id] || 0) + v) * 10) / 10, -10, 10); }
+const opWord = v => v >= 6 ? ['Admires you', 'var(--win)'] : v >= 2 ? ['Likes you', '#9AD07A'] : v > -2 ? ['Neutral', 'var(--muted)'] : v > -6 ? ['Has doubts about you', '#f2a65a'] : ['Dislikes you', 'var(--loss)'];
+const yearOf = d => d ? +String(d).slice(0, 4) : 9999;
+function ppBase(a, b){ let v = 0; if (a.nat === b.nat) v += 3; else if (langOf(a) === langOf(b)) v += 1.5;
+  if (Math.abs(a.age - b.age) <= 2) v += 1;   // men of an age
+  if (a.fr && a.fr === b.fr) v += 2;   // came from the same club
+  if (a.club === b.club && yearOf(a.jn) <= D.season - 3 && yearOf(b.jn) <= D.season - 3) v += 2;   // team-mates for years
+  return v; }
+const ppOf = (a, b) => ppBase(a, b) + ((S.pp || {})[rkey(a.id, b.id)] || 0);
+function ppAdd(a, b, v){ if (!a || !b || a.id === b.id) return; S.pp = S.pp || {}; const k = rkey(a.id, b.id); S.pp[k] = clamp(Math.round(((S.pp[k] || 0) + v) * 10) / 10, -12, 12); if (!S.pp[k]) delete S.pp[k]; }
+const friendsOf = (p, L) => (L || squadOf(p.club)).filter(x => x.id !== p.id && ppOf(p, x) >= 4);
+const foesOf = (p, L) => (L || squadOf(p.club)).filter(x => x.id !== p.id && ppOf(p, x) <= -3);
+// the clubs he played for: his club before (from the data) and the moves in this game
+function pastClubs(p){ const L = []; if (p.fr) L.push(p.fr); for (const t of (S.transfers || []).filter(x => x.id === p.id)) if (t.from && !L.includes(t.from)) L.push(t.from); return L.filter(n => n !== club(p.club).name); }
+// on the pitch: friends together a little better, men at odds a little worse (every side, so it evens out)
+function bondMul(side, x){ const on = side.on.filter(y => !y.off), key = on.map(y => y.id).join(',');
+  if (side._bk !== key){ side._bk = key; side._bm = {}; for (const a of on){ let f = 0, e = 0; for (const b of on){ if (a === b) continue; const v = ppOf(a.p, b.p); if (v >= 4) f++; else if (v <= -3) e++; } side._bm[a.id] = 1 + clamp(Math.min(f, 3) * .004 - e * .008, -.02, .012); } }
+  return side._bm[x.id] || 1; }
+// each month: opinions drift with the football and the mood, old quarrels cool, mentors and pupils grow close, and now and then a row
+function relMonth(){
+  const sq = squadOf(me()).filter(p => !onLoan(p)), r = rng(`relm-${S.seed}-${S.date}`);
+  for (const p of sq){ const q = ps(p.id), cs = concerns(p).map(c => c.k); if (cs.includes('time')) opAdd(p.id, -.5); else if (q.mor >= 75) opAdd(p.id, .3);
+    q.mor = clamp(q.mor + opOf(p.id) * .2, 15, 100); }
+  for (const k of Object.keys(S.pp || {})){ const v = S.pp[k]; S.pp[k] = Math.abs(v) <= .5 ? 0 : v - Math.sign(v) * .5; if (!S.pp[k]) delete S.pp[k]; }
+  for (const m of S.ment || []){ const a = P.get(m.m), b = P.get(m.y); if (a && b) ppAdd(a, b, 1); }
+  if (sq.length > 10 && r() < .3){ const hot = sq.filter(p => hid(p).tem <= 8); const a = hot[Math.floor(r() * hot.length)]; if (a){ const L = sq.filter(x => x.id !== a.id && GROUP[x.prim] === GROUP[a.prim]), b = L[Math.floor(r() * L.length)];
+    if (b){ ppAdd(a, b, -6); for (const x of [a, b]){ const q = ps(x.id); q.mor = clamp(q.mor - 3, 15, 100); }
+      news('club', `${a.n} and ${b.n} fall out`, `<span class="lk" data-lp="${a.id}">${esc(a.n)}</span> and <span class="lk" data-lp="${b.id}">${esc(b.n)}</span> have had words in training and are not speaking. It may blow over; it may not.`); } } }
+}
+// a man sold: the friends he leaves behind miss him
+function friendGone(p){ const L = friendsOf(p, squadOf(me()).filter(x => x.id !== p.id)).filter(x => ppOf(p, x) >= 6 || (S.pp || {})[rkey(p.id, x.id)] > 0);
+  for (const x of L){ const q = ps(x.id); q.mor = clamp(q.mor - 4, 15, 100); }
+  if (L.length) news('club', `${L.length === 1 ? L[0].n : 'Some of the players'} will miss ${p.n}`, `${L.map(x => `<span class="lk" data-lp="${x.id}">${esc(x.n)}</span>`).join(', ')} ${L.length === 1 ? 'was' : 'were'} close to <b>${esc(p.n)}</b> and ${L.length === 1 ? 'is' : 'are'} sorry to see him go.`); }
+// a man arrives: a friend already here helps him settle
+function friendHere(p){ const L = friendsOf(p, squadOf(me()).filter(x => x.id !== p.id)); if (!L.length) return; const q = ps(p.id); q.mor = clamp(q.mor + 4, 15, 100);
+  news('club', `${p.n} among friends`, `<b>${esc(p.n)}</b> knows ${L.slice(0, 3).map(x => `<span class="lk" data-lp="${x.id}">${esc(x.n)}</span>`).join(', ')}${L.length > 3 ? ' and others' : ''} already: he will settle in quickly.`); }
+function relPlayerHTML(p){
+  const mine = p.club === me(), op = opWord(opOf(p.id)), L = squadOf(p.club).filter(x => x.id !== p.id), fr = friendsOf(p, L).sort((a, b) => ppOf(p, b) - ppOf(p, a)).slice(0, 6), fo = foesOf(p, L), pc = pastClubs(p);
+  const why = x => { const r = []; if (x.nat === p.nat) r.push('compatriots'); else if (langOf(x) === langOf(p)) r.push(`both speak ${langOf(p)}`); if (p.fr && x.fr === p.fr) r.push(`both came from ${p.fr}`); if ((S.ment || []).some(m => (m.m === p.id && m.y === x.id) || (m.y === p.id && m.m === x.id))) r.push('mentor and pupil'); return r.join(', '); };
+  const pl = x => `<span class="lk" data-lp="${x.id}">${esc(cmName(x.n))}</span>`;
+  return `<div class="ptitle">Relationships</div><dl class="kv" style="max-width:640px;margin:0 auto">${mine || opOf(p.id) ? `<dt>His view of you</dt><dd style="color:${op[1]}"><b>${op[0]}</b></dd>` : ''}
+    <dt>Friends here</dt><dd>${fr.length ? fr.map(x => `${pl(x)}${why(x) ? ` <span class="small dim">(${esc(why(x))})</span>` : ''}`).join(', ') : '<span class="dim">Nobody close</span>'}</dd>
+    ${fo.length ? `<dt>At odds with</dt><dd style="color:var(--loss)">${fo.map(pl).join(', ')}</dd>` : ''}
+    <dt>Clubs he played for</dt><dd>${pc.length ? pc.map(esc).join(', ') : '<span class="dim">Only this one, as far as we know</span>'}</dd></dl>`; }
+function relSquadHTML(){
+  const sq = squadOf(me()).filter(p => !onLoan(p)), pairs = [];
+  for (let i = 0; i < sq.length; i++) for (let j = i + 1; j < sq.length; j++){ const v = ppOf(sq[i], sq[j]); if (v >= 5 || v <= -3) pairs.push([sq[i], sq[j], v]); }
+  const F = pairs.filter(x => x[2] >= 5).sort((a, b) => b[2] - a[2]).slice(0, 8), E = pairs.filter(x => x[2] <= -3).sort((a, b) => a[2] - b[2]);
+  const pl = x => `<span class="lk" data-lp="${x.id}">${esc(cmName(x.n))}</span>`, ops = sq.map(p => [p, opOf(p.id)]).filter(x => Math.abs(x[1]) >= 2).sort((a, b) => b[1] - a[1]);
+  return `<div class="ovgrid"><div class="ovc"><div class="ovh"><span>Close friends</span></div>${F.length ? `<ul class="hon">${F.map(([a, b]) => `<li>${pl(a)} and ${pl(b)}</li>`).join('')}</ul>` : '<p class="dim small">No close friendships yet.</p>'}</div>
+    <div class="ovc"><div class="ovh"><span>Fall-outs</span></div>${E.length ? `<ul class="hon">${E.map(([a, b]) => `<li style="color:var(--loss)">${pl(a)} and ${pl(b)}</li>`).join('')}</ul>` : '<p class="dim small">Nobody at odds.</p>'}</div>
+    <div class="ovc"><div class="ovh"><span>What they think of you</span></div>${ops.length ? `<table><tbody>${[...ops.slice(0, 4), ...(ops.length > 8 ? ops.slice(-4) : ops.slice(4))].map(([p, v]) => { const w = opWord(v); return `<tr><td>${pl(p)}</td><td style="color:${w[1]}">${w[0]}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim small">Nobody has made his mind up about you yet.</p>'}</div></div>
+    <p class="small dim">Friends play a little better together and men at odds a little worse; a man who rates you listens to you, asks less to stay and would play for you again.</p>`; }
 /* ==== work permits: a club in England needs one for any player who is not British or Irish. Points, roughly as the
    real rules give them: for his senior international football (more for a stronger nation), the level of the league
    he comes from, how much he plays there, and a young talent's promise. Enough points and it is granted; a middling
@@ -6256,7 +6318,7 @@ function giveTalk(stage, k){
   for (const x of us.on.filter(y => !y.off)){
     const { r, w } = k === 'none' ? { r: 0, w: reactWord(0) } : talkReact(x, base, tone, stage, k, d);
     if (stage === 'pre') x.tp = r; else { x.tp = (x.tp || 0) * .5; x.th = r; }
-    const q = ps(x.id); q.mor = clamp((q.mor || 70) + Math.round(r * 120), 15, 100); list.push([x.id, w[0], w[1]]); }
+    const q = ps(x.id); q.mor = clamp((q.mor || 70) + Math.round(r * 120), 15, 100); opAdd(x.id, r * 12); list.push([x.id, w[0], w[1]]); }
   M.tr[stage] = { k, tone, list };
   const T = (stage === 'pre' ? PRE_TALKS : HT_TALKS).find(t => t[0] === k), up = list.filter(x => ['Fired up', 'Motivated'].includes(x[1])).length, down = list.filter(x => ['Nervous', 'Annoyed', 'Complacent', 'Unhappy'].includes(x[1])).length;
   if (stage === 'ht') M.talk = k;
@@ -6590,6 +6652,7 @@ function sellDone(o, p, quiet){
   if (o.ao) (S.aoIn = S.aoIn || []).push({ id: p.id, c: o.from, amt: roundFee(o.fee * o.ao), s: S.season });
   if (o.so) (S.sellIn = S.sellIn || []).push({ id: p.id, pct: o.so, from: o.from });
   if (S.tl) delete S.tl[p.id];
+  friendGone(p);
   if (!quiet) news('club', `${p.n} sold`, `<b>${esc(p.n)}</b> leaves for ${esc(club(o.from).name)} for ${cash(o.fee)}${dealCl(o)}.`);
 }
 // a transfer status for your own men, and an asking price
@@ -6598,7 +6661,7 @@ const TL_TXT = { '': 'He is not for sale, though a good offer may still come.', 
 const tlOf = p => (S.tl || {})[p.id] || null;
 function tlSet(p, st){ S.tl = S.tl || {}; const was = S.tl[p.id]; if (!st){ delete S.tl[p.id]; return; }
   S.tl[p.id] = { st, ask: (was && was.ask) || askingPrice(p), d: S.date };
-  if (st === 'tl' && squadRank(p) < 11 && !(was && was.st === 'tl')){ const q = ps(p.id); q.mor = clamp(q.mor - 8, 15, 100); news('club', `${p.n} upset at being listed`, `<b>${esc(p.n)}</b> has heard he is on the transfer list and is hurt by it.`, { id: p.id }); } }
+  if (st === 'tl' && squadRank(p) < 11 && !(was && was.st === 'tl')){ const q = ps(p.id); q.mor = clamp(q.mor - 8, 15, 100); opAdd(p.id, -3); news('club', `${p.n} upset at being listed`, `<b>${esc(p.n)}</b> has heard he is on the transfer list and is hurt by it.`, { id: p.id }); } }
 // another club's view of who is for sale: a man out of the side, an unhappy one, a youngster for loan
 function aiList(p){ if (p.club === me()) return (tlOf(p) || {}).st || ''; if (FAP.has(p.id)) return 'free';
   const r = squadRank(p), q = S.pl[p.id]; return (r >= 22 && p.age >= 23) || (q && q.req === S.season) ? 'tl' : p.age <= 21 && r >= 16 ? 'loan' : ''; }
@@ -6723,7 +6786,7 @@ function cnNeed(p, n, o){
   const a = n.ask, q = ps(p.id), cl = clFrom(o.ix, o.w, p), diff = a.af - (o.af ?? a.af);
   let need = a.w * (1 - (ROLE_LV[a.role] - ROLE_LV[o.role]) * .06 + Math.abs(o.y - a.y) * .04 - (q.mor - 60) / 400);
   need -= clVal(p, o.w, o.y, cl, o.role) + (o.loy || 0) * o.w / 52 * .9;
-  if (n.ctx === 'renew') need *= 1 - (hid(p).loy - 10) * .008;   // a loyal man asks less to stay
+  if (n.ctx === 'renew') need *= (1 - (hid(p).loy - 10) * .008) * (1 - opOf(p.id) * .01);   // a loyal man asks less to stay, and so does one who rates you
   return need + diff / (52 * o.y) * (diff > 0 ? 1.2 : .5); }
 function cnViol(p, n, o){ const v = [], a = n.ask, ix = o.ix || {};
   if (n.keys.includes('role') && ROLE_LV[o.role] > ROLE_LV[a.role]) v.push(`He will only sign as a ${roleName(a.role).toLowerCase()}.`);
@@ -6756,7 +6819,7 @@ function cnDone(p, ctx, b, o){
   if (ctx === 'renew'){
     S.con[p.id] = { y: S.season + o.y, w: o.w, ...clx }; clSign(p, cl); S.fin.bal -= af; S.fin.wages += af;
     (S.renew = S.renew || {})[p.id] = S.season; (S.role = S.role || {})[p.id] = o.role; if (S.neg) delete S.neg[p.id]; if (n) n.end = 1;
-    const q = ps(p.id); q.mor = clamp(q.mor + 5, 15, 100);
+    const q = ps(p.id); q.mor = clamp(q.mor + 5, 15, 100); opAdd(p.id, 2);
     news('club', `${p.n} signs a new contract`, `${esc(p.n)} has signed until 30.6.${String(S.season + o.y).slice(2)} on ${wage(o.w)}, as a ${roleName(o.role).toLowerCase()}${af ? `; his agent takes ${cash(af)}` : ''}.`, { id: p.id }); return true; }
   const from = p.club, def = b.fee && (b.up ?? 1) < 1 && b.inst ? roundFee(b.fee * (1 - b.up)) : 0, now = (b.fee || 0) - def + af + (cl.sign || 0);
   if (now > S.fin.budget){ toast('There is not enough in the transfer budget (with the agent\'s fee and the signing-on fee).'); return false; }
@@ -6769,7 +6832,7 @@ function cnDone(p, ctx, b, o){
   if (b.aog) (S.addons = S.addons || []).push({ id: p.id, to: from, amt: roundFee(b.fee * b.aog), n: 15, got: 0, g: 1 });
   if (b.so) (S.sellOut = S.sellOut || []).push({ id: p.id, to: from, pct: b.so, fee: b.fee + (b.ao ? roundFee(b.fee * b.ao) : 0) });
   const sw = b.swap && P.get(b.swap); if (sw && sw.club === me() && !b.fa){ S.con[sw.id] = { y: S.season + 3, w: wageDemand(sw) }; moveP(sw, from, 0, 'Exchange'); }
-  (S.role = S.role || {})[p.id] = o.role; if (n) n.end = 1;
+  (S.role = S.role || {})[p.id] = o.role; if (n) n.end = 1; opAdd(p.id, 2); if (wg !== 'aff') friendHere(p);
   if (wg === 'aff'){ (S.loans = S.loans || {})[p.id] = { from: me(), to: S.aff }; moveP(p, S.aff, 0, 'Loan'); news('club', `${p.n} goes to ${club(S.aff).name}`, `<b>${esc(p.n)}</b> has been refused a work permit, so he joins your affiliate ${esc(club(S.aff).name)} on loan for the season.`, { id: p.id }); }
   news('club', `${p.n} signs`, `<b>${esc(p.n)}</b> joins ${esc(club(me()).name)} ${b.fa ? 'on a free transfer' : `for ${cash(b.fee)}${dealCl(b)}`} on ${wage(o.w)}, as a ${roleName(o.role).toLowerCase()}${af ? ` (his agent, ${esc(agentOf(p).n)}, takes ${cash(af)})` : ''}, until 30.6.${String(S.season + o.y).slice(2)}.`, { id: p.id });
   return true; }
@@ -6777,6 +6840,8 @@ function cnDone(p, ctx, b, o){
 function willJoin(p, b){
   if (b.fa){ const up = ovrNow(p) - club(me()).q; return up > 5 && rng(`fa-${p.id}-${me()}`)() < Math.min(.85, .25 + up * .08) ? `${p.n} would rather wait for an offer from a bigger club than ${club(me()).name}.` : null; }
   const step = (S.agOff || {})[p.id] === S.season || (S.trialDisc || {})[p.id] === S.season ? -99 : club(p.club).q - club(me()).q, star = (S.agOff || {})[p.id] !== S.season && squadRank(p) < 4;
+  if (opOf(p.id) >= 5) return null;   // he played for you before and rates you: he wants to again
+  if (opOf(p.id) <= -5) return `${p.n} has not forgotten his time under you and will not play for you again.`;
   const h = hid(p), am = .6 + h.amb / 25, lo = .7 + h.loy / 30;   // the ambitious will not step down; the loyal will not leave
   return (step > 5 && rng(`w-${p.id}-${S.season}`)() < .7 * am) || (star && step > 2 && rng(`s-${p.id}`)() < .5 * lo) ? `${p.n} does not want to leave ${club(p.club).name} for ${club(me()).name}.` : null; }
 function cnHTML(p, ctx, b){
@@ -6874,7 +6939,7 @@ function repHTML(p){
     <div class="ovc"><div class="ovh"><span>Verdict</span></div><p style="font-size:18px;margin:4px 0" class="yel"><b>${v.rec[0]}</b></p><p class="small">${v.rec[1]}</p><dl class="kv"><dt>Ability now</dt><dd>${gradeH(v.ga)}</dd><dt>Potential</dt><dd>${gradeH(v.gp)}</dd><dt>He would be here</dt><dd>${roleName(v.role)}</dd></dl></div>
     <div class="ovc"><div class="ovh"><span>Strengths and weaknesses</span></div><p class="small dim" style="margin:2px 0">Strengths</p><ul class="hon">${v.pros.map(k => `<li style="color:var(--win)">${nm(k)}</li>`).join('')}</ul><p class="small dim" style="margin:2px 0">Weaknesses</p><ul class="hon">${v.cons.map(k => `<li style="color:var(--loss)">${nm(k)}</li>`).join('')}</ul></div>
     <div class="ovc"><div class="ovh"><span>The deal</span></div><dl class="kv"><dt>Likely price</dt><dd>${v.fee ? cash(v.fee) : 'No fee'}</dd><dt>Wage he would want</dt><dd>${wage(v.w)}</dd><dt>Contract</dt><dd>${S.con[p.id] ? 'until 30.6.' + String(S.con[p.id].y).slice(2) : '-'}</dd><dt>Agent</dt><dd>${esc(agentOf(p).n)}</dd><dt>Would he come?</dt><dd>${keen}</dd></dl></div></div>
-    <p class="small dim">Report by ${esc(sc[v.k].n)} (judging ability ${sc[v.k].ju}/20), ${fmtDate(v.d)}. The letters compare him with your side as it is now, from A (better than your best) to E. A scout's eye is never perfect: the better the judge, the closer he is.</p>${btn}`;
+    ${relPlayerHTML(p)}<p class="small dim">Report by ${esc(sc[v.k].n)} (judging ability ${sc[v.k].ju}/20), ${fmtDate(v.d)}. The letters compare him with your side as it is now, from A (better than your best) to E. A scout's eye is never perfect: the better the judge, the closer he is.</p>${btn}`;
 }
 function scrScoutC(){
   const sc = scStaff(), F = S.rf || [], Q = S.scQ || [], f0 = V.rfd || { pos: 'CB', amax: 0, fee: 0, reg: '' };
@@ -7333,12 +7398,12 @@ function promLog(x, how){ (S.promLog = S.promLog || []).unshift({ d: S.date, id:
 const squadMor = (dm, but) => { for (const o of squadOf(me())) if (o.id !== but){ const oq = ps(o.id); oq.mor = clamp(oq.mor + dm, 15, 100); } };
 function promKept(x, txt){ const p = P.get(x.id), q = ps(x.id);
   if (p && p.club === me()) q.mor = clamp(q.mor + (x.soft ? 6 : 8), 15, 100);
-  S.kept = (S.kept || 0) + 1; S.prom = S.prom.filter(y => y !== x); promLog(x, 'kept');
+  S.kept = (S.kept || 0) + 1; S.prom = S.prom.filter(y => y !== x); promLog(x, 'kept'); opAdd(x.id, 3);
   if (p && p.club === me() && squadRank(p) < 5) squadMor(1, p.id);
   news('club', `${p ? p.n : 'He'} ${p && p.club === me() ? 'is happy' : 'thanks you'}`, txt || `${esc(p.n)} says you kept your word: ${promSay(x)}.`, p ? { id: p.id } : undefined); }
 function promBroken(x, extra){ const p = P.get(x.id), q = ps(x.id), key = squadRank(p) < 5;
   q.mor = clamp(q.mor - (x.k === 'go' ? 25 : x.soft ? 14 : 20), 15, 100); q.brk = S.season;
-  S.trust = (S.trust || 0) + 1; S.prom = S.prom.filter(y => y !== x); promLog(x, 'broken');
+  S.trust = (S.trust || 0) + 1; S.prom = S.prom.filter(y => y !== x); promLog(x, 'broken'); opAdd(x.id, -5);
   if (q.req !== S.season && !((x.k === 'time' || x.k === 'youth') && squadRank(p) >= 18)) q.req = S.season;
   wantsWord(p); squadMor(key ? -4 : -2, p.id);
   news('club', `${p.n} feels let down`, `${esc(p.n)} says you broke your promise of ${promSay(x)}.${extra ? ' ' + extra : ''}${q.req === S.season ? ' He has handed in a transfer request.' : ''} ${key ? 'He is one of the leaders of the dressing room, and the whole squad feel it.' : 'The rest of the squad noticed too.'}`, { id: p.id }); }
@@ -7365,6 +7430,7 @@ function promTick(){
 // a bid of yours turned down: a promise to let him go broken, or a player upset you stood in the way of a bigger club
 function bidRefused(o, ignored){
   const p = P.get(o.id); if (!p || p.club !== me() || onLoan(p)) return;
+  if (ps(p.id).req === S.season) opAdd(p.id, -2);   // he wanted that move
   const q = ps(p.id), g = (S.prom || []).find(x => x.id === p.id && x.k === 'go');
   if (g){ if (o.fee >= g.fair) promBroken(g, `${esc(club(o.from).name)} offered ${cash(o.fee)} and you ${ignored ? 'let the offer lapse' : 'turned it down'}.`); return; }
   const big = (club(o.from).q || 0) > club(me()).q + 2;
@@ -7447,6 +7513,8 @@ function talkTo(p, k){
     else { dm = cs.includes('amb') ? 10 : 4; say = `He is glad to hear the club means business. He expects a real signing by ${fmtDate(by)}.`; add({ k: 'sign', by, bar }); } }
   if (k === 'go'){ const fair = roundFee(p.val * 1e6 * .9), by = winEnd();
     dm = 10; say = `He calms down. He expects you to accept any offer of ${cash(fair)} or more by ${fmtDate(by)}.`; add({ k: 'go', by, fair }); }
+  if (dm > 0) dm += opOf(p.id) * .25;   // a man who rates you takes your word to heart
+  opAdd(p.id, dm > 0 ? dm / 5 : dm / 4);
   q.mor = clamp(Math.round(q.mor + dm), 15, 100); (S.talk = S.talk || {})[p.id] = S.date; if (S.word) delete S.word[p.id];
   if (q.req === S.season && q.mor >= 60 && k !== 'crit' && k !== 'go'){ q.req = null; say += ' He has withdrawn his transfer request.'; }
   return { say, dm };
@@ -7455,7 +7523,7 @@ const promLi = x => { const s = promState(x); return `<li class="yel">You promis
 function talkTab(p){
   const q = ps(p.id), cs = concerns(p), w = talkWait(p), pr = promOf(p), role = roleOf(p);
   return `<div class="ptitle">Morale</div><dl class="kv" style="max-width:480px;margin:0 auto"><dt>Morale</dt><dd><b>${morWord(q.mor)}</b></dd><dt>Role</dt><dd>${role ? roleName(role) + ' <span class="dim small">(agreed in his contract)</span>' : '<span class="dim">Not set</span>'}</dd><dt>Form</dt><dd>${recentRt(q) != null ? recentRt(q).toFixed(1) + ' <span class="dim small">(last five)</span>' : '<span class="dim">Has hardly played</span>'}</dd>${prospectWord(p) ? `<dt>Assistant's view</dt><dd>${prospectWord(p)}</dd>` : ''}${q.brk === S.season ? '<dt>Trust</dt><dd class="yel">You broke a promise to him this season</dd>' : ''}</dl>
-    ${happyHTML(p)}<div class="ptitle">On his mind</div>${cs.length || pr.length ? `<ul class="hon">${cs.map(c => `<li>${esc(c.t)}</li>`).join('')}${pr.map(promLi).join('')}</ul>` : '<p class="c dim">Nothing. He is getting on with his football.</p>'}
+    ${happyHTML(p)}${relPlayerHTML(p)}<div class="ptitle">On his mind</div>${cs.length || pr.length ? `<ul class="hon">${cs.map(c => `<li>${esc(c.t)}</li>`).join('')}${pr.map(promLi).join('')}</ul>` : '<p class="c dim">Nothing. He is getting on with his football.</p>'}
     <div class="ptitle">Have a word</div>${V.say ? `<p class="c"><b>${esc(V.say)}</b></p>` : ''}${w ? `<p class="c dim">You spoke to him recently. Give it ${w} more day${w > 1 ? 's' : ''}.</p>` : `<div class="menu talkm" style="max-width:460px;margin:0 auto">${talkOpts(p).map(([k, n]) => `<button data-talk="${k}">${n}</button>`).join('')}</div>`}
     <p class="small dim c">${credWord()}${S.trust || S.kept ? ` (promises kept ${S.kept || 0}, broken ${S.trust || 0})` : ''}. A promise lifts him; a broken one costs his morale and the squad's, and makes the next harder to believe. A good man-manager on your staff (your assistant) gets more out of these talks.</p>`;
 }
@@ -8042,10 +8110,12 @@ function evtMonth(){
 }
 function evtAnswer(o){
   const E = S.evt; if (!E) return; const p = P.get(E.id), x = E.x ? P.get(E.x) : null, q = p && ps(p.id); S.evt = null; if (!p) return;
+  const m0 = [p, x].filter(Boolean).map(y => [y.id, ps(y.id).mor]); if (x && E.k === 'row') ppAdd(p, x, -5);
   let t = '';
   if (E.k === 'night'){ if (o === 'fine'){ q.mor = clamp(q.mor - 8, 15, 100); S.conf = Math.min(100, S.conf + 2); t = `${p.n} has been fined.`; } else if (o === 'defend'){ q.mor = clamp(q.mor + 5, 15, 100); S.conf = Math.max(0, S.conf - 3); t = `You stood by ${p.n}.`; } else { q.mor = clamp(q.mor - 2, 15, 100); t = 'You dealt with it behind closed doors.'; } }
   if (E.k === 'row' && x){ const qx = ps(x.id); if (o === 'p1'){ q.mor = clamp(q.mor + 5, 15, 100); qx.mor = clamp(qx.mor - 9, 15, 100); t = `You backed ${p.n}; ${x.n} is furious.`; } else if (o === 'p2'){ qx.mor = clamp(qx.mor + 5, 15, 100); q.mor = clamp(q.mor - 9, 15, 100); t = `You backed ${x.n}; ${p.n} is furious.`; } else { q.mor = clamp(q.mor - 4, 15, 100); qx.mor = clamp(qx.mor - 4, 15, 100); for (const y of squadOf(me())) if (y.id !== p.id && y.id !== x.id) ps(y.id).mor = Math.min(100, ps(y.id).mor + 1); t = 'Both have been punished.'; } }
   if (E.k === 'leave'){ if (o === 'yes'){ q.mor = clamp(q.mor + 6, 15, 100); q.cond = Math.max(60, q.cond - 5); t = `${p.n} is grateful.`; } else { q.mor = clamp(q.mor - 7, 15, 100); t = `${p.n} is hurt.`; } }
+  for (const [id, v] of m0) opAdd(id, (ps(id).mor - v) / 3);   // each takes your answer as it touched him
   news('club', 'Dealt with', t);
 }
 function scrEvent(){
@@ -8147,6 +8217,7 @@ function clubDressing(cid, o){
     <div class="ovc"><div class="ovh"><span>Wants a word</span></div>${words.length ? `<table><tbody>${words.map(x => `<tr class="click" data-dtalk="${x.p.id}"><td>${pl(x.p)}</td><td class="small">${esc(x.cs[0].t)}</td></tr>`).join('')}</tbody></table>` : '<p class="dim">No one. The dressing room is settled.</p>'}</div>
   </div>
   ${meetHTML()}
+  <div class="ptitle">Relationships</div>${relSquadHTML()}
   ${dynHTML()}
   ${mentHTML()}
   <div class="ptitle">Promises</div>${L.length ? `<table><thead><tr><th>Player</th><th>You promised</th><th>Made</th><th>So far</th><th>Due</th></tr></thead><tbody>${L.map(x => { const s = promState(x), p = P.get(x.id); return `<tr><td>${pl(p)}</td><td>${esc(promSay(x))}</td><td class="small">${x.d ? shortDate(x.d) : ''}</td><td>${s.prog}</td><td class="${s.urgent ? 'yel' : ''}">${s.due}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">You have promised nothing to anyone. Promises are made in a player\'s Talk screen.</p>'}
