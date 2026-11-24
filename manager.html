@@ -1899,11 +1899,12 @@ function coachShape(cid, rest, jq){
 }
 // the shape a club really plays (its usual formation in its last ten matches, from the line-ups), in game positions
 function realShape(cid){ const c = club(cid); if (!c || !c.shape) return null;
+  if (cid !== me() && c.coach && coachOf(cid) !== c.coach) return null;   // a new coach brings his own ideas
   const rows = c.shape.map(r => r.split(' ').map(x => x === 'SS' ? 'CF' : x)), codes = rows.flat(); if (codes.length !== 10 || codes.some(c => codes.filter(x => x === c).length > posCap(c))) return null;
   const pre = Object.keys(FORM_DEF).find(f => codeKey(FORM_DEF[f].join(' ').split(' ')) === codeKey(codes)); if (pre) return { form: pre, shape: null, name: c.form };
   return { form: 'Custom', shape: [['GK', 50, LINE_Y[0]], ...layoutRows(rows)], name: c.form }; }
 function autoTactic(cid, jq, fresh){
-  const cs = cid === me() ? ((fresh && realShape(cid)) || { form: bestForm(cid, false, jq), shape: null, name: null }) : coachShape(cid), best = cs.form, { xi, bench } = bestXI(cid, best, false, jq, cs.shape || undefined);
+  const cs = cid === me() ? ((fresh && realShape(cid)) || { form: bestForm(cid, false, jq), shape: null, name: null }) : realShape(cid) || coachShape(cid), best = cs.form, { xi, bench } = bestXI(cid, best, false, jq, cs.shape || undefined);
   const q = club(cid).q || 75, top = Math.max(...D.clubs.map(c => c.q)), r0 = rng(`t-${cid}`);
   return { form: best, shape: cs.shape, name: cs.name, xi, bench, men: q >= top - 3 ? 3 : q < top - 9 ? 1 : 2, pass: [0, 1, 2, 0][Math.floor(r0() * 4)], tack: 1, press: q >= top - 5, offside: r0() < .3, counter: q < top - 6, mbb: q < top - 10, set: setPieces(cid, xi), pi: {} };
 }
@@ -1911,7 +1912,9 @@ function autoTactic(cid, jq, fresh){
 function readyTactic(cid){
   if (!S.tac[cid]) S.tac[cid] = autoTactic(cid);   // a Championship club in a cup tie
   const t = S.tac[cid];
-  if (cid !== me()){ if (!slotsOf(t) || (!t.shape && !formSlots(t.form))) Object.assign(t, coachShape(cid));
+  if (cid !== me()){ const R = realShape(cid);
+    // the shape its coach really plays, every game; without one (or with a new coach) the shape that suits the squad
+    if (R) Object.assign(t, { form: R.form, shape: R.shape, name: R.name }); else if (!slotsOf(t) || (!t.shape && !formSlots(t.form)) || (t.name && club(cid).form === t.name)) Object.assign(t, coachShape(cid));
     let sl = slotsOf(t), f = bestXI(cid, t.form, true, null, sl);
     // someone would have to play out of position (injuries, bans): the coach rebuilds the shape around who is left
     if (f.xi.some((id, i) => !id || !canPlay(P.get(id), sl[i][0]))){ Object.assign(t, coachShape(cid, true)); sl = slotsOf(t); f = bestXI(cid, t.form, true, null, sl); }
