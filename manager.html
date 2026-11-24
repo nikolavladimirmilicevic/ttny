@@ -326,7 +326,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok .tpc{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);font:800 9px/1 var(--body);color:#0B1626;background:#5CC08A;border-radius:4px;padding:2px 4px;letter-spacing:.03em;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.5)}.tok .dot:has(.tpc)+.nm{margin-top:7px}
 .tboard .instr{grid-template-columns:104px minmax(0,1fr)}.tboard .instr .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%;min-width:0}.tboard .instr .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px;text-align:center}
 @media(max-width:520px){.tboard .instr{grid-template-columns:1fr}}
-.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}.stc{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 9px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit;font:inherit;font-size:12.5px;cursor:pointer;text-align:left}.stc.sel{border-color:var(--gold)}.stc.on{background:rgba(76,214,140,.14)}.stinfo{margin:8px 0 4px}.dhc{width:100%;max-height:230px;display:block}.calw{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}.calw label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}.calw select{width:100%}.oir{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)}.oic{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px}.oic .tog,.oic .seg button{font-size:11px;padding:3px 7px}.soc{display:flex;flex-direction:column;gap:8px;max-width:640px;margin:0 auto}.socp{background:var(--panel-2);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:4px}.soch{display:flex;justify-content:space-between;gap:8px}.oit .seg{margin:2px 4px 2px 0}.oit .seg button{font-size:11px;padding:3px 6px}@media(max-width:620px){.calw{grid-template-columns:repeat(4,1fr)}}
+.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}.stc{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 9px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit;font:inherit;font-size:12.5px;cursor:pointer;text-align:left}.stc.sel{border-color:var(--gold)}.stc.on{background:rgba(76,214,140,.14)}.stinfo{margin:8px 0 4px}.dhc{width:100%;max-height:230px;display:block}.kfocus{outline:2px solid var(--gold)!important;outline-offset:-2px;background:rgba(76,214,140,.10)!important}.calw{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}.calw label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}.calw select{width:100%}.oir{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)}.oic{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px}.oic .tog,.oic .seg button{font-size:11px;padding:3px 7px}.soc{display:flex;flex-direction:column;gap:8px;max-width:640px;margin:0 auto}.socp{background:var(--panel-2);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:4px}.soch{display:flex;justify-content:space-between;gap:8px}.oit .seg{margin:2px 4px 2px 0}.oit .seg button{font-size:11px;padding:3px 6px}@media(max-width:620px){.calw{grid-template-columns:repeat(4,1fr)}}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
 .tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
@@ -3758,7 +3758,8 @@ const valueOf = p => cash(p.val * 1e6);
 
 // where we are: a screen and what it shows; back and forward like a browser
 let V = { s: 'home' }, HIST = [], FWD = [], PICK = null, SORT = { k: 'pos', d: 1 };
-function go(v, keep){ if (!keep && V && LIVE == null) { HIST.push(V); if (HIST.length > 60) HIST.shift(); FWD = []; } V = v; PICK = null; view(); scrollTo(0, 0); }
+function go(v, keep){ if (!keep && V && LIVE == null) { HIST.push({ ...V, _y: scrollY }); if (HIST.length > 60) HIST.shift(); FWD = []; } V = v; PICK = null; view(); scrollTo(0, 0); }   // the screen you leave remembers where you were on it
+const restoreY = () => { const y = V._y || 0; requestAnimationFrame(() => scrollTo(0, y)); };
 const SCREEN_SET = s => go(s);   // (kept for the calendar code)
 /* every name is a way in: a player's, a club's or a competition's name, wherever it is written (news, tables, reports,
    screens), opens that player, club or competition. Found word by word in a map of the names (the longest name first,
@@ -4031,9 +4032,9 @@ function frame(o){
       <div class="bn"><button id="back" ${HIST.length ? '' : 'disabled'}>Back</button><button id="next" ${o.next ? '' : 'disabled'}>Next</button></div>
     </div></div>`;
   const on = (sel, f) => { const el = $(sel); if (el) el.addEventListener('click', f); };
-  const back = () => { if (!HIST.length) return; FWD.push(V); V = HIST.pop(); PICK = null; view(); };
+  const back = () => { if (!HIST.length) return; FWD.push({ ...V, _y: scrollY }); V = HIST.pop(); PICK = null; view(); restoreY(); };
   on('#navb', back); on('#back', back);
-  on('#navf', () => { if (!FWD.length) return; HIST.push(V); V = FWD.pop(); view(); });
+  on('#navf', () => { if (!FWD.length) return; HIST.push({ ...V, _y: scrollY }); V = FWD.pop(); view(); restoreY(); });
   wireStrip(); stripAnim(); on('#cont', onContinue); on('#backm', backToMatch); on('#needs', () => { const a = pendingActs()[0]; if (a) go(a.v); });
   on('#nextseason', () => { newSeason(); save(); V = { s: 'home' }; view(); });
   on('#findjob', () => go({ s: 'managers', tab: 'jobs' }));
@@ -5442,7 +5443,7 @@ function scrOptions(){
       <label class="small"><input type="checkbox" id="hbuy"> Buy short-listed players</label><button class="btn y" id="hgo">Go on Holiday</button></div>
     <p class="small dim">The games are played while you are away; you come back to the news. With "buy", your assistant signs players from your short list at their asking price while a window is open and the money is there.</p>
     <div class="ptitle" style="margin-top:14px">Random events</div><label class="small"><input type="checkbox" id="oevt" ${S.noEvents ? '' : 'checked'}> Things happen: players in the papers, rows in training, fines for the supporters, betting probes</label>
-    <div class="ptitle" style="margin-top:14px">Game Settings</div>${settingsBody()}<div class="ptitle" style="margin-top:14px">Keys</div><p class="small dim" style="margin:4px 2px"><b>Enter</b> or <b>Space</b>: the green button on the left (Continue Game, Go to Match, Kick Off). <b>Esc</b>: Back. <b>Alt + ← / →</b>: the screens you came through.</p>` });
+    <div class="ptitle" style="margin-top:14px">Game Settings</div>${settingsBody()}<div class="ptitle" style="margin-top:14px">Keys</div><p class="small dim" style="margin:4px 2px"><b>Space</b> (or <b>Enter</b>): the green button on the left (Continue Game, Go to Match, Kick Off). <b>Esc</b> or <b>Backspace</b>: Back, to the same place on the screen. <b>↑ / ↓</b>: move through the list on the screen, <b>Enter</b> opens the row you are on. <b>← / →</b>: the previous or next screen in the menu (Squad, Tactics, Training…). <b>Alt + ← / →</b>: the screens you came through.</p>` });
   $('#oevt').addEventListener('change', e => { S.noEvents = !e.target.checked; save(); });
   $('#hgo').addEventListener('click', () => { const d = $('#hdur').value; goHoliday(d === 'end' ? '9999-12-31' : day(S.date, +d), $('#hpick').value, $('#hbuy').checked); });
   wireSettings(view);
@@ -8166,9 +8167,20 @@ function run(){
 document.addEventListener('keydown', e => {
   const t = e.target, typing = t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName));
   if (typing || e.ctrlKey || e.metaKey) return;
+  // as in Football Manager: Space goes on, Esc or Backspace goes back, the arrows move through the list on the screen
+  // (Enter opens the row you are on) and through the screens of the menu branch you are in
+  const kf = document.querySelector('.kfocus');
+  if (e.key === 'Enter' && kf && !e.altKey){ e.preventDefault(); kf.classList.remove('kfocus'); kf.click(); return; }
   if ((e.key === 'Enter' || e.key === ' ') && !(t && t.tagName === 'BUTTON') && !e.altKey){
     const g = document.querySelector('.side .sb.go:not([disabled])'); if (g){ e.preventDefault(); g.click(); } return; }
-  if (e.key === 'Escape'){ const b = document.querySelector('#back:not([disabled])'); if (b){ e.preventDefault(); b.click(); } return; }
+  if (e.key === 'Escape' || e.key === 'Backspace'){ const b = document.querySelector('#back:not([disabled])'); if (b){ e.preventDefault(); b.click(); } return; }
+  if (!e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')){
+    const L = [...document.querySelectorAll('.pane [data-pl], .pane [data-lp], .pane [data-lc], .pane [data-hn], .pane [data-hv], .pane [data-rep], .pane .clubs > button:not([disabled]), .pane .menu > button:not([disabled])')].filter(x => x.offsetParent && !x.closest('.kskip'));
+    if (!L.length) return; let i = L.indexOf(kf); i = i < 0 ? (e.key === 'ArrowDown' ? 0 : L.length - 1) : clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, L.length - 1);
+    if (kf) kf.classList.remove('kfocus'); L[i].classList.add('kfocus'); L[i].scrollIntoView({ block: 'nearest' }); e.preventDefault(); return; }
+  if (!e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')){
+    const cur = document.querySelector('.mtree .mi.on'); if (!cur) return; const sib = [...cur.parentElement.children].filter(x => x.classList.contains('mi')), i = sib.indexOf(cur), nx = sib[i + (e.key === 'ArrowRight' ? 1 : -1)];
+    if (nx){ e.preventDefault(); nx.click(); } return; }
   if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')){ const b = document.querySelector(e.key === 'ArrowLeft' ? '#navb:not([disabled])' : '#navf:not([disabled])'); if (b){ e.preventDefault(); b.click(); } }
 });
 </script>
