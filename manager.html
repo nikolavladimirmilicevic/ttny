@@ -330,6 +330,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
 .tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
+.trt{width:100%;margin:6px 0}.trt td{padding:3px 6px;border-bottom:1px solid rgba(255,255,255,.05)}.dd.sm{padding:2px 6px;font-size:12px}.devc{width:100%;max-width:760px;display:block;margin:6px auto}
 .rlrow{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}.rlh{display:flex;align-items:center;gap:8px}.rlh .pos{font-size:11px;color:var(--gold);min-width:34px}.rlc{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}.rlc .dd{max-width:220px}.spt td{vertical-align:top;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06)}.spt td.spgap{background:rgba(229,122,98,.08)}.spc{cursor:pointer;padding:1px 0;white-space:nowrap}
 .obt,.cnt{width:100%;max-width:820px;margin:4px auto 8px}.obt td,.cnt td{padding:5px 8px;vertical-align:middle}.obt td:first-child,.cnt td:first-child{color:var(--muted);width:210px}.cnt th{text-align:left}.stp2{display:inline-flex;align-items:center;gap:4px}.stp2 b{min-width:96px;text-align:center}.negres{border-left:3px solid var(--warn);padding:6px 10px;margin:8px auto;max-width:820px;background:rgba(255,255,255,.04);border-radius:0 6px 6px 0}.negbox{padding:8px 10px;background:rgba(255,255,255,.04);border-radius:6px}.negbox label{display:inline-flex;align-items:center;gap:4px}.cnhead{display:flex;gap:10px;flex-wrap:wrap;max-width:820px;margin:4px auto 8px}.cnhead>div{flex:1;min-width:150px;display:flex;flex-direction:column;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}.cnhead b{font-size:16px}.pat{color:var(--warn);letter-spacing:3px}.tag.must{background:#7A2E2E;color:#fff}.grade{display:inline-block;min-width:22px;text-align:center;font-weight:700;border-radius:4px;padding:0 6px;color:#fff}.gA{background:#1E6B43}.gB{background:#3D7A2E}.gC{background:#7D6E1C}.gD{background:#8A4A1E}.gE{background:#7A2E2E}.knb{display:flex;align-items:center;gap:10px;max-width:520px;margin:4px 0 8px}.offt td{vertical-align:middle}
 .cgt{table-layout:fixed;width:100%}.cgt td{overflow:hidden}.cgt .btn{white-space:nowrap}.ddclock{display:flex;align-items:center;gap:16px;max-width:760px;margin:4px auto 6px}.ddclock b{display:block;font-size:34px;font-variant-numeric:tabular-nums;line-height:1.1}.ddt td{padding:4px 6px}.mtg{display:flex;flex-direction:column;gap:6px}.mtr{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:8px}.mtr div{display:flex;gap:6px;flex-wrap:wrap}.clg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 10px;max-width:720px;margin:4px auto 8px}.clg label{display:flex;flex-direction:column;gap:2px}.clg .dd{width:100%}.tsg{display:grid;grid-template-columns:1fr 1fr;gap:4px}.tsg .sb{padding:5px 3px;font-size:11.5px;margin:0}.tsg .sb:disabled{opacity:.4;cursor:default}.tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
@@ -2029,6 +2030,7 @@ function eff(side, x){
   if (x.cf == null) x.cf = (Math.random() - .5) * (21 - hid(x.p).con) * .005;   // his consistency: how far his game strays today
   v *= 1 + x.cf;
   if (side.talk) v *= 1 + side.talk;   // the half-time team talk, for better or worse
+  if (x.tp) v *= 1 + x.tp; if (x.th) v *= 1 + x.th;   // how he took the team talks
   if (side.shout) v *= 1 + SH_V[side.shout.k] * side.shout.r;   // a word from the touchline
   if (side.cid === me() && S.pressMod && S.pressMod.d === S.date) v *= 1 + S.pressMod.v;   // what you told the press
   if (side.cid === me() && S.meetMod && S.meetMod.d === S.date) v *= 1 + S.meetMod.v;   // the last team meeting
@@ -2661,7 +2663,7 @@ function monthly(){
     q.dp = q.dn || {}; q.dn = snap; }
   ensureStaff(); const wages = (squadOf(me()).reduce((t, p) => t + S.con[p.id].w, 0) + S.staff.reduce((t, x) => t + x.w, 0)) * 4.3;
   S.fin.bal -= wages; S.fin.wages += wages;
-  try { instMonth(); } catch (e) { console.warn(e); }
+  try { instMonth(); devSnap(); } catch (e) { console.warn(e); }
   try { spEnsure(); spMonth(); loanMonth(); ownerMonth(); mgrMonth(); debtMonth(); evtMonth(); } catch (e) { console.warn(e); }
   S.fin.wk.push({ m: S.date.slice(0, 7), bal: S.fin.bal });
   if (S.round >= 3) news('board', 'A word from the board', boardComment());
@@ -5210,13 +5212,14 @@ function scrPlayer(){
     <tr class="me"><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td>${esc(club(p.club).name)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${avgRt(q)}</td></tr></tbody></table></div>`;
   if (tab === 'tr') body = transferTab(p);
   if (tab === 'rep') body = repHTML(p);
+  if (tab === 'dev') body = devHTML(p);
   if (tab === 'int') body = playerIntl(p);
   if (tab !== 'profile') body += `<div class="strip"><div>Apps<b>${q.apps}</b></div><div>Gls<b>${q.g}</b></div><div>Asts<b>${q.a}</b></div><div>MoM<b>${q.mom}</b></div><div>Yel<b>${q.yc}</b></div><div>Av R<b>${avgRt(q)}</b></div></div>`;
   const list = V.list || squadOf(p.club).map(x => x.id), at = list.indexOf(p.id);
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
   frame(ofClub(p.club, { nav: playerNav(p), short: esc(p.n), title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(${p.club === 0 ? 'Free agent' : `<a class="bclk" data-lc="${p.club}" href="#" title="Open ${esc(fullName(p.club))}">${esc(fullName(p.club))}</a>`})</span>`,
     act: mine ? `<button class="btn sm" id="promo">${firstTeam(me()).has(p.id) ? 'Move to Reserves' : 'Promote to First Team'}</button><button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
-    top: [['profile', 'Profile'], ...(mine && !onLoan(p) ? [['talk', 'Talk']] : []), ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['rep', 'Report'], ['hist', 'History'], ...(ntWorld().includes(ntName(p.nat)) ? [['int', 'International']] : [])], topOn: tab,
+    top: [['profile', 'Profile'], ...(mine && !onLoan(p) ? [['talk', 'Talk']] : []), ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['rep', 'Report'], ...(mine && !onLoan(p) ? [['dev', 'Development']] : []), ['hist', 'History'], ...(ntWorld().includes(ntName(p.nat)) ? [['int', 'International']] : [])], topOn: tab,
     onTab: k => { V = { ...V, tab: k, say: null, nsay: null, ow: null, oy: null, orl: null, ocl: null, tcl: null, ob: null, rebid: 0, cd: null, cnr: null, sneg: null, sd: null, ssay: null }; view(); }, body,
     next: at >= 0 && at < list.length - 1 ? () => { V = { ...V, id: list[at + 1] }; view(); } : null }));
   const pk = $('#pick'); if (pk) pk.addEventListener('click', () => { toggleSel(p.id); view(); });
@@ -5224,6 +5227,7 @@ function scrPlayer(){
     if (!up){ t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); }
     S.promo[p.id] = up ? 1 : 0; save(); toast(`${cmName(p.n)} ${up ? 'joins the first team' : 'goes to the reserves'}.`); view(); });
   if (tab === 'tr') wireTransfer(p);
+  if (tab === 'dev') devWire();
   if (tab === 'con' && p.club === me() && S.cn && S.cn[p.id] && S.cn[p.id].ctx === 'renew' && !S.cn[p.id].end) cnWire(p, 'renew');
   const scp = $('#scpl'); if (scp) scp.addEventListener('click', () => { toast(scoutPlayer(p)); save(); view(); });
   if (tab === 'int'){ document.querySelectorAll('[data-nt]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); go({ s: 'nation', n: el.dataset.nt }); }));
@@ -5940,6 +5944,118 @@ function wireTransfer(p){
     if (no){ b.st = 'off'; news('club', `${p.n} turns you down`, `<b>${esc(no)}</b>`, { id: p.id }); toast(`${cmName(p.n)} does not want to join.`); return; }
     if (S.cn) delete S.cn[p.id]; cnOpen(p, 'sign', b); V.cd = null; V.cnr = null; });
   const b = cur(); if (b && b.st === 'yes' && !b.loan) cnWire(p, 'sign', b);
+}
+/* ==== team talks as in a modern game: before kick-off, at half-time and at full time you choose what to say and how
+   (calmly, assertively, passionately), and each player reacts in his own way, from his personality, his morale and the
+   situation: fired up, motivated, focused, unmoved, or nervous, complacent, annoyed. Then a word with one man at a time.
+   Before the game and at half-time a reaction lifts or drags his game; at full time it moves his morale ==== */
+const TONES = [['calm', 'Calmly'], ['ass', 'Assertively'], ['pas', 'Passionately']];
+const PRE_TALKS = [['nopr', 'No pressure', 'Nobody expects anything of us today. Go out and enjoy it.'], ['win', 'Expect a win', 'I expect us to win this one.'], ['show', 'Show me', 'Go out and show me what you can do.'], ['fans', 'For the fans', 'Do it for the people in the stands.']];
+const ONE_TALKS = [['praise', 'Praise'], ['enc', 'Encourage'], ['dem', 'Demand more'], ['calm', 'Calm down']];
+const usSide = M => M.h === me() ? M.H : M.A;
+function reactWord(r, why){ return r >= .03 ? ['Fired up', 'var(--win)'] : r >= .015 ? ['Motivated', '#9AD07A'] : r >= .005 ? ['Focused', 'var(--text)'] : r > -.005 ? ['Unmoved', 'var(--muted)'] : why === 'nerv' ? ['Nervous', '#f2a65a'] : why === 'ann' ? ['Annoyed', 'var(--loss)'] : why === 'comp' ? ['Complacent', '#f2a65a'] : ['Unhappy', 'var(--loss)']; }
+// one man's reaction to what was said and how
+function talkReact(x, base, tone, stage, k, d){
+  const h = hid(x.p), q = ps(x.id), r0 = rng(`tr-${S.date}-${x.id}-${stage}-${k}`)(); let r = base, why = '';
+  const hard = ['win', 'demand', 'dem', 'crit'].includes(k), soft = ['praise', 'nopr'].includes(k);
+  if (tone === 'pas'){ r *= 1.4; if (h.prs <= 8 && hard){ r -= .022; why = 'nerv'; } }
+  else if (tone === 'ass'){ if (h.det <= 9) r += .006; if (h.tem <= 6 && hard){ r -= .022; why = 'ann'; } }
+  else { r *= .8; if (h.prs <= 8) r += .008; }
+  if (soft && base > 0 && d >= 0 && h.pro + h.det <= 18){ r -= .016; why = why || 'comp'; }
+  if (hard && h.det >= 15) r += .004;
+  if (q.mor < 40) r -= .006;
+  r += (r0 - .5) * .012 * (21 - h.con) / 10;
+  r = clamp(Math.round(r * 1000) / 1000, -.035, .045); return { r, w: reactWord(r, why) }; }
+function talkBase(stage, k, M){
+  const us = usSide(M), them = us === M.H ? M.A : M.H, d = us.goals - them.goals, { exp } = ftExp(M);
+  if (stage === 'pre') return { nopr: exp < .4 ? .025 : exp < .6 ? .006 : -.012, win: exp > .6 ? .025 : exp > .4 ? .012 : -.014, show: .012, fans: (us === M.H ? .016 : .006) + (M.derby ? .01 : 0) }[k] || 0;
+  const avg = us.on.length ? us.on.reduce((t, x) => t + (us.rate[x.id] || 0), 0) / us.on.length : 0, poor = avg < -.15, good = avg > .25;
+  return { praise: d > 0 ? .03 : d === 0 ? (good ? .02 : -.005) : (good ? .005 : -.02), demand: d < 0 ? .03 : d === 0 ? (poor ? .025 : .01) : (good ? -.02 : .005), calm: .012, none: 0 }[k] || 0;
+}
+function giveTalk(stage, k){
+  const L = LIVE, M = L.M, us = usSide(M), them = us === M.H ? M.A : M.H, d = us.goals - them.goals, tone = L.tone || 'calm';
+  M.tr = M.tr || {}; if (M.tr[stage]) return;
+  const base = talkBase(stage, k, M), list = [];
+  for (const x of us.on.filter(y => !y.off)){
+    const { r, w } = k === 'none' ? { r: 0, w: reactWord(0) } : talkReact(x, base, tone, stage, k, d);
+    if (stage === 'pre') x.tp = r; else { x.tp = (x.tp || 0) * .5; x.th = r; }
+    const q = ps(x.id); q.mor = clamp((q.mor || 70) + Math.round(r * 120), 15, 100); list.push([x.id, w[0], w[1]]); }
+  M.tr[stage] = { k, tone, list };
+  const T = (stage === 'pre' ? PRE_TALKS : HT_TALKS).find(t => t[0] === k), up = list.filter(x => ['Fired up', 'Motivated'].includes(x[1])).length, down = list.filter(x => ['Nervous', 'Annoyed', 'Complacent', 'Unhappy'].includes(x[1])).length;
+  if (stage === 'ht') M.talk = k;
+  say(M, us, up > down ? 'yel' : 'minor', `${stage === 'pre' ? 'Team talk before kick-off' : 'Half-time team talk'}: "${T[2]}" ${k === 'none' ? 'The dressing room is quiet.' : up >= 7 ? 'The players are fired up.' : up > down ? 'Most of the players respond well.' : down > up ? 'Some of the players do not take it well.' : 'The players look unmoved.'}`);
+  save(); liveSave(true); viewMatch();
+}
+function oneTalk(stage, id, k){
+  const L = LIVE, M = L.M, us = usSide(M), x = us.on.find(y => y.id === id), T = M.tr && M.tr[stage]; if (!x || !T) return;
+  M.iw = M.iw || {}; const W = M.iw[stage] = M.iw[stage] || {}; if (W[id] || Object.keys(W).length >= 3) return;
+  const q = ps(id), rt = stage === 'pre' ? (recentRt(q) ?? 6.6) : clamp(6.3 + (us.rate[id] || 0), 1, 10), h = hid(x.p), booked = (us.ev[id] || {}).yc;
+  const base = { praise: rt >= 7 ? .02 : rt >= 6.5 ? .008 : -.006, enc: rt < 6.3 || x.p.age <= 21 ? .016 : .006, dem: rt < 6.2 ? .02 : rt < 6.8 ? .004 : -.012, calm: booked || h.prs <= 8 || h.tem <= 6 ? .016 : .002 }[k];
+  const { r, w } = talkReact(x, base, L.tone || 'calm', stage + '1', k, 0);
+  if (stage === 'pre') x.tp = clamp((x.tp || 0) + r, -.04, .05); else x.th = clamp((x.th || 0) + r, -.04, .05);
+  q.mor = clamp(q.mor + Math.round(r * 100), 15, 100); W[id] = k;
+  const row = T.list.find(y => y[0] === id); if (row){ row[1] = w[0]; row[2] = w[1]; row[3] = k; }
+  say(M, us, 'minor', `A word with ${esc(surname(x.p.n))}, who looks ${w[0].toLowerCase()}.`);
+  save(); liveSave(true); viewMatch();
+}
+function talkUI(stage, opts){
+  const L = LIVE, M = L.M, T = (M.tr || {})[stage], tone = L.tone || 'calm', us = usSide(M);
+  const title = stage === 'pre' ? 'Team talk before kick-off' : 'Half-time team talk';
+  if (!T) return `<div class="talk"><div class="ovh"><span>${title}</span><span class="small dim">${opts.sub}</span></div><div class="tools" style="margin:4px 0"><span class="small dim">Tone</span><span class="seg" id="ttone">${TONES.map(([k, n]) => `<button data-v="${k}" class="${tone === k ? 'on' : ''}">${n}</button>`).join('')}</span></div><div class="talkb">${(stage === 'pre' ? PRE_TALKS : HT_TALKS).map(([k, n, q]) => `<button data-gtalk="${stage}|${k}"><b>${n}</b><span>"${q}"</span></button>`).join('')}</div></div>`;
+  const W = (M.iw || {})[stage] || {}, left = 3 - Object.keys(W).length, Tt = (stage === 'pre' ? PRE_TALKS : HT_TALKS).find(t => t[0] === T.k);
+  return `<div class="talk done"><div class="ovh"><span>${title}</span><span class="small dim">${(TONES.find(t => t[0] === T.tone) || [, ''])[1]}: "${esc(Tt ? Tt[2] : '')}"</span></div>
+    <table class="trt"><tbody>${T.list.map(([id, w, c, k]) => { const p = P.get(id); return p ? `<tr><td><b>${esc(cmName(p.n))}</b></td><td style="color:${c}">${w}</td><td class="r">${k ? `<span class="small dim">${(ONE_TALKS.find(t => t[0] === k) || [, ''])[1]}</span>` : left > 0 && us.on.some(x => x.id === id && !x.off) ? `<select class="dd sm" data-otalk="${stage}|${id}"><option value="">A word…</option>${ONE_TALKS.map(([k2, n]) => `<option value="${k2}">${n}</option>`).join('')}</select>` : ''}</td></tr>` : ''; }).join('')}</tbody></table>
+    <p class="small dim">${left > 0 ? `You can have a word with ${left} more player${left > 1 ? 's' : ''}.` : 'You have had your words.'} The calm settle the nervous; passion fires up the brave and frightens the anxious; a hard word annoys the hot-headed; praise can make the lazy complacent.</p></div>`;
+}
+function talkWire(){
+  document.querySelectorAll('#ttone button').forEach(b => b.addEventListener('click', () => { LIVE.tone = b.dataset.v; viewMatch(); }));
+  document.querySelectorAll('[data-gtalk]').forEach(b => b.addEventListener('click', () => { const [st, k] = b.dataset.gtalk.split('|'); giveTalk(st, k); }));
+  document.querySelectorAll('[data-otalk]').forEach(s => s.addEventListener('change', () => { if (!s.value) return; const [st, id] = s.dataset.otalk.split('|'); oneTalk(st, +id, s.value); }));
+}
+// at full time: each man's reaction, from the change in his morale
+function ftReactHTML(M){ const R = M.ftReact; if (!R || !R.length) return '';
+  return `<table class="trt"><tbody>${R.map(([id, dm]) => { const p = P.get(id); if (!p) return ''; const w = dm >= 4 ? ['Delighted', 'var(--win)'] : dm > 0 ? ['Pleased', '#9AD07A'] : dm === 0 ? ['Indifferent', 'var(--muted)'] : dm >= -3 ? ['Unhappy', '#f2a65a'] : ['Angry', 'var(--loss)']; return `<tr><td><b>${esc(cmName(p.n))}</b></td><td style="color:${w[1]}">${w[0]}</td></tr>`; }).join('')}</tbody></table>`; }
+/* ==== a player's development: every month the club writes down each of your players' attributes and how he played;
+   his Development screen draws any attribute over time, shows the month-by-month changes in the ones that matter for
+   his position, and what the coaches make of his progress (their eye, not the truth) ==== */
+function devSnap(){
+  const m = S.date.slice(0, 7);
+  for (const p of squadOf(me())){ const q = ps(p.id); q.ah = q.ah || []; if (q.ah.length && q.ah[q.ah.length - 1].m === m) continue;
+    const a = Object.keys(ATTR_NAME).map(k => A(p, k));   // in the order of the attribute list, to keep the save small
+    const rts = (q.rt || []).slice(q.ahN || 0); q.ahN = (q.rt || []).length;
+    q.ah.push({ m, a, apps: rts.length, rt: rts.length ? Math.round(rts.reduce((t, v) => t + v, 0) / rts.length * 10) / 10 : null }); if (q.ah.length > 24) q.ah.shift(); }
+}
+function devChart(L, k){
+  const W = 640, H = 180, pad = 30, vs = L.map(x => x.a[k]), lo = Math.max(1, Math.min(...vs) - 4), hi = Math.min(99, Math.max(...vs) + 4), n = L.length;
+  const X = i => pad + (n <= 1 ? (W - 2 * pad) / 2 : i * (W - 2 * pad) / (n - 1)), Y = v => H - 22 - (v - lo) / Math.max(1, hi - lo) * (H - 40);
+  const pts = vs.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" class="devc" role="img" aria-label="${esc(TT(ATTR_NAME[k]))} over time">
+    ${[lo, Math.round((lo + hi) / 2), hi].map(v => `<line x1="${pad}" x2="${W - pad}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(255,255,255,.08)"/><text x="${pad - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${v}</text>`).join('')}
+    <polyline points="${pts}" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-linejoin="round"/>
+    ${vs.map((v, i) => `<circle cx="${X(i)}" cy="${Y(v)}" r="3.5" fill="var(--gold)"><title>${L[i].m}: ${v}</title></circle>`).join('')}
+    ${L.map((x, i) => i % Math.max(1, Math.ceil(n / 8)) === 0 || i === n - 1 ? `<text x="${X(i)}" y="${H - 5}" text-anchor="middle" font-size="10" fill="var(--muted)">${new Date(x.m + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'short' })} ${x.m.slice(2, 4)}</text>` : '').join('')}</svg>`;
+}
+function devHTML(p){
+  const AK = Object.keys(ATTR_NAME), q = ps(p.id), L = (q.ah || []).map(x => Array.isArray(x.a) ? { ...x, a: Object.fromEntries(AK.map((k, i) => [k, x.a[i]])) } : x), cur = { m: S.date.slice(0, 7), a: Object.fromEntries(Object.keys(ATTR_NAME).map(k => [k, A(p, k)])) };
+  if (!L.length || L[L.length - 1].m !== cur.m) L.push(cur);
+  const keys = (POS_KEYS[p.prim] || POS_KEYS.CMF).filter(k => ATTR_NAME[k]), k = V.dk && ATTR_NAME[V.dk] ? V.dk : keys[0];
+  const first = L[0], last = L[L.length - 1], six = L[Math.max(0, L.length - 7)];
+  const ch = (a, b) => { const d = b - a; return d > 0 ? `<span style="color:var(--win)">▲ ${d}</span>` : d < 0 ? `<span style="color:var(--loss)">▼ ${-d}</span>` : '<span class="dim">–</span>'; };
+  const all = Object.keys(ATTR_NAME).filter(x => p.prim === 'GK' || !GK_KEYS.includes(x)).sort((x, y) => ATTR_NAME[x].localeCompare(ATTR_NAME[y]));
+  // the coaches' view of his progress over the last months (with their judging error)
+  const gain = keys.reduce((t, x) => t + (last.a[x] - six.a[x]), 0) / keys.length + (rng(`dv-${p.id}-${S.date.slice(0, 7)}`)() * 2 - 1) * assSpread() / 12;
+  const word = L.length < 3 ? 'Too early to say: the club has only just started keeping his record.' : gain >= 1.5 ? 'Coming on very well.' : gain >= .5 ? 'Making steady progress.' : gain > -.5 ? (p.age >= 30 ? 'Holding his level.' : 'Not making much progress.') : 'Going backwards.';
+  const months = L.filter(x => x.apps != null).slice(-8);
+  return `<div class="ptitle">Development</div><div class="ovgrid">
+    <div class="ovc"><div class="ovh"><span>The coaches' view</span></div><p style="margin:4px 0"><b class="yel">${word}</b></p><dl class="kv"><dt>Personality</dt><dd>${persWord(p)}</dd><dt>Age</dt><dd>${p.age}</dd><dt>Individual training</dt><dd>${esc((FOCI[itrOf(p.id).f] || ['None'])[0])}</dd>${prospectWord(p) ? `<dt>Outlook</dt><dd>${prospectWord(p)}</dd>` : ''}</dl></div>
+    <div class="ovc"><div class="ovh"><span>Month by month</span></div>${months.length ? `<table><thead><tr><th>Month</th><th class="r">Games</th><th class="r">Av R</th></tr></thead><tbody>${months.map(x => `<tr><td>${new Date(x.m + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}</td><td class="r">${x.apps}</td><td class="r">${x.rt ?? '-'}</td></tr>`).join('')}</tbody></table>` : '<p class="dim small">The record starts at the end of this month.</p>'}</div></div>
+    <div class="tools"><span class="small dim">Attribute</span><select class="dd" id="devk">${all.map(x => `<option value="${x}" ${x === k ? 'selected' : ''}>${esc(TT(ATTR_NAME[x]))}</option>`).join('')}</select><span class="small dim">since ${new Date(first.m + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}: ${first.a[k]} to ${last.a[k]}</span></div>
+    ${L.length >= 2 ? devChart(L, k) : '<p class="dim small">One month of record so far: the chart grows as the season goes on.</p>'}
+    <div class="ptitle">Key attributes for his position</div><table><thead><tr><th>Attribute</th><th class="r">Now</th><th class="r">Last six months</th><th class="r">Since the record began</th></tr></thead><tbody>${keys.map(x => `<tr class="click" data-devk="${x}"><td>${esc(TT(ATTR_NAME[x]))}</td><td class="r av ${vcls(last.a[x])}">${last.a[x]}</td><td class="r">${ch(six.a[x], last.a[x])}</td><td class="r">${ch(first.a[x], last.a[x])}</td></tr>`).join('')}</tbody></table>`;
+}
+function devWire(){
+  const s = $('#devk'); if (s) s.addEventListener('change', () => { V = { ...V, dk: s.value }; view(); });
+  document.querySelectorAll('[data-devk]').forEach(r => r.addEventListener('click', () => { V = { ...V, dk: r.dataset.devk }; view(); }));
 }
 /* ==== player roles and duties: each man in the side gets a role for his position (a ball-playing defender, a
    wing-back, a deep-lying playmaker, a poacher...) and a duty (defend, support, attack). A role shifts what the side does
@@ -8618,10 +8734,12 @@ function asstNotes(M){
   return { who: a ? a.n : 'Your assistant', notes: out.sort((x, y) => y[0] - x[0]).slice(0, n).map(x => x[1]) };
 }
 function talkPanel(){
-  const L = LIVE, M = L.M; if (!L.atHT || M.over || M.talk || M.half > 2) return '';
-  const us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, d = us.goals - them.goals;
+  const L = LIVE, M = L.M; if (M.over || L.nt) return '';
+  const us = usSide(M), them = us === M.H ? M.A : M.H, d = us.goals - them.goals;
+  if (!L.started) return talkUI('pre', { sub: `${club(them.cid).name}${M.derby ? ', a derby' : ''}: ${ftExp(M).exp > .6 ? 'we are expected to win' : ftExp(M).exp < .4 ? 'few expect us to win' : 'a game that could go either way'}` });
+  if (!L.atHT || M.half > 2) return '';
   const an = asstNotes(M);
-  return `<div class="asst"><div class="ovh"><span>Assistant's view</span><span class="small dim">${esc(an.who)}</span></div><ul>${an.notes.map(t => `<li>${t}</li>`).join('')}</ul></div><div class="talk"><div class="ovh"><span>Half-time team talk</span><span class="small dim">${d > 0 ? `${d} up at the break` : d < 0 ? `${-d} down at the break` : 'level at the break'}</span></div><div class="talkb">${HT_TALKS.map(([k, n, q]) => `<button data-talk="${k}"><b>${n}</b><span>"${q}"</span></button>`).join('')}</div></div>`;
+  return `<div class="asst"><div class="ovh"><span>Assistant's view</span><span class="small dim">${esc(an.who)}</span></div><ul>${an.notes.map(t => `<li>${t}</li>`).join('')}</ul></div>${talkUI('ht', { sub: d > 0 ? `${d} up at the break` : d < 0 ? `${-d} down at the break` : 'level at the break' })}`;
 }
 // how the result stood against what was expected of it (the board's view and the full-time talk's)
 function ftExp(M){
@@ -8637,14 +8755,17 @@ function ftTalk(k){
   const L = LIVE, M = L.M; if (M.ftTalk) return; const us = M.h === me() ? M.H : M.A, { d, won } = ftExp(M);
   const base = { praise: d > .1 ? 5 : d > -.1 ? (won ? 3 : 1) : -3, crit: d < -.3 ? 3 : d < -.1 ? 1 : won ? -6 : -3, move: d < -.1 ? 2 : 1, none: 0 }[k];
   const ids = [...new Set([...us.on.map(x => x.id), ...us.subbed.map(x => x[1])])];
-  ids.forEach(id => { const q = ps(id), r = us.rate[id] || 6.5, own = k === 'praise' && r < 6 ? -1 : k === 'crit' && r >= 7.5 ? -2 : 0; q.mor = clamp(q.mor + base + own + Math.round((rng(`ft-${S.date}-${id}`)() - .5) * 2), 15, 100); });
+  M.ftReact = [];
+  ids.forEach(id => { const q = ps(id), r = us.rate[id] || 6.5, own = k === 'praise' && r < 6 ? -1 : k === 'crit' && r >= 7.5 ? -2 : 0, p = P.get(id), h = p ? hid(p) : { tem: 10, pro: 10 };
+    const pers = k === 'crit' ? (h.tem <= 6 ? -2 : h.pro >= 15 ? 1 : 0) : k === 'praise' && h.pro + h.det <= 18 ? -1 : 0, dm = k === 'none' ? 0 : base + own + pers + Math.round((rng(`ft-${S.date}-${id}`)() - .5) * 2);   // the hot-headed bristle at criticism, the professional take it
+    q.mor = clamp(q.mor + dm, 15, 100); M.ftReact.push([id, dm]); });
   M.ftTalk = { k, v: base };
   const t = FT_TALKS.find(x => x[0] === k); say(M, us, base > 0 ? 'yel' : 'minor', `Full-time team talk: "${t[2]}" ${k === 'none' ? 'The players leave in silence.' : base >= 4 ? 'The players are delighted.' : base > 0 ? 'The players take it well.' : base === 0 ? 'It makes no difference.' : 'The players do not agree with you.'}`);
   save(); liveSave(true); viewMatch();
 }
 function ftTalkPanel(M){
   if (M.ftTalk){ const t = FT_TALKS.find(x => x[0] === M.ftTalk.k), v = M.ftTalk.v;
-    return `<div class="talk done"><div class="ovh"><span>Full-time team talk</span><span class="small ${v > 0 ? 'win' : v < 0 ? 'loss' : 'dim'}">${v >= 4 ? 'Morale well up' : v > 0 ? 'Morale up' : v < 0 ? 'Morale down' : 'No change'}</span></div><p class="small" style="margin:4px 0 0">You told them: <i>"${t[2]}"</i></p></div>`; }
+    return `<div class="talk done"><div class="ovh"><span>Full-time team talk</span><span class="small ${v > 0 ? 'win' : v < 0 ? 'loss' : 'dim'}">${v >= 4 ? 'Morale well up' : v > 0 ? 'Morale up' : v < 0 ? 'Morale down' : 'No change'}</span></div><p class="small" style="margin:4px 0 0">You told them: <i>"${t[2]}"</i></p>${ftReactHTML(M)}</div>`; }
   return `<div class="talk"><div class="ovh"><span>Full-time team talk</span><span class="small dim">what you say stays with them to the next match</span></div><div class="talkb">${FT_TALKS.map(([k, n, q]) => `<button data-fttalk="${k}"><b>${n}</b><span>"${q}"</span></button>`).join('')}</div></div>`;
 }
 function ftPanel(){
@@ -8721,6 +8842,7 @@ function wireMatchPanel(){
   const L = LIVE; if (!L) return; const M = L.M, us = M.h === me() ? M.H : M.A;
   if (MTAB === 'tactics') boardWire(boardLive());
   document.querySelectorAll('[data-talk]').forEach(b => b.addEventListener('click', () => teamTalk(b.dataset.talk)));
+  talkWire();
   document.querySelectorAll('[data-fttalk]').forEach(b => b.addEventListener('click', () => ftTalk(b.dataset.fttalk)));
   document.querySelectorAll('.seg[data-mk] button').forEach(b => b.addEventListener('click', () => { const k = b.parentElement.dataset.mk; us.t[k] = +b.dataset.v; if (!M.over) say(M, us, 'minor', `${esc(club(us.cid).name)} change their ${k === 'men' ? 'approach: ' + MENT[us.t.men].toLowerCase() : k === 'pass' ? 'passing: ' + PASS[us.t.pass].toLowerCase() : 'tackling: ' + TACK[us.t.tack].toLowerCase()}.`); viewMatch(); }));
   document.querySelectorAll('[data-mt2]').forEach(b => b.addEventListener('click', () => { us.t[b.dataset.mt2] = !us.t[b.dataset.mt2]; viewMatch(); }));
