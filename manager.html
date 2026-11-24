@@ -326,7 +326,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok .tpc{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);font:800 9px/1 var(--body);color:#0B1626;background:#5CC08A;border-radius:4px;padding:2px 4px;letter-spacing:.03em;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.5)}.tok .dot:has(.tpc)+.nm{margin-top:7px}
 .tboard .instr{grid-template-columns:104px minmax(0,1fr)}.tboard .instr .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%;min-width:0}.tboard .instr .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px;text-align:center}
 @media(max-width:520px){.tboard .instr{grid-template-columns:1fr}}
-.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}.stc{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 9px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit;font:inherit;font-size:12.5px;cursor:pointer;text-align:left}.stc.sel{border-color:var(--gold)}.stc.on{background:rgba(76,214,140,.14)}.stinfo{margin:8px 0 4px}.dhc{width:100%;max-height:230px;display:block}.kfocus{outline:2px solid var(--gold)!important;outline-offset:-2px;background:rgba(76,214,140,.10)!important}.calw{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}.calw label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}.calw select{width:100%}.oir{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)}.oic{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px}.oic .tog,.oic .seg button{font-size:11px;padding:3px 7px}.soc{display:flex;flex-direction:column;gap:8px;max-width:640px;margin:0 auto}.socp{background:var(--panel-2);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:4px}.soch{display:flex;justify-content:space-between;gap:8px}.oit .seg{margin:2px 4px 2px 0}.oit .seg button{font-size:11px;padding:3px 6px}@media(max-width:620px){.calw{grid-template-columns:repeat(4,1fr)}}
+.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}.stc{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 9px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit;font:inherit;font-size:12.5px;cursor:pointer;text-align:left}.stc.sel{border-color:var(--gold)}.stc.on{background:rgba(76,214,140,.14)}.stinfo{margin:8px 0 4px}.dhc{width:100%;max-height:230px;display:block}.stp{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}.stp:last-child{border-bottom:0}.stab{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px}.stab span{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted)}.stab i{font-style:normal}.sab{display:inline-block;min-width:22px;text-align:center;border-radius:5px;padding:1px 4px;font-weight:600;font-size:12px;background:rgba(255,255,255,.07);color:var(--text)}.sab.hi{color:#4CD68C}.sab.md{color:#E8C25A}.sab.lo{color:#E5675F}.sab.main{outline:1px solid currentColor;font-weight:800}.kfocus{outline:2px solid var(--gold)!important;outline-offset:-2px;background:rgba(76,214,140,.10)!important}.calw{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}.calw label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}.calw select{width:100%}.oir{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)}.oic{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px}.oic .tog,.oic .seg button{font-size:11px;padding:3px 7px}.soc{display:flex;flex-direction:column;gap:8px;max-width:640px;margin:0 auto}.socp{background:var(--panel-2);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:4px}.soch{display:flex;justify-content:space-between;gap:8px}.oit .seg{margin:2px 4px 2px 0}.oit .seg button{font-size:11px;padding:3px 6px}@media(max-width:620px){.calw{grid-template-columns:repeat(4,1fr)}}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
 .tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
@@ -3900,8 +3900,8 @@ function menuTree(o, unread){
   const mine = me(), cv = (cid, tab) => ({ s: 'club', cid, tab });
   // your club in the order of a week's work: the side, the plan, the games, then the business; other clubs as a scout sees them
   const clubKids = cid => (cid === mine
-    ? [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['dev', 'Development Centre'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['frd', 'Friendlies'], ['tr', 'Transfers'], ['fa', 'Free Agents'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']]
-    : [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'General Info']])
+    ? [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['dev', 'Development Centre'], ['staff', 'Staff'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['frd', 'Friendlies'], ['tr', 'Transfers'], ['fa', 'Free Agents'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']]
+    : [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['staff', 'Staff'], ['hist', 'History'], ['info', 'General Info']])
     .map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'frd' ? { s: 'friendlies' } : t === 'tr' ? { s: 'transfers' } : t === 'fa' ? { s: 'transfers', tab: 'fa' } : t === 'squad' ? { ...cv(cid, 'squad'), team: 'first' } : t === 'res' ? { ...cv(cid, 'squad'), team: 'res' } : cv(cid, t) }));
   const otherKids = cid => [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']].map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'squad' ? { ...cv(cid, t), team: 'first' } : cv(cid, t) }));
   const byName = L => L.slice().sort((a, b) => a.name.localeCompare(b.name));
@@ -4246,12 +4246,12 @@ function scrNews(){
 
 /* ---- a club: squad, next match, fixtures, general info; yours also tactics, training, last match, the league, the board ---- */
 function scrClub(){
-  const cid = V.cid || me(), mine = cid === me(), c = club(cid), sec = !LG.has(cid), tab = sec && !['ov', 'squad', 'hist', 'info'].includes(V.tab) ? 'ov' : V.tab || 'ov';
+  const cid = V.cid || me(), mine = cid === me(), c = club(cid), sec = !LG.has(cid), tab = sec && !['ov', 'squad', 'staff', 'hist', 'info'].includes(V.tab) ? 'ov' : V.tab || 'ov';
   if (sec && !S.tac[cid]) S.tac[cid] = autoTactic(cid);
-  const top = sec ? [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']] : [['ov', 'Overview'], ['squad', 'Squad'], ['transfers', 'Transfers'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', mine ? 'Finances &amp; Info' : 'General Info']];
-  const bottom = sec ? [] : mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['dev', 'Development Centre'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['league', esc(D.league)], ['last', 'Last Match']];
+  const top = sec ? [['ov', 'Overview'], ['squad', 'Squad'], ['staff', 'Staff'], ['hist', 'History'], ['info', 'General Info']] : [['ov', 'Overview'], ['squad', 'Squad'], ['transfers', 'Transfers'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', mine ? 'Finances &amp; Info' : 'General Info']];
+  const bottom = sec ? [] : mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['dev', 'Development Centre'], ['staff', 'Staff'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['staff', 'Staff'], ['league', esc(D.league)], ['last', 'Last Match']];
   const o = ofClub(cid, { nav: clubNav(cid), title: esc(fullName(cid)), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'ov' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
-  (({ ov: clubOverview, hist: clubHistory, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard, ...(mine ? { dress: clubDressing, med: clubMedical, data: clubData, dev: clubDev } : {}) })[tab] || clubSquad)(cid, o);
+  (({ ov: clubOverview, hist: clubHistory, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard, staff: clubStaff, ...(mine ? { dress: clubDressing, med: clubMedical, data: clubData, dev: clubDev } : {}) })[tab] || clubSquad)(cid, o);
 }
 function playerFlags(p){
   const q = ps(p.id), out = [];
@@ -7128,6 +7128,40 @@ function trialTick(){
     if (!FAP.has(p.id)) (S.trialDisc = S.trialDisc || {})[p.id] = S.season;
     news('club', `${p.n}'s trial is over`, `Your coaches think <span class="lk" data-lp="${p.id}">${esc(p.n)}</span> ${v}. ${FAP.has(p.id) ? 'He is still a free agent: make him an offer if you want him.' : `${esc(club(p.club).name)} would let him go for a little less, and he would come.`}`, { id: p.id }); }
   S.trials = L.filter(y => S.date < y.until);
+}
+/* ---- the club's staff on one screen: for your club everyone, role by role (the manager, the director of football, the
+   assistant, the coaches, the goalkeeping coaches, the physios, the scouts and what each is doing), with their abilities
+   (1 to 20; the one that matters for the job highlighted), wages and responsibilities. For another club: its manager and,
+   where Transfermarkt's staff page is in the game (the Premier League), its backroom staff by name ---- */
+function clubStaff(cid, o){
+  const mine = cid === me(), c = club(cid), num = (v, hi) => `<span class="sab ${v >= 16 ? 'hi' : v >= 11 ? 'md' : 'lo'}${hi ? ' main' : ''}">${v}</span>`;
+  const person = (nm, nat, age, extra) => `<div class="stp"><div>${nat ? flag(nat) : ''}<b>${esc(nm)}</b>${age ? ` <span class="small dim">${age}</span>` : ''}</div>${extra || ''}</div>`;
+  if (!mine){
+    const L = c.staff || [], by = r => L.filter(x => x.r === r);
+    const sec = (t, r) => by(r).length ? `<div class="ovc"><div class="ovh"><span>${t}</span></div>${by(r).map(x => person(x.n, x.nat, x.age)).join('')}</div>` : '';
+    o.body = `<div class="ovgrid"><div class="ovc"><div class="ovh"><span>Manager</span></div>${person(coachOf(cid) || 'Not known', null, null)}</div>${sec('Assistant manager', 'ass')}${sec('Coaches', 'coach')}${sec('Goalkeeping coaches', 'gk')}${sec('Physios', 'phys')}</div>
+      ${L.length ? '<p class="small dim">Names from Transfermarkt\'s staff page.</p>' : '<p class="small dim">Only the manager of this club is in the game.</p>'}`;
+    frame(o); return;
+  }
+  ensureStaff(); const St = S.staff || [], main = { ass: 'ju', coach: 'co', gk: 'cg', phys: 'ph', dof: 'ju' }, wageAll = St.reduce((t, x) => t + x.w, 0);
+  const abil = x => `<div class="stab">${[['co', 'Coaching'], ['cg', 'GK coaching'], ['ju', 'Judging'], ['mm', 'Man management'], ['ph', 'Physio']].map(([k, n]) => `<span title="${n}"><i>${n}</i>${num(x[k], main[x.role] === k)}</span>`).join('')}</div>`;
+  const does = x => { const R = RESP.filter(([k, , , can]) => whoDoes(k) === x.role && can.includes(x.role)).map(r => r[1].toLowerCase()); return R.length ? `<div class="small" style="margin-top:4px">Looks after: ${R.join(', ')}</div>` : ''; };
+  const card = (t, L, empty) => `<div class="ovc"><div class="ovh"><span>${t}</span><span class="small dim">${L.length ? '' : ''}</span></div>${L.length ? L.map(x => person(x.n, x.nat, x.age, `${abil(x)}<div class="small dim">${wage(x.w)}${x.ex ? ` · former player (${esc(x.exClub || '')})` : ''}</div>${does(x)}`)).join('') : `<p class="small dim">${empty}</p>`}</div>`;
+  const role = r => St.filter(x => x.role === r);
+  const sc = (S.scouts || [null, null]).map((x, k) => { const t = !x ? 'Free' : x.reg ? `Covering ${(REGIONS.find(y => y[0] === x.reg) || [, '?'])[1]} (${x.foc === 'now' ? 'ready now' : 'young talent'}), back ${shortDate(day(x.from, scoutDays() + 7))}` : x.c ? `Watching ${club(x.c).name}, back ${shortDate(day(x.from, scoutDays()))}` : x.next ? 'Watching the next opponents' : 'Free'; return `<div class="stp"><div><b>${SCOUT_NAMES[k]}</b></div><div class="small">${esc(t)}</div></div>`; }).join('');
+  o.body = `<div class="sqsum"><span><b>${St.length}</b> staff</span><span>wages ${wage(wageAll)}</span><span>${dofOf() ? 'with a director of football' : 'no director of football'}</span></div>
+    <div class="ovgrid">
+      <div class="ovc"><div class="ovh"><span>Manager</span></div>${person(S.manager + (S.mode === 'dof' ? ' (director of football)' : ''), S.nat, null, `<div class="small dim">${S.mode === 'owner' ? 'Owner and manager' : wage(mWage())}</div>`)}${S.mode === 'dof' ? person((S.hc || 'Head coach') + ' (head coach)', null, null) : ''}</div>
+      ${card('Director of football', role('dof'), 'None. One can take on transfers and contracts (Search, Staff).')}
+      ${card('Assistant manager', role('ass'), 'None: hire one in Search, Staff.')}
+      ${card('Coaches', role('coach'), 'None.')}
+      ${card('Goalkeeping coaches', role('gk'), 'None.')}
+      ${card('Physios', role('phys'), 'None.')}
+      <div class="ovc"><div class="ovh"><span>Scouts</span></div>${sc}<div class="small dim" style="margin-top:4px">Scout reports in ${scoutDays()} days${(S.fac || {}).scout ? ' (wider network)' : ''}.</div></div>
+    </div>
+    <p class="small dim">Abilities from 1 to 20, the one that matters for the job in bold. Hire, release and hand out responsibilities in <span class="lk" id="stgo">Search, Staff</span>.</p>`;
+  frame(o);
+  const g = $('#stgo'); if (g) g.addEventListener('click', () => go({ s: 'find', tab: 'staff' }));
 }
 function clubDressing(cid, o){
   const sq = squadOf(me()).filter(p => !onLoan(p)), L = (S.prom || []).filter(x => P.get(x.id) && P.get(x.id).club === me());
