@@ -4085,6 +4085,7 @@ function saveAs(name){
 function rebuildPlayers(){
   if (!D.all) D.all = D.players.slice();
   const gone = new Set((S && S.ret) || []);
+  for (const g of (S && S.gen) || []) if (NAT3[g.nat]) g.nat = NAT3[g.nat];   // an older save's foreign signing with a country code for a nationality
   D.pool = D.all.filter(p => !gone.has(p.id)).concat((S && S.gen) || []);
   P.clear(); if (D.eu) D.eu.players.forEach(p => P.set(p.id, p)); D.pool.forEach(p => P.set(p.id, p));
   applyMoves(); setLeagues(S && S.lg); faAttach();
@@ -5353,7 +5354,7 @@ function scrComp(){
       body = `<div class="ptitle">${S.done ? 'Awards' : 'Awards: as things stand'}</div><div style="max-width:620px;margin:0 auto">${aw('Player of the Year', best, best && rt(best).toFixed(2))}${aw('Young Player of the Year', young, young && rt(young).toFixed(2))}${aw('Golden Boot', gb, gb && gb.q.g + ' goals')}${aw('Goalkeeper of the Year', pos('GK'))}${aw('Defender of the Year', pos('DEF'))}${aw('Midfielder of the Year', pos('MID'))}${aw('Forward of the Year', pos('FWD'))}</div>`; } }
   if (tab === 'refs'){ const R = {}; for (const r of allResults()){ if (!r.ref) continue; const x = R[r.ref] = R[r.ref] || { g: 0, yc: 0, rc: 0, pen: 0 }; x.g++; x.yc += (r.st.yc || [0, 0]).reduce((a, b) => a + b, 0); x.rc += (r.st.rc || [0, 0]).reduce((a, b) => a + b, 0); x.pen += (r.hs || []).filter(h => h.how === 'pen').length; }
     body = `<div class="ptitle">Referee Stats</div><div class="tw"><table><thead><tr><th>Referee</th><th class="r">Games</th><th class="r">Yellow</th><th class="r">Red</th><th class="r">Yellow a game</th><th class="r">Penalty goals</th></tr></thead><tbody>${Object.entries(R).sort((a, b) => b[1].yc / b[1].g - a[1].yc / a[1].g).map(([n, x]) => `<tr><td><b>${esc(n)}</b></td><td class="r">${x.g}</td><td class="r">${x.yc}</td><td class="r">${x.rc}</td><td class="r yel">${(x.yc / x.g).toFixed(2)}</td><td class="r">${x.pen}</td></tr>`).join('') || '<tr><td class="dim">No matches yet</td></tr>'}</tbody></table></div>`; }
-  frame({ title: esc(D.league), top: [['ov', 'Overview'], ['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results'], ['pstats', 'Player Stats'], ['tstats', 'Team Stats']], bottom: [['cup', esc(CUP === 'Cup' ? 'The Cup' : CUP)], ...(S.lc ? [['lc', LC]] : []), ['awards', 'Awards'], ['refs', 'Referees']], topOn: tab, bottomOn: tab,
+  frame({ title: esc(D.league), nav: compNav({ s: 'comp' }), top: [['ov', 'Overview'], ['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results'], ['pstats', 'Player Stats'], ['tstats', 'Team Stats']], bottom: [['cup', esc(CUP === 'Cup' ? 'The Cup' : CUP)], ...(S.lc ? [['lc', LC]] : []), ['awards', 'Awards'], ['refs', 'Referees']], topOn: tab, bottomOn: tab,
     onTab: t => { V = { s: 'comp', tab: t }; view(); }, body });
   document.querySelectorAll('[data-tk]').forEach(b => b.addEventListener('click', () => { V = { ...V, tk: b.dataset.tk }; view(); }));
   document.querySelectorAll('[data-ctab]').forEach(b => b.addEventListener('click', () => { V = { s: 'comp', tab: b.dataset.ctab }; view(); }));
@@ -5364,6 +5365,9 @@ function scrComp(){
 }
 
 // another country's top flight: its table, the next rounds, the last results (it is played in the background)
+// the leagues one after the other: yours first, then the others in the game (for ← and → and the banner's arrows)
+function compNav(cur){ const L = [{ s: 'comp', tab: 'table' }, ...awayKs().map(k => ({ s: 'awl', k, tab: 'table' }))]; if (L.length < 2) return null; const i = Math.max(0, L.findIndex(x => x.s === cur.s && (x.k || null) === (cur.k || null)));
+  return { what: 'league', prev: L[(i - 1 + L.length) % L.length], next: L[(i + 1) % L.length] }; }
 function scrAway(){
   const k = D.lgs[V.k] && V.k !== HOME ? V.k : awayKs()[0], A = k && S.aw && S.aw[k];
   if (!A){ V = { s: 'comp', tab: 'ov' }; view(); return; }
@@ -5374,7 +5378,7 @@ function scrAway(){
       <p class="small dim">Top ${q.ucl}: Champions League. Bottom ${dn} go down${R.barrage ? `, ${ordinal(n - dn)} plays off for its place` : ''}.${R.split ? ` After round ${2 * (n - 1)} the top ${R.split.a} and the rest each play on in a group of their own, points carried over.` : ''}${A.fin ? ` Champions: <b>${esc(club(A.fin.champ).name)}</b>.` : ''}</p>`; }
   if (tab === 'fixtures') body = A.fx.slice(A.n, A.n + 3).map((r, j) => `<div class="ptitle">Round ${A.n + j + 1} · ${fmtDate(r.d)}</div><table><tbody>${r.m.map(([h, a]) => `<tr><td class="r" style="width:45%"><b>${esc(club(h).name)}</b></td><td class="c dim">v</td><td style="width:45%"><b>${esc(club(a).name)}</b></td></tr>`).join('')}</tbody></table>`).join('') || '<p class="empty">The league season is over.</p>';
   if (tab === 'results') body = A.log.slice().reverse().map(l => `<div class="ptitle">Round ${l.n} · ${fmtDate(l.d)}</div><table><tbody>${l.res.map(([h, a, x, y]) => `<tr><td class="r" style="width:42%">${x > y ? '<b>' : ''}${esc(club(h).name)}${x > y ? '</b>' : ''}</td><td class="c"><span class="pill">${x} - ${y}</span></td><td style="width:42%">${y > x ? '<b>' : ''}${esc(club(a).name)}${y > x ? '</b>' : ''}</td></tr>`).join('')}</tbody></table>`).join('') || '<p class="empty">No rounds played yet.</p>';
-  frame({ title: esc(L.league), sub: esc(L.country), top: [['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results']], topOn: tab, onTab: t => { V = { s: 'awl', k, tab: t }; view(); }, body });
+  frame({ title: esc(L.league), sub: esc(L.country), nav: compNav({ s: 'awl', k }), top: [['table', 'Table'], ['fixtures', 'Fixtures'], ['results', 'Results']], topOn: tab, onTab: t => { V = { s: 'awl', k, tab: t }; view(); }, body });
   document.querySelectorAll('[data-cv]').forEach(r => r.addEventListener('click', () => go({ s: 'club', cid: +r.dataset.cv, tab: 'ov' })));
 }
 
@@ -5443,7 +5447,7 @@ function scrOptions(){
       <label class="small"><input type="checkbox" id="hbuy"> Buy short-listed players</label><button class="btn y" id="hgo">Go on Holiday</button></div>
     <p class="small dim">The games are played while you are away; you come back to the news. With "buy", your assistant signs players from your short list at their asking price while a window is open and the money is there.</p>
     <div class="ptitle" style="margin-top:14px">Random events</div><label class="small"><input type="checkbox" id="oevt" ${S.noEvents ? '' : 'checked'}> Things happen: players in the papers, rows in training, fines for the supporters, betting probes</label>
-    <div class="ptitle" style="margin-top:14px">Game Settings</div>${settingsBody()}<div class="ptitle" style="margin-top:14px">Keys</div><p class="small dim" style="margin:4px 2px"><b>Space</b> (or <b>Enter</b>): the green button on the left (Continue Game, Go to Match, Kick Off). <b>Esc</b> or <b>Backspace</b>: Back, to the same place on the screen. <b>↑ / ↓</b>: move through the list on the screen, <b>Enter</b> opens the row you are on. <b>← / →</b>: the previous or next screen in the menu (Squad, Tactics, Training…). <b>Alt + ← / →</b>: the screens you came through.</p>` });
+    <div class="ptitle" style="margin-top:14px">Game Settings</div>${settingsBody()}<div class="ptitle" style="margin-top:14px">Keys</div><p class="small dim" style="margin:4px 2px"><b>Space</b> (or <b>Enter</b>): the green button on the left (Continue Game, Go to Match, Kick Off). <b>Esc</b> or <b>Backspace</b>: Back, to the same place on the screen. <b>↑ / ↓</b>: move through the list on the screen, <b>Enter</b> opens the row you are on. <b>← / →</b>: the previous or next screen in the menu (Squad, Tactics, Training…). On a player, a club, a nation or a league: <b>← / →</b> the previous or next one (the next player in the squad, the next club in the league), <b>↑ / ↓</b> its screens, <b>Shift + ↑ / ↓</b> the list on the screen. <b>Alt + ← / →</b>: the screens you came through.</p>` });
   $('#oevt').addEventListener('change', e => { S.noEvents = !e.target.checked; save(); });
   $('#hgo').addEventListener('click', () => { const d = $('#hdur').value; goHoliday(d === 'end' ? '9999-12-31' : day(S.date, +d), $('#hpick').value, $('#hbuy').checked); });
   wireSettings(view);
@@ -6053,7 +6057,7 @@ function scrScout(tab){
 // every club the game knows: the leagues and their second tiers, the European cups' and the Club World Cup's clubs
 const everyClub = () => [...C.values()].filter(c => c && c.id > 0 && c.name);
 const FIND_TABS = [['search', 'Players'], ['people', 'Staff'], ['fclubs', 'Clubs'], ['nations', 'Nations'], ['comps', 'Competitions'], ['short', 'Short List'], ['sc1', 'Scout 1'], ['sc2', 'Scout 2'], ['staff', 'Your Staff']];
-const NAT3 = { ALB: 'Albania', AND: 'Andorra', ARM: 'Armenia', AUT: 'Austria', AZE: 'Azerbaijan', BEL: 'Belgium', BIH: 'Bosnia-Herzegovina', BUL: 'Bulgaria', CRO: 'Croatia', CYP: 'Cyprus', CZE: 'Czech Republic', DEN: 'Denmark', ENG: 'England', ESP: 'Spain', FIN: 'Finland', FRA: 'France', GEO: 'Georgia', GER: 'Germany', GIB: 'Gibraltar', GRE: 'Greece', HUN: 'Hungary', ISR: 'Israel', ITA: 'Italy', KAZ: 'Kazakhstan', LTU: 'Lithuania', LVA: 'Latvia', NED: 'Netherlands', NOR: 'Norway', POL: 'Poland', POR: 'Portugal', ROU: 'Romania', SCO: 'Scotland', SLO: 'Slovenia', SRB: 'Serbia', SUI: 'Switzerland', SVK: 'Slovakia', SWE: 'Sweden', TUR: 'Turkey', UKR: 'Ukraine' };
+const NAT3 = { LUX: 'Luxembourg', MKD: 'North Macedonia', MNE: 'Montenegro', MLT: 'Malta', WAL: 'Wales', KOS: 'Kosovo', NIR: 'Northern Ireland', SMR: 'San Marino', ISL: 'Iceland', EST: 'Estonia', MDA: 'Moldova', FRO: 'Faroe Islands', BLR: 'Belarus', IRL: 'Republic of Ireland', ALB: 'Albania', AND: 'Andorra', ARM: 'Armenia', AUT: 'Austria', AZE: 'Azerbaijan', BEL: 'Belgium', BIH: 'Bosnia-Herzegovina', BUL: 'Bulgaria', CRO: 'Croatia', CYP: 'Cyprus', CZE: 'Czech Republic', DEN: 'Denmark', ENG: 'England', ESP: 'Spain', FIN: 'Finland', FRA: 'France', GEO: 'Georgia', GER: 'Germany', GIB: 'Gibraltar', GRE: 'Greece', HUN: 'Hungary', ISR: 'Israel', ITA: 'Italy', KAZ: 'Kazakhstan', LTU: 'Lithuania', LVA: 'Latvia', NED: 'Netherlands', NOR: 'Norway', POL: 'Poland', POR: 'Portugal', ROU: 'Romania', SCO: 'Scotland', SLO: 'Slovenia', SRB: 'Serbia', SUI: 'Switzerland', SVK: 'Slovakia', SWE: 'Sweden', TUR: 'Turkey', UKR: 'Ukraine' };
 const fold = s => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const ctryName = c => { const k = c.ctry || 'ENG'; return (D.lgs[k] && D.lgs[k].country) || NAT3[k] || k; };
 // where a club plays: its league, its second tier, or its country (a club of the European cups or the Club World Cup)
@@ -8174,13 +8178,19 @@ document.addEventListener('keydown', e => {
   if ((e.key === 'Enter' || e.key === ' ') && !(t && t.tagName === 'BUTTON') && !e.altKey){
     const g = document.querySelector('.side .sb.go:not([disabled])'); if (g){ e.preventDefault(); g.click(); } return; }
   if (e.key === 'Escape' || e.key === 'Backspace'){ const b = document.querySelector('#back:not([disabled])'); if (b){ e.preventDefault(); b.click(); } return; }
+  // on a player, a club, a nation or a league (a screen with arrows in its banner): ← → the previous or next one, ↑ ↓ its
+  // screens; Shift with ↑ ↓ still moves through the list on the screen
+  const ent = document.querySelector('#bprev');
+  // the screens of the section you are in, in the menu's order (a screen's own sub-screens included)
+  const menuStep = dir => { const cur = document.querySelector('.mtree .mi.on'); if (!cur) return false; const root = cur.closest('.msec') || cur.parentElement, sib = [...root.querySelectorAll('.mi')].filter(x => !x.classList.contains('d0')), nx = sib[sib.indexOf(cur) + dir]; if (nx){ nx.click(); return true; } return false; };
+  if (ent && !e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')){ e.preventDefault(); document.querySelector(e.key === 'ArrowLeft' ? '#bprev' : '#bnext').click(); return; }
+  if (ent && !e.altKey && !e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')){ if (menuStep(e.key === 'ArrowDown' ? 1 : -1)) e.preventDefault(); return; }
   if (!e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')){
     const L = [...document.querySelectorAll('.pane [data-pl], .pane [data-lp], .pane [data-lc], .pane [data-hn], .pane [data-hv], .pane [data-rep], .pane .clubs > button:not([disabled]), .pane .menu > button:not([disabled])')].filter(x => x.offsetParent && !x.closest('.kskip'));
     if (!L.length) return; let i = L.indexOf(kf); i = i < 0 ? (e.key === 'ArrowDown' ? 0 : L.length - 1) : clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, L.length - 1);
     if (kf) kf.classList.remove('kfocus'); L[i].classList.add('kfocus'); L[i].scrollIntoView({ block: 'nearest' }); e.preventDefault(); return; }
   if (!e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')){
-    const cur = document.querySelector('.mtree .mi.on'); if (!cur) return; const sib = [...cur.parentElement.children].filter(x => x.classList.contains('mi')), i = sib.indexOf(cur), nx = sib[i + (e.key === 'ArrowRight' ? 1 : -1)];
-    if (nx){ e.preventDefault(); nx.click(); } return; }
+    if (menuStep(e.key === 'ArrowRight' ? 1 : -1)) e.preventDefault(); return; }
   if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')){ const b = document.querySelector(e.key === 'ArrowLeft' ? '#navb:not([disabled])' : '#navf:not([disabled])'); if (b){ e.preventDefault(); b.click(); } }
 });
 </script>
