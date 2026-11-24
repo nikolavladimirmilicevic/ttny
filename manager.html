@@ -330,6 +330,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
 .tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
+.famr{display:flex;align-items:center;gap:10px;margin:4px 0}.famr>span{min-width:150px;font-size:13px}.famr>b{min-width:100px;text-align:right;font-size:13px}
 .hpy{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;max-width:720px;margin:4px auto 10px}.hpy>div>div{padding:2px 0}
 .trt{width:100%;margin:6px 0}.trt td{padding:3px 6px;border-bottom:1px solid rgba(255,255,255,.05)}.dd.sm{padding:2px 6px;font-size:12px}.devc{width:100%;max-width:760px;display:block;margin:6px auto}
 .rlrow{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}.rlh{display:flex;align-items:center;gap:8px}.rlh .pos{font-size:11px;color:var(--gold);min-width:34px}.rlc{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}.rlc .dd{max-width:220px}.spt td{vertical-align:top;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06)}.spt td.spgap{background:rgba(229,122,98,.08)}.spc{cursor:pointer;padding:1px 0;white-space:nowrap}
@@ -2032,6 +2033,7 @@ function eff(side, x){
   v *= 1 + x.cf;
   if (side.talk) v *= 1 + side.talk;   // the half-time team talk, for better or worse
   if (x.tp) v *= 1 + x.tp; if (x.th) v *= 1 + x.th;   // how he took the team talks
+  v *= famMul(side);   // how well the side knows its shape and style
   if (side.shout) v *= 1 + SH_V[side.shout.k] * side.shout.r;   // a word from the touchline
   if (side.cid === me() && S.pressMod && S.pressMod.d === S.date) v *= 1 + S.pressMod.v;   // what you told the press
   if (side.cid === me() && S.meetMod && S.meetMod.d === S.date) v *= 1 + S.meetMod.v;   // the last team meeting
@@ -2105,7 +2107,7 @@ function who(side, kind, attr, not){
     if (kind === 'pass') w *= [.7, 1, 1.4][piOf(t, x.id, 'tb', 1)] * (piOf(t, x.id, 'free', 0) ? 1.3 : 1);
     if (kind === 'dribble') w *= [.4, 1, 1.8][piOf(t, x.id, 'rwb', 1)];
     if (kind === 'head') w *= piOf(t, x.id, 'hold', 0) ? 1.3 : 1;
-    w *= roleW(t, x, kind);   // his role and duty
+    w *= roleW(t, x, kind) * trW(x.p, kind);   // his role and duty, and his own habits
     return w; });
   let r = Math.random() * ws.reduce((a, b) => a + b, 0);
   for (let i = 0; i < L.length; i++){ r -= ws[i]; if (r <= 0) return L[i]; }
@@ -2495,7 +2497,7 @@ function passDays(n){
     if (q.injD){ q.injD = Math.max(0, q.injD - n * (p.club === me() ? physioRate() : 1)); if (!q.injD){ q.light = 1; if (p.club === me()) news('injury', `${p.n} is fit again`, `${esc(p.n)} has recovered and is back in training. He may not be at his sharpest for his first game back.`); } }
   }
   const to = day(S.date, n);
-  while (daysBetween(f.last, to) >= 7){ f.last = day(f.last, 7); trainWeek(f.last); try { mentWeek(f.last); medWeek(); dynWeek(); u21Week(f.last); scoutWeek(f.last); } catch (e) { console.warn(e); } }
+  while (daysBetween(f.last, to) >= 7){ f.last = day(f.last, 7); trainWeek(f.last); try { mentWeek(f.last); medWeek(); dynWeek(); u21Week(f.last); scoutWeek(f.last); famWeek(); trWeek(); licWeek(); } catch (e) { console.warn(e); } }
   S.date = to;
   chTick(); awTick();
   scoutTick();
@@ -2559,7 +2561,7 @@ function trainWeek(wk){
       else k = keys[Math.floor(rr() * keys.length)];
       if (gk !== GK_KEYS.includes(k) && rr() < .7) continue;
       const lvl = mine ? (Object.entries(TR_PARTS).find(([pk, [, ks]]) => ks.includes(k) && R[pk] != null) || [null])[0] : null;
-      let v = (grow + (lvl ? R[lvl] * .015 : 0)) * (grow > 0 ? potOf(p) * minsF(p, q) * hidDev(p, 1) : hidDev(p, -1)) * (mine ? (.6 + .3 * load) * coach * calGrow() * [.5, 1, 1.25][it.i ?? 1] * (1 + ((S.fac || {}).train || 0) * .12 + (age <= 21 ? ((S.fac || {}).youth || 0) * .15 : 0)) : 1) * (0.5 + rr());
+      let v = (grow + (lvl ? R[lvl] * .015 : 0)) * (grow > 0 ? potOf(p) * minsF(p, q) * hidDev(p, 1) : hidDev(p, -1)) * (mine ? (.6 + .3 * load) * coach * calGrow() * licMul() * [.5, 1, 1.25][it.i ?? 1] * (1 + ((S.fac || {}).train || 0) * .12 + (age <= 21 ? ((S.fac || {}).youth || 0) * .15 : 0)) : 1) * (0.5 + rr());
       if (grow < 0 && ['sp', 'ac', 'st'].includes(k)) v *= 1.8 * (mine && R.phys >= 2 ? .8 : 1);   // physical work slows the decline
       if (!q.injD) q.d[k] = Math.round(((q.d[k] || 0) + v * .6) * 100) / 100;   // two decimals: the save stays small
     }
@@ -5008,7 +5010,7 @@ function boardHTML(B){
   const seg = (key, Lb) => `<span class="seg" data-tk="${key}">${Lb.map((n, i) => `<button data-v="${i}" class="${(t[key] ?? 1) === i ? 'on' : ''}">${n}</button>`).join('')}</span>`;
   const tog = (k, n) => `<button class="tog ${t[k] ? 'on' : ''}" data-ttg="${k}">${t[k] ? '✓' : '·'} ${n}</button>`;
   const team = `${B.live ? `<div class="tbshout">${[['push', 'Push forward'], ['hold', 'Hold what we have'], ['calm', 'Calm down'], ['press', 'Get stuck in']].map(([k, n]) => `<button class="btn sm" data-shout="${k}">${n}</button>`).join('')}</div>` : ''}
-    ${styleBox(t, B.places, B.live)}<div class="ptitle">With the ball</div><div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Width</b></span>${seg('width', ['Narrow', 'Normal', 'Wide'])}<span class="yel"><b>Tempo</b></span>${seg('tempo', ['Slower', 'Normal', 'Higher'])}<span class="yel"><b>On winning it</b></span><span class="tools">${tog('counter', 'Counter Attack')}</span></div>
+    ${styleBox(t, B.places, B.live)}${B.live ? '' : famBox(t)}<div class="ptitle">With the ball</div><div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Width</b></span>${seg('width', ['Narrow', 'Normal', 'Wide'])}<span class="yel"><b>Tempo</b></span>${seg('tempo', ['Slower', 'Normal', 'Higher'])}<span class="yel"><b>On winning it</b></span><span class="tools">${tog('counter', 'Counter Attack')}</span></div>
     <div class="ptitle">Without the ball</div><div class="instr"><span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Defensive line</b></span>${seg('line', ['Deeper', 'Normal', 'Higher'])}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('mbb', 'Men Behind Ball')}</span></div><p class="small" style="margin-top:10px">${tacticHint(t)}</p>`;
   const pid = sel && sel.startsWith('s:') ? (B.places[+sel.slice(2)] || {}).id : sel && sel.startsWith('p:') ? +sel.slice(2) : null, pp = pid && P.get(pid);
   const player = pp ? `<div class="ptitle" style="display:flex;align-items:center;gap:8px"><span>${esc(pp.n)} <span class="small dim">${cmPos(pp.pos)}</span></span>${B.live ? '' : `<button class="btn sm" data-prof="${pp.id}" style="margin-left:auto">Profile</button>`}</div><div class="instr">${PI.map(([k, n, opts]) => { const v = t.pi && t.pi[pid] && t.pi[pid][k];
@@ -5143,7 +5145,7 @@ function playerCard(p, q, con, born){
     return [TT(ATTR_NAME[k]), `${kn ? arrow(recentD(p, k)) + ' ' : ''}<span class="${vcls(v)}">${showA(p, v, k)}</span>`]; });
   if (p.inj) rows.push(['Injury Resistance', `<span class="${vcls([90, 75, 55][p.inj - 1])}">${4 - p.inj}</span>`]);
   rows.sort((x, y) => x[0].localeCompare(y[0]));
-  const tail = [['Height', p.ht ? p.ht + ' cm' : '-'], ['Weight', p.wt ? p.wt + ' kg' : '-'], ...(p.ft ? [['Preferred Foot', { L: 'Left', R: 'Right', B: 'Either' }[p.ft]]] : []), ['Playing Style', esc(p.style || '-')], ['Personality', known(p) || p.club === me() ? persWord(p) : '<span class="msk" title="Not known yet">?</span>'], ...(() => { const x = (S.ment || []).find(z => z.y === p.id), L = (S.ment || []).filter(z => z.m === p.id); return x && P.get(x.m) ? [['Mentor', esc(cmName(P.get(x.m).n))]] : L.length ? [['Mentoring', L.map(z => P.get(z.y) ? esc(cmName(P.get(z.y).n)) : '').join(', ')]] : []; })(), ['Morale', morWord(q.mor)], ['Condition', Math.round(q.cond) + '%']].map(([n, v]) => [n, `<span class="org">${v}</span>`]);
+  const tail = [['Height', p.ht ? p.ht + ' cm' : '-'], ['Weight', p.wt ? p.wt + ' kg' : '-'], ...(p.ft ? [['Preferred Foot', { L: 'Left', R: 'Right', B: 'Either' }[p.ft]]] : []), ['Playing Style', esc(p.style || '-')], ['Personality', known(p) || p.club === me() ? persWord(p) : '<span class="msk" title="Not known yet">?</span>'], ...(p.prim !== 'GK' ? [['Traits', known(p) || p.club === me() ? (traitsOf(p).map(k => TRAITS[k].n).join('; ') || 'None') : '<span class="msk" title="Not known yet">?</span>']] : []), ...(() => { const x = (S.ment || []).find(z => z.y === p.id), L = (S.ment || []).filter(z => z.m === p.id); return x && P.get(x.m) ? [['Mentor', esc(cmName(P.get(x.m).n))]] : L.length ? [['Mentoring', L.map(z => P.get(z.y) ? esc(cmName(P.get(z.y).n)) : '').join(', ')]] : []; })(), ['Morale', morWord(q.mor)], ['Condition', Math.round(q.cond) + '%']].map(([n, v]) => [n, `<span class="org">${v}</span>`]);
   const per = Math.ceil(rows.length / 3), crow = ([n, v]) => `<div class="crow"><span>${n}</span><b>${v}</b></div>`;
   const col = i => `<div>${rows.slice(i * per, (i + 1) * per).map(crow).join('')}</div>`;
   // positions: coloured by how his real starts split over the positions he is registered in
@@ -5228,7 +5230,7 @@ function scrPlayer(){
     if (!up){ t.xi = t.xi.map(x => x === p.id ? null : x); t.bench = t.bench.filter(x => x !== p.id); }
     S.promo[p.id] = up ? 1 : 0; save(); toast(`${cmName(p.n)} ${up ? 'joins the first team' : 'goes to the reserves'}.`); view(); });
   if (tab === 'tr') wireTransfer(p);
-  if (tab === 'dev') devWire();
+  if (tab === 'dev'){ devWire(); traitsWire(p); }
   if (tab === 'con' && p.club === me() && S.cn && S.cn[p.id] && S.cn[p.id].ctx === 'renew' && !S.cn[p.id].end) cnWire(p, 'renew');
   const scp = $('#scpl'); if (scp) scp.addEventListener('click', () => { toast(scoutPlayer(p)); save(); view(); });
   if (tab === 'int'){ document.querySelectorAll('[data-nt]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); go({ s: 'nation', n: el.dataset.nt }); }));
@@ -5946,6 +5948,85 @@ function wireTransfer(p){
     if (S.cn) delete S.cn[p.id]; cnOpen(p, 'sign', b); V.cd = null; V.cnr = null; });
   const b = cur(); if (b && b.st === 'yes' && !b.loan) cnWire(p, 'sign', b);
 }
+/* ==== tactical familiarity: a side needs time to learn a shape and a way of playing. Every week the shape and the
+   style you use grow more familiar (faster with tactics sessions in the training week), the ones you leave alone fade.
+   An unfamiliar shape or style costs your players a little in every game; the other clubs play what they know ==== */
+const famKey = t => (styleOf(t) || {}).k || 'own';
+function famEnsure(){ if (!S.fam){ const t = S.tac[me()] || {}; S.fam = { f: { [t.form]: 85 }, s: { [famKey(t)]: 80 } }; } return S.fam; }
+const famF = f => (famEnsure().f[f] ?? 40), famS = k => (famEnsure().s[k] ?? 45);
+function famWeek(){
+  const t = S.tac[me()]; if (!t) return; const F = famEnsure(), c = calWeek().tac, f = t.form, k = famKey(t);
+  for (const x of Object.keys(F.f)) if (x !== f) F.f[x] = Math.max(35, F.f[x] - 1.5);
+  for (const x of Object.keys(F.s)) if (x !== k) F.s[x] = Math.max(40, F.s[x] - 1.5);
+  F.f[f] = Math.min(100, famF(f) + 4 + 2.5 * c); F.s[k] = Math.min(100, famS(k) + 3 + 2 * c);
+}
+function famMul(side){ const t = side.t; if (!S.fam || side.cid !== me() || !t) return 1;
+  const key = [t.form, ...ST_KEYS.map(k => t[k])].join(); if (side._fk === key) return side._fm;
+  const f = famF(t.form), s = famS(famKey(t)); side._fk = key; side._fm = 1 - Math.max(0, 75 - f) * .0012 - Math.max(0, 75 - s) * .0008; return side._fm; }
+const famWord = v => v >= 90 ? ['Fluid', 'var(--win)'] : v >= 75 ? ['Familiar', '#9AD07A'] : v >= 60 ? ['Getting there', 'var(--gold)'] : v >= 45 ? ['Awkward', '#f2a65a'] : ['Unfamiliar', 'var(--loss)'];
+function famBox(t){
+  const f = famF(t.form), sk = famKey(t), s = famS(sk), sn = sk === 'own' ? 'Your own instructions' : (STYLES.find(x => x.k === sk) || {}).n, wf = famWord(f), ws = famWord(s);
+  const bar = (v, c) => `<div class="meter" style="flex:1"><i style="width:${Math.round(v)}%;background:${c}"></i></div>`;
+  const others = Object.entries(famEnsure().f).filter(([x]) => x !== t.form).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  return `<div class="ptitle">Familiarity</div><div class="famr"><span>Shape ${esc(t.form)}</span>${bar(f, wf[1])}<b style="color:${wf[1]}">${wf[0]}</b></div><div class="famr"><span>${esc(sn)}</span>${bar(s, ws[1])}<b style="color:${ws[1]}">${ws[0]}</b></div>
+    ${others.length ? `<p class="small dim">Other shapes they know: ${others.map(([x, v]) => `${esc(x)} (${famWord(v)[0].toLowerCase()})`).join(', ')}.</p>` : ''}<p class="small dim">A shape and a style become familiar week by week (tactics sessions in the training week speed it up); an unfamiliar one costs a little in every game.</p>`;
+}
+/* ==== player traits: the habits that make a player who he is (cuts inside, tries long shots, gets forward, tries
+   killer balls, dives into tackles...). He comes with some, from his playing style and his attributes; he can learn a
+   new one, or unlearn an old one, in individual training over some weeks: the younger and the more professional he is,
+   the quicker, and an old player may not manage it. They decide who shoots, passes, dribbles and tackles ==== */
+const TRAITS = {
+  cutin: { n: 'Cuts inside from the wing', w: { shot: 1.15, dribble: 1.1 } }, lsh: { n: 'Tries long shots', w: { shot: 1.2 } }, fwd: { n: 'Gets forward whenever possible', w: { shot: 1.12, head: 1.1 } },
+  drib: { n: 'Runs with the ball often', w: { dribble: 1.3 } }, kill: { n: 'Tries killer balls often', w: { pass: 1.25 } }, deep: { n: 'Comes deep to get the ball', w: { pass: 1.15, shot: .9 } },
+  late: { n: 'Arrives late in the box', w: { shot: 1.15 } }, air: { n: 'Attacks the ball in the air', w: { head: 1.3 } }, dive: { n: 'Dives into tackles', w: { tackle: 1.2, foul: 1.3 } },
+  stay: { n: 'Stays back at all times', w: { tackle: 1.1, shot: .7 } }, simple: { n: 'Plays simple passes', w: { pass: .9, foul: .9 } }, dwell: { n: 'Dwells on the ball', w: { dribble: 1.1, pass: .9 } },
+};
+const STYLE_TR = { 'Prolific Winger': ['cutin', 'drib'], 'Roaming Flank': ['cutin', 'drib'], 'Box-to-Box': ['fwd', 'late'], 'Offensive Full-back': ['fwd'], 'Defensive Full-back': ['stay'], 'Build Up': ['simple'], 'Goal Poacher': ['late'], 'Fox in the Box': ['late'],
+  'The Destroyer': ['dive'], 'Anchor Man': ['stay'], 'Hole Player': ['late', 'lsh'], 'Target Man': ['air'], 'Creative Playmaker': ['kill'], 'Orchestrator': ['kill', 'deep'], 'Classic No. 10': ['kill', 'deep'], 'Extra Frontman': ['fwd'] };
+function traitsOf(p){
+  if (p.prim === 'GK') return [];
+  const base = new Set(STYLE_TR[p.style] || []), a = k => (p.a || {})[k] || 50;
+  if (a('kp') >= 82 && a('fi') >= 72 && p.prim !== 'CB') base.add('lsh'); if (a('dr') >= 84) base.add('drib'); if (a('he') >= 82 && a('ju') >= 78) base.add('air'); if (a('lp') >= 84 && a('oa') >= 75) base.add('kill');
+  const add = (S.trAdd || {})[p.id] || [], del = (S.trDel || {})[p.id] || [];
+  return [...new Set([...[...base].slice(0, 3), ...add])].filter(k => !del.includes(k) && TRAITS[k]); }
+const trW = (p, kind) => { const L = traitsOf(p); let w = 1; for (const k of L) w *= (TRAITS[k].w || {})[kind] || 1; return w; };
+const trNeed = p => clamp(Math.round(8 + Math.max(0, p.age - 20) * .6 + (20 - hid(p).pro) * .3), 6, 20);
+function trWeek(){
+  for (const [id, x] of Object.entries(S.ttr || {})){ const p = P.get(+id); if (!p || p.club !== me()){ delete S.ttr[id]; continue; } if (ps(p.id).injD) continue;
+    x.w++; if (x.w < x.need) continue; delete S.ttr[id];
+    if (!x.un && p.age >= 31 && rng(`trf-${p.id}-${x.k}`)() < .5){ news('club', `${p.n} cannot change`, `<b>${esc(p.n)}</b> has tried for ${x.need} weeks but cannot get used to it: "${TRAITS[x.k].n.toLowerCase()}" is not for him at his age.`, { id: p.id }); continue; }
+    if (x.un){ S.trDel = S.trDel || {}; (S.trDel[p.id] = S.trDel[p.id] || []).push(x.k); if (S.trAdd && S.trAdd[p.id]) S.trAdd[p.id] = S.trAdd[p.id].filter(k => k !== x.k); }
+    else { S.trAdd = S.trAdd || {}; (S.trAdd[p.id] = S.trAdd[p.id] || []).push(x.k); if (S.trDel && S.trDel[p.id]) S.trDel[p.id] = S.trDel[p.id].filter(k => k !== x.k); }
+    news('club', x.un ? `${p.n} drops a habit` : `${p.n} learns a new trait`, `<b>${esc(p.n)}</b> ${x.un ? 'no longer' : 'now'} ${TRAITS[x.k].n.charAt(0).toLowerCase() + TRAITS[x.k].n.slice(1)}${x.un ? '' : ', after his work in individual training'}.`, { id: p.id }); }
+}
+function traitsHTML(p){
+  const L = traitsOf(p), x = (S.ttr || {})[p.id], mine = p.club === me(), opts = Object.keys(TRAITS).filter(k => !L.includes(k));
+  return `<div class="ptitle">Traits</div>${L.length ? `<ul class="hon">${L.map(k => `<li><b>${TRAITS[k].n}</b>${mine && !x ? ` <button class="btn sm" data-trun="${k}">Unlearn</button>` : ''}</li>`).join('')}</ul>` : '<p class="dim small">No particular habits.</p>'}
+    ${mine && p.prim !== 'GK' ? (x ? `<p>${x.un ? 'Unlearning' : 'Learning'}: <b>${TRAITS[x.k].n}</b>, week ${x.w} of about ${x.need}.</p><div class="meter" style="max-width:420px"><i style="width:${Math.round(x.w / x.need * 100)}%;background:var(--sky)"></i></div><div class="tools"><button class="btn sm" id="trstop">Stop</button></div>`
+      : `<div class="tools"><select class="dd" id="trsel">${opts.map(k => `<option value="${k}">${TRAITS[k].n}</option>`).join('')}</select><button class="btn sm y" id="trgo">Learn it (about ${trNeed(p)} weeks)</button></div><p class="small dim">One trait at a time, in individual training. The young and the professional learn faster; past 30 a man may not manage it.</p>`) : ''}`;
+}
+function traitsWire(p){
+  const on = (sel, f) => document.querySelectorAll(sel).forEach(el => el.addEventListener('click', () => { f(el); save(); view(); }));
+  on('#trgo', () => { const k = ($('#trsel') || {}).value; if (!k) return; (S.ttr = S.ttr || {})[p.id] = { k, w: 0, need: trNeed(p) }; toast(`${cmName(p.n)} starts working on it.`); });
+  on('[data-trun]', el => { (S.ttr = S.ttr || {})[p.id] = { k: el.dataset.trun, w: 0, need: Math.max(5, trNeed(p) - 3), un: 1 }; toast(`${cmName(p.n)} starts working on it.`); });
+  on('#trstop', () => { if (S.ttr) delete S.ttr[p.id]; });
+}
+/* ==== coaching badges: you can take the coaching licences one by one (C, B, A, Pro), paid from your own savings, each a
+   course of some weeks. Each licence makes your training a little better, your talks land a little better, and a
+   club's board thinks more of you ==== */
+const LIC = [['No licence', 0, 0], ['C Licence', 8, 3e3], ['B Licence', 12, 8e3], ['A Licence', 20, 2e4], ['Pro Licence', 32, 5e4]];
+const licLv = () => (S && S.lic) || 0, licMul = () => 1 + licLv() * .025;
+function licWeek(){ const C = S.course; if (!C || S.date < C.until) return; S.lic = C.l; S.course = null; S.conf = clamp((S.conf || 50) + 2, 0, 100);
+  news('board', `You have your ${LIC[C.l][0]}`, `You have passed the course for the ${LIC[C.l][0]}. Your training work will be a little sharper for it, and the board are pleased.`); }
+function licHTML(){
+  const l = licLv(), C = S.course, nx = LIC[l + 1];
+  return `<div class="ptitle">Coaching Badges</div><dl class="kv" style="max-width:520px"><dt>Your licence</dt><dd><b class="yel">${LIC[l][0]}</b></dd><dt>Savings</dt><dd>${cash(S.mcash || 0)}</dd></dl>
+    <table><tbody>${LIC.slice(1).map(([n, w, c], i) => `<tr><td><b>${n}</b></td><td class="small dim">${w} weeks</td><td class="small">${cash(c)}</td><td class="r">${i + 1 <= l ? '<span class="tag" style="background:#1E6B43;color:#fff">Passed</span>' : C && C.l === i + 1 ? `<span class="small">On the course until ${shortDate(C.until)}</span>` : ''}</td></tr>`).join('')}</tbody></table>
+    ${C ? '' : nx ? `<div class="tools"><button class="btn sm y" id="licgo" ${(S.mcash || 0) < nx[2] ? 'disabled title="Not enough in your savings"' : ''}>Enrol for the ${nx[0]} (${cash(nx[2])})</button></div>` : '<p class="c">You have every licence there is.</p>'}
+    <p class="small dim">Each licence: training a little more effective, your team talks a little more convincing, and the board think more of you. The course is paid from your own savings.</p>`;
+}
+function licWire(){ const b = $('#licgo'); if (b) b.addEventListener('click', () => { const l = licLv() + 1, x = LIC[l]; if (!x || (S.mcash || 0) < x[2]) return; S.mcash -= x[2]; S.course = { l, until: day(S.date, x[1] * 7) };
+  news('board', `On the ${x[0]} course`, `You have enrolled for the ${x[0]}: ${x[1]} weeks, until ${fmtDate(S.course.until)}.`); save(); view(); }); }
 /* ==== the youth intake, as in a modern game: a head of youth development on the staff, a preview of the coming
    intake in November (his judgement, not the truth), intake day in March when the youngsters arrive, and a month to
    decide whom to give a youth contract; the rest leave. A good head of youth development brings better youngsters and
@@ -6088,6 +6169,7 @@ function talkReact(x, base, tone, stage, k, d){
   if (soft && base > 0 && d >= 0 && h.pro + h.det <= 18){ r -= .016; why = why || 'comp'; }
   if (hard && h.det >= 15) r += .004;
   if (q.mor < 40) r -= .006;
+  r += licLv() * .0015;   // your coaching badges
   r += (r0 - .5) * .012 * (21 - h.con) / 10;
   r = clamp(Math.round(r * 1000) / 1000, -.035, .045); return { r, w: reactWord(r, why) }; }
 function talkBase(stage, k, M){
@@ -6175,7 +6257,7 @@ function devHTML(p){
     <div class="ovc"><div class="ovh"><span>Month by month</span></div>${months.length ? `<table><thead><tr><th>Month</th><th class="r">Games</th><th class="r">Av R</th></tr></thead><tbody>${months.map(x => `<tr><td>${new Date(x.m + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}</td><td class="r">${x.apps}</td><td class="r">${x.rt ?? '-'}</td></tr>`).join('')}</tbody></table>` : '<p class="dim small">The record starts at the end of this month.</p>'}</div></div>
     <div class="tools"><span class="small dim">Attribute</span><select class="dd" id="devk">${all.map(x => `<option value="${x}" ${x === k ? 'selected' : ''}>${esc(TT(ATTR_NAME[x]))}</option>`).join('')}</select><span class="small dim">since ${new Date(first.m + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}: ${first.a[k]} to ${last.a[k]}</span></div>
     ${L.length >= 2 ? devChart(L, k) : '<p class="dim small">One month of record so far: the chart grows as the season goes on.</p>'}
-    <div class="ptitle">Key attributes for his position</div><table><thead><tr><th>Attribute</th><th class="r">Now</th><th class="r">Last six months</th><th class="r">Since the record began</th></tr></thead><tbody>${keys.map(x => `<tr class="click" data-devk="${x}"><td>${esc(TT(ATTR_NAME[x]))}</td><td class="r av ${vcls(last.a[x])}">${last.a[x]}</td><td class="r">${ch(six.a[x], last.a[x])}</td><td class="r">${ch(first.a[x], last.a[x])}</td></tr>`).join('')}</tbody></table>`;
+    <div class="ptitle">Key attributes for his position</div><table><thead><tr><th>Attribute</th><th class="r">Now</th><th class="r">Last six months</th><th class="r">Since the record began</th></tr></thead><tbody>${keys.map(x => `<tr class="click" data-devk="${x}"><td>${esc(TT(ATTR_NAME[x]))}</td><td class="r av ${vcls(last.a[x])}">${last.a[x]}</td><td class="r">${ch(six.a[x], last.a[x])}</td><td class="r">${ch(first.a[x], last.a[x])}</td></tr>`).join('')}</tbody></table>${traitsHTML(p)}`;
 }
 function devWire(){
   const s = $('#devk'); if (s) s.addEventListener('change', () => { V = { ...V, dk: s.value }; view(); });
@@ -8591,11 +8673,13 @@ function scrManager(){
     <div class="ptitle" style="margin-top:14px">This season</div><dl class="kv"><dt>Matches</dt><dd>${all.length}: won ${w}, drawn ${d}, lost ${l}</dd><dt>Goals</dt><dd>${gf} for, ${ga} against</dd><dt>Win rate</dt><dd>${all.length ? Math.round(100 * w / all.length) : 0}%</dd></dl>`;
   if (tab === 'goals') body = cgTab();
   if (tab === 'wealth') body = wealthTab();
+  if (tab === 'lic') body = licHTML();
   if (tab === 'con') body = `<div class="ptitle">Contract</div><dl class="kv"><dt>Club</dt><dd>${esc(club(me()).name)}</dd><dt>Wage</dt><dd>${wage(Math.round(club(me()).q * 900 / 5) * 5)}</dd><dt>Expires</dt><dd>30.6.${String(S.season + 2).slice(2)}</dd>${S.nat ? `<dt>Nationality</dt><dd>${esc(S.nat)}</dd>` : ''}<dt>Reputation</dt><dd>${esc(S.rep)}</dd></dl>`;
-  frame(ofClub(me(), { title: `${esc(S.manager)} (${esc(club(me()).name)})`, top: [['inj', 'Injuries &amp; Bans', true], ['con', 'Contract'], ['goals', 'Career Goals'], ['wealth', 'Wealth'], ['tr', 'Transfer', true], ['hist', 'History']], topOn: tab, onTab: k => { if (k === 'hall'){ SETUP_OPEN = true; SETUP = 'hall'; view(); return; } if (k === 'stats' || k === 'jobs'){ go({ s: 'managers', tab: k === 'jobs' ? 'jobs' : 'rep' }); return; } V = { s: 'manager', tab: k }; view(); }, body,
+  frame(ofClub(me(), { title: `${esc(S.manager)} (${esc(club(me()).name)})`, top: [['inj', 'Injuries &amp; Bans', true], ['con', 'Contract'], ['goals', 'Career Goals'], ['wealth', 'Wealth'], ['tr', 'Transfer', true], ['lic', 'Coaching Badges'], ['hist', 'History']], topOn: tab, onTab: k => { if (k === 'hall'){ SETUP_OPEN = true; SETUP = 'hall'; view(); return; } if (k === 'stats' || k === 'jobs'){ go({ s: 'managers', tab: k === 'jobs' ? 'jobs' : 'rep' }); return; } V = { s: 'manager', tab: k }; view(); }, body,
     bottom: [['jobs', 'Jobs'], ['stats', 'Manager Rankings'], ['hall', 'Hall of Fame']] }));
   if (tab === 'goals') cgWire();
   if (tab === 'wealth') wealthWire();
+  if (tab === 'lic') licWire();
 }
 
 /* =====================================================================================================================
