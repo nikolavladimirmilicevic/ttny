@@ -813,6 +813,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
            'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures, **extra}
     apply_crests(out)
     apply_market(out)
+    fill_nat(out)
     return out
 
 
@@ -823,6 +824,40 @@ def game_clubs(cmd):
         out += list(L.get('clubs') or []) + list((L.get('second') or {}).get('clubs') or [])
     out += list((cmd.get('europe') or {}).get('clubs') or []) + list((cmd.get('cwc') or {}).get('clubs') or [])
     return out
+
+
+NAT_OF_CTRY = {'ALB': 'Albania', 'AND': 'Andorra', 'ARM': 'Armenia', 'AUT': 'Austria', 'AZE': 'Azerbaijan', 'BEL': 'Belgium', 'BIH': 'Bosnia-Herzegovina',
+               'BUL': 'Bulgaria', 'CRO': 'Croatia', 'CYP': 'Cyprus', 'CZE': 'Czech Republic', 'DEN': 'Denmark', 'ENG': 'England', 'ESP': 'Spain', 'FIN': 'Finland',
+               'FRA': 'France', 'GEO': 'Georgia', 'GER': 'Germany', 'GIB': 'Gibraltar', 'GRE': 'Greece', 'HUN': 'Hungary', 'ISR': 'Israel', 'ITA': 'Italy',
+               'KAZ': 'Kazakhstan', 'LTU': 'Lithuania', 'LVA': 'Latvia', 'NED': 'Netherlands', 'NOR': 'Norway', 'POL': 'Poland', 'POR': 'Portugal', 'ROU': 'Romania',
+               'SCO': 'Scotland', 'SLO': 'Slovenia', 'SRB': 'Serbia', 'SUI': 'Switzerland', 'SVK': 'Slovakia', 'SWE': 'Sweden', 'TUR': 'Turkey', 'UKR': 'Ukraine', 'WAL': 'Wales'}
+WELSH_CLUBS = {'Cardiff City', 'Swansea City', 'Wrexham', 'Newport County'}
+
+
+def fill_nat(cmd):
+    """A player whose nationality no source gives (Transfermarkt, the API) gets the country he plays in (Nikola, 24.11.2026):
+    England for the English leagues (Wales for the Welsh clubs in them), the league's country elsewhere, the club's country
+    for the European and Club World Cup sides. Marked nat_guess, so a real nationality from a later page replaces it."""
+    where = {}
+    for c in (cmd.get('clubs') or []) + ((cmd.get('second') or {}).get('clubs') or []):
+        where[c['id']] = 'Wales' if c.get('name') in WELSH_CLUBS else 'England'
+    for k, L in (cmd.get('leagues') or {}).items():
+        for c in (L.get('clubs') or []) + ((L.get('second') or {}).get('clubs') or []):
+            where[c['id']] = NAT_OF_CTRY.get(c.get('ctry') or k, NAT_OF_CTRY.get(k))
+    for c in ((cmd.get('europe') or {}).get('clubs') or []):
+        where.setdefault(c['id'], NAT_OF_CTRY.get(c.get('ctry')))
+    for c in ((cmd.get('cwc') or {}).get('clubs') or []):   # the Club World Cup's sides: the country in the API's spelling
+        k = c.get('ctry'); k = k[0] if isinstance(k, list) else k
+        if k:
+            where.setdefault(c['id'], {'South-Korea': 'Korea Republic', 'USA': 'USA'}.get(k, k.replace('-', ' ')))
+    lists = [cmd.get('players') or [], (cmd.get('second') or {}).get('players') or [], (cmd.get('europe') or {}).get('players') or [], (cmd.get('cwc') or {}).get('players') or []]
+    for L in (cmd.get('leagues') or {}).values():
+        lists += [L.get('players') or [], (L.get('second') or {}).get('players') or []]
+    for L in lists:
+        for p in L:
+            if not p.get('nat') and where.get(p.get('club')):
+                p['nat'] = where[p['club']]
+                p['nat_guess'] = 1
 
 
 def apply_market(cmd):
