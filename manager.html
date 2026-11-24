@@ -326,6 +326,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok .tpc{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);font:800 9px/1 var(--body);color:#0B1626;background:#5CC08A;border-radius:4px;padding:2px 4px;letter-spacing:.03em;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.5)}.tok .dot:has(.tpc)+.nm{margin-top:7px}
 .tboard .instr{grid-template-columns:104px minmax(0,1fr)}.tboard .instr .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%;min-width:0}.tboard .instr .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px;text-align:center}
 @media(max-width:520px){.tboard .instr{grid-template-columns:1fr}}
+.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}.stc{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 9px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit;font:inherit;font-size:12.5px;cursor:pointer;text-align:left}.stc.sel{border-color:var(--gold)}.stc.on{background:rgba(76,214,140,.14)}.stinfo{margin:8px 0 4px}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
 .tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
@@ -4398,7 +4399,7 @@ function previewHTML(h, a, o){
   const ot = o.M ? (o.M.h === opp ? o.M.H.t : o.M.A.t) : (S.tac[opp] || autoTactic(opp)), tb = S.table[opp];
   const dw = x => ovrNow(x.p) + ({ FWD: 4, MID: 2, DEF: 0 })[GROUP[x.p.prim]], danger = sides[opp].places.filter(x => x.p && x.code !== 'GK').sort((x, y) => dw(y) - dw(x)).slice(0, 3);
   const dossier = `<div class="ptitle">${esc(club(opp).name)}</div><table><tbody>
-    <tr><td class="dim">Style</td><td>${MENT[ot.men]}, ${PASS[ot.pass].toLowerCase()} passing${ot.press ? ', pressing' : ''}${ot.counter ? ', on the counter' : ''}${ot.mbb ? ', men behind the ball' : ''}</td></tr>
+    <tr><td class="dim">Style</td><td>${styleNear(ot) ? `<b>${styleNear(ot).n}</b>${styleOf(ot) ? '' : ' (more or less)'}: ` : ''}${MENT[ot.men]}, ${PASS[ot.pass].toLowerCase()} passing${ot.press ? ', pressing' : ''}${ot.counter ? ', on the counter' : ''}${ot.mbb ? ', men behind the ball' : ''}</td></tr>
     ${tb ? `<tr><td class="dim">Record</td><td>W${tb.w} D${tb.d} L${tb.l}, goals ${tb.gf}-${tb.ga}</td></tr>` : ''}
     ${mine && ((S.h2h || {})[opp] || []).length ? `<tr><td class="dim">Last met</td><td>${S.h2h[opp].slice(-3).reverse().map(x => { const us = x.h === me() ? x.s[0] : x.s[1], th = x.h === me() ? x.s[1] : x.s[0], r = us > th || (x.p && (x.h === me() ? x.p[0] > x.p[1] : x.p[1] > x.p[0])) ? 'W' : us === th && !x.p ? 'D' : 'L'; return `<span class="form"><span class="${r}">${r}</span></span> ${x.s[0]}-${x.s[1]} <span class="small dim">${x.h === me() ? 'home' : 'away'}, ${shortDate(x.d)}</span>`; }).join('<br>')}</td></tr>` : ''}
     <tr><td class="dim">Dangermen</td><td>${danger.map(x => `<a class="sky" data-pl="${x.id}" style="cursor:pointer">${esc(cmName(x.p.n))}</a> <span class="small yel">${x.code}</span>`).join(', ')}</td></tr></tbody></table>`;
@@ -4740,6 +4741,51 @@ function clubTraining(cid, o){
   document.querySelectorAll('[data-ts]').forEach(b => b.addEventListener('click', () => { V = { ...V, ts: b.dataset.ts }; view(); }));
   wirePlayers(L.map(x => x.p.id));
 }
+/* ---- ready-made tactical styles: one click sets the team's instructions (mentality, passing, tackling, the four
+   tactics) and the usual player instructions of each role in your side, with the shapes the style is usually played in.
+   Each says how well it suits the eleven you have picked (in words, from the attributes it leans on). Change anything
+   afterwards and the style shows as adjusted. The opposition report names the style a side plays closest to ---- */
+const STYLES = [
+  { k: 'gegen', n: 'Gegenpress', d: 'Win the ball back high up the moment it is lost, then go straight for goal.', t: { men: 3, pass: 1, tack: 2, press: true, offside: true, counter: true, mbb: false },
+    pi: { '*': { close: 2 }, FB: { runs: 2 }, W: { runs: 2 }, ST: { runs: 2 } }, f: ['4-3-3', '4-4-2'], need: [['*', ['st', 'ag', 'bw']], ['ST', ['sp', 'ac']]] },
+  { k: 'tiki', n: 'Tiki-taka', d: 'Short passes, the ball kept for long spells, pressing when it is lost.', t: { men: 3, pass: 2, tack: 1, press: true, offside: true, counter: false, mbb: false },
+    pi: { '*': { ls: 0, cross: 0 }, CM: { tb: 2 }, AM: { tb: 2, rwb: 2 }, W: { rwb: 2 } }, f: ['4-3-3'], need: [['*', ['lp', 'bc', 'tp']], ['CM', ['oa', 'lp']]] },
+  { k: 'control', n: 'Control possession', d: 'Patient, keep the ball and wait for the opening; no rush, no risk.', t: { men: 2, pass: 2, tack: 1, press: false, offside: false, counter: false, mbb: false },
+    pi: { '*': { ls: 0 }, FB: { runs: 1 }, CM: { tb: 1 } }, f: ['4-3-3', '4-5-1'], need: [['*', ['lp', 'bc']], ['CB', ['lp']]] },
+  { k: 'wing', n: 'Wing play', d: 'Stretch the pitch: wingers and full-backs get forward and cross for the strikers.', t: { men: 3, pass: 0, tack: 1, press: false, offside: false, counter: false, mbb: false },
+    pi: { WM: { cross: 2, runs: 2 }, W: { cross: 2, runs: 2 }, FB: { cross: 2, runs: 2 }, ST: { hold: 0 } }, f: ['4-4-2', '4-3-3', '3-4-3'], need: [['WM', ['sp', 'lf', 'cu']], ['W', ['sp', 'lf', 'cu']], ['FB', ['sp', 'lf']], ['ST', ['he', 'fi']]] },
+  { k: 'route', n: 'Route one', d: 'Long balls up to a big striker, fight for the second ball.', t: { men: 2, pass: 3, tack: 2, press: false, offside: true, counter: false, mbb: false },
+    pi: { ST: { hold: 1 }, '*': { tb: 0 } }, f: ['4-4-2', '5-3-2'], need: [['ST', ['he', 'pc', 'ju']], ['CB', ['lf']]] },
+  { k: 'counter', n: 'Counter-attack', d: 'Sit deeper, let them have the ball, and break quickly into the space behind.', t: { men: 1, pass: 1, tack: 1, press: false, offside: false, counter: true, mbb: false },
+    pi: { CB: { runs: 0 }, DM: { runs: 0 }, W: { runs: 2, rwb: 2 }, ST: { runs: 2 }, AM: { tb: 2 } }, f: ['4-5-1', '4-4-2', '5-3-2'], need: [['ST', ['sp', 'ac']], ['W', ['sp', 'ac', 'dr']], ['CB', ['da', 'bw']]] },
+  { k: 'bus', n: 'Park the bus', d: 'Everyone behind the ball; a point is a good result.', t: { men: 0, pass: 3, tack: 1, press: false, offside: false, counter: true, mbb: true },
+    pi: { '*': { runs: 0 }, ST: { hold: 1 } }, f: ['5-4-1', '5-3-2'], need: [['CB', ['da', 'bw', 'he']], ['FB', ['da', 'bw']], ['*', ['st']]] },
+];
+const ST_KEYS = ['men', 'pass', 'tack', 'press', 'offside', 'counter', 'mbb'], ST_PI = ['runs', 'rwb', 'ls', 'tb', 'cross', 'close', 'hold'];
+const stDist = (t, S0) => ST_KEYS.reduce((d, k) => d + (typeof S0.t[k] === 'boolean' ? (!!t[k] !== S0.t[k] ? 1 : 0) : Math.abs((t[k] ?? 0) - S0.t[k])), 0);
+const styleOf = t => STYLES.find(x => stDist(t, x) === 0) || null;
+const styleNear = t => { const b = STYLES.map(x => [x, stDist(t, x)]).sort((a, b) => a[1] - b[1])[0]; return b && b[1] <= 2 ? b[0] : null; };
+// how well a style suits these eleven: the attributes it leans on, in the roles that need them (a word, never a number)
+function styleFit(S0, places){
+  const xi = places.filter(x => x.p && x.code !== 'GK'); if (!xi.length) return null; let sum = 0, n = 0;
+  for (const [role, ks] of S0.need){ const L = xi.filter(x => role === '*' || ROLE[x.code] === role); for (const x of L) for (const k of ks){ sum += A(x.p, k); n++; } }
+  if (!n) return { w: 'Your eleven has nobody in the roles it needs', c: 'var(--loss)' };
+  const v = sum / n - (club(me()).q - 75) * .3;   // measured against the level of your squad
+  return v >= 74 ? { w: 'Suits your players well', c: 'var(--win)' } : v >= 68 ? { w: 'Workable with these players', c: '#f2a65a' } : { w: 'Your players are not made for it', c: 'var(--loss)' };
+}
+function styleApply(t, S0, places){
+  for (const k of ST_KEYS) t[k] = S0.t[k];
+  t.pi = t.pi || {};
+  for (const x of places.filter(y => y.p && y.code !== 'GK')){ const o = t.pi[x.p.id] = t.pi[x.p.id] || {}; for (const k of ST_PI) delete o[k];
+    Object.assign(o, S0.pi['*'] || {}, S0.pi[ROLE[x.code]] || {}); if (!Object.keys(o).length) delete t.pi[x.p.id]; }
+  t.style = S0.k;
+}
+function styleBox(t, places, live){
+  const cur = styleOf(t), was = !cur && t.style && STYLES.find(x => x.k === t.style), sel = STYLES.find(x => x.k === (TB.stk || (cur || was || {}).k)) || null;
+  const fit = sel && styleFit(sel, places);
+  return `<div class="ptitle">Style</div><div class="stgrid">${STYLES.map(x => `<button class="stc ${cur && cur.k === x.k ? 'on' : ''} ${sel && sel.k === x.k ? 'sel' : ''}" data-stk="${x.k}"><b>${x.n}</b>${cur && cur.k === x.k ? '<span class="small yel">in use</span>' : was && was.k === x.k ? '<span class="small dim">adjusted</span>' : ''}</button>`).join('')}</div>
+    ${sel ? `<div class="stinfo"><p class="small">${esc(sel.d)}</p><p class="small"><b style="color:${fit ? fit.c : 'inherit'}">${fit ? fit.w : ''}</b>. Usually played as ${sel.f.join(', ')}.</p><div class="tools">${cur && cur.k === sel.k ? '' : `<button class="btn sm y" data-stuse="${sel.k}">Play ${esc(sel.n)}</button>`}${live ? '' : sel.f.filter(f => f !== t.form && FORMS[f]).map(f => `<button class="btn sm" data-form="${f}">Switch to ${f}</button>`).join('')}</div></div>` : '<p class="small dim">Pick a style to see what it asks of your players.</p>'}`;
+}
 function tacticHint(t){
   const L = [];
   if (t.pass === 2) L.push('Short passing needs good passers and a dry pitch; pressing sides upset it.');
@@ -4860,7 +4906,7 @@ function boardHTML(B){
   const seg = (key, Lb) => `<span class="seg" data-tk="${key}">${Lb.map((n, i) => `<button data-v="${i}" class="${t[key] === i ? 'on' : ''}">${n}</button>`).join('')}</span>`;
   const tog = (k, n) => `<button class="tog ${t[k] ? 'on' : ''}" data-ttg="${k}">${t[k] ? '✓' : '·'} ${n}</button>`;
   const team = `${B.live ? `<div class="tbshout">${[['push', 'Push forward'], ['hold', 'Hold what we have'], ['calm', 'Calm down'], ['press', 'Get stuck in']].map(([k, n]) => `<button class="btn sm" data-shout="${k}">${n}</button>`).join('')}</div>` : ''}
-    <div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('counter', 'Counter Attack')}${tog('mbb', 'Men Behind Ball')}</span></div><p class="small" style="margin-top:10px">${tacticHint(t)}</p>`;
+    ${styleBox(t, B.places, B.live)}<div class="ptitle">Instructions</div><div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('counter', 'Counter Attack')}${tog('mbb', 'Men Behind Ball')}</span></div><p class="small" style="margin-top:10px">${tacticHint(t)}</p>`;
   const pid = sel && sel.startsWith('s:') ? (B.places[+sel.slice(2)] || {}).id : sel && sel.startsWith('p:') ? +sel.slice(2) : null, pp = pid && P.get(pid);
   const player = pp ? `<div class="ptitle" style="display:flex;align-items:center;gap:8px"><span>${esc(pp.n)} <span class="small dim">${cmPos(pp.pos)}</span></span>${B.live ? '' : `<button class="btn sm" data-prof="${pp.id}" style="margin-left:auto">Profile</button>`}</div><div class="instr">${PI.map(([k, n, opts]) => { const v = t.pi && t.pi[pid] && t.pi[pid][k];
       return `<span class="yel"><b>${n}</b></span><span class="seg" data-pi="${pid}|${k}"><button data-v="" class="${v == null ? 'on' : ''}">Team</button>${opts.map((x, i) => `<button data-v="${i}" class="${v === i ? 'on' : ''}">${x}</button>`).join('')}</span>`; }).join('')}</div>`
@@ -4882,6 +4928,9 @@ function boardWire(B){
   document.querySelectorAll('.seg[data-tk] button').forEach(b => b.addEventListener('click', () => { const k = b.parentElement.dataset.tk; t[k] = +b.dataset.v;
     if (B.live && !LIVE.M.over) say(LIVE.M, B.us, 'minor', `${esc(club(me()).name)} change their ${k === 'men' ? 'approach: ' + MENT[t.men].toLowerCase() : k === 'pass' ? 'passing: ' + PASS[t.pass].toLowerCase() : 'tackling: ' + TACK[t.tack].toLowerCase()}.`); done(); }));
   document.querySelectorAll('[data-ttg]').forEach(b => b.addEventListener('click', () => { t[b.dataset.ttg] = !t[b.dataset.ttg]; done(); }));
+  document.querySelectorAll('[data-stk]').forEach(b => b.addEventListener('click', () => { TB.stk = b.dataset.stk; done(); }));
+  document.querySelectorAll('[data-stuse]').forEach(b => b.addEventListener('click', () => { const S0 = STYLES.find(x => x.k === b.dataset.stuse); styleApply(t, S0, B.places);
+    if (B.live && !LIVE.M.over) say(LIVE.M, B.us, 'minor', `${esc(club(me()).name)} change their approach: ${S0.n.toLowerCase()}.`); toast(`${S0.n}: the instructions are set.`); done(); }));
   document.querySelectorAll('.seg[data-pi] button').forEach(b => b.addEventListener('click', () => { const [id, k] = b.parentElement.dataset.pi.split('|'); t.pi = t.pi || {}; t.pi[id] = t.pi[id] || {};
     if (b.dataset.v === '') delete t.pi[id][k]; else t.pi[id][k] = +b.dataset.v; done(); }));
   document.querySelectorAll('[data-sp]').forEach(s => s.addEventListener('change', () => { t.set = t.set || {}; t.set[s.dataset.sp] = +s.value; done(); }));
