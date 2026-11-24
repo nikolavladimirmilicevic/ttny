@@ -814,7 +814,52 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     apply_crests(out)
     apply_market(out)
     fill_nat(out)
+    apply_forms(out)
     return out
+
+
+FORM_LAST = 10   # matches: a club's usual shape is the one it used most in its last ten with a known formation
+
+
+def apply_forms(cmd, cache_dir=None):
+    """Each club's usual formation from the API line-ups ('form', e.g. '4-2-3-1', with 'form_n': [times used, of matches]),
+    and its shape in game positions, line by line from the back ('shape'). The last ten matches with a formation, so it is
+    the current coach's way of playing in all but the first weeks after a change. Clubs without line-ups get nothing (the
+    game then picks the shape that suits the squad)."""
+    import json as _json
+    from collections import Counter
+    d = cache_dir or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'cache')
+    try:
+        with open(os.path.join(d, 'lineups.json'), encoding='utf-8') as fh:
+            lu = _json.load(fh)
+        with open(os.path.join(d, 'fixtures.json'), encoding='utf-8') as fh:
+            fx = _json.load(fh)
+    except (OSError, ValueError):
+        return
+    try:
+        from update import slot_code
+    except Exception:
+        return
+    seen = {}
+    for fid, f in fx.items():
+        L = lu.get(fid)
+        if not L or not f.get('d'):
+            continue
+        for t in (f.get('h'), f.get('a')):
+            side = L.get(str(t)) or {}
+            form = side.get('f') or ''
+            if form and sum(int(x) for x in form.split('-') if x.isdigit()) == 10:
+                seen.setdefault(t, []).append((f['d'], form))
+    for c in game_clubs(cmd):
+        got = sorted(seen.get(c.get('id')) or [], reverse=True)[:FORM_LAST]
+        if len(got) < 3:
+            continue
+        cnt = Counter(x[1] for x in got)
+        top = max(cnt.values())
+        form = next(x[1] for x in got if cnt[x[1]] == top)   # a tie goes to the one used most recently
+        lines = [int(x) for x in form.split('-')]
+        rows = [' '.join(slot_code(form, f'{i + 2}:{k}', 'M') or 'CMF' for k in range(1, n + 1)) for i, n in enumerate(lines)]
+        c['form'], c['form_n'], c['shape'] = form, [top, len(got)], rows
 
 
 def game_clubs(cmd):

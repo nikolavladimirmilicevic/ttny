@@ -1805,7 +1805,8 @@ function newGame(cid, manager){
     for (const k of Object.keys(p.a || {})){ const off = Math.floor(rz() * 5) - 2, b = p.a[k]; if (off && b + off >= 40 && b + off <= 99) r[k] = off; }
     ps(p.id).r = r; }
   longInjured();
-  for (const id of ids) S.tac[id] = autoTactic(id, id === cid ? judge() : null);
+  for (const id of ids) S.tac[id] = autoTactic(id, id === cid ? judge() : null, id === cid);   // yours starts in the shape the club really plays
+  try { famEnsure(); } catch (e) {}
   const a = AIMS[aim];
   (S.hist = S.hist || []).push({ d: S.date, c: cid, t: `Took charge of ${club(cid).name}` });
   news('board', `Welcome to ${club(cid).name}`, `The chairman has appointed ${esc(S.manager)} as manager. The board's expectation for the season: <b>${a.name}</b>. ${a.text}`);
@@ -1896,8 +1897,13 @@ function coachShape(cid, rest, jq){
   const shape = [['GK', 50, LINE_Y[0]], ...td.order.map(it => [it.code, it.x, it.y])];
   return { form: 'Custom', shape, name: shapeName(shape) };
 }
-function autoTactic(cid, jq){
-  const cs = cid === me() ? { form: bestForm(cid, false, jq), shape: null, name: null } : coachShape(cid), best = cs.form, { xi, bench } = bestXI(cid, best, false, jq, cs.shape || undefined);
+// the shape a club really plays (its usual formation in its last ten matches, from the line-ups), in game positions
+function realShape(cid){ const c = club(cid); if (!c || !c.shape) return null;
+  const rows = c.shape.map(r => r.split(' ').map(x => x === 'SS' ? 'CF' : x)), codes = rows.flat(); if (codes.length !== 10 || codes.some(c => codes.filter(x => x === c).length > posCap(c))) return null;
+  const pre = Object.keys(FORM_DEF).find(f => codeKey(FORM_DEF[f].join(' ').split(' ')) === codeKey(codes)); if (pre) return { form: pre, shape: null, name: c.form };
+  return { form: 'Custom', shape: [['GK', 50, LINE_Y[0]], ...layoutRows(rows)], name: c.form }; }
+function autoTactic(cid, jq, fresh){
+  const cs = cid === me() ? ((fresh && realShape(cid)) || { form: bestForm(cid, false, jq), shape: null, name: null }) : coachShape(cid), best = cs.form, { xi, bench } = bestXI(cid, best, false, jq, cs.shape || undefined);
   const q = club(cid).q || 75, top = Math.max(...D.clubs.map(c => c.q)), r0 = rng(`t-${cid}`);
   return { form: best, shape: cs.shape, name: cs.name, xi, bench, men: q >= top - 3 ? 3 : q < top - 9 ? 1 : 2, pass: [0, 1, 2, 0][Math.floor(r0() * 4)], tack: 1, press: q >= top - 5, offside: r0() < .3, counter: q < top - 6, mbb: q < top - 10, set: setPieces(cid, xi), pi: {} };
 }
@@ -3701,7 +3707,7 @@ function newSeason(){
   if (S.visAdj){ S.conf = clamp(S.conf + S.visAdj * .5, 0, 100); S.visAdj = 0; }   // last summer's review of the club vision carries into the new season
   if (S.vis && S.season > S.vis.to) S.vis = null; try { visEnsure(); } catch (e) { console.warn(e); }
   const q = club(me()).q; S.fin.budget = Math.round(S.fin.budget * .5 + Math.max(12, (q - 70) * 9) * 1e6);
-  for (const id of ids) S.tac[id] = id === me() ? Object.assign(S.tac[id], bestXI(id, S.tac[id].form, false, judge())) : autoTactic(id);
+  for (const id of ids) S.tac[id] = id === me() ? Object.assign(S.tac[id], bestXI(id, S.tac[id].form, false, judge(), S.tac[id].shape && S.tac[id].shape.length === 11 ? S.tac[id].shape : undefined)) : autoTactic(id);
   const pv = S.past[S.past.length - 1], a = AIMS[S.aim];
   news('board', `The ${S.season}/${String((S.season + 1) % 100).padStart(2, '0')} season`, `${esc(club(pv.champ).name)} were last season's champions${pv.cup ? `, ${esc(club(pv.cup).name)} won the ${esc(CUP)}` : ''}. The board's expectation this season: <b>${a.name}</b>. Your transfer budget: ${cash(S.fin.budget)}. The league starts on ${fmtDate(rounds[0].date, true)}.`);
   mediaPred();
@@ -5952,24 +5958,28 @@ function wireTransfer(p){
    style you use grow more familiar (faster with tactics sessions in the training week), the ones you leave alone fade.
    An unfamiliar shape or style costs your players a little in every game; the other clubs play what they know ==== */
 const famKey = t => (styleOf(t) || {}).k || 'own';
-function famEnsure(){ if (!S.fam){ const t = S.tac[me()] || {}; S.fam = { f: { [t.form]: 85 }, s: { [famKey(t)]: 80 } }; } return S.fam; }
+const fkey = t => t.shape && t.shape.length === 11 ? shapeName(t.shape) : t.form;   // a shape of your own counts by its lines
+const realKey = () => { const r = realShape(me()); return r ? (r.shape ? shapeName(r.shape) : r.form) : null; };
+const famLabel = k => k === realKey() && club(me()).form ? club(me()).form : k;
+// what the players know at the start: the shape the club really plays (or, without line-ups, the one they start in) and the style they start with
+function famEnsure(){ if (!S.fam){ const t = S.tac[me()] || {}; S.fam = { f: { [realKey() || fkey(t)]: 85 }, s: { [famKey(t)]: 80 } }; } return S.fam; }
 const famF = f => (famEnsure().f[f] ?? 40), famS = k => (famEnsure().s[k] ?? 45);
 function famWeek(){
-  const t = S.tac[me()]; if (!t) return; const F = famEnsure(), c = calWeek().tac, f = t.form, k = famKey(t);
+  const t = S.tac[me()]; if (!t) return; const F = famEnsure(), c = calWeek().tac, f = fkey(t), k = famKey(t);
   for (const x of Object.keys(F.f)) if (x !== f) F.f[x] = Math.max(35, F.f[x] - 1.5);
   for (const x of Object.keys(F.s)) if (x !== k) F.s[x] = Math.max(40, F.s[x] - 1.5);
   F.f[f] = Math.min(100, famF(f) + 4 + 2.5 * c); F.s[k] = Math.min(100, famS(k) + 3 + 2 * c);
 }
 function famMul(side){ const t = side.t; if (!S.fam || side.cid !== me() || !t) return 1;
-  const key = [t.form, ...ST_KEYS.map(k => t[k])].join(); if (side._fk === key) return side._fm;
-  const f = famF(t.form), s = famS(famKey(t)); side._fk = key; side._fm = 1 - Math.max(0, 75 - f) * .0012 - Math.max(0, 75 - s) * .0008; return side._fm; }
+  const key = [t.form, JSON.stringify(t.shape || ''), ...ST_KEYS.map(k => t[k])].join(); if (side._fk === key) return side._fm;
+  const f = famF(fkey(t)), s = famS(famKey(t)); side._fk = key; side._fm = 1 - Math.max(0, 75 - f) * .0012 - Math.max(0, 75 - s) * .0008; return side._fm; }
 const famWord = v => v >= 90 ? ['Fluid', 'var(--win)'] : v >= 75 ? ['Familiar', '#9AD07A'] : v >= 60 ? ['Getting there', 'var(--gold)'] : v >= 45 ? ['Awkward', '#f2a65a'] : ['Unfamiliar', 'var(--loss)'];
 function famBox(t){
-  const f = famF(t.form), sk = famKey(t), s = famS(sk), sn = sk === 'own' ? 'Your own instructions' : (STYLES.find(x => x.k === sk) || {}).n, wf = famWord(f), ws = famWord(s);
+  const fk = fkey(t), f = famF(fk), sk = famKey(t), s = famS(sk), sn = sk === 'own' ? 'Your own instructions' : (STYLES.find(x => x.k === sk) || {}).n, wf = famWord(f), ws = famWord(s);
   const bar = (v, c) => `<div class="meter" style="flex:1"><i style="width:${Math.round(v)}%;background:${c}"></i></div>`;
-  const others = Object.entries(famEnsure().f).filter(([x]) => x !== t.form).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  return `<div class="ptitle">Familiarity</div><div class="famr"><span>Shape ${esc(t.form)}</span>${bar(f, wf[1])}<b style="color:${wf[1]}">${wf[0]}</b></div><div class="famr"><span>${esc(sn)}</span>${bar(s, ws[1])}<b style="color:${ws[1]}">${ws[0]}</b></div>
-    ${others.length ? `<p class="small dim">Other shapes they know: ${others.map(([x, v]) => `${esc(x)} (${famWord(v)[0].toLowerCase()})`).join(', ')}.</p>` : ''}<p class="small dim">A shape and a style become familiar week by week (tactics sessions in the training week speed it up); an unfamiliar one costs a little in every game.</p>`;
+  const others = Object.entries(famEnsure().f).filter(([x]) => x !== fk).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  return `<div class="ptitle">Familiarity</div><div class="famr"><span>Shape ${esc(famLabel(fk))}</span>${bar(f, wf[1])}<b style="color:${wf[1]}">${wf[0]}</b></div><div class="famr"><span>${esc(sn)}</span>${bar(s, ws[1])}<b style="color:${ws[1]}">${ws[0]}</b></div>
+    ${others.length ? `<p class="small dim">Other shapes they know: ${others.map(([x, v]) => `${esc(famLabel(x))} (${famWord(v)[0].toLowerCase()})`).join(', ')}.</p>` : ''}<p class="small dim">A shape and a style become familiar week by week (tactics sessions in the training week speed it up); an unfamiliar one costs a little in every game.</p>`;
 }
 /* ==== player traits: the habits that make a player who he is (cuts inside, tries long shots, gets forward, tries
    killer balls, dives into tackles...). He comes with some, from his playing style and his attributes; he can learn a
