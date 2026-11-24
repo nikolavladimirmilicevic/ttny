@@ -815,6 +815,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
     out = {'season': season, 'updated': today, 'league': 'Premier League', 'complete': len(clubs) == len(teams) and len(teams) >= 18,
            'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures, **extra}
     apply_crests(out)
+    apply_market(out)
     return out
 
 
@@ -825,6 +826,38 @@ def game_clubs(cmd):
         out += list(L.get('clubs') or []) + list((L.get('second') or {}).get('clubs') or [])
     out += list((cmd.get('europe') or {}).get('clubs') or []) + list((cmd.get('cwc') or {}).get('clubs') or [])
     return out
+
+
+def apply_market(cmd):
+    """Transfermarkt and Wikipedia pages Nikola supplied (pipeline/tm_market.json): the head coach in post when each league's
+    season started, the players without a club and the managers out of work at the start, the national teams' coaches who left
+    after the World Cup (with the day), and the World's Best Club and National Team Coach awards. A free agent's ability is
+    derived from his value and age (the same fit as the Championship's squads): Transfermarkt gives no ability."""
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_market.json'), encoding='utf-8') as f:
+            m = json.load(f)
+    except (OSError, ValueError):
+        return
+    groups = {'PL': cmd.get('clubs') or [], 'CH': (cmd.get('second') or {}).get('clubs') or []}
+    for k, L in (cmd.get('leagues') or {}).items():
+        groups[k] = L.get('clubs') or []
+        groups[k + '2'] = (L.get('second') or {}).get('clubs') or []
+    for k, sc in (m.get('start_coaches') or {}).items():
+        by = {c['name']: c for c in groups.get(k, [])}
+        for name, coach in sc.items():
+            if name in by:
+                by[name]['coach'] = coach
+                by[name].pop('coach_until', None)
+    fa = []
+    for p in m.get('free_agents') or []:
+        q = dict(p)
+        a = min(p['age'], 34)
+        q['ovr'] = round(max(48.0, min(84.0, 53.0082 + 2.6189 * math.log2(max(p.get('eur') or .05, .025)) + .3482 * a + .0074 * a * a)), 1)
+        fa.append(q)
+    cmd['free_agents'] = fa
+    cmd['managers_free'] = m.get('managers') or []
+    cmd['nt_departures'] = m.get('nt_departures') or []
+    cmd['coach_awards'] = m.get('awards') or {}
 
 
 def apply_crests(cmd):
