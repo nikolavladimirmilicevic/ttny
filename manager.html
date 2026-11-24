@@ -326,7 +326,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok .tpc{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);font:800 9px/1 var(--body);color:#0B1626;background:#5CC08A;border-radius:4px;padding:2px 4px;letter-spacing:.03em;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.5)}.tok .dot:has(.tpc)+.nm{margin-top:7px}
 .tboard .instr{grid-template-columns:104px minmax(0,1fr)}.tboard .instr .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%;min-width:0}.tboard .instr .seg button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:11.5px;padding:7px 3px;text-align:center}
 @media(max-width:520px){.tboard .instr{grid-template-columns:1fr}}
-.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}.stc{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 9px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit;font:inherit;font-size:12.5px;cursor:pointer;text-align:left}.stc.sel{border-color:var(--gold)}.stc.on{background:rgba(76,214,140,.14)}.stinfo{margin:8px 0 4px}.dhc{width:100%;max-height:230px;display:block}
+.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}.stc{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 9px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit;font:inherit;font-size:12.5px;cursor:pointer;text-align:left}.stc.sel{border-color:var(--gold)}.stc.on{background:rgba(76,214,140,.14)}.stinfo{margin:8px 0 4px}.dhc{width:100%;max-height:230px;display:block}.calw{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}.calw label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}.calw select{width:100%}.oir{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)}.oic{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px}.oic .tog,.oic .seg button{font-size:11px;padding:3px 7px}.soc{display:flex;flex-direction:column;gap:8px;max-width:640px;margin:0 auto}.socp{background:var(--panel-2);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:4px}.soch{display:flex;justify-content:space-between;gap:8px}.oit .seg{margin:2px 4px 2px 0}.oit .seg button{font-size:11px;padding:3px 6px}@media(max-width:620px){.calw{grid-template-columns:repeat(4,1fr)}}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
 .tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
@@ -2029,9 +2029,11 @@ function eff(side, x){
   if (side.cid === me() && S.pressMod && S.pressMod.d === S.date) v *= 1 + S.pressMod.v;   // what you told the press
   if (side.cid === me() && S.meetMod && S.meetMod.d === S.date) v *= 1 + S.meetMod.v;   // the last team meeting
   if (S.prep && S.prep.k === 'danger' && S.prep.d === S.date && side.cid === S.prep.opp && x.id === S.prep.pid) v *= S.prep.fit ? .92 : .95;   // studied all week
+  if (side.vsMe && S.oi && S.oi[side.cid]){ const o = S.oi[side.cid][x.id]; if (o) v *= oiMul(x.p, o); }   // your opposition instructions on him
   return v;
 }
 function units(side, M){
+  if (M && M.h != null && S && S.club) side.vsMe = (M.h === me() || M.a === me()) && side.cid !== me();
   const by = r => side.on.filter(x => r.includes(ROLE[x.pos]));
   const avg = (L, f) => L.length ? L.reduce((t, x) => t + f(x) * eff(side, x), 0) / L.length : 40;
   const fw = by(['ST', 'W', 'AM']), mid = by(['CM', 'DM', 'AM', 'WM']), df = by(['CB', 'FB', 'DM']), gk = by(['GK'])[0];
@@ -2054,6 +2056,15 @@ function units(side, M){
   u.def += (t.tack - 1) * 1.4; u.mid += (t.tack - 1) * .6;
   if (t.press) u.mid += 2;
   if (t.mbb){ u.def += 3; u.att -= 3; u.cre -= 1; }
+  // in possession: width and tempo; out of possession: the defensive line (1 is the default for each)
+  const wide = by(['W', 'WM', 'FB']), wq = wide.length ? wide.reduce((s0, x) => s0 + A(x.p, 'lf') + A(x.p, 'sp'), 0) / wide.length / 2 : 65;
+  if (t.width === 2){ u.cre += .4 + (wq - 70) / 15; u.air += 1; u.mid -= .6; } else if (t.width === 0){ u.mid += 1; u.cre -= .4; u.def += .4; }
+  if (t.tempo === 2){ u.att += 1; u.cre += .3; u.mid -= .8; } else if (t.tempo === 0){ u.mid += 1; u.att -= .8; }
+  if (t.line === 2){ const oth = M && M.H ? (side === M.H ? M.A : M.H) : null, fw0 = oth ? oth.on.filter(x => ['ST', 'W'].includes(ROLE[x.pos])) : [], osp = fw0.length ? fw0.reduce((s0, x) => s0 + A(x.p, 'sp'), 0) / fw0.length : 70;   // a high line against quick forwards is a risk
+    u.mid += 1.2; u.def -= 1 + Math.max(0, osp - 75) / 6; } else if (t.line === 0){ u.def += 1.1; u.mid -= 1; u.att -= .4; }
+  if (side.cid === me() && M && M.h != null){ const opp = M.h === me() ? M.a : M.h, O = Object.values((S.oi || {})[opp] || {});   // marking and closing down men takes players out of shape
+    u.def -= O.filter(o => o.mark).length * .12; u.mid -= O.filter(o => o.press === 2).length * .1; }
+  if (side.cid === me()){ const cal = calWeek(); u.mid += cal.tac * .15; }   // tactics sessions in the week
   for (const x of side.on){ const run = piOf(t, x.id, 'runs', 1), tb = piOf(t, x.id, 'tb', 1), cl = piOf(t, x.id, 'close', t.press ? 2 : 1);
     u.att += (run - 1) * .35; u.def -= (run - 1) * .25 * (['CB', 'FB', 'DM'].includes(ROLE[x.pos]) ? 1.4 : .4);
     if (piOf(t, x.id, 'free', 0)) u.cre += (A(x.p, 'lp') + A(x.p, 'oa') - 140) / 25;
@@ -2173,13 +2184,20 @@ function shot(M, S1, S2, u1, u2, kind, forced){
 }
 function corner(M, S1, S2, u1, u2){
   const taker = S1.on.find(x => x.id === (S1.t.set || {}).cor) || who(S1, 'pass', 'cu');
-  if (Math.random() < .22){ say(M, S1, 'minor', T([`Corner, ${nm(taker)} swings it in…`, `${nm(taker)} whips in the corner…`, `${nm(taker)} to take the corner, bodies in the box…`, `An inswinging corner from ${nm(taker)}…`])); shot(M, S1, S2, u1, u2, 'head'); }
+  const rt = (S1.t.set || {}).crt || 'near', drill = S1.cid === me() ? 1 + calWeek().sp * .05 : 1, dz = (S2.t.set || {}).cdef || 'mixed';
+  const dmul = dz === 'zonal' ? (u1.air > 74 ? 1.05 : .9) : dz === 'man' ? 1.04 - (u2.def - 70) / 120 : 1;   // how they defend it: zonal copes with crosses, struggles with big men; man-marking is as good as the markers
+  const tgt = S1.on.find(x => x.id === (S1.t.set || {}).ctg);
+  if (rt === 'short' && Math.random() < .12 * drill){ say(M, S1, 'minor', `${nm(taker)} plays the corner short and they work it into the box…`); shot(M, S1, S2, u1, u2, 'open'); return; }
+  if (rt === 'edge' && Math.random() < .12 * drill){ say(M, S1, 'minor', `${nm(taker)} pulls the corner back to the edge of the box…`); shot(M, S1, S2, u1, u2, 'far'); return; }
+  const hp = (rt === 'far' ? .2 * (1 + (u1.air - 70) / 40) : rt === 'near' ? .22 : .1) * drill * dmul;
+  if (Math.random() < hp){ say(M, S1, 'minor', T([`Corner, ${nm(taker)} swings it in…`, `${nm(taker)} whips in the corner…`, `${nm(taker)} to take the corner, bodies in the box…`, `An inswinging corner from ${nm(taker)}…`])); shot(M, S1, S2, u1, u2, 'head', tgt && Math.random() < .55 ? tgt : null); }
+  else if (false && Math.random() < .22){ say(M, S1, 'minor', T([`Corner, ${nm(taker)} swings it in…`, `${nm(taker)} whips in the corner…`, `${nm(taker)} to take the corner, bodies in the box…`, `An inswinging corner from ${nm(taker)}…`])); shot(M, S1, S2, u1, u2, 'head'); }
   else if (M.live && Math.random() < .25) say(M, S1, 'minor', T([`${nm(taker)}'s corner is cleared.`, `${nm(taker)}'s corner is headed away.`, `The keeper comes and punches ${nm(taker)}'s corner clear.`, `${nm(taker)} overhits the corner and it goes out.`, `${nm(taker)}'s corner is short and comes to nothing.`]));
 }
 function foul(M, S1, S2){
   const x = who(S1, 'foul', 'ag'), v = who(S2, 'dribble', 'dr'), strict = (M.ref ? M.ref.s : 10) / 10.5 * (M.derby ? 1.12 : 1);
   S1.fouls++;
-  const ag = A(x.p, 'ag'), r0 = Math.random(), hard = piOf(S1.t, x.id, 'tack', S1.t.tack), r = r0 / (S1.shout ? ({ fire: 1.4, calm: .6, focus: .9 })[S1.shout.k] || 1 : 1);   // a fired-up side picks up more cards
+  const ag = A(x.p, 'ag'), r0 = Math.random(), hard = Math.min(2, piOf(S1.t, x.id, 'tack', S1.t.tack) + (S1.cid === me() && v && ((S.oi || {})[S2.cid] || {})[v.id] && S.oi[S2.cid][v.id].tack ? 1 : 0)), r = r0 / (S1.shout ? ({ fire: 1.4, calm: .6, focus: .9 })[S1.shout.k] || 1 : 1);   // a fired-up side picks up more cards
   if (r < (.0015 + .001 * (ag - 60) / 20) * strict * [.6, 1, 1.6][hard]){ S1.rc++; evAdd(S1, x, 'rc'); S1.ev[x.id].straight = 1; rateAdd(S1, x, -1.5); say(M, S1, 'red', T([`RED CARD! ${nm(x)} is sent off for a reckless challenge on ${nm(v)}.`, `RED CARD! ${nm(x)} goes in two-footed on ${nm(v)} and is off.`, `RED CARD! ${nm(x)} denies ${nm(v)} a clear chance and is sent off.`])); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', id: x.p.id, t: surname(x.p.n) }); off(S1, x); return; }
   if (r < (.12 + .05 * (ag - 60) / 20) * strict * [.7, 1, 1.4][hard]){
     const already = (S1.ev[x.id] || {}).yc;
@@ -2188,7 +2206,7 @@ function foul(M, S1, S2){
     { const rf = M.ref ? esc(M.ref.n.split(' ').slice(1).join(' ')) : 'The referee'; say(M, S1, 'card', T([`${rf} books ${nm(x)} for a late tackle on ${nm(v)}.`, `Yellow card for ${nm(x)}, who caught ${nm(v)} late.`, `${nm(x)} goes into the book for a cynical foul on ${nm(v)}.`, `${rf} has seen enough: ${nm(x)} is booked for pulling back ${nm(v)}.`, `${nm(x)} is cautioned after a reckless lunge at ${nm(v)}.`, `A yellow for ${nm(x)}, stopping ${nm(v)} on the break.`, `${nm(x)} complains, but ${rf} shows him the yellow card.`])); } M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'yel', id: x.p.id, t: surname(x.p.n) });
   } else if (M.live && Math.random() < .2) say(M, S1, 'minor', T([`Free kick: ${nm(x)} brings down ${nm(v)}.`, `${nm(x)} trips ${nm(v)}; free kick.`, `${nm(v)} goes down under ${nm(x)}'s challenge.`, `${nm(x)} is penalised for a push on ${nm(v)}.`, `Foul by ${nm(x)}, ${nm(v)} wins the free kick.`, `${nm(x)} clatters into ${nm(v)}. Free kick.`]));
   if (hard === 2 && Math.random() < .012) injure(M, S2, v);
-  if (Math.random() < .09){ const u2 = units(S2, M), u1 = units(S1, M); const k = S2.on.find(y => y.id === (S2.t.set || {}).fk) || who(S2, 'pass', 'pk'); say(M, S2, '', T([`Free kick in a dangerous position. ${nm(k)} stands over it…`, `A free kick just outside the box. ${nm(k)} lines it up…`, `${nm(k)} places the ball, the wall lines up…`, `Free kick on the edge of the area; ${nm(k)} fancies this…`])); shot(M, S2, S1, u2, u1, 'fk', k); }
+  if (Math.random() < .09){ const u2 = units(S2, M), u1 = units(S1, M); const k = S2.on.find(y => y.id === (S2.t.set || {}).fk) || who(S2, 'pass', 'pk'); say(M, S2, '', T([`Free kick in a dangerous position. ${nm(k)} stands over it…`, `A free kick just outside the box. ${nm(k)} lines it up…`, `${nm(k)} places the ball, the wall lines up…`, `Free kick on the edge of the area; ${nm(k)} fancies this…`])); { const fr = (S2.t.set || {}).fkr || 'shoot', tg = S2.on.find(y => y.id === (S2.t.set || {}).ctg); if (fr === 'cross') shot(M, S2, S1, u2, u1, 'head', tg && Math.random() < .55 ? tg : null); else if (fr === 'short') shot(M, S2, S1, u2, u1, Math.random() < .5 ? 'open' : 'far'); else shot(M, S2, S1, u2, u1, 'fk', k); } }
 }
 function off(side, x){ side.on = side.on.filter(y => y !== x); x.off = true; }
 function injure(M, side, who_){
@@ -2349,7 +2367,7 @@ function apply(M, kind){
       if (dm < 0 && s.cid === me()) dm *= 1.2 - manMgmt() * .02;   // a good man-manager softens the blows
       q.mor = clamp(q.mor + dm, 15, 100); }
   }
-  if ((M.h === me() || M.a === me()) && kind !== 'friendly') try { fanMatch(M, kind); } catch (e) { console.warn(e); }
+  if ((M.h === me() || M.a === me()) && kind !== 'friendly') try { fanMatch(M, kind); socMatch(M); } catch (e) { console.warn(e); }
   // the gate: your home matches fill the stadium by how the season is going; TV money for every match
   if (M.h === me() || M.a === me()){
     const home = M.h === me(), c = club(me()), fill = clamp(.82 + (S.conf - 50) / 400 + ((S.fans ?? 60) - 60) / 300 + Math.random() * .08, .6, 1), price = 38 + (c.q - 70) * 2.2;
@@ -2463,17 +2481,17 @@ function passDays(n){
   const f = S.train;
   for (const p of D.players){ const q = ps(p.id);
     const R = p.club === me() ? (p.prim === 'GK' ? trainReg().gk : trainReg().out) : null, ld = R ? Object.values(R).reduce((t, v) => t + v, 0) / Object.values(R).length : 0;
-    q.cond = Math.min(100, q.cond + n * (R ? 6.2 - ld * .7 + (R.phys - 1.5) * .25 : 5));
+    q.cond = Math.min(100, q.cond + n * (R ? 6.2 - ld * .7 + (R.phys - 1.5) * .25 + calRec() + [2, 0, -1][itrOf(p.id).i ?? 1] : 5));
     if (q.injD){ q.injD = Math.max(0, q.injD - n * (p.club === me() ? physioRate() : 1)); if (!q.injD){ q.light = 1; if (p.club === me()) news('injury', `${p.n} is fit again`, `${esc(p.n)} has recovered and is back in training. He may not be at his sharpest for his first game back.`); } }
   }
   const to = day(S.date, n);
-  while (daysBetween(f.last, to) >= 7){ f.last = day(f.last, 7); trainWeek(f.last); try { mentWeek(f.last); medWeek(); dynWeek(); } catch (e) { console.warn(e); } }
+  while (daysBetween(f.last, to) >= 7){ f.last = day(f.last, 7); trainWeek(f.last); try { mentWeek(f.last); medWeek(); dynWeek(); u21Week(f.last); } catch (e) { console.warn(e); } }
   S.date = to;
   chTick(); awTick();
   scoutTick();
   transferTick();
   try { promTick(); sqPromTick(); relTick(); visEnsure(); } catch (e) { console.warn(e); }
-  try { cgTick(); fanTick(); affTick(); agTick(); respTick(); } catch (e) { console.warn(e); }
+  try { cgTick(); fanTick(); affTick(); agTick(); respTick(); dofTick(); } catch (e) { console.warn(e); }
   contractWarn();
   if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
   intlTick(); ntTick();
@@ -2507,7 +2525,7 @@ const coachLevel = gk => { const st = (S.staff || []).filter(x => x.role === (gk
 // how far a young player can go: each player has his own rate of growth (hidden; the same all game), from slow to
 // a rare gem who shoots up; and the young grow faster when they play
 const potOf = p => { const rr = rng(`pot-${p.id}`); const a = rr(), b = rr(); return +(.4 + 1.2 * a + (b < .06 ? .55 : 0)).toFixed(2); };
-const minsF = (p, q) => p.age > 23 ? 1 : .8 + .45 * Math.min(1, q.apps / Math.max(1, S.round) / .6);
+const minsF = (p, q) => p.age > 23 ? 1 : .8 + .45 * Math.min(1, (q.apps + (q.u21a || 0) * .5) / Math.max(1, S.round) / .6);   // U21 games count at half the weight
 // the assistant's word on a young player of yours: where he could get to, judged with his eye (a good judge is closer)
 function prospectWord(p){
   if (p.age > 21) return null;
@@ -2525,11 +2543,13 @@ function trainWeek(wk){
     const coach = mine ? .85 + coachLevel(gk) * .015 : 1;          // a 10/20 staff: 1.0; 20/20: 1.15
     for (let i = 0; i < 3; i++){
       let k;
-      if (mine && tot){ let r = rr() * (tot + 1); const part = parts.find(x => (r -= R[x]) < 0); k = part ? TR_PARTS[part][1][Math.floor(rr() * TR_PARTS[part][1].length)] : keys[Math.floor(rr() * keys.length)]; }
+      const it = mine ? itrOf(p.id) : {};
+      if (it.f && FOCI[it.f] && rr() < .55){ const L = FOCI[it.f][1]; k = L[Math.floor(rr() * L.length)]; }
+      else if (mine && tot){ let r = rr() * (tot + 1); const part = parts.find(x => (r -= R[x]) < 0); k = part ? TR_PARTS[part][1][Math.floor(rr() * TR_PARTS[part][1].length)] : keys[Math.floor(rr() * keys.length)]; }
       else k = keys[Math.floor(rr() * keys.length)];
       if (gk !== GK_KEYS.includes(k) && rr() < .7) continue;
       const lvl = mine ? (Object.entries(TR_PARTS).find(([pk, [, ks]]) => ks.includes(k) && R[pk] != null) || [null])[0] : null;
-      let v = (grow + (lvl ? R[lvl] * .015 : 0)) * (grow > 0 ? potOf(p) * minsF(p, q) : 1) * (mine ? (.6 + .3 * load) * coach * (1 + ((S.fac || {}).train || 0) * .12 + (age <= 21 ? ((S.fac || {}).youth || 0) * .15 : 0)) : 1) * (0.5 + rr());
+      let v = (grow + (lvl ? R[lvl] * .015 : 0)) * (grow > 0 ? potOf(p) * minsF(p, q) : 1) * (mine ? (.6 + .3 * load) * coach * calGrow() * [.5, 1, 1.25][it.i ?? 1] * (1 + ((S.fac || {}).train || 0) * .12 + (age <= 21 ? ((S.fac || {}).youth || 0) * .15 : 0)) : 1) * (0.5 + rr());
       if (grow < 0 && ['sp', 'ac', 'st'].includes(k)) v *= 1.8 * (mine && R.phys >= 2 ? .8 : 1);   // physical work slows the decline
       if (!q.injD) q.d[k] = Math.round(((q.d[k] || 0) + v * .6) * 100) / 100;   // two decimals: the save stays small
     }
@@ -3872,7 +3892,7 @@ function menuTree(o, unread){
   const mine = me(), cv = (cid, tab) => ({ s: 'club', cid, tab });
   // your club in the order of a week's work: the side, the plan, the games, then the business; other clubs as a scout sees them
   const clubKids = cid => (cid === mine
-    ? [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['frd', 'Friendlies'], ['tr', 'Transfers'], ['fa', 'Free Agents'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']]
+    ? [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['dev', 'Development Centre'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['frd', 'Friendlies'], ['tr', 'Transfers'], ['fa', 'Free Agents'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']]
     : [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', 'General Info']])
     .map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'frd' ? { s: 'friendlies' } : t === 'tr' ? { s: 'transfers' } : t === 'fa' ? { s: 'transfers', tab: 'fa' } : t === 'squad' ? { ...cv(cid, 'squad'), team: 'first' } : t === 'res' ? { ...cv(cid, 'squad'), team: 'res' } : cv(cid, t) }));
   const otherKids = cid => [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']].map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'squad' ? { ...cv(cid, t), team: 'first' } : cv(cid, t) }));
@@ -3881,7 +3901,7 @@ function menuTree(o, unread){
   const T = [
     { id: 'mgr', cls: 'mgr', label: `${esc(S.manager)}${unread ? `<span class="badge">${unread}</span>` : ''}`, v: { s: 'home' }, kids: [
       { id: 'home', label: 'Home', v: { s: 'home' } },
-      { id: 'news', label: 'News', v: { s: 'news', f: 'all' }, kids: [['all', 'All'], ['club', 'Club &amp; Board'], ['comp', 'Competitions'], ['inj', 'Injuries &amp; Bans']].map(([f, n]) => ({ id: 'n.' + f, label: n, v: { s: 'news', f } })) },
+      { id: 'news', label: 'News', v: { s: 'news', f: 'all' }, kids: [['all', 'All'], ['club', 'Club &amp; Board'], ['comp', 'Competitions'], ['inj', 'Injuries &amp; Bans'], ['social', 'Social']].map(([f, n]) => ({ id: 'n.' + f, label: n, v: { s: 'news', f } })) },
       { id: 'career', label: 'Career', v: { s: 'manager', tab: 'hist' }, kids: [
         { id: 'k.hist', label: 'History', v: { s: 'manager', tab: 'hist' } }, { id: 'k.goals', label: 'Career Goals', v: { s: 'manager', tab: 'goals' } }, { id: 'k.con', label: 'Contract', v: { s: 'manager', tab: 'con' } },
         { id: 'k.jobs', label: 'Jobs', v: { s: 'managers', tab: 'jobs' } }, { id: 'k.rep', label: 'Manager Rankings', v: { s: 'managers', tab: 'rep' } }, { id: 'k.aw', label: 'Coach Awards', v: { s: 'managers', tab: 'aw' } },
@@ -4196,12 +4216,13 @@ const NEWS_CATS = { all: null, club: ['club', 'board', 'scout'], comp: ['match']
 function newsNow(){ if (V.s !== 'news') return null; const F = V.f || 'all', L = S.news.filter(n => !NEWS_CATS[F] || NEWS_CATS[F].includes(n.c)); return L[V.i == null ? 0 : Math.min(V.i, L.length - 1)] || null; }
 function newsAct(n){ if (!n || !n.a) return null; return pendingActs().find(x => x.v && x.v.id === n.a.id) || null; }
 function scrNews(){
+  if (V.f === 'social') return scrSocial();
   const F = V.f || 'all', cats = NEWS_CATS;
   const L = S.news.filter(n => !cats[F] || cats[F].includes(n.c));
   let i = V.i == null ? 0 : Math.min(V.i, L.length - 1); const cur = L[i];
   if (cur && cur.n){ cur.n = 0; save(); }
   const slot = n => n.c === 'match' || n.c === 'discipline' ? 'EVE' : n.c === 'injury' ? 'PM' : 'AM';
-  frame({ title: `${esc(S.manager)} News`, top: [['all', 'All'], ['club', 'Club & Board'], ['comp', 'Competitions'], ['inj', 'Injuries & Bans']], topOn: F,
+  frame({ title: `${esc(S.manager)} News`, top: [['all', 'All'], ['club', 'Club & Board'], ['comp', 'Competitions'], ['inj', 'Injuries & Bans'], ['social', 'Social']], topOn: F,
     onTab: t => { if (['media', 'trans', 'jobs', 'rec'].includes(t)){ go(t === 'media' ? { s: 'manager', tab: 'con' } : t === 'trans' ? { s: 'transfers' } : t === 'jobs' ? { s: 'managers', tab: 'jobs' } : { s: 'records' }); return; } V = { s: 'news', f: t, i: 0 }; view(); },
     bottom: [['media', 'Contracts and Media'], ['trans', 'Transfers'], ['jobs', 'Jobs'], ['rec', 'Records']],
     tools: `<span style="flex:1"></span><button class="btn sm" id="nextun" ${S.news.some(n => n.n) ? '' : 'disabled'}>Next Unread</button>`,
@@ -4219,9 +4240,9 @@ function scrClub(){
   const cid = V.cid || me(), mine = cid === me(), c = club(cid), sec = !LG.has(cid), tab = sec && !['ov', 'squad', 'hist', 'info'].includes(V.tab) ? 'ov' : V.tab || 'ov';
   if (sec && !S.tac[cid]) S.tac[cid] = autoTactic(cid);
   const top = sec ? [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']] : [['ov', 'Overview'], ['squad', 'Squad'], ['transfers', 'Transfers'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', mine ? 'Finances &amp; Info' : 'General Info']];
-  const bottom = sec ? [] : mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['league', esc(D.league)], ['last', 'Last Match']];
+  const bottom = sec ? [] : mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['dev', 'Development Centre'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['league', esc(D.league)], ['last', 'Last Match']];
   const o = ofClub(cid, { nav: clubNav(cid), title: esc(fullName(cid)), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'ov' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
-  (({ ov: clubOverview, hist: clubHistory, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard, ...(mine ? { dress: clubDressing, med: clubMedical, data: clubData } : {}) })[tab] || clubSquad)(cid, o);
+  (({ ov: clubOverview, hist: clubHistory, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard, ...(mine ? { dress: clubDressing, med: clubMedical, data: clubData, dev: clubDev } : {}) })[tab] || clubSquad)(cid, o);
 }
 function playerFlags(p){
   const q = ps(p.id), out = [];
@@ -4741,12 +4762,16 @@ function clubTraining(cid, o){
         <div class="trk"><span>Coaches</span>${meter(coachLevel(false), 20, 'var(--sky)')}<b>${Math.round(coachLevel(false))}/20 · GK ${Math.round(coachLevel(true))}/20</b></div></div></div>
     <div class="cols2"><div><div class="ptitle">Outfield</div>${Object.keys(reg.out).map(k => part('out', k)).join('')}</div><div><div class="ptitle">Goalkeepers</div>${Object.keys(reg.gk).map(k => part('gk', k)).join('')}</div></div>
     <p class="small dim">More work means faster change, but tired legs on match days; an intensive physical load brings the odd knock. Young players grow fastest; from about 30 the physical side fades, slower with physical work.</p>
+    ${trWeekHTML()}${trIndHTML(sq.filter(p => !onLoan(p)))}
     <div class="ptitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">Development <span class="seg sqseg" id="trf">${[['all', 'All'], ['up', 'Improving'], ['young', '21 and under'], ['down', 'Declining'], ['gk', 'Goalkeepers']].map(([k, n]) => `<button data-v="${k}" class="${filt === k ? 'on' : ''}">${n} <span class="dim">${rows.filter({ all: () => true, up: r => r.sum > .5, young: r => r.p.age <= 21, down: r => r.sum < -.5, gk: r => r.p.prim === 'GK' }[k]).length}</span></button>`).join('')}</span></div>
     <div class="tw sqt"><table><thead><tr>${th('name', 'Name')}<th>Pos</th>${th('age', 'Age', 'r')}${th('cond', 'Condition')}${th('sum', 'Growth')}<th>Biggest changes</th></tr></thead><tbody>${L.map(({ p, q, ks, ch, sum }) => `<tr class="click" data-pl="${p.id}"><td class="sqn"><b>${esc(cmName(p.n))}</b>${p.yth ? ' <span class="tag">Youth</span>' : ''}</td><td class="yel">${p.prim}</td><td class="r">${p.age}</td><td><span class="sqc" style="--w:${Math.round(q.cond)}%;--c:${q.cond >= 85 ? 'var(--win)' : q.cond >= 68 ? 'var(--gold)' : 'var(--loss)'}"><i></i></span><span class="small">${Math.round(q.cond)}%</span></td>
       <td><span class="trg"><i style="${sum >= 0 ? `left:50%;width:${Math.min(50, sum * 5)}%;background:var(--win)` : `right:50%;width:${Math.min(50, -sum * 5)}%;background:var(--loss)`}"></i></span></td>
       <td class="small">${ks.length ? [...ks.slice(0, 3), ...ks.filter(x => x[1] < 0).slice(-1)].filter((x, i, a) => a.indexOf(x) === i).map(([k, v]) => `<span class="${v > 0 ? 'up' : 'dn'}">${esc(ATTR_NAME[k])} ${v > 0 ? '+' : '−'}${Math.max(1, Math.round(Math.abs(v)))}</span>`).join(' · ') : '<span class="dim">no change yet</span>'}</td></tr>`).join('')}</tbody></table></div>`;
   frame(o);
   document.querySelectorAll('[data-tr]').forEach(b => b.addEventListener('click', () => { const [key, k, i] = b.dataset.tr.split('.'); trainReg()[key][k] = +i; save(); view(); }));
+  document.querySelectorAll('[data-cal]').forEach(el => el.addEventListener('change', () => { const c = (S.train.cal || CAL_DEF).slice(); c[+el.dataset.cal] = el.value; S.train.cal = c; save(); view(); }));
+  document.querySelectorAll('[data-itf]').forEach(el => el.addEventListener('change', () => { S.itr = S.itr || {}; const o = S.itr[el.dataset.itf] = S.itr[el.dataset.itf] || {}; if (el.value) o.f = el.value; else delete o.f; if (!Object.keys(o).length) delete S.itr[el.dataset.itf]; save(); }));
+  document.querySelectorAll('.seg[data-iti] button').forEach(b => b.addEventListener('click', () => { S.itr = S.itr || {}; const id = b.parentElement.dataset.iti, o = S.itr[id] = S.itr[id] || {}; o.i = +b.dataset.v; if (o.i === 1) delete o.i; if (!Object.keys(o).length) delete S.itr[id]; save(); view(); }));
   document.querySelectorAll('[data-pre]').forEach(b => b.addEventListener('click', () => { const x = TR_PRESETS.find(y => y[0] === b.dataset.pre); S.train.reg = JSON.parse(JSON.stringify(x[3])); save(); toast(`Training: ${x[1]}.`); view(); }));
   document.querySelectorAll('#trf button').forEach(b => b.addEventListener('click', () => { V = { ...V, tf: b.dataset.v }; view(); }));
   document.querySelectorAll('[data-ts]').forEach(b => b.addEventListener('click', () => { V = { ...V, ts: b.dataset.ts }; view(); }));
@@ -4757,23 +4782,23 @@ function clubTraining(cid, o){
    Each says how well it suits the eleven you have picked (in words, from the attributes it leans on). Change anything
    afterwards and the style shows as adjusted. The opposition report names the style a side plays closest to ---- */
 const STYLES = [
-  { k: 'gegen', n: 'Gegenpress', d: 'Win the ball back high up the moment it is lost, then go straight for goal.', t: { men: 3, pass: 1, tack: 2, press: true, offside: true, counter: true, mbb: false },
+  { k: 'gegen', n: 'Gegenpress', d: 'Win the ball back high up the moment it is lost, then go straight for goal.', t: { men: 3, pass: 1, tack: 2, press: true, offside: true, counter: true, mbb: false , width: 1, tempo: 2, line: 2 , width: 1, tempo: 2, line: 0 },
     pi: { '*': { close: 2 }, FB: { runs: 2 }, W: { runs: 2 }, ST: { runs: 2 } }, f: ['4-3-3', '4-4-2'], need: [['*', ['st', 'ag', 'bw']], ['ST', ['sp', 'ac']]] },
-  { k: 'tiki', n: 'Tiki-taka', d: 'Short passes, the ball kept for long spells, pressing when it is lost.', t: { men: 3, pass: 2, tack: 1, press: true, offside: true, counter: false, mbb: false },
+  { k: 'tiki', n: 'Tiki-taka', d: 'Short passes, the ball kept for long spells, pressing when it is lost.', t: { men: 3, pass: 2, tack: 1, press: true, offside: true, counter: false, mbb: false , width: 1, tempo: 0, line: 2 },
     pi: { '*': { ls: 0, cross: 0 }, CM: { tb: 2 }, AM: { tb: 2, rwb: 2 }, W: { rwb: 2 } }, f: ['4-3-3'], need: [['*', ['lp', 'bc', 'tp']], ['CM', ['oa', 'lp']]] },
-  { k: 'control', n: 'Control possession', d: 'Patient, keep the ball and wait for the opening; no rush, no risk.', t: { men: 2, pass: 2, tack: 1, press: false, offside: false, counter: false, mbb: false },
+  { k: 'control', n: 'Control possession', d: 'Patient, keep the ball and wait for the opening; no rush, no risk.', t: { men: 2, pass: 2, tack: 1, press: false, offside: false, counter: false, mbb: false , width: 1, tempo: 0, line: 1 },
     pi: { '*': { ls: 0 }, FB: { runs: 1 }, CM: { tb: 1 } }, f: ['4-3-3', '4-5-1'], need: [['*', ['lp', 'bc']], ['CB', ['lp']]] },
-  { k: 'wing', n: 'Wing play', d: 'Stretch the pitch: wingers and full-backs get forward and cross for the strikers.', t: { men: 3, pass: 0, tack: 1, press: false, offside: false, counter: false, mbb: false },
+  { k: 'wing', n: 'Wing play', d: 'Stretch the pitch: wingers and full-backs get forward and cross for the strikers.', t: { men: 3, pass: 0, tack: 1, press: false, offside: false, counter: false, mbb: false , width: 2, tempo: 1, line: 1 },
     pi: { WM: { cross: 2, runs: 2 }, W: { cross: 2, runs: 2 }, FB: { cross: 2, runs: 2 }, ST: { hold: 0 } }, f: ['4-4-2', '4-3-3', '3-4-3'], need: [['WM', ['sp', 'lf', 'cu']], ['W', ['sp', 'lf', 'cu']], ['FB', ['sp', 'lf']], ['ST', ['he', 'fi']]] },
-  { k: 'route', n: 'Route one', d: 'Long balls up to a big striker, fight for the second ball.', t: { men: 2, pass: 3, tack: 2, press: false, offside: true, counter: false, mbb: false },
+  { k: 'route', n: 'Route one', d: 'Long balls up to a big striker, fight for the second ball.', t: { men: 2, pass: 3, tack: 2, press: false, offside: true, counter: false, mbb: false , width: 1, tempo: 2, line: 1 },
     pi: { ST: { hold: 1 }, '*': { tb: 0 } }, f: ['4-4-2', '5-3-2'], need: [['ST', ['he', 'pc', 'ju']], ['CB', ['lf']]] },
   { k: 'counter', n: 'Counter-attack', d: 'Sit deeper, let them have the ball, and break quickly into the space behind.', t: { men: 1, pass: 1, tack: 1, press: false, offside: false, counter: true, mbb: false },
     pi: { CB: { runs: 0 }, DM: { runs: 0 }, W: { runs: 2, rwb: 2 }, ST: { runs: 2 }, AM: { tb: 2 } }, f: ['4-5-1', '4-4-2', '5-3-2'], need: [['ST', ['sp', 'ac']], ['W', ['sp', 'ac', 'dr']], ['CB', ['da', 'bw']]] },
-  { k: 'bus', n: 'Park the bus', d: 'Everyone behind the ball; a point is a good result.', t: { men: 0, pass: 3, tack: 1, press: false, offside: false, counter: true, mbb: true },
+  { k: 'bus', n: 'Park the bus', d: 'Everyone behind the ball; a point is a good result.', t: { men: 0, pass: 3, tack: 1, press: false, offside: false, counter: true, mbb: true , width: 0, tempo: 0, line: 0 },
     pi: { '*': { runs: 0 }, ST: { hold: 1 } }, f: ['5-4-1', '5-3-2'], need: [['CB', ['da', 'bw', 'he']], ['FB', ['da', 'bw']], ['*', ['st']]] },
 ];
-const ST_KEYS = ['men', 'pass', 'tack', 'press', 'offside', 'counter', 'mbb'], ST_PI = ['runs', 'rwb', 'ls', 'tb', 'cross', 'close', 'hold'];
-const stDist = (t, S0) => ST_KEYS.reduce((d, k) => d + (typeof S0.t[k] === 'boolean' ? (!!t[k] !== S0.t[k] ? 1 : 0) : Math.abs((t[k] ?? 0) - S0.t[k])), 0);
+const ST_KEYS = ['men', 'pass', 'tack', 'press', 'offside', 'counter', 'mbb', 'width', 'tempo', 'line'], ST_PI = ['runs', 'rwb', 'ls', 'tb', 'cross', 'close', 'hold'];
+const stDist = (t, S0) => ST_KEYS.reduce((d, k) => d + (typeof S0.t[k] === 'boolean' ? (!!t[k] !== S0.t[k] ? 1 : 0) : Math.abs((t[k] ?? 1) - (S0.t[k] ?? 1))), 0);
 const styleOf = t => STYLES.find(x => stDist(t, x) === 0) || null;
 const styleNear = t => { const b = STYLES.map(x => [x, stDist(t, x)]).sort((a, b) => a[1] - b[1])[0]; return b && b[1] <= 2 ? b[0] : null; };
 // how well a style suits these eleven, in your assistant's eyes: the attributes it leans on, in the roles that need them
@@ -4797,6 +4822,51 @@ function styleBox(t, places, live){
   const fit = sel && styleFit(sel, places);
   return `<div class="ptitle">Style</div><div class="stgrid">${STYLES.map(x => `<button class="stc ${cur && cur.k === x.k ? 'on' : ''} ${sel && sel.k === x.k ? 'sel' : ''}" data-stk="${x.k}"><b>${x.n}</b>${cur && cur.k === x.k ? '<span class="small yel">in use</span>' : was && was.k === x.k ? '<span class="small dim">adjusted</span>' : ''}</button>`).join('')}</div>
     ${sel ? `<div class="stinfo"><p class="small">${esc(sel.d)}</p><p class="small">${assOf() ? `Your assistant, ${esc(assOf().n)}, thinks: ` : ''}<b style="color:${fit ? fit.c : 'inherit'}">${fit ? fit.w : ''}</b>. Usually played as ${sel.f.join(', ')}.</p><div class="tools">${cur && cur.k === sel.k ? '' : `<button class="btn sm y" data-stuse="${sel.k}">Play ${esc(sel.n)}</button>`}${live ? '' : sel.f.filter(f => f !== t.form && FORMS[f]).map(f => `<button class="btn sm" data-form="${f}">Switch to ${f}</button>`).join('')}</div></div>` : '<p class="small dim">Pick a style to see what it asks of your players.</p>'}`;
+}
+/* ---- opposition instructions: for each man in the side you face next (or now, in a match): mark him tightly, close him
+   down more or less, tackle him harder, show him onto his weaker foot. Each takes something off him and costs you a
+   little: a marker or a presser is out of your shape, hard tackling brings cards, and a two-footed man cannot be shown
+   onto a weaker foot. Your assistant can suggest them (with his judging error) ---- */
+const OI_OPTS = [['mark', 'Tight marking', ['Off', 'On']], ['press', 'Close down', ['Less', 'Normal', 'More']], ['tack', 'Tackle', ['Normal', 'Harder']], ['foot', 'Show onto weaker foot', ['Off', 'On']]];
+function oiMul(p, o){ let m = 1; if (o.mark) m *= .95; if (o.press === 2) m *= .97; else if (o.press === 0) m *= 1.02; if (o.tack) m *= .975; if (o.foot && p.ft !== 'B') m *= .965; return m; }
+function oiOpp(B){ if (B.live) return B.them.cid; const f = nextFixture(me()); return f && f.m ? (f.m.h === me() ? f.m.a : f.m.h) : null; }
+function oiPlayers(B, opp){ if (B.live) return B.them.on.map(x => ({ p: x.p, pos: x.pos })); const t = S.tac[opp] || autoTactic(opp), sl = slotsOf(t) || [];
+  return (t.xi || []).map((id, i) => ({ p: P.get(id), pos: (sl[i] || [])[0] })).filter(x => x.p); }
+function oiSuggest(opp, L){
+  const o = {}, att = L.filter(x => ['ST', 'W', 'AM'].includes(ROLE[x.pos])), sc = x => assA(x.p, 'oa') + assA(x.p, 'fi') + assA(x.p, 'dr');
+  const d = att.sort((a, b) => sc(b) - sc(a))[0]; if (d) o[d.p.id] = { mark: 1 };
+  const cr = L.filter(x => ['CM', 'AM', 'DM'].includes(ROLE[x.pos])).sort((a, b) => assA(b.p, 'lp') - assA(a.p, 'lp'))[0]; if (cr) o[cr.p.id] = { ...(o[cr.p.id] || {}), press: 2 };
+  for (const x of L.filter(y => ['W', 'WM'].includes(ROLE[y.pos]) && y.p.ft && y.p.ft !== 'B')) o[x.p.id] = { ...(o[x.p.id] || {}), foot: 1 };
+  const dr = att.filter(x => !o[x.p.id] || !o[x.p.id].mark).sort((a, b) => assA(b.p, 'dr') - assA(a.p, 'dr'))[0]; if (dr) o[dr.p.id] = { ...(o[dr.p.id] || {}), tack: 1 };
+  return o;
+}
+function oiHTML(B){
+  const opp = oiOpp(B); if (!opp) return '<p class="empty">No match coming up.</p>';
+  const L = oiPlayers(B, opp), O = (S.oi || {})[opp] || {}, a = assOf();
+  return `<div class="ptitle">${esc(club(opp).name)}</div><p class="small dim">Instructions on their players${B.live ? '' : ' for the next game'}. Each costs you a little: a marker or presser is out of your shape, hard tackling brings cards; a two-footed man cannot be shown onto a weaker foot.</p>
+    <div class="tools">${a ? `<button class="btn sm" id="oiask">Ask ${esc(surname(a.n))}</button>` : ''}<button class="btn sm" id="oiclr">Clear all</button></div>
+    <div class="oit">${L.map(({ p, pos }) => { const o = O[p.id] || {}; return `<div class="oir"><div><b>${esc(cmName(p.n))}</b> <span class="small dim">${pos || p.prim}${p.ft ? ', ' + ({ L: 'left', R: 'right', B: 'both' })[p.ft] + ' foot' : ''}</span></div><div class="oic">${['mark', 'tack', 'foot'].map(k => `<button class="tog ${o[k] ? 'on' : ''}" data-oit="${opp}|${p.id}|${k}">${o[k] ? '✓' : '·'} ${({ mark: 'Tight marking', tack: 'Tackle harder', foot: 'Show onto weaker foot' })[k]}</button>`).join('')}<span class="small dim">Close down</span><span class="seg" data-oi="${opp}|${p.id}|press">${['Less', 'Normal', 'More'].map((x, i) => `<button data-v="${i}" class="${(o.press ?? 1) === i ? 'on' : ''}">${x}</button>`).join('')}</span></div></div>`; }).join('')}</div>`;
+}
+/* ---- the training week and individual training. The week: a session for each day (training, tactics, set pieces,
+   recovery, rest; a match day replaces its session). More training, more growth but slower recovery and a little more
+   risk; tactics sessions sharpen the shape, set-piece sessions the routines. Individual training: a focus for a player
+   (more of his work goes on those attributes) and his load (rest, normal, extra) ---- */
+const CAL_T = [['train', 'Training'], ['tac', 'Tactics'], ['sp', 'Set pieces'], ['rec', 'Recovery'], ['rest', 'Rest']], CAL_D = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const CAL_DEF = ['rec', 'train', 'train', 'tac', 'sp', 'train', 'rest'];
+function calWeek(){ const c = (S && S.train && S.train.cal) || CAL_DEF, o = { train: 0, tac: 0, sp: 0, rec: 0, rest: 0 }; for (const k of c) o[k]++; return o; }
+const calGrow = () => { const c = calWeek(); return clamp((c.train + .5 * c.tac + .3 * c.sp) / 3.8, .4, 1.35); };
+const calRec = () => { const c = calWeek(); return (c.rec * .6 + c.rest * .9 - 1.5) * .4; };
+const FOCI = { phys: ['Physical', ['sp', 'ac', 'st', 'pc']], tech: ['Technique', ['bc', 'dr', 'tp']], fin: ['Finishing', ['fi', 'oa', 'kp']], def: ['Defending', ['da', 'bw', 'pc']], pass: ['Passing', ['lp', 'lf', 'cu']], air: ['Aerial', ['he', 'ju']], set: ['Set pieces', ['pk', 'cu']], gk: ['Goalkeeping', GK_KEYS] };
+const itrOf = id => (S.itr || {})[id] || {};
+function trWeekHTML(){
+  const c = (S.train.cal || CAL_DEF), w = calWeek(), g = calGrow(), r = calRec();
+  return `<div class="ptitle">The week</div><div class="calw">${CAL_D.map((d, i) => `<label><span>${d}</span><select class="dd" data-cal="${i}">${CAL_T.map(([k, n]) => `<option value="${k}" ${c[i] === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`).join('')}</div>
+    <p class="small">Growth from training: <b style="color:${g >= 1.05 ? 'var(--win)' : g <= .85 ? 'var(--loss)' : 'inherit'}">${g >= 1.05 ? 'more' : g <= .85 ? 'less' : 'normal'}</b> · Recovery: <b style="color:${r > .1 ? 'var(--win)' : r < -.1 ? 'var(--loss)' : 'inherit'}">${r > .1 ? 'faster' : r < -.1 ? 'slower' : 'normal'}</b>${w.tac ? ` · ${w.tac} tactics session${w.tac > 1 ? 's' : ''} (a sharper shape)` : ''}${w.sp ? ` · ${w.sp} set-piece session${w.sp > 1 ? 's' : ''} (better routines)` : ''}. A match day replaces its session.</p>`;
+}
+function trIndHTML(sq){
+  return `<div class="ptitle">Individual training</div><div class="tw"><table><thead><tr><th>Name</th><th>Pos</th><th>Focus</th><th>Load</th></tr></thead><tbody>${sq.map(p => { const o = itrOf(p.id);
+    return `<tr><td><span class="lk" data-lp="${p.id}">${esc(cmName(p.n))}</span></td><td>${cmPos(p.pos)}</td><td><select class="dd" data-itf="${p.id}"><option value="">None</option>${Object.entries(FOCI).filter(([k]) => (k === 'gk') === (p.prim === 'GK') || k === 'phys').map(([k, [n]]) => `<option value="${k}" ${o.f === k ? 'selected' : ''}>${n}</option>`).join('')}</select></td><td><span class="seg" data-iti="${p.id}">${['Rest', 'Normal', 'Extra'].map((n, i) => `<button data-v="${i}" class="${(o.i ?? 1) === i ? 'on' : ''}">${n}</button>`).join('')}</span></td></tr>`; }).join('')}</tbody></table></div>
+    <p class="small dim">A focus puts more of his work on those attributes. Rest: he recovers faster and grows slower; extra: faster growth, slower recovery, a higher injury risk.</p>`;
 }
 function tacticHint(t){
   const L = [];
@@ -4915,22 +4985,29 @@ function boardHTML(B){
        <p class="small dim">Drag a substitute onto a player on the pitch to bring him on, or tap one and then the other. Drag one player onto another to swap their places.</p>`
     : `<div class="ptitle">Substitutes <span class="pill">${B.bench.length}/${BENCH}</span></div>${rowHead}<div class="tbzone" data-drop="bench">${B.bench.map(id => row(id, 'bench')).join('') || '<p class="small dim">Drag players here.</p>'}</div>
        <div class="ptitle">Not in the squad</div><div class="tbzone" data-drop="rest">${B.rest.map(id => row(id, 'rest')).join('')}</div>`;
-  const seg = (key, Lb) => `<span class="seg" data-tk="${key}">${Lb.map((n, i) => `<button data-v="${i}" class="${t[key] === i ? 'on' : ''}">${n}</button>`).join('')}</span>`;
+  const seg = (key, Lb) => `<span class="seg" data-tk="${key}">${Lb.map((n, i) => `<button data-v="${i}" class="${(t[key] ?? 1) === i ? 'on' : ''}">${n}</button>`).join('')}</span>`;
   const tog = (k, n) => `<button class="tog ${t[k] ? 'on' : ''}" data-ttg="${k}">${t[k] ? '✓' : '·'} ${n}</button>`;
   const team = `${B.live ? `<div class="tbshout">${[['push', 'Push forward'], ['hold', 'Hold what we have'], ['calm', 'Calm down'], ['press', 'Get stuck in']].map(([k, n]) => `<button class="btn sm" data-shout="${k}">${n}</button>`).join('')}</div>` : ''}
-    ${styleBox(t, B.places, B.live)}<div class="ptitle">Instructions</div><div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('counter', 'Counter Attack')}${tog('mbb', 'Men Behind Ball')}</span></div><p class="small" style="margin-top:10px">${tacticHint(t)}</p>`;
+    ${styleBox(t, B.places, B.live)}<div class="ptitle">With the ball</div><div class="instr"><span class="yel"><b>Mentality</b></span>${seg('men', MENT)}<span class="yel"><b>Passing</b></span>${seg('pass', PASS)}<span class="yel"><b>Width</b></span>${seg('width', ['Narrow', 'Normal', 'Wide'])}<span class="yel"><b>Tempo</b></span>${seg('tempo', ['Slower', 'Normal', 'Higher'])}<span class="yel"><b>On winning it</b></span><span class="tools">${tog('counter', 'Counter Attack')}</span></div>
+    <div class="ptitle">Without the ball</div><div class="instr"><span class="yel"><b>Tackling</b></span>${seg('tack', TACK)}<span class="yel"><b>Defensive line</b></span>${seg('line', ['Deeper', 'Normal', 'Higher'])}<span class="yel"><b>Tactics</b></span><span class="tools">${tog('press', 'Pressing')}${tog('offside', 'Offside Trap')}${tog('mbb', 'Men Behind Ball')}</span></div><p class="small" style="margin-top:10px">${tacticHint(t)}</p>`;
   const pid = sel && sel.startsWith('s:') ? (B.places[+sel.slice(2)] || {}).id : sel && sel.startsWith('p:') ? +sel.slice(2) : null, pp = pid && P.get(pid);
   const player = pp ? `<div class="ptitle" style="display:flex;align-items:center;gap:8px"><span>${esc(pp.n)} <span class="small dim">${cmPos(pp.pos)}</span></span>${B.live ? '' : `<button class="btn sm" data-prof="${pp.id}" style="margin-left:auto">Profile</button>`}</div><div class="instr">${PI.map(([k, n, opts]) => { const v = t.pi && t.pi[pid] && t.pi[pid][k];
       return `<span class="yel"><b>${n}</b></span><span class="seg" data-pi="${pid}|${k}"><button data-v="" class="${v == null ? 'on' : ''}">Team</button>${opts.map((x, i) => `<button data-v="${i}" class="${v === i ? 'on' : ''}">${x}</button>`).join('')}</span>`; }).join('')}</div>`
     : '<p class="empty">Tap a player on the pitch to give him his own instructions.</p>';
   const xiP = B.places.filter(x => x.p).map(x => x.p);
   const spSel = (k, n) => `<span class="yel"><b>${n}</b></span><select class="dd" data-sp="${k}">${xiP.map(p => `<option value="${p.id}" ${t.set && t.set[k] === p.id ? 'selected' : ''}>${esc(cmName(p.n))}</option>`).join('')}</select>`;
-  const setp = `<div class="instr">${spSel('cap', 'Captain')}${spSel('pen', 'Penalties')}${spSel('fk', 'Free Kicks')}${spSel('cor', 'Corners')}</div>`;
-  const tabs = [['squad', B.live ? 'Substitutes' : 'Squad'], ['team', 'Team'], ['player', 'Player'], ['set', 'Set Pieces']];
+  const opt = (k, L, def) => `<select class="dd" data-spr="${k}">${L.map(([v, n]) => `<option value="${v}" ${((t.set || {})[k] || def) === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
+  const setp = `<div class="ptitle">Takers</div><div class="instr">${spSel('cap', 'Captain')}${spSel('pen', 'Penalties')}${spSel('fk', 'Free Kicks')}${spSel('cor', 'Corners')}</div>
+    <div class="ptitle">Routines</div><div class="instr"><span class="yel"><b>Corners</b></span>${opt('crt', [['near', 'Near post'], ['far', 'Far post'], ['short', 'Short'], ['edge', 'Edge of the box']], 'near')}
+      <span class="yel"><b>Target man</b></span><select class="dd" data-sp="ctg"><option value="0">Anyone</option>${xiP.filter(p => p.prim !== 'GK').map(p => `<option value="${p.id}" ${t.set && t.set.ctg === p.id ? 'selected' : ''}>${esc(cmName(p.n))}</option>`).join('')}</select>
+      <span class="yel"><b>Free kicks</b></span>${opt('fkr', [['shoot', 'Shoot'], ['cross', 'Cross into the box'], ['short', 'Play it short']], 'shoot')}
+      <span class="yel"><b>Defending corners</b></span>${opt('cdef', [['mixed', 'Mixed'], ['zonal', 'Zonal'], ['man', 'Man-marking']], 'mixed')}</div>
+    <p class="small dim">Near post: a flick-on. Far post: needs big men (it pays off with good headers). Short and edge of the box: fewer headers, more shots. The target man gets the ball more often. Zonal copes with crosses but struggles against big men; man-marking is as good as your markers. Set-piece sessions in the training week make the routines work better.</p>`;
+  const tabs = [['squad', B.live ? 'Substitutes' : 'Squad'], ['team', 'Team'], ['player', 'Player'], ['opp', 'Opposition'], ['set', 'Set Pieces']];
   const custom = t.shape || (B.live && B.us.on.some(x => x.xy));
   const forms = `<div class="tbforms" role="radiogroup" aria-label="Formation">${custom ? `<button class="tbf on" disabled title="Your own shape">${formIcon(null, B.places)}<span>${esc(formLabel(t, B.live ? B.us.on : null))}</span></button>` : ''}${FORM_ORDER.map(f => `<button class="tbf ${f === t.form && !custom ? 'on' : ''}" data-form="${f}" role="radio" aria-checked="${f === t.form}">${formIcon(f)}<span>${f}</span></button>`).join('')}</div>`;
   return `<div class="tboard">${B.live ? `<div class="tbview">${viewSw()}</div>` : ''}${forms}<div class="tbgrid">${pitch}<div class="tbside"><nav class="tbtabs">${tabs.map(([k, n]) => `<button data-tbt="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</nav>
-    <div class="tbbody">${({ squad, team, player, set: setp })[tab] || squad}</div></div></div></div>`;
+    <div class="tbbody">${tab === 'opp' ? oiHTML(B) : ({ squad, team, player, set: setp })[tab] || squad}</div></div></div></div>`;
 }
 function boardWire(B){
   const t = B.t, done = () => B.done();
@@ -4946,6 +5023,11 @@ function boardWire(B){
   document.querySelectorAll('.seg[data-pi] button').forEach(b => b.addEventListener('click', () => { const [id, k] = b.parentElement.dataset.pi.split('|'); t.pi = t.pi || {}; t.pi[id] = t.pi[id] || {};
     if (b.dataset.v === '') delete t.pi[id][k]; else t.pi[id][k] = +b.dataset.v; done(); }));
   document.querySelectorAll('[data-sp]').forEach(s => s.addEventListener('change', () => { t.set = t.set || {}; t.set[s.dataset.sp] = +s.value; done(); }));
+  document.querySelectorAll('[data-spr]').forEach(s => s.addEventListener('change', () => { t.set = t.set || {}; t.set[s.dataset.spr] = s.value; done(); }));
+  document.querySelectorAll('[data-oit]').forEach(b => b.addEventListener('click', () => { const [opp, id, k] = b.dataset.oit.split('|'); S.oi = S.oi || {}; const O = S.oi[opp] = S.oi[opp] || {}, o = O[id] = O[id] || {}; if (o[k]) delete o[k]; else o[k] = 1; if (!Object.keys(o).length) delete O[id]; done(); }));
+  document.querySelectorAll('.seg[data-oi] button').forEach(b => b.addEventListener('click', () => { const [opp, id, k] = b.parentElement.dataset.oi.split('|'); S.oi = S.oi || {}; const O = S.oi[opp] = S.oi[opp] || {}, o = O[id] = O[id] || {}; o[k] = +b.dataset.v; if (k === 'press' && o[k] === 1) delete o[k]; if (!o[k] && k !== 'press') delete o[k]; if (!Object.keys(o).length) delete O[id]; done(); }));
+  { const ask = $('#oiask'); if (ask) ask.addEventListener('click', () => { const opp = oiOpp(B); (S.oi = S.oi || {})[opp] = oiSuggest(opp, oiPlayers(B, opp)); toast('Your assistant has set them.'); done(); }); }
+  { const clr = $('#oiclr'); if (clr) clr.addEventListener('click', () => { const opp = oiOpp(B); if (S.oi) delete S.oi[opp]; done(); }); }
   document.querySelectorAll('[data-prof]').forEach(b => { b.addEventListener('pointerdown', e => e.stopPropagation()); b.addEventListener('click', e => { e.stopPropagation(); if (B.live) return toast('After the match.'); go({ s: 'player', id: +b.dataset.prof }); }); });
   // in a match the shouts are quick changes to the instructions
   document.querySelectorAll('[data-shout]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.shout, M = LIVE.M;
@@ -5464,7 +5546,7 @@ function firstTeam(cid){ if (ntOfC(cid)) return new Set(squadOf(cid).map(p => p.
   for (const id of [...t.xi, ...t.bench]) if (id) keep.add(id); return keep; }
 
 /* ---- attribute masking ---- */
-const known = p => !S.mask || p.club === me() || (S.seen || []).includes(p.club) || (S.short || []).some(x => x.id === p.id && daysBetween(x.d, S.date) >= 7);
+const known = p => !S.mask || p.club === me() || (S.kn || {})[p.id] || (S.seen || []).includes(p.club) || (S.short || []).some(x => x.id === p.id && daysBetween(x.d, S.date) >= 7);
 // a player you do not know yet: some of his attributes are known (about two in five, the same ones all game), the rest hidden
 const seenA = (p, k) => known(p) || (k != null && rng(`mk-${p.id}-${k}`)() < .4);
 const showA = (p, v, k) => seenA(p, k) ? `${v}` : '<span class="msk" title="Not known yet">?</span>';
@@ -5620,6 +5702,7 @@ function scoutTick(){
     const m = ev && ev.k !== 'cup' && ev.r.m.find(x => x.h === me() || x.a === me()), opp = m && (m.h === me() ? m.a : m.h);
     if (opp && !(S.seen || []).includes(opp) && daysBetween(S.date, ev.date) <= 7){ (S.seen = S.seen || []).push(opp); news('scout', `Scout report: ${club(opp).name}`, `Your scout has watched ${esc(club(opp).name)} ahead of your game: you know their players in full now.`); } }
   for (const [k, sc] of (S.scouts || []).entries()){
+    if (sc && sc.reg && daysBetween(sc.from, S.date) >= scoutDays() + 7){ regionReport(k, sc); S.scouts[k] = null; continue; }
     if (!sc || !sc.c || daysBetween(sc.from, S.date) < scoutDays()) continue;
     const c = club(sc.c), sq = squadOf(sc.c).filter(p => p.prim !== 'GK').sort((a, b) => ovrNow(b) - ovrNow(a));
     S.seen = S.seen || []; if (!S.seen.includes(sc.c)) S.seen.push(sc.c);
@@ -5648,6 +5731,7 @@ function moveP(p, to, fee, note){
   if (FAP.has(p.id)) p = faSign(p);
   const from = p.club, fc = club(from), tc = club(to);
   if (S.club && from === me() && to !== me() && !(S.loans || {})[p.id] || S.club && from === me() && note === 'Loan') dynLeave(p);
+  try { if (S.club && note !== 'Loan' && (to === me() || from === me()) && from !== to) socMove(p, from, to, fee); } catch (e) {}
   try { if (S.club && from === me() && fee > 0 && (fanFav() || {}).id === p.id) fanAdd(-6, `Sold their favourite, ${p.n}`); else if (S.club && to === me() && fee >= 25e6) fanAdd(3, `Signed ${p.n}`); } catch (e) {}
   p.club = to; S.moves = S.moves || {}; S.moves[p.id] = to;
   // across the divisions: a player going to the Championship leaves the league's list, one coming up joins it
@@ -5876,13 +5960,13 @@ function wireTransfer(p){
    CM's 1-20 scale. Coaching (outfield, goalkeepers) speeds training; Physiotherapy speeds recovery from injury; Man
    Management keeps players happier; the assistant's Judging Ability decides how well he picks a side when you are away.
    Free staff are listed under Staff Search; some are interested in working for you. ---- */
-const STAFF_ROLES = { ass: ['Assistant Manager', 1], coach: ['Coach', 4], gk: ['Goalkeeping Coach', 2], phys: ['Physio', 2] };
+const STAFF_ROLES = { ass: ['Assistant Manager', 1], coach: ['Coach', 4], gk: ['Goalkeeping Coach', 2], phys: ['Physio', 2], dof: ['Director of Football', 1] };
 const STAFF_FIRST = ['Gary', 'Steve', 'Kevin', 'Brian', 'Ian', 'Martin', 'Phil', 'Nigel', 'Terry', 'Ray', 'Alan', 'Dean', 'Colin', 'Stuart', 'Jürgen', 'Carlos', 'Paulo', 'Henk', 'Lars', 'Pierre'];
 const STAFF_LAST = ['Atkins', 'Bould', 'Royle', 'McCall', 'Pleat', 'Hodson', 'Gregory', 'Kinnear', 'Sutton', 'Ashworth', 'Bright', 'Coyle', 'Dunne', 'Haig', 'Moss', 'Pires', 'Wenning', 'Strand', 'Lacombe', 'Soriano'];
 function makeStaff(role, lvl, r){
-  const a = k => clamp(Math.round(lvl + (r() - .5) * 8 + k), 1, 20), main = { ass: 'ju', coach: 'co', gk: 'cg', phys: 'ph' }[role];
+  const a = k => clamp(Math.round(lvl + (r() - .5) * 8 + k), 1, 20), main = { ass: 'ju', coach: 'co', gk: 'cg', phys: 'ph', dof: 'ju' }[role];
   const x = { id: Math.floor(r() * 1e9), n: `${STAFF_FIRST[Math.floor(r() * STAFF_FIRST.length)]} ${STAFF_LAST[Math.floor(r() * STAFF_LAST.length)]}`, role, age: 35 + Math.floor(r() * 25),
-    co: a(role === 'coach' || role === 'ass' ? 2 : -5), cg: a(role === 'gk' ? 3 : -6), ju: a(role === 'ass' ? 3 : -2), mm: a(role === 'ass' ? 2 : -1), ph: a(role === 'phys' ? 4 : -9) };
+    co: a(role === 'coach' || role === 'ass' ? 2 : -5), cg: a(role === 'gk' ? 3 : -6), ju: a(role === 'ass' || role === 'dof' ? 3 : -2), mm: a(role === 'ass' || role === 'dof' ? 2 : -1), ph: a(role === 'phys' ? 4 : -9) };
   x[main] = clamp(x[main] + 2, 1, 20);
   x.w = Math.round((600 + (x[main] ** 2) * 18) / 50) * 50;
   return x;
@@ -5900,7 +5984,7 @@ function staffPool0(){
   const key = S.date.slice(0, 7);
   if (S.spool && S.spool.m === key) return S.spool.L;
   const r = rng(`spool-${S.seed}-${key}`), L = [];
-  for (let i = 0; i < 28; i++){ const role = ['ass', 'coach', 'coach', 'coach', 'gk', 'phys'][Math.floor(r() * 6)], x = makeStaff(role, 4 + r() * 13, r); x.int = r() < .35 + (REP_SCORE[S.rep] ?? 1) * .1; L.push(x); }
+  for (let i = 0; i < 28; i++){ const role = ['ass', 'coach', 'coach', 'coach', 'gk', 'phys', 'dof'][Math.floor(r() * 7)], x = makeStaff(role, 4 + r() * 13, r); x.int = r() < .35 + (REP_SCORE[S.rep] ?? 1) * .1; L.push(x); }
   S.spool = { m: key, L }; return L;
 }
 const physioRate = () => { const ph = (S.staff || []).filter(x => x.role === 'phys'), m = ((S.fac || {}).medical || 0) * .1; if (!ph.length) return .9 + m; return .9 + m + Math.max(...ph.map(x => x.ph)) * .015; };   // 10/20: 1.05 days a day; 20/20: 1.2
@@ -5908,7 +5992,7 @@ const manMgmt = () => { const a = (S.staff || []).find(x => x.role === 'ass'); r
 function scrStaff(tab){
   ensureStaff(); const pool = staffPool(), mine = S.staff, wageAll = mine.reduce((t, x) => t + x.w, 0);
   const cell = (v, hi) => `<td class="c ${hi ? 'yel' : ''}"><b>${v}</b></td>`, exTag = x => x.ex ? ` <span class="tag" title="Played for ${esc(x.exClub || '')}">Ex-player</span>` : '';
-  const row = (x, act) => { const m = { ass: 'ju', coach: 'co', gk: 'cg', phys: 'ph' }[x.role];
+  const row = (x, act) => { const m = { ass: 'ju', coach: 'co', gk: 'cg', phys: 'ph', dof: 'ju' }[x.role];
     return `<tr><td>${x.nat ? flag(x.nat) : ''}<b>${esc(x.n)}</b>${exTag(x)}${x.int && act === 'hire' ? ' <span class="tag" style="background:#1E6B43;color:#fff">Interested</span>' : ''}</td><td class="dim">${STAFF_ROLES[x.role][0]}</td><td class="c">${x.age}</td>${cell(x.co, m === 'co')}${cell(x.cg, m === 'cg')}${cell(x.ju, m === 'ju')}${cell(x.mm, false)}${cell(x.ph, m === 'ph')}<td class="r">${wage(x.w)}</td>
       <td class="r">${act === 'hire' ? `<button class="btn sm" data-hire="${x.id}">Offer Contract</button>` : `<button class="btn sm" data-fire="${x.id}">Release</button>`}</td></tr>`; };
   const head = `<thead><tr><th>Name</th><th>Job</th><th class="c">Age</th><th class="c" title="Coaching (outfield)">Coa</th><th class="c" title="Coaching (goalkeepers)">GK</th><th class="c" title="Judging Ability">Jud</th><th class="c" title="Man Management">Man</th><th class="c" title="Physiotherapy">Phy</th><th class="r">Wage</th><th></th></tr></thead>`;
@@ -5927,7 +6011,8 @@ function scrStaff(tab){
 }
 function scrScout(tab){
   const k = tab === 'sc2' ? 1 : 0; S.scouts = S.scouts || [null, null]; const sc = S.scouts[k] || {};
-  const busy = sc.c ? `<p>${SCOUT_NAMES[k]} is watching <b class="yel">${esc(club(sc.c).name)}</b> since ${fmtDate(sc.from)}. His report comes in ${fmtDate(day(sc.from, scoutDays()))}.</p><div class="tools"><button class="btn sm" id="screcall">Call him back</button></div>`
+  const busy = sc.reg ? `<p>${SCOUT_NAMES[k]} is covering <b class="yel">${(REGIONS.find(x => x[0] === sc.reg) || [, '?'])[1]}</b> (${sc.foc === 'now' ? 'players ready now' : 'young talent'}) since ${fmtDate(sc.from)}. His report comes in ${fmtDate(day(sc.from, scoutDays() + 7))}.</p><div class="tools"><button class="btn sm" id="screcall">Call him back</button></div>`
+    : sc.c ? `<p>${SCOUT_NAMES[k]} is watching <b class="yel">${esc(club(sc.c).name)}</b> since ${fmtDate(sc.from)}. His report comes in ${fmtDate(day(sc.from, scoutDays()))}.</p><div class="tools"><button class="btn sm" id="screcall">Call him back</button></div>`
     : sc.next ? `<p>${SCOUT_NAMES[k]} is watching your <b class="yel">next opponents</b>: each one is known to you in full by the week of the game.</p><div class="tools"><button class="btn sm" id="screcall">Stop</button></div>`
     : `<p>${SCOUT_NAMES[k]} is free. Send him to watch a club: in ${scoutDays()} days he reports back, and you know that club's players in full from then on. Or have him watch your next opponents, week by week.</p><div class="tools"><button class="btn sm y" id="scnext">Watch our next opponents</button></div>`;
   const seen = new Set(S.seen || []);
@@ -5935,10 +6020,13 @@ function scrScout(tab){
   frame({ title: 'Search', act: `<span class="pill" title="Transfer budget">Funds: ${cash(S.fin.budget)}</span>`, top: FIND_TABS, topOn: tab,
     onTab: t => { V = { s: 'find', tab: t }; view(); },
     body: `<div class="ptitle">${SCOUT_NAMES[k]}</div>${busy}${S.mask ? '' : '<p class="small dim">Attribute masking is off in this game, so every player is known already; scouts still send you their pick of a club.</p>'}
-      <div class="ptitle">Clubs</div><div class="clubs">${list.map(c => `<button data-scout="${c.id}" ${sc.c || sc.next ? 'disabled' : ''} style="--k1:${(c.kit || ['#888'])[0]}"><span class="sw">${crest(c.id, 'swc')}</span><span><b>${esc(c.name)}</b><small class="${seen.has(c.id) ? 'up' : 'dim'}">${seen.has(c.id) ? 'Known' : (S.scouts.find(x => x && x.c === c.id) ? 'Being watched' : 'Not scouted')}</small></span></button>`).join('')}</div>` });
+      ${regionHTML(k, sc)}
+      <div class="ptitle">Clubs</div><div class="clubs">${list.map(c => `<button data-scout="${c.id}" ${sc.c || sc.next || sc.reg ? 'disabled' : ''} style="--k1:${(c.kit || ['#888'])[0]}"><span class="sw">${crest(c.id, 'swc')}</span><span><b>${esc(c.name)}</b><small class="${seen.has(c.id) ? 'up' : 'dim'}">${seen.has(c.id) ? 'Known' : (S.scouts.find(x => x && x.c === c.id) ? 'Being watched' : 'Not scouted')}</small></span></button>`).join('')}</div>` });
   document.querySelectorAll('[data-scout]').forEach(b => b.addEventListener('click', () => { const cid = +b.dataset.scout; if (S.scouts.some(x => x && x.c === cid)){ toast('A scout is watching them already.'); return; }
     S.scouts[k] = { c: cid, from: S.date }; save(); toast(`${SCOUT_NAMES[k]} is on his way to ${club(cid).name}.`); view(); }));
   const rc = $('#screcall'); if (rc) rc.addEventListener('click', () => { S.scouts[k] = null; save(); view(); });
+  document.querySelectorAll('[data-screg]').forEach(b => b.addEventListener('click', () => { S.scouts[k] = { reg: b.dataset.screg, foc: V.scfoc || 'young', from: S.date }; save(); toast(`${SCOUT_NAMES[k]} sets off.`); view(); }));
+  document.querySelectorAll('#scfoc button').forEach(b => b.addEventListener('click', () => { V = { ...V, scfoc: b.dataset.v }; view(); }));
   const sn = $('#scnext'); if (sn) sn.addEventListener('click', () => { S.scouts[k] = { next: true }; save(); toast(`${SCOUT_NAMES[k]} will watch your next opponents.`); view(); });
 }
 
@@ -6521,7 +6609,7 @@ function mentWire(){
    of it off. It counts in matches (a man at high risk gets hurt more often) and in hard training. Your head physio
    rates it (Medical Centre) with an error that shrinks the better he is, and warns you once a week ---- */
 function injRiskV(p){ const q = ps(p.id), recent = (q.md || []).filter(d => daysBetween(d, S.date) <= 14).length;
-  return (100 - q.cond) * .9 + Math.max(0, recent - 1) * 13 + Math.max(0, p.age - 29) * 3 + ((p.inj || 2) - 2) * 12 + (q.light ? 15 : 0) - ((S.fac || {}).medical || 0) * 8; }
+  return (100 - q.cond) * .9 + Math.max(0, recent - 1) * 13 + Math.max(0, p.age - 29) * 3 + ((p.inj || 2) - 2) * 12 + (q.light ? 15 : 0) - ((S.fac || {}).medical || 0) * 8 + (calWeek().train - 3) * 3 + [-8, 0, 8][itrOf(p.id).i ?? 1]; }
 const injMul = p => { if (!S || p.club !== me()) return 1; const v = injRiskV(p); return v >= 45 ? 1.6 : v >= 28 ? 1.2 : .85; };
 const injSideMul = sd => sd.on.length ? sd.on.reduce((t, x) => t + injMul(x.p), 0) / sd.on.length : 1;
 const physioOf = () => (S.staff || []).filter(x => x.role === 'phys').sort((a, b) => b.ph - a.ph)[0] || null;
@@ -6677,19 +6765,21 @@ function dynHTML(){
 /* ---- staff responsibilities: what you leave to your assistant. Press conferences (he speaks for you: nothing gained,
    nothing lost), contract renewals (he renews the players he thinks worth keeping, at about what they ask: his judgement,
    with its error), and mentoring (he pairs the youngsters each month) ---- */
-const RESP = [['press', 'Press conferences', 'He faces the press for you: nothing gained, nothing lost.'], ['con', 'Contract renewals', 'He renews the players he thinks worth keeping, at about what they ask, in their last season.'], ['ment', 'Mentoring', 'He pairs your youngsters with mentors, once a month.']];
-const respAss = k => ((S.resp || {})[k]) === 'ass';
+const RESP = [['press', 'Press conferences', 'Faces the press for you: nothing gained, nothing lost.', ['ass']], ['con', 'Contract renewals', 'Renews the players he thinks worth keeping, in their last season (a director of football gets better terms).', ['ass', 'dof']], ['ment', 'Mentoring', 'Pairs your youngsters with mentors, once a month.', ['ass']],
+  ['sell', 'Bids for fringe players', 'Answers bids for players outside your first team: a fair price, he sells.', ['dof']], ['loan', 'Loans for youngsters', 'Sends young players who are not playing out on loan, in the windows.', ['dof']], ['recruit', 'Recruitment', 'Each month, three targets for your weakest position on your short list.', ['dof']]];
+const respAss = k => whoDoes(k) === 'ass';
 function respTick(){
   const m = S.date.slice(0, 7); if (S.respM === m) return; S.respM = m;
   if (respAss('ment')) for (const x of mentSuggest()) mentPair(x.m.id, x.y.id);
-  if (respAss('con')){ const sp = assSpread(), seen = p => ovrNow(p) + (rng(`rc-${p.id}-${m}`)() * 2 - 1) * sp;
+  if (whoDoes('con') !== 'me'){ const dof = whoDoes('con') === 'dof' && dofOf(), sp = dof ? dofSpread() : assSpread(), seen = p => ovrNow(p) + (rng(`rc-${p.id}-${m}`)() * 2 - 1) * sp;
     const sq = squadOf(me()).filter(p => !onLoan(p) && !(S.loans || {})[p.id]), rank = sq.slice().sort((a, b) => seen(b) - seen(a));
     for (const p of sq){ const c = S.con[p.id]; if (!c || c.y - S.season > 1 || (S.renew || {})[p.id] === S.season || wantsOut(p)) continue;
-      if (rank.indexOf(p) >= 20 || p.age >= 32) continue; const n = negAsk(p); offerTo(p, Math.ceil(n.ask * 1.05 / 500) * 500, n.y, n.role, null); } }
+      if (rank.indexOf(p) >= 20 || p.age >= 32) continue; const n = negAsk(p); offerTo(p, Math.ceil(n.ask * (dof ? 1.05 - (dof.mm - 10) * .01 : 1.05) / 500) * 500, n.y, n.role, null); } }
 }
 function respHTML(){
   const a = assOf();
-  return `<div class="ptitle">Responsibilities</div><p class="small dim">What you leave to your assistant${a ? `, ${esc(a.n)}` : ''}.</p><table><tbody>${RESP.map(([k, n, t]) => `<tr><td><b>${n}</b><br><span class="small dim">${t}</span></td><td class="r"><span class="seg" data-resp="${k}"><button data-v="me" class="${respAss(k) ? '' : 'on'}">You</button><button data-v="ass" class="${respAss(k) ? 'on' : ''}">Assistant</button></span></td></tr>`).join('')}</tbody></table>`;
+  const d = dofOf(), who = { ass: 'Assistant', dof: 'Director of Football' };
+  return `<div class="ptitle">Responsibilities</div><p class="small dim">What you leave to your assistant${a ? ` (${esc(a.n)})` : ''} or your director of football${d ? ` (${esc(d.n)})` : ': hire one above to hand him transfers and contracts'}.</p><table><tbody>${RESP.map(([k, n, t, can]) => `<tr><td><b>${n}</b><br><span class="small dim">${t}</span></td><td class="r"><span class="seg" data-resp="${k}"><button data-v="me" class="${whoDoes(k) === 'me' ? 'on' : ''}">You</button>${can.map(c => `<button data-v="${c}" class="${whoDoes(k) === c ? 'on' : ''}" ${c === 'dof' && !d ? 'disabled title="No director of football"' : ''}>${who[c]}</button>`).join('')}</span></td></tr>`).join('')}</tbody></table>`;
 }
 /* ---- old players into coaching: when a player retires (one of yours, or a good one anywhere), he may want to start on
    the staff side. He joins the staff market for two seasons, his abilities from his own game: a keeper coaches keepers,
@@ -6700,6 +6790,113 @@ function exProFrom(p){
   const x = { id: Math.floor(r() * 1e9), n: p.n, role, age: p.age, nat: p.nat, co: gk ? clamp(co - 5, 1, 20) : co, cg: gk ? f(avg(GK_KEYS)) : clamp(Math.round(r() * 4) + 1, 1, 20), ju, mm: clamp(Math.round(7 + (p.age - 33) * .8 + r() * 6), 1, 20), ph: clamp(Math.round(r() * 3) + 1, 1, 20), ex: 1, exClub: club(p.club).name };
   const main = { ass: 'ju', coach: 'co', gk: 'cg' }[role]; x.w = Math.round((600 + (x[main] ** 2) * 18) / 50) * 50; x.int = p.club === me() || r() < .5; x.from = S.season;
   return x;
+}
+/* ---- scouting by region: a scout can cover a region instead of a club: for a few weeks he looks for young talent or for
+   players ready for your first team (and within your budget), and reports his five best, who are known to you in full
+   from then on. His pick is his judgement, not the truth ---- */
+const SA_N = ['Brazil', 'Argentina', 'Uruguay', 'Colombia', 'Chile', 'Ecuador', 'Paraguay', 'Peru', 'Venezuela', 'Bolivia'];
+const AF_N = ['Nigeria', 'Ghana', 'Senegal', "Côte d'Ivoire", 'Ivory Coast', 'Cameroon', 'Mali', 'Guinea', 'Morocco', 'Algeria', 'Tunisia', 'Egypt', 'DR Congo', 'Congo', 'Gabon', 'Burkina Faso', 'Benin', 'Togo', 'Gambia', 'Sierra Leone', 'South Africa', 'Zambia', 'Zimbabwe', 'Angola', 'Cape Verde', 'Cabo Verde', 'Guinea-Bissau', 'Mozambique', 'Kenya', 'Uganda', 'Equatorial Guinea', 'Comoros', 'Madagascar', 'Mauritania', 'Libya', 'Central African Republic'];
+const ctryC = p => (club(p.club) || {}).ctry || 'ENG';
+const REGIONS = [['eng', 'England', p => ctryC(p) === 'ENG'], ['esp', 'Spain', p => ctryC(p) === 'ESP'], ['ita', 'Italy', p => ctryC(p) === 'ITA'], ['ger', 'Germany', p => ctryC(p) === 'GER'], ['fra', 'France', p => ctryC(p) === 'FRA'], ['srb', 'Serbia', p => ctryC(p) === 'SRB'],
+  ['sam', 'South Americans', p => SA_N.includes(p.nat)], ['afr', 'Africans', p => AF_N.includes(p.nat)], ['bal', 'The Balkans', p => (LANG.Balkan || []).includes(p.nat)], ['nor', 'Scandinavia', p => (LANG.Nordic || []).includes(p.nat)], ['eur', 'The rest of Europe', p => !['ENG', 'ESP', 'ITA', 'GER', 'FRA', 'SRB'].includes(ctryC(p))]];
+function regionReport(k, sc){
+  const R = REGIONS.find(x => x[0] === sc.reg); if (!R) return; const r = rng(`scr-${k}-${sc.from}`), q0 = club(me()).q, foc = sc.foc || 'young';
+  const L = [...P.values()].filter(p => p && p.club && p.club !== me() && C.has(p.club) && !onLoan(p) && R[2](p) && (foc === 'young' ? p.age <= 21 : p.age >= 21 && p.age <= 30 && ovrNow(p) >= q0 - 2 && askingPrice(p) <= Math.max(2e6, S.fin.budget * 1.3)));
+  const sc0 = p => ovrNow(p) + (foc === 'young' ? (21 - p.age) * 1.6 : -askingPrice(p) / 2e7) + (r() * 2 - 1) * 6;
+  const top = L.map(p => [p, sc0(p)]).sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]);
+  S.kn = S.kn || {}; for (const p of top) S.kn[p.id] = 1;
+  (S.scRep = S.scRep || []).unshift({ d: S.date, reg: sc.reg, foc, ids: top.map(p => p.id) }); S.scRep = S.scRep.slice(0, 8);
+  news('scout', `Scout report: ${R[1]}`, `${SCOUT_NAMES[k]} is back from ${R[1].toLowerCase()} with ${foc === 'young' ? 'the young talent' : 'the players ready for your first team'} he rates most: ${top.length ? top.map(p => `<span class="lk" data-lp="${p.id}">${esc(p.n)}</span> (${cmPos(p.pos)}, ${p.age}, ${esc(club(p.club).name)})`).join(', ') : 'nobody worth the trip'}. They are known to you in full now.`);
+}
+function regionHTML(k, sc){
+  const reps = (S.scRep || []).slice(0, 4);
+  return `<div class="ptitle">Regions</div><p class="small dim">Or send him to cover a region for ${scoutDays() + 7} days: he reports his five best, known to you in full from then on.</p>
+    <div class="tools"><span class="seg" id="scfoc">${[['young', 'Young talent'], ['now', 'Ready now']].map(([v, n]) => `<button data-v="${v}" class="${(V.scfoc || 'young') === v ? 'on' : ''}">${n}</button>`).join('')}</span></div>
+    <div class="clubs">${REGIONS.map(([rk, n]) => `<button data-screg="${rk}" ${sc.c || sc.next || sc.reg ? 'disabled' : ''}><span><b>${n}</b><small class="dim">${(S.scouts || []).some(x => x && x.reg === rk) ? 'Being covered' : 'Region'}</small></span></button>`).join('')}</div>
+    ${reps.length ? `<div class="ptitle">Latest region reports</div><table><tbody>${reps.map(x => `<tr><td class="small dim">${shortDate(x.d)}</td><td><b>${(REGIONS.find(y => y[0] === x.reg) || [, '?'])[1]}</b> <span class="small dim">${x.foc === 'young' ? 'young talent' : 'ready now'}</span></td><td class="small">${x.ids.map(id => P.get(id) ? `<span class="lk" data-lp="${id}">${esc(cmName(P.get(id).n))}</span>` : '').filter(Boolean).join(', ')}</td></tr>`).join('')}</tbody></table>` : ''}`;
+}
+/* ---- the development centre: your U21 side plays its own league (eight clubs, home and away) with the youngsters who
+   are not in your starting eleven (academy boys make up the numbers). Their games count towards their development like first-team minutes, at half the weight.
+   The reserves: the older men outside the first team ---- */
+function u21Init(){ const r = rng(`u21-${S.seed}-${S.season}`), L = [...LG].filter(id => id !== me()).sort(() => r() - .5).slice(0, 7);
+  const ids = [me(), ...L]; S.u21 = { s: S.season, ids, tbl: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 }])), res: [], n: 0 }; }
+const u21Out = () => new Set(((S.tac[me()] || {}).xi || []).filter(Boolean));   // the starting eleven play for the first team; everyone else is free for the U21s
+const u21Elig = () => { const ft = u21Out(); return squadOf(me()).filter(p => p.age <= 21 && !onLoan(p) && !(S.loans || {})[p.id] && !ft.has(p.id) && !ps(p.id).injD); };
+function u21Week(wk){
+  const m = +S.date.slice(5, 7); if (S.done || !(m >= 8 || m <= 5)) return;
+  if (!S.u21 || S.u21.s !== S.season) u21Init(); const U = S.u21; if (U.n >= 14) return;
+  U.wk = (U.wk || 0) + 1; if (U.wk % 2) return;   // a game every second week
+  const ids = U.ids, rd = U.n, r = rng(`u21m-${S.seed}-${wk}`), n = ids.length, half = rd % 7, rot = ids.slice(1);
+  const order = [ids[0], ...rot.slice(half), ...rot.slice(0, half)], pairs = []; for (let i = 0; i < n / 2; i++) pairs.push(rd >= 7 ? [order[n - 1 - i], order[i]] : [order[i], order[n - 1 - i]]);
+  const pois = l => { let k = 0, t = Math.exp(-l), p0 = t, u = r(); while (u > p0 && k < 8){ k++; t *= l / k; p0 += t; } return k; };
+  const str = id => { if (id !== me()) return (club(id).q || 70) - 17 + r() * 4; const L = u21Elig().map(p => ovrNow(p)).sort((a, b) => b - a).slice(0, 11); while (L.length < 11) L.push((club(me()).q || 70) - 19); return L.reduce((a, b) => a + b, 0) / 11; };
+  for (const [h, a] of pairs){ const sh = str(h) + 1.5, sa = str(a), gh = pois(1.35 * Math.exp((sh - sa) / 12)), ga = pois(1.35 * Math.exp((sa - sh) / 12));
+    for (const [id, gf, gA] of [[h, gh, ga], [a, ga, gh]]){ const t = U.tbl[id]; t.p++; t.gf += gf; t.ga += gA; if (gf > gA) t.w++; else if (gf === gA) t.d++; else t.l++; }
+    if (h === me() || a === me()){ const mine = h === me(), gf = mine ? gh : ga, gA = mine ? ga : gh, XI = u21Elig().sort((x, y) => ovrNow(y) - ovrNow(x)).slice(0, 11);
+      const sc = []; for (let g = 0; g < gf; g++){ const L = XI.filter(p => p.prim !== 'GK'); if (!L.length) break; const w = L.map(p => WHO.shot[ROLE[p.prim]] || 1), tot = w.reduce((x, y) => x + y, 0); let v = r() * tot, pk = L[0]; for (let i = 0; i < L.length; i++){ v -= w[i]; if (v <= 0){ pk = L[i]; break; } } sc.push(pk.id); }
+      for (const p of XI){ const q = ps(p.id); q.u21a = (q.u21a || 0) + 1; q.u21g = (q.u21g || 0) + sc.filter(x => x === p.id).length; q.u21r = Math.round(((q.u21r || 0) + 6.4 + (gf - gA) * .25 + sc.filter(x => x === p.id).length * .6 + (r() - .5)) * 10) / 10; }
+      U.res.push({ d: S.date, opp: mine ? a : h, home: mine, s: [gf, gA], sc }); }
+  }
+  U.n++;
+}
+function clubDev(cid, o){
+  if (!S.u21 || S.u21.s !== S.season) u21Init(); const U = S.u21, pl = p => `<span class="lk" data-lp="${p.id}">${esc(p.n)}</span>`;
+  const T = Object.entries(U.tbl).map(([id, t]) => ({ id: +id, ...t, pts: t.w * 3 + t.d })).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf);
+  const ft = u21Out(), bn = new Set((S.tac[me()] || {}).bench || []), young = squadOf(me()).filter(p => p.age <= 21 && !onLoan(p) && !ft.has(p.id)), res = squadOf(me()).filter(p => p.age > 21 && !onLoan(p) && !ft.has(p.id) && !bn.has(p.id));
+  const gsum = p => Object.values(ps(p.id).d || {}).reduce((t, v) => t + v, 0);
+  o.body = `<div class="cols2"><div><div class="ptitle">U21 league</div><table><thead><tr><th>#</th><th>Club</th><th class="r">P</th><th class="r">W</th><th class="r">D</th><th class="r">L</th><th class="r">GD</th><th class="r">Pts</th></tr></thead><tbody>${T.map((t, i) => `<tr class="${t.id === me() ? 'me' : ''}"><td>${i + 1}</td><td>${crest(t.id)}${esc(club(t.id).name)} U21</td><td class="r">${t.p}</td><td class="r">${t.w}</td><td class="r">${t.d}</td><td class="r">${t.l}</td><td class="r">${t.gf - t.ga}</td><td class="r"><b>${t.pts}</b></td></tr>`).join('')}</tbody></table></div>
+    <div><div class="ptitle">Our results</div>${U.res.length ? `<table><tbody>${U.res.slice(-8).reverse().map(x => `<tr><td class="small dim">${shortDate(x.d)}</td><td>${x.home ? 'v' : 'at'} ${esc(club(x.opp).name)} U21</td><td class="r"><b style="color:${x.s[0] > x.s[1] ? 'var(--win)' : x.s[0] < x.s[1] ? 'var(--loss)' : 'inherit'}">${x.s[0]}-${x.s[1]}</b></td><td class="small">${[...new Set(x.sc)].map(id => P.get(id) ? esc(surname(P.get(id).n)) + (x.sc.filter(y => y === id).length > 1 ? ' ' + x.sc.filter(y => y === id).length : '') : '').join(', ')}</td></tr>`).join('')}</tbody></table>` : '<p class="dim">No games yet: the U21 season runs from August to May, a game every second week.</p>'}</div></div>
+    <div class="ptitle">U21 squad</div>${young.length ? `<div class="tw"><table><thead><tr><th>Name</th><th>Pos</th><th class="r">Age</th><th class="r">U21 games</th><th class="r">Goals</th><th class="r">Av R</th><th>Growth</th><th>Your assistant's view</th></tr></thead><tbody>${young.map(p => { const q = ps(p.id), g = gsum(p); return `<tr><td>${pl(p)}</td><td>${cmPos(p.pos)}</td><td class="r">${p.age}</td><td class="r">${q.u21a || 0}</td><td class="r">${q.u21g || 0}</td><td class="r">${q.u21a ? (q.u21r / q.u21a).toFixed(1) : '-'}</td><td><span class="trg"><i style="${g >= 0 ? `left:50%;width:${Math.min(50, g * 5)}%;background:var(--win)` : `right:50%;width:${Math.min(50, -g * 5)}%;background:var(--loss)`}"></i></span></td><td class="small">${(() => { try { return prospectWord(p); } catch (e) { return ''; } })()}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="dim">Every young player of yours is in the starting eleven or out on loan: academy boys play for the U21s.</p>'}
+    <div class="ptitle">Reserves</div>${res.length ? `<p>${res.map(pl).join(', ')}</p><p class="small dim">Older players outside the matchday squad: they train with the squad; a loan would get them games.</p>` : '<p class="dim">Nobody: every senior player is in the matchday squad.</p>'}`;
+  frame(o);
+}
+/* ---- the social feed: supporters, pundits and the odd rival fan react to your results and your transfers (invented
+   accounts; nothing here is real people's words) ---- */
+const SOC_N = ['TheAwayEnd', 'FootyTakesDaily', 'xGPhilosopher', 'PressBoxPete', 'InsideTheWindow', 'TerraceView', 'TacticsBoardTom', 'MatchdayMum', 'GroundhopperGeorge', 'Old_School_No9'];
+const socHandle = (cid, r) => { const c = club(cid), sh = (c.code || c.name).replace(/[^A-Za-z]/g, '').slice(0, 10); return [`${sh}Faithful`, `${sh}TillIDie`, `${sh}_Ultra`, `Proper${sh}`, `${sh}SeasonTicket`][Math.floor(r() * 5)]; };
+function socPost(h, t, k){ (S.feed = S.feed || []).unshift({ d: S.date, h, t, k, l: Math.floor(20 + Math.random() * Math.random() * 4000) }); S.feed = S.feed.slice(0, 60); }
+function socMatch(M){
+  const us = M.h === me() ? M.H : M.A, them = us === M.H ? M.A : M.H, d = us.goals - them.goals, r = rng(`soc-${S.date}-${M.h}`), f = S.fans ?? 60, nm0 = club(me()).name, on = club(them.cid).name;
+  const fan = d > 0 ? [`What a result! ${nm0} ${us.goals}-${them.goals} ${on}. Get in!!`, `Three points, job done. Proud of the lads today.`, `${on} sent packing. ${S.manager} knows what he's doing.`, `That's more like it. Up the ${nm0}!`]
+    : d === 0 ? [`A point. Could've been more, could've been less.`, `Frustrating draw. We need more up front.`, `${us.goals}-${them.goals}. Not good enough at home${M.h === me() ? '' : ', decent away'}.`]
+    : f < 35 ? [`Another defeat. Something has to change. #${(club(me()).code || nm0).replace(/\W/g, '')}Out`, `I've seen enough this season. ${S.manager} has lost the dressing room.`, `${them.goals} conceded again. Embarrassing.`] : [`Bad day at the office. We go again.`, `Gutted. ${on} wanted it more.`, `Not our day. Heads up, plenty of games left.`];
+  socPost(socHandle(me(), r), fan[Math.floor(r() * fan.length)], d > 0 ? 'up' : d < 0 ? 'dn' : '');
+  const xg = [us.xg || 0, them.xg || 0], line = `${club(M.h).name} ${M.H.goals}-${M.A.goals} ${club(M.a).name}`, hx = `xG ${(M.H.xg || 0).toFixed(1)}-${(M.A.xg || 0).toFixed(1)}`;   // the neutral's view: home side first
+  socPost(SOC_N[Math.floor(r() * SOC_N.length)], Math.abs(xg[0] - xg[1]) > .8 ? `${line}, ${hx}. ${d !== 0 && (xg[0] > xg[1]) === (d > 0) ? 'Deserved.' : d === 0 ? 'The better side did not win it.' : 'The scoreline flatters the winners.'}` : `${line}. Tight one on the numbers too (${hx}).`, '');
+  if (M.derby || r() < .3) socPost(socHandle(them.cid, r), d < 0 ? `Easy. ${nm0} are a pub team.` : d > 0 ? `Shocking from us. ${nm0} didn't even play well.` : `Should have beaten that lot.`, '');
+}
+function socMove(p, from, to, fee){
+  const r = rng(`socm-${p.id}-${S.date}`), inn = to === me(), good = ovrNow(p) >= club(me()).q;
+  socPost(socHandle(me(), r), inn ? (fee >= 2e7 ? (good ? `${p.n}! Statement signing. This is ambition.` : `${cash(fee)} for ${p.n}? Hope he's better than he looks.`) : good ? `Great bit of business, ${p.n} will improve us.` : `${p.n}? Never heard of him. Trust the process I guess.`)
+    : (fee >= 1.5e7 ? `${cash(fee)} for ${p.n}. Sad to see him go but that's a lot of money.` : good ? `Why are we selling ${p.n}?? He was one of our best.` : `${p.n} gone. Good luck to him.`), inn ? 'up' : '');
+  if (fee >= 1e7) socPost(SOC_N[Math.floor(r() * SOC_N.length)], `${p.n} to ${club(to).name}, ${cash(fee)}${fee >= 4e7 ? '. Huge fee.' : '.'} ${inn ? `${club(me()).name} mean business.` : ''}`, '');
+}
+function scrSocial(){
+  const L = S.feed || [];
+  frame({ title: `${esc(S.manager)} News`, top: [['all', 'All'], ['club', 'Club & Board'], ['comp', 'Competitions'], ['inj', 'Injuries & Bans'], ['social', 'Social']], topOn: 'social', onTab: t => { V = { s: 'news', f: t, i: 0 }; view(); },
+    body: L.length ? `<div class="soc">${L.map(x => `<div class="socp"><div class="soch"><b>@${esc(x.h)}</b><span class="small dim">${shortDate(x.d)}</span></div><div>${esc(x.t)}</div><div class="small dim">♥ ${x.l >= 1000 ? (x.l / 1000).toFixed(1) + 'K' : x.l}</div></div>`).join('')}</div><p class="small dim">Invented accounts reacting to your games and your transfers.</p>` : '<p class="empty">Nothing yet: the feed fills up with your first game.</p>' });
+}
+/* ---- the director of football: a member of staff (hire one in Search, Staff) who can take on transfers and contracts.
+   Leave to him (Responsibilities): bids for players outside your first team (he accepts a fair price, a better negotiator
+   gets a little more), loans for youngsters who are not playing, contract renewals (better terms than the assistant), and
+   recruitment (each month three targets for your weakest position, on your short list). His judgement has its error ---- */
+const dofOf = () => (S.staff || []).find(x => x.role === 'dof') || null;
+const whoDoes = k => { const v = (S.resp || {})[k] || 'me'; return v === 'dof' && !dofOf() ? 'me' : v; };
+const dofSpread = () => { const d = dofOf(); return 3 + (20 - (d ? d.ju : 8)) * .4; };
+function dofTick(){
+  const d = dofOf(); if (!d) return; const ft = firstTeam(me());
+  if (whoDoes('sell') === 'dof') for (const o of S.offers || []){ const p = P.get(o.id); if (o.st !== 'open' || !p || p.club !== me() || ft.has(p.id)) continue;
+    const want = askingPrice(p) * (1 - (d.mm - 10) * .012);
+    if (o.fee >= want * .92){ o.st = 'acc'; S.con[p.id] = { y: S.season + 3, w: wageDemand(p) }; moveP(p, o.from, o.fee); news('club', `${p.n} sold`, `Your director of football, ${esc(d.n)}, has sold <b>${esc(p.n)}</b> to ${esc(club(o.from).name)} for ${cash(o.fee)}.`); }
+    else { o.st = 'rej'; try { bidRefused(o); } catch (e) {} news('club', 'Bid turned down', `${esc(d.n)} has turned down ${esc(club(o.from).name)}'s ${cash(o.fee)} for <b>${esc(p.n)}</b>: not enough.`); } }
+  const m = S.date.slice(0, 7); if (S.dofM === m) return; S.dofM = m;
+  if (whoDoes('loan') === 'dof' && windowOpen()){ const L = squadOf(me()).filter(p => p.age <= 21 && !onLoan(p) && !(S.loans || {})[p.id] && !ft.has(p.id) && (ps(p.id).apps || 0) < 3 && (ps(p.id).u21a || 0) < 3).slice(0, 2);
+    for (const p of L){ const to = S.aff && C.has(S.aff) && squadOf(S.aff).length < 32 ? club(S.aff) : D.allClubs.filter(c => c.id !== me() && c.q < club(me()).q - 4 && squadOf(c.id).length < 30).sort(() => Math.random() - .5)[0]; if (!to) continue;
+      (S.loans = S.loans || {})[p.id] = { from: me(), to: to.id }; moveP(p, to.id, 0, 'Loan'); news('club', `${p.n} goes on loan`, `${esc(d.n)} has sent <b>${esc(p.n)}</b> to ${esc(to.name)} on loan for the rest of the season, to get games.`); } }
+  if (whoDoes('recruit') === 'dof'){ const sp = dofSpread(), r = rng(`dof-${m}`), seen = p => ovrNow(p) + (r() * 2 - 1) * sp;
+    const XI = squadOf(me()).filter(p => ft.has(p.id)), G = ['DEF', 'MID', 'FWD'].map(g => [g, XI.filter(p => GROUP[p.prim] === g)]).filter(x => x[1].length).map(([g, L]) => [g, L.reduce((t, p) => t + seen(p), 0) / L.length]).sort((a, b) => a[1] - b[1])[0];
+    if (G){ const have = new Set((S.short || []).map(x => x.id)), L = (D.players.concat(D.pool || [])).filter(p => p.club !== me() && C.has(p.club) && GROUP[p.prim] === G[0] && p.age <= 29 && !have.has(p.id) && askingPrice(p) <= S.fin.budget).map(p => [p, seen(p)]).filter(x => x[1] > G[1] + 2).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+      if (L.length && (S.short || []).filter(x => x.dof).length < 6){ S.short = S.short || []; for (const p of L) S.short.push({ id: p.id, d: S.date, dof: 1 }); news('club', 'Recruitment', `${esc(d.n)} thinks your ${({ DEF: 'defence', MID: 'midfield', FWD: 'attack' })[G[0]]} needs strengthening and has put ${L.map(p => `<span class="lk" data-lp="${p.id}">${esc(p.n)}</span> (${esc(club(p.club).name)}, ${cash(askingPrice(p))})`).join(', ')} on your short list.`); } } }
 }
 function clubDressing(cid, o){
   const sq = squadOf(me()).filter(p => !onLoan(p)), L = (S.prom || []).filter(x => P.get(x.id) && P.get(x.id).club === me());
