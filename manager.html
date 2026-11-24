@@ -330,6 +330,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok .pim{position:absolute;left:-5px;top:-5px;width:13px;height:13px;border-radius:50%;background:var(--sky);color:#111;font:800 8.5px/13px var(--body);font-style:normal;text-align:center}
 .tok .rt{position:absolute;top:0;left:calc(50% + 17px);font:700 10.5px/1 var(--body);color:var(--c);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:6px;white-space:nowrap}
 .tok.ro{cursor:default}.tbview{display:flex;justify-content:flex-start}
+.rlrow{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}.rlh{display:flex;align-items:center;gap:8px}.rlh .pos{font-size:11px;color:var(--gold);min-width:34px}.rlc{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}.rlc .dd{max-width:220px}.spt td{vertical-align:top;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06)}.spt td.spgap{background:rgba(229,122,98,.08)}.spc{cursor:pointer;padding:1px 0;white-space:nowrap}
 .obt,.cnt{width:100%;max-width:820px;margin:4px auto 8px}.obt td,.cnt td{padding:5px 8px;vertical-align:middle}.obt td:first-child,.cnt td:first-child{color:var(--muted);width:210px}.cnt th{text-align:left}.stp2{display:inline-flex;align-items:center;gap:4px}.stp2 b{min-width:96px;text-align:center}.negres{border-left:3px solid var(--warn);padding:6px 10px;margin:8px auto;max-width:820px;background:rgba(255,255,255,.04);border-radius:0 6px 6px 0}.negbox{padding:8px 10px;background:rgba(255,255,255,.04);border-radius:6px}.negbox label{display:inline-flex;align-items:center;gap:4px}.cnhead{display:flex;gap:10px;flex-wrap:wrap;max-width:820px;margin:4px auto 8px}.cnhead>div{flex:1;min-width:150px;display:flex;flex-direction:column;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}.cnhead b{font-size:16px}.pat{color:var(--warn);letter-spacing:3px}.tag.must{background:#7A2E2E;color:#fff}.grade{display:inline-block;min-width:22px;text-align:center;font-weight:700;border-radius:4px;padding:0 6px;color:#fff}.gA{background:#1E6B43}.gB{background:#3D7A2E}.gC{background:#7D6E1C}.gD{background:#8A4A1E}.gE{background:#7A2E2E}.knb{display:flex;align-items:center;gap:10px;max-width:520px;margin:4px 0 8px}.offt td{vertical-align:middle}
 .cgt{table-layout:fixed;width:100%}.cgt td{overflow:hidden}.cgt .btn{white-space:nowrap}.ddclock{display:flex;align-items:center;gap:16px;max-width:760px;margin:4px auto 6px}.ddclock b{display:block;font-size:34px;font-variant-numeric:tabular-nums;line-height:1.1}.ddt td{padding:4px 6px}.mtg{display:flex;flex-direction:column;gap:6px}.mtr{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:8px}.mtr div{display:flex;gap:6px;flex-wrap:wrap}.clg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 10px;max-width:720px;margin:4px auto 8px}.clg label{display:flex;flex-direction:column;gap:2px}.clg .dd{width:100%}.tsg{display:grid;grid-template-columns:1fr 1fr;gap:4px}.tsg .sb{padding:5px 3px;font-size:11.5px;margin:0}.tsg .sb:disabled{opacity:.4;cursor:default}.tbshout{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 @media(max-width:520px){.tok{width:68px}.tok .nm{font-size:10.5px;max-width:68px}.tok .dot{width:30px;height:30px}.tbrow{grid-template-columns:34px minmax(0,1fr) 26px 30px 46px 22px}.tbrow .nm .small{display:none}.tbrow .cnd .sqc{display:none}}
@@ -2025,6 +2026,8 @@ function eff(side, x){
   const q = ps(x.id);
   let v = (fitIn(x.p, x.pos) / Math.max(40, ovrNow(x.p))) * (0.72 + 0.28 * x.e / 100) * (0.85 + 0.15 * q.cond / 100) * (0.96 + 0.08 * q.mor / 100);
   if (q.light) v *= .93;   // back from injury, not yet sharp
+  if (x.cf == null) x.cf = (Math.random() - .5) * (21 - hid(x.p).con) * .005;   // his consistency: how far his game strays today
+  v *= 1 + x.cf;
   if (side.talk) v *= 1 + side.talk;   // the half-time team talk, for better or worse
   if (side.shout) v *= 1 + SH_V[side.shout.k] * side.shout.r;   // a word from the touchline
   if (side.cid === me() && S.pressMod && S.pressMod.d === S.date) v *= 1 + S.pressMod.v;   // what you told the press
@@ -2077,6 +2080,7 @@ function units(side, M){
   const pp = M && M.h != null && side.cid === me() ? prepOn(M) : null;   // the week's preparation (the opposition report)
   if (pp){ const k = pp.fit ? 1.5 : 1; if (pp.k === 'shape') u.def += k; if (pp.k === 'att'){ u.att += .7 * k; u.cre += .5 * k; } if (pp.k === 'sp'){ u.air += 2 * k; u.att += .4 * k; u.def += .4 * k; } }
   if (side.home){ u.att += 1.6; u.mid += 1.2; u.def += 1.0; }
+  roleFx(side, u);   // the players' roles and duties
   return u;
 }
 const logit = x => 1 / (1 + Math.exp(-x));
@@ -2098,6 +2102,7 @@ function who(side, kind, attr, not){
     if (kind === 'pass') w *= [.7, 1, 1.4][piOf(t, x.id, 'tb', 1)] * (piOf(t, x.id, 'free', 0) ? 1.3 : 1);
     if (kind === 'dribble') w *= [.4, 1, 1.8][piOf(t, x.id, 'rwb', 1)];
     if (kind === 'head') w *= piOf(t, x.id, 'hold', 0) ? 1.3 : 1;
+    w *= roleW(t, x, kind);   // his role and duty
     return w; });
   let r = Math.random() * ws.reduce((a, b) => a + b, 0);
   for (let i = 0; i < L.length; i++){ r -= ws[i]; if (r <= 0) return L[i]; }
@@ -2199,8 +2204,8 @@ function foul(M, S1, S2){
   const x = who(S1, 'foul', 'ag'), v = who(S2, 'dribble', 'dr'), strict = (M.ref ? M.ref.s : 10) / 10.5 * (M.derby ? 1.12 : 1);
   S1.fouls++;
   const ag = A(x.p, 'ag'), r0 = Math.random(), hard = Math.min(2, piOf(S1.t, x.id, 'tack', S1.t.tack) + (S1.cid === me() && v && ((S.oi || {})[S2.cid] || {})[v.id] && S.oi[S2.cid][v.id].tack ? 1 : 0)), r = r0 / (S1.shout ? ({ fire: 1.4, calm: .6, focus: .9 })[S1.shout.k] || 1 : 1);   // a fired-up side picks up more cards
-  if (r < (.0015 + .001 * (ag - 60) / 20) * strict * [.6, 1, 1.6][hard]){ S1.rc++; evAdd(S1, x, 'rc'); S1.ev[x.id].straight = 1; rateAdd(S1, x, -1.5); say(M, S1, 'red', T([`RED CARD! ${nm(x)} is sent off for a reckless challenge on ${nm(v)}.`, `RED CARD! ${nm(x)} goes in two-footed on ${nm(v)} and is off.`, `RED CARD! ${nm(x)} denies ${nm(v)} a clear chance and is sent off.`])); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', id: x.p.id, t: surname(x.p.n) }); off(S1, x); return; }
-  if (r < (.12 + .05 * (ag - 60) / 20) * strict * [.7, 1, 1.4][hard]){
+  if (r < (.0015 + .001 * (ag - 60) / 20) * strict * tmF(x) * [.6, 1, 1.6][hard]){ S1.rc++; evAdd(S1, x, 'rc'); S1.ev[x.id].straight = 1; rateAdd(S1, x, -1.5); say(M, S1, 'red', T([`RED CARD! ${nm(x)} is sent off for a reckless challenge on ${nm(v)}.`, `RED CARD! ${nm(x)} goes in two-footed on ${nm(v)} and is off.`, `RED CARD! ${nm(x)} denies ${nm(v)} a clear chance and is sent off.`])); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', id: x.p.id, t: surname(x.p.n) }); off(S1, x); return; }
+  if (r < (.12 + .05 * (ag - 60) / 20) * strict * tmF(x) * [.7, 1, 1.4][hard]){
     const already = (S1.ev[x.id] || {}).yc;
     S1.yc++; evAdd(S1, x, 'yc'); rateAdd(S1, x, -.25);
     if (already){ S1.rc++; evAdd(S1, x, 'rc'); say(M, S1, 'red', `Second yellow card for ${nm(x)}, and ${esc(club(S1.cid).name)} are down to ${S1.on.length - 1}.`); M.inc.push({ l: label(M), side: sideKey(M, S1), k: 'red', id: x.p.id, t: surname(x.p.n) + ' (2nd yellow)' }); off(S1, x); return; }
@@ -2551,7 +2556,7 @@ function trainWeek(wk){
       else k = keys[Math.floor(rr() * keys.length)];
       if (gk !== GK_KEYS.includes(k) && rr() < .7) continue;
       const lvl = mine ? (Object.entries(TR_PARTS).find(([pk, [, ks]]) => ks.includes(k) && R[pk] != null) || [null])[0] : null;
-      let v = (grow + (lvl ? R[lvl] * .015 : 0)) * (grow > 0 ? potOf(p) * minsF(p, q) : 1) * (mine ? (.6 + .3 * load) * coach * calGrow() * [.5, 1, 1.25][it.i ?? 1] * (1 + ((S.fac || {}).train || 0) * .12 + (age <= 21 ? ((S.fac || {}).youth || 0) * .15 : 0)) : 1) * (0.5 + rr());
+      let v = (grow + (lvl ? R[lvl] * .015 : 0)) * (grow > 0 ? potOf(p) * minsF(p, q) * hidDev(p, 1) : hidDev(p, -1)) * (mine ? (.6 + .3 * load) * coach * calGrow() * [.5, 1, 1.25][it.i ?? 1] * (1 + ((S.fac || {}).train || 0) * .12 + (age <= 21 ? ((S.fac || {}).youth || 0) * .15 : 0)) : 1) * (0.5 + rr());
       if (grow < 0 && ['sp', 'ac', 'st'].includes(k)) v *= 1.8 * (mine && R.phys >= 2 ? .8 : 1);   // physical work slows the decline
       if (!q.injD) q.d[k] = Math.round(((q.d[k] || 0) + v * .6) * 100) / 100;   // two decimals: the save stays small
     }
@@ -3903,7 +3908,7 @@ function menuTree(o, unread){
   const mine = me(), cv = (cid, tab) => ({ s: 'club', cid, tab });
   // your club in the order of a week's work: the side, the plan, the games, then the business; other clubs as a scout sees them
   const clubKids = cid => (cid === mine
-    ? [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['dev', 'Development Centre'], ['staff', 'Staff'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['frd', 'Friendlies'], ['tr', 'Transfers'], ['fa', 'Free Agents'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']]
+    ? [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['dev', 'Development Centre'], ['plan', 'Squad Planner'], ['staff', 'Staff'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['frd', 'Friendlies'], ['tr', 'Transfers'], ['fa', 'Free Agents'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']]
     : [['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['staff', 'Staff'], ['hist', 'History'], ['info', 'General Info']])
     .map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'frd' ? { s: 'friendlies' } : t === 'tr' ? { s: 'transfers' } : t === 'fa' ? { s: 'transfers', tab: 'fa' } : t === 'squad' ? { ...cv(cid, 'squad'), team: 'first' } : t === 'res' ? { ...cv(cid, 'squad'), team: 'res' } : cv(cid, t) }));
   const otherKids = cid => [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']].map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'squad' ? { ...cv(cid, t), team: 'first' } : cv(cid, t) }));
@@ -4252,9 +4257,9 @@ function scrClub(){
   const cid = V.cid || me(), mine = cid === me(), c = club(cid), sec = !LG.has(cid), tab = sec && !['ov', 'squad', 'staff', 'hist', 'info'].includes(V.tab) ? 'ov' : V.tab || 'ov';
   if (sec && !S.tac[cid]) S.tac[cid] = autoTactic(cid);
   const top = sec ? [['ov', 'Overview'], ['squad', 'Squad'], ['staff', 'Staff'], ['hist', 'History'], ['info', 'General Info']] : [['ov', 'Overview'], ['squad', 'Squad'], ['transfers', 'Transfers'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', mine ? 'Finances &amp; Info' : 'General Info']];
-  const bottom = sec ? [] : mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['dev', 'Development Centre'], ['staff', 'Staff'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['staff', 'Staff'], ['league', esc(D.league)], ['last', 'Last Match']];
+  const bottom = sec ? [] : mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['dev', 'Development Centre'], ['plan', 'Squad Planner'], ['staff', 'Staff'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['staff', 'Staff'], ['league', esc(D.league)], ['last', 'Last Match']];
   const o = ofClub(cid, { nav: clubNav(cid), title: esc(fullName(cid)), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'ov' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
-  (({ ov: clubOverview, hist: clubHistory, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard, staff: clubStaff, ...(mine ? { dress: clubDressing, med: clubMedical, data: clubData, dev: clubDev } : {}) })[tab] || clubSquad)(cid, o);
+  (({ ov: clubOverview, hist: clubHistory, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard, staff: clubStaff, ...(mine ? { dress: clubDressing, med: clubMedical, data: clubData, dev: clubDev, plan: clubPlan } : {}) })[tab] || clubSquad)(cid, o);
 }
 function playerFlags(p){
   const q = ps(p.id), out = [];
@@ -5015,14 +5020,15 @@ function boardHTML(B){
       <span class="yel"><b>Free kicks</b></span>${opt('fkr', [['shoot', 'Shoot'], ['cross', 'Cross into the box'], ['short', 'Play it short']], 'shoot')}
       <span class="yel"><b>Defending corners</b></span>${opt('cdef', [['mixed', 'Mixed'], ['zonal', 'Zonal'], ['man', 'Man-marking']], 'mixed')}</div>
     <p class="small dim">Near post: a flick-on. Far post: needs big men (it pays off with good headers). Short and edge of the box: fewer headers, more shots. The target man gets the ball more often. Zonal copes with crosses but struggles against big men; man-marking is as good as your markers. Set-piece sessions in the training week make the routines work better.</p>`;
-  const tabs = [['squad', B.live ? 'Substitutes' : 'Squad'], ['team', 'Team'], ['player', 'Player'], ['opp', 'Opposition'], ['set', 'Set Pieces']];
+  const tabs = [['squad', B.live ? 'Substitutes' : 'Squad'], ['team', 'Team'], ['player', 'Player'], ['role', 'Roles'], ['opp', 'Opposition'], ['set', 'Set Pieces']];
   const custom = t.shape || (B.live && B.us.on.some(x => x.xy));
   const forms = `<div class="tbforms" role="radiogroup" aria-label="Formation">${custom ? `<button class="tbf on" disabled title="Your own shape">${formIcon(null, B.places)}<span>${esc(formLabel(t, B.live ? B.us.on : null))}</span></button>` : ''}${FORM_ORDER.map(f => `<button class="tbf ${f === t.form && !custom ? 'on' : ''}" data-form="${f}" role="radio" aria-checked="${f === t.form}">${formIcon(f)}<span>${f}</span></button>`).join('')}</div>`;
   return `<div class="tboard">${B.live ? `<div class="tbview">${viewSw()}</div>` : ''}${forms}<div class="tbgrid">${pitch}<div class="tbside"><nav class="tbtabs">${tabs.map(([k, n]) => `<button data-tbt="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</nav>
-    <div class="tbbody">${tab === 'opp' ? oiHTML(B) : ({ squad, team, player, set: setp })[tab] || squad}</div></div></div></div>`;
+    <div class="tbbody">${tab === 'role' ? rolesHTML(B) : tab === 'opp' ? oiHTML(B) : ({ squad, team, player, set: setp })[tab] || squad}</div></div></div></div>`;
 }
 function boardWire(B){
   const t = B.t, done = () => B.done();
+  if (TB.tab === 'role') rolesWire(B);
   document.querySelectorAll('#tbview button').forEach(b => b.addEventListener('click', () => { TB.view = b.dataset.v; TB.sel = null; done(); }));
   document.querySelectorAll('[data-form]').forEach(b => b.addEventListener('click', () => { if (b.dataset.form !== t.form && B.form(b.dataset.form)) { TB.sel = null; done(); } }));
   document.querySelectorAll('[data-tbt]').forEach(b => b.addEventListener('click', () => { TB.tab = b.dataset.tbt; done(); }));
@@ -5134,7 +5140,7 @@ function playerCard(p, q, con, born){
     return [TT(ATTR_NAME[k]), `${kn ? arrow(recentD(p, k)) + ' ' : ''}<span class="${vcls(v)}">${showA(p, v, k)}</span>`]; });
   if (p.inj) rows.push(['Injury Resistance', `<span class="${vcls([90, 75, 55][p.inj - 1])}">${4 - p.inj}</span>`]);
   rows.sort((x, y) => x[0].localeCompare(y[0]));
-  const tail = [['Height', p.ht ? p.ht + ' cm' : '-'], ['Weight', p.wt ? p.wt + ' kg' : '-'], ...(p.ft ? [['Preferred Foot', { L: 'Left', R: 'Right', B: 'Either' }[p.ft]]] : []), ['Playing Style', esc(p.style || '-')], ...(() => { const x = (S.ment || []).find(z => z.y === p.id), L = (S.ment || []).filter(z => z.m === p.id); return x && P.get(x.m) ? [['Mentor', esc(cmName(P.get(x.m).n))]] : L.length ? [['Mentoring', L.map(z => P.get(z.y) ? esc(cmName(P.get(z.y).n)) : '').join(', ')]] : []; })(), ['Morale', morWord(q.mor)], ['Condition', Math.round(q.cond) + '%']].map(([n, v]) => [n, `<span class="org">${v}</span>`]);
+  const tail = [['Height', p.ht ? p.ht + ' cm' : '-'], ['Weight', p.wt ? p.wt + ' kg' : '-'], ...(p.ft ? [['Preferred Foot', { L: 'Left', R: 'Right', B: 'Either' }[p.ft]]] : []), ['Playing Style', esc(p.style || '-')], ['Personality', known(p) || p.club === me() ? persWord(p) : '<span class="msk" title="Not known yet">?</span>'], ...(() => { const x = (S.ment || []).find(z => z.y === p.id), L = (S.ment || []).filter(z => z.m === p.id); return x && P.get(x.m) ? [['Mentor', esc(cmName(P.get(x.m).n))]] : L.length ? [['Mentoring', L.map(z => P.get(z.y) ? esc(cmName(P.get(z.y).n)) : '').join(', ')]] : []; })(), ['Morale', morWord(q.mor)], ['Condition', Math.round(q.cond) + '%']].map(([n, v]) => [n, `<span class="org">${v}</span>`]);
   const per = Math.ceil(rows.length / 3), crow = ([n, v]) => `<div class="crow"><span>${n}</span><b>${v}</b></div>`;
   const col = i => `<div>${rows.slice(i * per, (i + 1) * per).map(crow).join('')}</div>`;
   // positions: coloured by how his real starts split over the positions he is registered in
@@ -5210,7 +5216,7 @@ function scrPlayer(){
   const mine = p.club === me(), t = S.tac[me()], pickedXI = mine && t.xi.includes(p.id), pickedB = mine && t.bench.includes(p.id);
   frame(ofClub(p.club, { nav: playerNav(p), short: esc(p.n), title: `${p.no ? p.no + '. ' : ''}${esc(p.n)} <span class="bclub">(${p.club === 0 ? 'Free agent' : `<a class="bclk" data-lc="${p.club}" href="#" title="Open ${esc(fullName(p.club))}">${esc(fullName(p.club))}</a>`})</span>`,
     act: mine ? `<button class="btn sm" id="promo">${firstTeam(me()).has(p.id) ? 'Move to Reserves' : 'Promote to First Team'}</button><button class="btn sm y" id="pick">${pickedXI ? 'Drop from the side' : pickedB ? 'Off the bench' : 'Select'}</button>` : `<button class="btn sm" id="slb">${(S.short || []).some(x => x.id === p.id) ? 'On Short List ✓' : 'Add to Short List'}</button>`,
-    top: [['profile', 'Profile'], ...(mine && !onLoan(p) ? [['talk', 'Talk']] : []), ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ...(p.club !== me() ? [['rep', 'Report']] : []), ['hist', 'History'], ...(ntWorld().includes(ntName(p.nat)) ? [['int', 'International']] : [])], topOn: tab,
+    top: [['profile', 'Profile'], ...(mine && !onLoan(p) ? [['talk', 'Talk']] : []), ['inj', 'Injuries &amp; Bans'], ['con', 'Contract'], ['tr', 'Transfer'], ['rep', 'Report'], ['hist', 'History'], ...(ntWorld().includes(ntName(p.nat)) ? [['int', 'International']] : [])], topOn: tab,
     onTab: k => { V = { ...V, tab: k, say: null, nsay: null, ow: null, oy: null, orl: null, ocl: null, tcl: null, ob: null, rebid: 0, cd: null, cnr: null, sneg: null, sd: null, ssay: null }; view(); }, body,
     next: at >= 0 && at < list.length - 1 ? () => { V = { ...V, id: list[at + 1] }; view(); } : null }));
   const pk = $('#pick'); if (pk) pk.addEventListener('click', () => { toggleSel(p.id); view(); });
@@ -5935,6 +5941,161 @@ function wireTransfer(p){
     if (S.cn) delete S.cn[p.id]; cnOpen(p, 'sign', b); V.cd = null; V.cnr = null; });
   const b = cur(); if (b && b.st === 'yes' && !b.loan) cnWire(p, 'sign', b);
 }
+/* ==== player roles and duties: each man in the side gets a role for his position (a ball-playing defender, a
+   wing-back, a deep-lying playmaker, a poacher...) and a duty (defend, support, attack). A role shifts what the side does
+   (more creation, more defending, more in the air) as well as he fits it, and decides who shoots, passes, heads and
+   tackles; a duty pushes him forward or holds him back. Sides without roles play the plain role of each position ==== */
+const PR = {
+  gk: { n: 'Goalkeeper', g: 'GK', d: 'D', k: ['gr', 'gc', 'gh', 'ga'], t: 'Stays on his line and keeps it simple.', fx: {} },
+  sk: { n: 'Sweeper Keeper', g: 'GK', d: 'DSA', k: ['ga', 'gc', 'lp', 'sp'], t: 'Comes off his line to sweep behind the defence and starts moves with his feet.', fx: { mid: .4, def: -.2, cre: .2 } },
+  cd: { n: 'Central Defender', g: 'CB', d: 'DS', k: ['da', 'bw', 'he', 'pc'], t: 'Defends first: wins the ball and gives it to a team-mate.', fx: { def: .5 } },
+  bpd: { n: 'Ball-Playing Defender', g: 'CB', d: 'DS', k: ['lp', 'lf', 'da', 'bc'], t: 'Brings the ball out of defence and looks for the long pass.', fx: { cre: .6, def: .1 } },
+  ncb: { n: 'No-Nonsense Defender', g: 'CB', d: 'D', k: ['da', 'he', 'pc', 'ag'], t: 'Clears his lines with no frills at all.', fx: { def: .8, cre: -.3, air: .1 } },
+  fb: { n: 'Full-Back', g: 'FB', d: 'DSA', k: ['da', 'bw', 'sp', 'st'], t: 'Defends his flank and supports the man in front of him.', fx: { def: .3, cre: .1 } },
+  wb: { n: 'Wing-Back', g: 'FB', d: 'DSA', k: ['sp', 'st', 'lf', 'cu'], t: 'Covers the whole flank and gets crosses in.', fx: { cre: .4, att: .2, air: .2, def: -.4 } },
+  iwb: { n: 'Inverted Wing-Back', g: 'FB', d: 'DSA', k: ['lp', 'bc', 'tp', 'da'], t: 'Comes inside into midfield when the side has the ball.', fx: { mid: .5, cre: .2, def: -.2 } },
+  nfb: { n: 'No-Nonsense Full-Back', g: 'FB', d: 'D', k: ['da', 'bw', 'pc', 'ag'], t: 'Stays at home and stops his winger.', fx: { def: .6, cre: -.2 } },
+  dm: { n: 'Defensive Midfielder', g: 'DM', d: 'DS', k: ['da', 'bw', 'st', 'lp'], t: 'Sits in front of the defence and breaks up play.', fx: { def: .5, mid: .2 } },
+  anc: { n: 'Anchor', g: 'DM', d: 'D', k: ['da', 'bw', 'pc', 'ju'], t: 'Holds his position between the lines and never strays.', fx: { def: .9, cre: -.2 } },
+  bwm: { n: 'Ball-Winning Midfielder', g: 'DM CM', d: 'DS', k: ['bw', 'ag', 'st', 'pc'], t: 'Hunts the ball down and gives it to the playmakers.', fx: { mid: .7, def: .2, cre: -.2 } },
+  dlp: { n: 'Deep-Lying Playmaker', g: 'DM CM', d: 'DS', k: ['lp', 'lf', 'bc', 'tp'], t: 'Sets the tempo from deep with his passing.', fx: { cre: .8, def: -.1 } },
+  reg: { n: 'Regista', g: 'DM', d: 'S', k: ['lp', 'lf', 'bc', 'cu'], t: 'A free playmaker from deep: the ball goes through him.', fx: { cre: 1.1, def: -.4 } },
+  cm: { n: 'Central Midfielder', g: 'CM', d: 'DSA', k: ['lp', 'bc', 'st', 'bw'], t: 'Does a bit of everything in the middle.', fx: { mid: .4, cre: .1 } },
+  b2b: { n: 'Box-to-Box Midfielder', g: 'CM', d: 'S', k: ['st', 'bw', 'oa', 'lp'], t: 'Gets up to support the attack and back to help the defence.', fx: { mid: .4, att: .3, def: .1 } },
+  mez: { n: 'Mezzala', g: 'CM', d: 'SA', k: ['dr', 'bc', 'oa', 'lp'], t: 'Drifts wide into the half-spaces and breaks into the box.', fx: { att: .5, cre: .3, def: -.3 } },
+  ap: { n: 'Advanced Playmaker', g: 'CM AM WM', d: 'SA', k: ['lp', 'bc', 'tp', 'oa'], t: 'Finds space between the lines and plays the final pass.', fx: { cre: .9, mid: -.2 } },
+  wm: { n: 'Wide Midfielder', g: 'WM', d: 'DSA', k: ['st', 'lp', 'lf', 'bw'], t: 'Works his flank both ways.', fx: { mid: .4, def: .2 } },
+  wgr: { n: 'Winger', g: 'WM W', d: 'SA', k: ['sp', 'ac', 'dr', 'lf'], t: 'Takes his man on down the line and crosses.', fx: { cre: .4, att: .2, air: .3 } },
+  dw: { n: 'Defensive Winger', g: 'WM W', d: 'DS', k: ['st', 'bw', 'da', 'sp'], t: 'Presses high and tracks back.', fx: { def: .4, mid: .3, att: -.2 } },
+  wp: { n: 'Wide Playmaker', g: 'WM', d: 'SA', k: ['lp', 'bc', 'tp', 'cu'], t: 'Starts wide and comes inside to make the play.', fx: { cre: .8 } },
+  am: { n: 'Attacking Midfielder', g: 'AM', d: 'SA', k: ['oa', 'bc', 'lp', 'fi'], t: 'Links midfield and attack and gets shots away.', fx: { att: .4, cre: .3 } },
+  ssk: { n: 'Shadow Striker', g: 'AM', d: 'A', k: ['oa', 'fi', 'ac', 'bc'], t: 'Runs beyond the striker into the box.', fx: { att: .9, cre: -.2 } },
+  tq: { n: 'Trequartista', g: 'AM ST', d: 'A', k: ['bc', 'tp', 'lp', 'dr'], t: 'Free to roam and create; does no defending.', fx: { cre: .9, att: .3, mid: -.5 } },
+  inf: { n: 'Inside Forward', g: 'W', d: 'SA', k: ['fi', 'dr', 'oa', 'ac'], t: 'Cuts inside to shoot.', fx: { att: .8, cre: -.1 } },
+  iw: { n: 'Inverted Winger', g: 'W WM', d: 'SA', k: ['dr', 'lp', 'cu', 'bc'], t: 'Comes inside to pass and cross with his stronger foot.', fx: { cre: .6, att: .2 } },
+  afw: { n: 'Advanced Forward', g: 'ST', d: 'A', k: ['oa', 'fi', 'sp', 'ac'], t: 'Leads the line and runs in behind.', fx: { att: .7 } },
+  poa: { n: 'Poacher', g: 'ST', d: 'A', k: ['oa', 'fi', 'ac', 'ba'], t: 'Lives in the box and only thinks of goals.', fx: { att: 1.1, mid: -.4 } },
+  tf: { n: 'Target Forward', g: 'ST', d: 'SA', k: ['he', 'pc', 'ju', 'bc'], t: 'Holds the ball up and wins it in the air.', fx: { air: 1.4, att: .1 } },
+  cfw: { n: 'Complete Forward', g: 'ST', d: 'SA', k: ['fi', 'bc', 'lp', 'he'], t: 'Does it all: scores, creates, wins headers.', fx: { att: .5, cre: .3, air: .2 } },
+  dlf: { n: 'Deep-Lying Forward', g: 'ST', d: 'SA', k: ['bc', 'lp', 'tp', 'oa'], t: 'Drops off to link the play.', fx: { cre: .7, att: .1 } },
+  f9: { n: 'False Nine', g: 'ST', d: 'S', k: ['bc', 'tp', 'lp', 'dr'], t: 'Drops deep into midfield and drags defenders with him.', fx: { cre: .9, mid: .3, att: -.3 } },
+  pf: { n: 'Pressing Forward', g: 'ST', d: 'DSA', k: ['st', 'bw', 'ag', 'sp'], t: 'Closes down defenders from the front.', fx: { mid: .6, att: .2 } },
+};
+const PR_DEF = { GK: 'gk', CB: 'cd', FB: 'fb', DM: 'dm', CM: 'cm', WM: 'wm', AM: 'am', W: 'wgr', ST: 'afw' };
+const DUTY = { D: 'Defend', S: 'Support', A: 'Attack' };
+// who does what in a role: the weights on top of his position's
+const PRW = { poa: { shot: 1.45 }, ssk: { shot: 1.35 }, inf: { shot: 1.3, dribble: 1.2 }, afw: { shot: 1.15 }, tf: { head: 1.6, shot: .9 }, cfw: { shot: 1.1, head: 1.2 }, f9: { pass: 1.4, shot: .8 }, dlf: { pass: 1.3, shot: .85 },
+  ap: { pass: 1.45 }, dlp: { pass: 1.35 }, reg: { pass: 1.5 }, wp: { pass: 1.35 }, tq: { pass: 1.35, dribble: 1.2 }, wgr: { dribble: 1.35 }, iw: { pass: 1.2, dribble: 1.15 }, mez: { shot: 1.25, dribble: 1.2 }, b2b: { shot: 1.15, tackle: 1.15 },
+  bwm: { tackle: 1.4, foul: 1.3 }, anc: { tackle: 1.3 }, ncb: { head: 1.2 }, bpd: { pass: 1.6 }, iwb: { pass: 1.5 }, wb: { dribble: 1.3, pass: 1.2 }, pf: { tackle: 1.4, foul: 1.25 }, dw: { tackle: 1.3 } };
+const prFits = (rk, code) => !!PR[rk] && PR[rk].g.split(' ').includes(ROLE[code]);
+const dutyDef = d => d.d.includes('S') ? 'S' : d.d[0];
+// his role and duty in a side: the one set for him, or his position's plain one
+function roleIn(t, id, code){ const r = t && t.rl && t.rl[id], rk = r && prFits(r.r, code) ? r.r : PR_DEF[ROLE[code]] || 'cm', d = PR[rk]; return { rk, d, du: r && r.r === rk && r.d && d.d.includes(r.d) ? r.d : dutyDef(d) }; }
+const prScore = (p, rk, f = A) => { const d = PR[rk]; return d.k.reduce((t, k) => t + f(p, k), 0) / d.k.length; };
+function roleFx(side, u){
+  const deep = { CB: 1, FB: 1, DM: 1, GK: 1 };
+  // measured against the plain role and duty of his position, so a side left on the plain roles plays as it always did
+  const dfx = (rk, du, p, x, sg) => { const d = PR[rk], m = clamp((prScore(p, rk) - 55) / 20, 0, 1.4) * .55;   // the role works as well as he fits it
+    for (const [k, v] of Object.entries(d.fx)) u[k] += sg * v * m;
+    if (du === 'A'){ u.att += sg * .35; u.def -= sg * (deep[ROLE[x.pos]] ? .4 : .2); } else if (du === 'D'){ u.def += sg * .3; u.att -= sg * (deep[ROLE[x.pos]] ? .1 : .3); } };
+  for (const x of side.on){ if (x.off) continue; const { rk, du } = roleIn(side.t, x.id, x.pos), r0 = PR_DEF[ROLE[x.pos]];
+    if (!r0 || rk === r0 && du === dutyDef(PR[r0])) continue;
+    dfx(rk, du, x.p, x, 1); dfx(r0, dutyDef(PR[r0]), x.p, x, -1); }
+}
+const roleW = (t, x, kind) => { if (!t || !t.rl || !t.rl[x.id]) return 1; const { rk, du } = roleIn(t, x.id, x.pos), r0 = PR_DEF[ROLE[x.pos]], du0 = r0 ? dutyDef(PR[r0]) : 'S', dm = d => kind === 'shot' ? (d === 'A' ? 1.2 : d === 'D' ? .7 : 1) : 1;
+  return ((PRW[rk] || {})[kind] || 1) / ((PRW[r0] || {})[kind] || 1) * dm(du) / dm(du0); };
+// how well he suits a role, by your assistant's eye (with his error): a word, as a modern game shows it
+function suitOf(p, rk, code){ const s = prScore(p, rk, assA), lv = ovrNow(p), out = code && posLv(p, code) >= 4;
+  let k = s >= lv + 5 ? 0 : s >= lv + 1 ? 1 : s >= lv - 3 ? 2 : s >= lv - 7 ? 3 : 4; if (out) k = Math.max(k, 3);
+  return [['Natural', 'var(--win)'], ['Accomplished', '#9AD07A'], ['Competent', 'var(--gold)'], ['Unconvincing', '#f2a65a'], ['Ineffective', 'var(--loss)']][k]; }
+function rolesHTML(B){
+  const t = B.t, xi = B.places.filter(x => x.p);
+  const rows = xi.map(x => { const { rk, d, du } = roleIn(t, x.id, x.code), L = Object.keys(PR).filter(k => prFits(k, x.code)), su = suitOf(x.p, rk, x.code);
+    return `<div class="rlrow"><div class="rlh"><span class="pos">${x.code}</span><b>${esc(cmName(x.p.n))}</b><span class="small" style="color:${su[1]};margin-left:auto">${su[0]}</span></div>
+      <div class="rlc"><select class="dd" data-rl="${x.id}">${L.map(k => `<option value="${k}" ${k === rk ? 'selected' : ''}>${PR[k].n}</option>`).join('')}</select><span class="seg" data-rd="${x.id}">${[...d.d].map(c => `<button data-v="${c}" class="${c === du ? 'on' : ''}">${DUTY[c]}</button>`).join('')}</span></div>
+      <div class="small dim">${esc(d.t)}</div></div>`; }).join('');
+  return `<div class="ptitle">Roles and Duties</div>${rows || '<p class="empty">Pick your eleven first.</p>'}<div class="tools"><button class="btn sm" id="rlass">Ask the assistant</button><button class="btn sm" id="rlclr">Plain roles for all</button></div>
+    <p class="small dim">A role changes what the side does, as much as the man fits it: a ball-playing defender adds passing from the back, a target forward wins headers, a poacher scores but does not help in midfield. Attack pushes a man forward (more shots, less cover), Defend holds him back. The suitability words are your assistant's view, and he is not always right.</p>`;
+}
+function rolesWire(B){
+  const t = B.t, done = () => B.done();
+  document.querySelectorAll('[data-rl]').forEach(s => s.addEventListener('change', () => { t.rl = t.rl || {}; t.rl[+s.dataset.rl] = { r: s.value }; done(); }));
+  document.querySelectorAll('.seg[data-rd] button').forEach(b => b.addEventListener('click', () => { const id = +b.parentElement.dataset.rd, x = B.places.find(y => y.id === id); if (!x) return; t.rl = t.rl || {}; t.rl[id] = { r: roleIn(t, id, x.code).rk, d: b.dataset.v }; done(); }));
+  const as = $('#rlass'); if (as) as.addEventListener('click', () => { t.rl = t.rl || {};
+    for (const x of B.places.filter(y => y.p)){ const L = Object.keys(PR).filter(k => prFits(k, x.code)); const best = L.map(k => [k, prScore(x.p, k, assA) + (k === PR_DEF[ROLE[x.code]] ? 1 : 0)]).sort((a, b) => b[1] - a[1])[0]; if (best) t.rl[x.id] = { r: best[0] }; }
+    toast(assOf() ? `${assOf().n} has set the roles as he sees them.` : 'The roles are set as the coaches see them.'); done(); });
+  const cl = $('#rlclr'); if (cl) cl.addEventListener('click', () => { t.rl = {}; done(); });
+}
+/* ==== personality: the hidden side of a player, 1 to 20 (professionalism, ambition, determination, temperament,
+   loyalty, pressure, consistency), the same in every game, shown as one word once you know him. Professionalism and
+   determination speed his development and slow his decline; temperament keeps him out of the book; consistency
+   decides how much his game varies from match to match; loyalty makes him easier to keep; ambition makes a move to
+   a smaller club harder. A good mentor rubs off on a young man's professionalism and determination ==== */
+const HID_N = { pro: 'Professionalism', amb: 'Ambition', det: 'Determination', tem: 'Temperament', loy: 'Loyalty', prs: 'Pressure', con: 'Consistency' };
+function hid(p){ const r = rng(`hid-${p.id}`), h = {};
+  for (const k of Object.keys(HID_N)) h[k] = clamp(Math.round(2 + r() * 9 + r() * 9), 1, 20);
+  h.det = clamp(h.det + Math.round(((p.ovr || 70) - 72) / 6), 1, 20); h.con = clamp(h.con + Math.round(((p.ovr || 70) - 72) / 7), 1, 20); h.prs = clamp(h.prs + Math.round(((p.ovr || 70) - 74) / 8), 1, 20);
+  const dd = S && S.hidD && S.hidD[p.id]; if (dd) for (const k in dd) h[k] = clamp(h[k] + dd[k], 1, 20);
+  return h; }
+function persWord(p){ const h = hid(p);
+  if (h.pro >= 18 && h.det >= 16 && h.amb >= 14) return 'Model professional';
+  if (h.pro >= 16 && h.det >= 14) return 'Professional';
+  if (h.amb >= 17 && h.det >= 14) return 'Driven';
+  if (h.det >= 18) return 'Resolute';
+  if (h.loy >= 18) return 'Very loyal';
+  if (h.prs >= 18) return 'Unflappable';
+  if (h.tem <= 4) return 'Temperamental';
+  if (h.pro <= 5) return 'Casual';
+  if (h.amb >= 16) return 'Ambitious';
+  if (h.amb <= 4) return 'Unambitious';
+  if (h.prs <= 4) return 'Nervous';
+  if (h.det >= 15) return 'Determined';
+  if (h.loy >= 15) return 'Loyal';
+  return 'Balanced'; }
+const hidDev = (p, grow) => { const h = hid(p); return grow > 0 ? .85 + (h.pro + h.det) / 40 * .3 : 1.15 - h.pro / 20 * .3; };
+const tmF = x => 1.3 - hid(x.p).tem / 20 * .6;
+function mentPers(m, y, r){ const hm = hid(m), hy = hid(y); for (const k of ['pro', 'det']) if (hm[k] >= hy[k] + 3 && r() < .04){ S.hidD = S.hidD || {}; const d = S.hidD[y.id] = S.hidD[y.id] || {}; d[k] = (d[k] || 0) + 1; return k; } return null; }
+/* ==== the coach's report on one of your own men: what your assistant makes of him (ability and potential as letters
+   against your side, the roles he suits, his strengths and weaknesses, his personality), never exact ==== */
+function coachRepHTML(p){
+  const a = assOf(), sp = assSpread(), r = rng(`cr-${p.id}-${S.date.slice(0, 7)}`), nz = () => (r() * 2 - 1) * sp, lv = myLevel();
+  const ab = ovrNow(p) + nz() * .6, pt = Math.max(ab, ovrNow(p) + (p.age < 24 ? (24 - p.age) * 1.7 * potOf(p) : 0) + nz()), ga = gradeOf(ab - lv), gp = gradeOf(pt - lv);
+  const est = (POS_KEYS[p.prim] || POS_KEYS.CMF).filter(x => ATTR_NAME[x]).map(x => [x, A(p, x) + nz()]).sort((x, y) => y[1] - x[1]);
+  const roles = Object.keys(PR).filter(k => p.pos.some(c => prFits(k, c))).map(k => [k, prScore(p, k, assA)]).sort((x, y) => y[1] - x[1]).slice(0, 3);
+  const nm = k => esc(TT(ATTR_NAME[k] || k)), role = roleAt(p, rankHere(p, ab)), pw = prospectWord(p);
+  return `<div class="ptitle">Coach Report</div><div class="ovgrid">
+    <div class="ovc"><div class="ovh"><span>${a ? esc(a.n) : 'Your coaches'} on him</span></div><dl class="kv"><dt>Ability now</dt><dd>${gradeH(ga)}</dd><dt>Potential</dt><dd>${gradeH(gp)}</dd><dt>In your side</dt><dd>${roleName(role)}</dd><dt>Personality</dt><dd>${persWord(p)}</dd></dl>${pw ? `<p class="small">${pw}</p>` : ''}</div>
+    <div class="ovc"><div class="ovh"><span>Best roles</span></div><ul class="hon">${roles.map(([k]) => `<li><b>${PR[k].n}</b> <span class="small dim">${esc(PR[k].t)}</span></li>`).join('')}</ul></div>
+    <div class="ovc"><div class="ovh"><span>Strengths and weaknesses</span></div><p class="small dim" style="margin:2px 0">Strengths</p><ul class="hon">${est.slice(0, 3).map(([k]) => `<li style="color:var(--win)">${nm(k)}</li>`).join('')}</ul><p class="small dim" style="margin:2px 0">Weaknesses</p><ul class="hon">${est.slice(-2).map(([k]) => `<li style="color:var(--loss)">${nm(k)}</li>`).join('')}</ul></div></div>
+    <p class="small dim">The letters compare him with your side as it is now, from A (better than your best) to E. ${a ? `${esc(a.n)} judges with an ability of ${a.ju}/20: the better the judge, the closer he is.` : 'Without an assistant the coaches\' word is rougher.'}</p>`;
+}
+/* ==== squad planner: your squad position by position, this season and the next two, as your assistant sees it:
+   who is under contract, who is getting old, who should grow, and where the gaps are ==== */
+const SP_ROWS = [['GK', 'Goalkeepers', p => p.prim === 'GK', 2, 'GK'], ['DR', 'Right-backs', p => p.prim === 'RB', 2, 'FB'], ['DC', 'Centre-backs', p => p.prim === 'CB', 4, 'CB'], ['DL', 'Left-backs', p => p.prim === 'LB', 2, 'FB'],
+  ['DM', 'Defensive midfield', p => p.prim === 'DMF', 2, 'DMF'], ['MC', 'Central midfield', p => p.prim === 'CMF', 3, 'CMF'], ['ML/MR', 'Wide midfield', p => ['LMF', 'RMF'].includes(p.prim), 2, 'W'],
+  ['AMC', 'Attacking midfield', p => ['AMF', 'SS'].includes(p.prim), 2, 'AMF'], ['AML/AMR', 'Wingers', p => ['LWF', 'RWF'].includes(p.prim), 2, 'W'], ['ST', 'Strikers', p => p.prim === 'CF', 3, 'CF']];
+function clubPlan(cid, o){
+  const lv = myLevel(), sp = assSpread(), ln = S.loans || {};
+  const est = (p, j) => { const r = rng(`sp-${p.id}-${S.season}`), base = ovrNow(p) + (r() * 2 - 1) * sp * .6; let v = base; for (let y = 0; y < j; y++){ const ag = p.age + y; v += ag < 24 ? Math.min(4, 1.7 * potOf(p)) * (.7 + r() * .6) : ag >= 31 ? -1.5 - r() : 0; } return v; };
+  const inSeason = (p, j) => { if (j === 0) return true; const l = ln[p.id]; if (l && l.to === me() && !(l.obl)) return false; const c = S.con[p.id]; return c && c.y >= S.season + j + 1; };
+  const sq = squadOf(me()).filter(p => !(ln[p.id] && ln[p.id].from === me() && false));
+  const gaps = [];
+  const rows = SP_ROWS.map(([code, name, f, need, rf]) => {
+    const cells = [0, 1, 2].map(j => { const L = sq.filter(p => f(p) && inSeason(p, j)).map(p => ({ p, v: est(p, j) })).sort((a, b) => b.v - a.v);
+      const good = L.filter(x => x.v >= lv - 6).length, short = L.length < need || good < Math.ceil(need / 2); if (j === 1 && short) gaps.push([code, rf]);
+      return `<td class="${short ? 'spgap' : ''}"><div class="small ${short ? '' : 'dim'}">${L.length} of ${need}, ${good} good enough${short ? ' <b style="color:var(--loss)">short</b>' : ''}</div>${L.map(({ p, v }) => { const c = S.con[p.id], ends = c && c.y === S.season + j + 1, age = p.age + j, out = ln[p.id] && ln[p.id].from === me();
+        return `<div class="spc" data-spp="${p.id}">${gradeH(gradeOf(v - lv))} <span class="lk">${esc(surname(p.n))}</span> <span class="small dim">${age}</span>${ends ? ' <span class="tag" title="His contract ends that summer">Ctr</span>' : ''}${age >= 32 ? ' <span class="tag" title="Getting on">Old</span>' : ''}${out ? ' <span class="tag">Loan</span>' : ''}</div>`; }).join('') || '<div class="small dim">Nobody</div>'}</td>`; }).join('');
+    return `<tr><td><b>${code}</b><br><span class="small dim">${name}</span></td>${cells}</tr>`; }).join('');
+  const sy = s => `${s}/${String((s + 1) % 100).padStart(2, '0')}`;
+  const uniq = [...new Map(gaps.map(g => [g[1], g])).values()];
+  o.body = `<p class="small dim">Your squad by position, this season and the next two, as ${assOf() ? esc(assOf().n) : 'your coaches'} sees it: a man leaves the plan when his contract ends (renew him to keep him), the young should grow, the old decline. Letters against your side as it is now (D or better is good enough for it). A position is short with fewer men than it needs, or with too few good enough.</p>
+    <div class="tw"><table class="spt"><thead><tr><th>Position</th><th>${sy(S.season)}</th><th>${sy(S.season + 1)}</th><th>${sy(S.season + 2)}</th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${uniq.length ? `<div class="ptitle">Next season's gaps</div><p>${uniq.map(g => `<b>${g[0]}</b>`).join(', ')}.</p><div class="tools">${uniq.map(g => `<button class="btn sm" data-spf="${g[1]}">Scout for ${esc((RF_POS.find(x => x[0] === g[1]) || [, g[1]])[1].toLowerCase())}s</button>`).join('')}</div>` : '<p class="c dim">No gaps next season as things stand.</p>'}`;
+  frame(o);
+  document.querySelectorAll('.spc[data-spp]').forEach(el => el.addEventListener('click', () => go({ s: 'player', id: +el.dataset.spp, tab: 'rep' })));
+  document.querySelectorAll('[data-spf]').forEach(b => b.addEventListener('click', () => { S.rf = S.rf || []; if (S.rf.length >= 3){ toast('Your scouts have three briefs already: drop one in Search, Scouting.'); return; }
+    S.rf.push({ pos: b.dataset.spf, amax: 0, fee: Math.round(S.fin.budget * .8 / 1e6) * 1e6 || 0, reg: '' }); save(); toast('A new brief for your scouts.'); view(); }));
+}
 /* ==== the transfer market as in a modern game: offers built from parts (fee, payment in instalments, add-ons, a sell-on,
    a player in exchange, or a loan with an option or an obligation to buy), the selling club's reasons and counter-offer;
    haggling over offers for your own men, a transfer status and an asking price; contract talks with the agent (squad
@@ -6168,6 +6329,7 @@ function cnNeed(p, n, o){
   const a = n.ask, q = ps(p.id), cl = clFrom(o.ix, o.w, p), diff = a.af - (o.af ?? a.af);
   let need = a.w * (1 - (ROLE_LV[a.role] - ROLE_LV[o.role]) * .06 + Math.abs(o.y - a.y) * .04 - (q.mor - 60) / 400);
   need -= clVal(p, o.w, o.y, cl, o.role) + (o.loy || 0) * o.w / 52 * .9;
+  if (n.ctx === 'renew') need *= 1 - (hid(p).loy - 10) * .008;   // a loyal man asks less to stay
   return need + diff / (52 * o.y) * (diff > 0 ? 1.2 : .5); }
 function cnViol(p, n, o){ const v = [], a = n.ask, ix = o.ix || {};
   if (n.keys.includes('role') && ROLE_LV[o.role] > ROLE_LV[a.role]) v.push(`He will only sign as a ${roleName(a.role).toLowerCase()}.`);
@@ -6218,7 +6380,8 @@ function cnDone(p, ctx, b, o){
 function willJoin(p, b){
   if (b.fa){ const up = ovrNow(p) - club(me()).q; return up > 5 && rng(`fa-${p.id}-${me()}`)() < Math.min(.85, .25 + up * .08) ? `${p.n} would rather wait for an offer from a bigger club than ${club(me()).name}.` : null; }
   const step = (S.agOff || {})[p.id] === S.season || (S.trialDisc || {})[p.id] === S.season ? -99 : club(p.club).q - club(me()).q, star = (S.agOff || {})[p.id] !== S.season && squadRank(p) < 4;
-  return (step > 5 && rng(`w-${p.id}-${S.season}`)() < .7) || (star && step > 2 && rng(`s-${p.id}`)() < .5) ? `${p.n} does not want to leave ${club(p.club).name} for ${club(me()).name}.` : null; }
+  const h = hid(p), am = .6 + h.amb / 25, lo = .7 + h.loy / 30;   // the ambitious will not step down; the loyal will not leave
+  return (step > 5 && rng(`w-${p.id}-${S.season}`)() < .7 * am) || (star && step > 2 && rng(`s-${p.id}`)() < .5 * lo) ? `${p.n} does not want to leave ${club(p.club).name} for ${club(me()).name}.` : null; }
 function cnHTML(p, ctx, b){
   const n = cnOpen(p, ctx, b), a = n.ask, ag = agentOf(p), A0 = assOf();
   if (!V.cd || V.cd.id !== p.id) V.cd = { id: p.id, w: a.w, y: a.y, role: a.role, ix: { sign: a.sign, rel: a.rel }, loy: a.loy, af: a.af };
@@ -6304,6 +6467,7 @@ function scoutWeek(wk){
   if (got.length) news('scout', 'Scouting meeting', `Your scouts have filed ${got.length} new report${got.length > 1 ? 's' : ''} on your recruitment focus: ${got.map(p => { const v = repView(p); return `<span class="lk" data-lp="${p.id}">${esc(p.n)}</span> (${cmPos(p.pos)}, ${p.age}, ${esc(club(p.club).name)}): ${v.rec[0].toLowerCase()}`; }).join('; ')}.`);
 }
 function repHTML(p){
+  if (p.club === me() && !FAP.has(p.id)) return coachRepHTML(p);
   const v = repView(p), q = (S.scQ || []).find(x => x.id === p.id), sc = scStaff(), kp = knowPct(p);
   const kn = `<div class="knb"><span class="small dim">Knowledge</span><div class="meter" style="flex:1"><i style="width:${kp}%;background:${kp >= 100 ? 'var(--ok)' : kp >= 50 ? 'var(--warn)' : 'var(--hot)'}"></i></div><b>${kp}%</b></div>`;
   const btn = q ? `<p>${esc(sc[q.k].n)} is watching him: his report is due ${fmtDate(q.due)}.</p>` : `<div class="tools"><button class="btn sm y" id="scpl">${v ? 'Scout him again' : 'Scout him'}</button></div>`;
@@ -7009,6 +7173,7 @@ function mentWeek(wk){
     const gaps = mentKeys(y).map(k => [k, A(m, k) - A(y, k)]).filter(([, g]) => g >= 6);
     if (gaps.length){ const [k, g] = gaps[Math.floor(r() * gaps.length)]; qy.d[k] = Math.round(((qy.d[k] || 0) + Math.min(.25, .05 + g / 160) * (y.age <= 19 ? 1.25 : 1) * (.6 + r() * .8)) * 100) / 100; }
     if (qm.mor < 45) qy.mor = Math.max(20, qy.mor - .8); else if (qy.mor < 75) qy.mor = Math.min(75, qy.mor + .3);
+    { const k = mentPers(m, y, r); if (k && y.club === me()) news('club', `${y.n} learns from ${m.n}`, `<b>${esc(m.n)}</b>'s ${k === 'pro' ? 'professionalism' : 'determination'} is rubbing off on <b>${esc(y.n)}</b>.`, { id: y.id }); }
     if (x.w >= 16 && !x.sty && m.style && m.style !== y.style && GROUP[m.prim] === GROUP[y.prim] && r() < .03){ x.sty = 1; (S.styOv = S.styOv || {})[y.id] = m.style; y.style = m.style;
       news('club', `${y.n} learns from ${surname(m.n)}`, `<b>${esc(y.n)}</b> has picked up <b>${esc(m.n)}</b>'s way of playing: his Playing Style is now <b>${esc(m.style)}</b>.`, { id: y.id }); }
   }
