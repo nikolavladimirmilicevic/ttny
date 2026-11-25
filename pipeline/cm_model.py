@@ -965,12 +965,36 @@ def unify(out, world, people, squads, lastseen, season, today):
         keep = {c['id'] for c in cl}
         out['world'] = {'clubs': cl, 'players': [x for x in wplayers if x['club'] in keep]}
         secs.append(out['world'])
+    def _keys(n):
+        t = [w for w in _fold(n).replace('.', ' ').split() if w]
+        return {(t[0][0], w) for w in t[1:] if len(w) >= 3} | ({('', t[0])} if len(t) == 1 else set()) if t else set()
+    # clubs from Transfermarkt pages with ids of our own (Serbia's, a few English and French): their API team (found by
+    # name for the crest, cm.json 'crest') stands for them, and each of their men is matched by name to the API's player
+    # on that team's squad, whose seasons and Draft rating he then gets
+    alias = {}
+    for S_ in secs:
+        for c in S_.get('clubs') or []:
+            if c['id'] >= 100000 and c.get('crest'):
+                alias[c['crest']] = c['id']
+    pmap = {}
+    for api_id, cid in alias.items():
+        K = {}
+        for apid in (squads.get(str(api_id)) or {}).get('p') or []:
+            e = people.get(str(apid)) or {}
+            for k in _keys(e.get('n') or ''): K.setdefault(k, apid)
+        for S_ in secs:
+            for x in S_.get('players') or []:
+                if x['club'] == cid and str(x['id']) not in people:
+                    hit = next((K[k] for k in _keys(x['n']) if k in K), None)
+                    if hit: pmap[x['id']] = hit
+    _pe = lambda x: people.get(str(pmap.get(x['id'], x['id'])))
+    _pw = lambda x: wp.get(pmap.get(x['id'], x['id']))
     # everyone else in the sections: the same model on what the API knows of him
     for S_ in secs:
         if S_ is out.get('world'): continue
-        lv = club_levels(S_.get('players') or [], people, wp, season)
+        lv = club_levels([{**x, 'id': pmap.get(x['id'], x['id'])} for x in S_.get('players') or []], people, wp, season)
         for x in S_.get('players') or []:
-            model_one(x, people.get(str(x['id'])), wp.get(x['id']), season, today, level=lv.get(x['id']))
+            model_one(x, _pe(x), _pw(x), season, today, level=lv.get(pmap.get(x['id'], x['id'])))
     # transfers the API's squads show: a player of the game in another game club's fresh squad moves there; a new face in
     # a game club's squad joins it
     allsec = [out] + secs
@@ -979,12 +1003,11 @@ def unify(out, world, people, squads, lastseen, season, today):
         for x in S_.get('players') or []:
             where[x['id']] = (S_, x)
     club_sec = {c['id']: S_ for S_ in allsec for c in S_.get('clubs') or []}
-    fresh = {int(t): v for t, v in (squads or {}).items() if t.isdigit() and int(t) in club_sec and v.get('f') and (datetime.date.fromisoformat(today) - datetime.date.fromisoformat(v['f'])).days <= 7}
+    for x in list(where.values()):
+        if x[1]['id'] in pmap: where[pmap[x[1]['id']]] = x   # the API's id of a man we know by our own
+    fresh = {alias.get(int(t), int(t)): v for t, v in (squads or {}).items() if t.isdigit() and alias.get(int(t), int(t)) in club_sec and v.get('f') and (datetime.date.fromisoformat(today) - datetime.date.fromisoformat(v['f'])).days <= 7}
     # the same man under another spelling ('V. Castellanos', 'Valentín Castellanos'; 'Edson Álvarez Velázquez'): a first
     # initial and a surname-like word in common at the club
-    def _keys(n):
-        t = [w for w in _fold(n).replace('.', ' ').split() if w]
-        return {(t[0][0], w) for w in t[1:] if len(w) >= 3} | ({('', t[0])} if len(t) == 1 else set()) if t else set()
     names = {}
     for S_ in allsec:
         for x in S_.get('players') or []:
@@ -1079,7 +1102,7 @@ def apply_staff_api(out, coaches, fx, lu, today):
     sur = lambda n: _fold(n).replace('.', ' ').split()[-1] if n and _fold(n).split() else ''
     for S_ in secs:
         for c in S_.get('clubs') or []:
-            tid = c['id']; x = T.get(str(tid)) or {}
+            tid = c['crest'] if c['id'] >= 100000 and c.get('crest') else c['id']; x = T.get(str(tid)) or {}   # a club of ours by its API team
             now = [k for k in x.get('c') or [] if any(j[0] == tid and not j[3] for j in k['car'])]
             api = max(now, key=lambda k: max((j[2] or '') for j in k['car'] if j[0] == tid)) if now else None
             api_d = max((j[2] or '') for j in api['car'] if j[0] == tid) if api else ''

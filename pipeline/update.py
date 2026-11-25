@@ -1104,7 +1104,7 @@ def game_club_ids(top_ids):
             secs += [L.get('clubs') or [], (L.get('second') or {}).get('clubs') or []]
         secs += [(cmd.get('second') or {}).get('clubs') or [], (cmd.get('europe') or {}).get('clubs') or [], (cmd.get('cwc') or {}).get('clubs') or [], (cmd.get('world') or {}).get('clubs') or []]
         for L in secs:
-            ids += [c['id'] for c in L if isinstance(c.get('id'), int) and 0 < c['id'] < 100000]
+            ids += [c['id'] if c['id'] < 100000 else c.get('crest') for c in L if isinstance(c.get('id'), int) and (0 < c['id'] < 100000 or c.get('crest'))]   # a club of ours by its API team
     except (OSError, ValueError):
         pass
     try:
@@ -1805,6 +1805,9 @@ def fetch_crests(ids):
 CTRY_NAME = {'ENG': 'England', 'FRA': 'France', 'ITA': 'Italy', 'ESP': 'Spain', 'GER': 'Germany', 'SRB': 'Serbia'}
 
 
+LEAGUE_LISTS = {'SRB': (286, 287), 'ENG': (40, 41), 'FRA': (62,), 'ITA': (136,), 'ESP': (141,), 'GER': (79,)}   # API league ids: each country's second (and Serbia's first) tier
+
+
 def game_crests(cmd, cm_model):
     """Crests for every club of the manager game. A club with an id of our own (from Transfermarkt pages: Serbia's clubs,
     Laval) is looked up once in the API by name and country (one call per search term; the answer, or that none was
@@ -1833,6 +1836,18 @@ def game_crests(cmd, cm_model):
                     best, score = tm, sc
             if best and score >= .8:
                 break
+        if (not best or score < .8) and LEAGUE_LISTS.get(c.get('ctry') or ''):
+            # not found by name: every team of the country's leagues this season and last, matched on the words of the
+            # full name (the town counts: Proleter of Zrenjanin is not Proleter of Novi Sad)
+            want = {w for w in norm(c.get('full') or c['name']).split() if len(w) >= 3 and not w.isdigit() and w not in CLUB_WORDS and w not in ('fk', 'ofk')}
+            for lg in LEAGUE_LISTS[c['ctry']]:
+                for season in (current_season(), current_season() - 1):
+                    for x in api('teams', league=lg, season=season).get('response', []):
+                        tm = x['team']; have = {w for w in norm(tm.get('name') or '').split() if len(w) >= 3}
+                        city = norm((x.get('venue') or {}).get('city') or '')
+                        sc = (len(want & have) + (1 if city and city in want else 0)) / max(1, len(want))
+                        if sc > score and (want & have):
+                            best, score = tm, sc
         changed = True
         if best and score >= .55:
             ids[k] = {'api': best['id'], 'api_name': best['name'], 'name': c.get('full') or c['name'], 'score': round(score, 2), 'tried': TODAY.isoformat()}
