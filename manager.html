@@ -309,7 +309,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok.empty .dot{background:rgba(0,0,0,.35);color:#fff;border-style:dashed;border-color:rgba(255,255,255,.7)}
 .tok.sel .dot{outline:3px solid var(--gold);outline-offset:2px}.tok.over .dot,.tbrow.over,.tbzone.over{outline:2px dashed var(--gold);outline-offset:2px}
 .tok.dragging,.tbrow.dragging{opacity:.35}
-.lk{cursor:pointer;text-decoration:none}.lk:hover{color:var(--sky,#8fd0ff)}.lk:hover{color:var(--sky);text-decoration-color:var(--sky)}
+.lk{cursor:pointer;text-decoration:none;color:#9fd2ff}td .lk,.stp .lk,.pcard .lk,.mteams .lk{color:color-mix(in srgb,currentColor 60%,#8fd0ff 40%)}.lk:hover{text-decoration:underline;text-underline-offset:3px}.lk:hover{color:var(--sky,#8fd0ff)}.lk:hover{color:var(--sky);text-decoration-color:var(--sky)}
 .tbghost b{margin-left:6px;padding:2px 6px;border-radius:4px;background:var(--gold);color:#111}.tbghost b.f1{background:#5CC08A;color:#0B1626}.tbghost b.f2{background:#F2C14E;color:#0B1626}.tbghost b.f3{background:#E8604C;color:#fff}.tbghost b.f4{background:#0E2A1B;color:#dfe6ef;outline:1px solid rgba(255,255,255,.35)}.tbghost b.no{background:var(--loss);color:#fff;outline:2px solid #fff}
 .tbghost{position:fixed;z-index:999;transform:translate(-50%,-130%);pointer-events:none;background:#0B1626;color:#fff;border:1px solid rgba(255,255,255,.25);font:700 12px/1 var(--body);padding:6px 9px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
 .tbleg .lgp{display:inline-block;width:16px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;background:#5CC08A}.tbleg .lgp.f2{background:#F2C14E}.tbleg .lgp.f3{background:#E8604C}.tbleg .lgp.f4{background:#0E2A1B;outline:1px solid rgba(255,255,255,.35)}
@@ -347,6 +347,9 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tog.on{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);font-weight:600}
 /* news */
 .nl{max-height:220px;overflow-y:auto;border-radius:10px;background:var(--panel-2)}
+@media(min-width:1100px){.pane:has(>.nl+.nmsg){display:grid;grid-template-columns:minmax(300px,40%) 1fr;gap:16px;align-items:start}.pane:has(>.nl+.nmsg)>.nl{max-height:calc(100vh - 230px);min-height:320px}.pane:has(>.nl+.nmsg)>.nmsg{margin-top:0}.pane:has(>.nl+.nmsg)>.nmsg h2{margin-top:0}}
+:not(.ptitle)+.ptitle{margin-top:18px}
+@media(max-width:600px){.tools .tglbl,.tools .dhelp,.tools>span[style*="flex:1"]{display:none}.tools .tgrp{padding:3px}}
 .nl div{display:grid;grid-template-columns:96px 40px 1fr;gap:8px;padding:6px 10px;cursor:pointer;border-bottom:1px solid rgba(41,64,96,.7)}
 .nl div span{color:var(--muted);font-size:12px}
 .nl div:hover{background:rgba(255,255,255,.04)}
@@ -3836,9 +3839,12 @@ function linkPeople(M, B){
   const add = (n, v) => { if (!n || n.length < 5 || !/ /.test(n) || M.has(n) && M.get(n)[0] !== 'k' && M.get(n)[0] !== 's') return; M.set(n, v); B.set(n, v); };
   for (const c of everyClub()){ const n = coachOf(c.id); if (n && !/ manager$/.test(n)){ add(n, 'k:' + n); if (/ \(caretaker\)$/.test(n)) add(n.replace(/ \(caretaker\)$/, ''), 'k:' + n); } }
   for (const m of D.managers_free || []) add(m.n, 'k:' + m.n);
+  for (const c of everyClub()){ const f = fullName(c.id); if (f && f !== c.name && !M.has(f)){ M.set(f, 'c:' + c.id); B.set(f, 'c:' + c.id); } }   // 'Manchester City' as well as 'Man City'
   for (const n of Object.keys(S.mgL || {})) add(n, 'k:' + n);
   for (const a of S.coachAw || []) if (a.n) add(a.n, 'k:' + a.n);
   for (const x of S.staff || []) add(x.n, 's:' + x.id);
+  // 'Saka, B' (the short form): the players of your club and of the club on screen, where it is unique
+  for (const cid of new Set([me(), V.cid, V.s === 'player' && P.get(V.id) ? P.get(V.id).club : null].filter(Boolean))){ const sq = squadOf(cid), cnt = {}; for (const p of sq){ const k = cmName(p.n); cnt[k] = (cnt[k] || 0) + 1; } for (const p of sq){ const k = cmName(p.n); if (cnt[k] === 1 && k !== p.n) add(k, 'p:' + p.id); } }
   if (S.club) for (const x of club(S.club).mgmt || []) add(x.n, `e:${S.club}|${x.n}`);
 }
 const LK_TOK = /[\p{L}\p{N}]+/gu;
@@ -3849,7 +3855,7 @@ function linkMatches(txt, M){
     if (v){ out.push([st[i], en[j], v]); i = j; break; } }
   return out;
 }
-const LK_SKIP = 'a,button,select,option,input,textarea,label,[data-lp],[data-lc],[data-lm],[data-ln],[data-lk],[data-lst],[data-lpe],[data-nt],[data-tp],[data-dp],.mbx,.pitch,.mtree,.tok,.tbrow,.strip2,.box,thead,.dghost,.nl,.side,.mdl .tools,.tabs,.seg,svg';
+const LK_SKIP = 'a,button,select,option,input,textarea,label,[data-lp],[data-lc],[data-lm],[data-ln],[data-lk],[data-lst],[data-lpe],[data-nt],[data-tp],[data-dp],.mbx,.pitch,.mtree,.tok,.tbrow,.strip2,.box,thead,.dghost,.nl,.side,.mdl .tools,.tabs,.seg,svg,.banner h1';
 function lkEl(v, text){ const sp = document.createElement('span'); sp.className = 'lk'; const [t0, ...r] = v.split(':'), x = r.join(':');
   if (t0 === 'p') sp.dataset.lp = x; else if (t0 === 'c') sp.dataset.lc = x; else if (t0 === 'n') sp.dataset.ln = x; else if (t0 === 'k') sp.dataset.lk = x; else if (t0 === 's') sp.dataset.lst = x; else if (t0 === 'e') sp.dataset.lpe = x; else sp.dataset.lm = x; sp.textContent = text; return sp; }
 /* a name two players share ("Riquelme, R": Rodrigo of Betis, Ramon of Miami): the row it stands in decides, by the player
@@ -4305,7 +4311,8 @@ function scrClub(){
   if (sec && !S.tac[cid]) S.tac[cid] = autoTactic(cid);
   const top = sec ? [['ov', 'Overview'], ['squad', 'Squad'], ['staff', 'Staff'], ['hist', 'History'], ['info', 'General Info']] : [['ov', 'Overview'], ['squad', 'Squad'], ['transfers', 'Transfers'], ['next', 'Next Match'], ['fix', 'Fixtures'], ['hist', 'History'], ['info', mine ? 'Finances &amp; Info' : 'General Info']];
   const bottom = sec ? [] : mine ? [['tactics', 'Tactics'], ['training', 'Training'], ['dress', 'Dressing Room'], ['med', 'Medical Centre'], ['data', 'Data Hub'], ['dev', 'Development Centre'], ['plan', 'Squad Planner'], ['trep', 'Team Report'], ['staff', 'Staff'], ['last', 'Last Match'], ['league', esc(D.league)], ['board', 'Board']] : [['trep', 'Team Report'], ['staff', 'Staff'], ['league', esc(D.league)], ['last', 'Last Match']];
-  const o = ofClub(cid, { nav: clubNav(cid), title: esc(fullName(cid)), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'ov' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
+  const TABN = { ...Object.fromEntries([...top, ...bottom]), tactics: 'Tactics', training: 'Training', dress: 'Dressing Room', med: 'Medical Centre', data: 'Data Hub', dev: 'Development Centre', plan: 'Squad Planner', trep: 'Team Report', staff: 'Staff', last: 'Last Match', board: 'Board', squad: V.team === 'res' ? 'Reserves' : 'Squad' };
+  const o = ofClub(cid, { nav: clubNav(cid), title: esc(fullName(cid)), ...(tab !== 'ov' && tab !== 'tactics' && TABN[tab] ? { sub: TABN[tab] } : {}), top, bottom, topOn: tab, bottomOn: tab, onTab: t => { if (t === 'league'){ go({ s: 'comp', tab: 'ov' }); return; } if (t === 'transfers'){ go({ s: 'transfers' }); return; } if (t === 'history'){ go({ s: 'manager', tab: 'hist' }); return; } go({ s: 'club', cid, tab: t }); } });
   (({ ov: clubOverview, hist: clubHistory, squad: clubSquad, next: clubNext, fix: clubFixtures, info: clubInfo, tactics: clubTactics, training: clubTraining, last: clubLast, board: clubBoard, staff: clubStaff, trep: clubTeamRep, ...(mine ? { dress: clubDressing, med: clubMedical, data: clubData, dev: clubDev, plan: clubPlan } : {}) })[tab] || clubSquad)(cid, o);
 }
 function playerFlags(p){
@@ -4795,7 +4802,7 @@ function clubLast(cid, o){
   o.body = `<div class="mteams"><div class="t" style="background:${kh};color:${kh2}">${crest(rr.h, 'mcr')}<span>${esc(club(rr.h).name)}</span><b>${rr.s[0]}</b></div><div class="t" style="background:${ka};color:${ka2}">${crest(rr.a, 'mcr')}<span>${esc(club(rr.a).name)}</span><b>${rr.s[1]}</b></div></div>
     ${rr.p ? `<p class="c yel"><b>${rr.p[0]}-${rr.p[1]} on penalties</b></p>` : ''}
     <div class="cols2" style="margin-top:8px"><div><div class="ptitle">Match Report</div><div class="inc">${(rr.inc || []).map(x => `<div class="h">${x.side === 'h' ? icon(x.k) + incT(x) : ''}</div><div class="m">${x.l}'</div><div>${x.side === 'a' ? icon(x.k) + incT(x) : ''}</div>`).join('') || '<div></div><div class="m">-</div><div></div>'}</div>
-      <dl class="kv" style="margin-top:10px">${rr.mom ? `<dt>Man of the match</dt><dd>${esc(P.get(rr.mom).n)}</dd>` : ''}${rr.ref ? `<dt>Referee</dt><dd>${esc(rr.ref)}</dd>` : ''}${rr.att ? `<dt>Attendance</dt><dd>${rr.att.toLocaleString('en-GB')}</dd>` : ''}<dt>Weather</dt><dd>${esc(rr.wx || '')}</dd></dl></div>
+      <dl class="kv" style="margin-top:10px">${rr.mom ? `<dt>Man of the match</dt><dd><span class="lk" data-lp="${rr.mom}">${esc(P.get(rr.mom).n)}</span></dd>` : ''}${rr.ref ? `<dt>Referee</dt><dd>${esc(rr.ref)}</dd>` : ''}${rr.att ? `<dt>Attendance</dt><dd>${rr.att.toLocaleString('en-GB')}</dd>` : ''}<dt>Weather</dt><dd>${esc(rr.wx || '')}</dd></dl></div>
       <div><div class="ptitle">Match Stats</div>${statBars(rr.st, rr.h, rr.a)}</div></div>`;
   frame(o);
 }
@@ -5147,7 +5154,7 @@ function clubTactics(cid, o){
   if (V.sub && V.sub !== TB.vsub){ TB.tab = { overview: 'squad', team: 'team', player: 'player', set: 'set' }[V.sub] || 'squad'; TB.vsub = V.sub; }
   const B = boardWeek();
   o.title = `${esc(club(me()).name)} Tactics`;
-  o.tools = `<span class="small dim">Drag players onto each other, onto open grass or in from the list; or tap one, then the other. Double-tap a player to open his profile.</span><span style="flex:1"></span><span class="tgrp clr"><span class="tglbl">Clear</span><button class="btn sm" id="clrb">Bench</button><button class="btn sm" id="clra">Everything</button></span><span class="tgrp ask"><span class="tglbl">Assistant</span><button class="btn sm" id="fillr" title="Empty places and bench spots only; your picks stay">Fill the rest</button><button class="btn sm" id="auto" title="The assistant picks shape, side and bench">Pick the side</button><span class="askw"><button class="btn sm go" id="askb" aria-haspopup="true" aria-expanded="false">Ask him ▾</button><div class="askm" id="askm" role="menu" hidden>${ASK.map(([k, n, d]) => `<button role="menuitem" data-ask="${k}"><b>${n}</b><span>${d}</span></button>`).join('')}</div></span></span>`;
+  o.tools = `<span class="small dim dhelp">Drag players onto each other, onto open grass or in from the list; or tap one, then the other. Double-tap a player to open his profile.</span><span style="flex:1"></span><span class="tgrp clr"><span class="tglbl">Clear</span><button class="btn sm" id="clrb">Bench</button><button class="btn sm" id="clra">Everything</button></span><span class="tgrp ask"><span class="tglbl">Assistant</span><button class="btn sm" id="fillr" title="Empty places and bench spots only; your picks stay">Fill the rest</button><button class="btn sm" id="auto" title="The assistant picks shape, side and bench">Pick the side</button><span class="askw"><button class="btn sm go" id="askb" aria-haspopup="true" aria-expanded="false">Ask him ▾</button><div class="askm" id="askm" role="menu" hidden>${ASK.map(([k, n, d]) => `<button role="menuitem" data-ask="${k}"><b>${n}</b><span>${d}</span></button>`).join('')}</div></span></span>`;
   o.body = boardHTML(B);
   frame(o);
   $('#auto').addEventListener('click', () => { const a = autoTactic(me(), judge()); Object.assign(B.t, { form: a.form, xi: a.xi, bench: a.bench, set: a.set, shape: null }); TB.sel = null; save(); view(); });
