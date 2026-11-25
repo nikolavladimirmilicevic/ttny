@@ -649,6 +649,7 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
             if len(vals) >= 6:
                 mu = statistics.mean(vals); sd = statistics.pstdev(vals) or 1
                 norm[(g, m)] = (mu, sd)
+    _CTX['norm'] = norm; _CTX['coef'] = coef
     out_players = []
     for r in rows:
         e, p, pos = r['e'], r['p90'], r['prim']
@@ -822,9 +823,220 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
            'attrs': ATTRS, 'clubs': clubs, 'players': out_players, 'fixtures': fixtures, **extra}
     apply_crests(out)
     apply_market(out)
+    try:
+        unify(out, world, people, squads, lastseen, season, today)
+    except Exception as e:   # the old way stays if this fails
+        import traceback; traceback.print_exc()
     fill_nat(out)
     apply_forms(out)
     return out
+
+
+# ---- every player of the game modelled the same way: what the Premier League's players get (the Draft's overall where
+# it rates him, else his season's rating, starts and minutes on the same fit; the season's numbers against the same
+# norms; the learned PES shapes, his PES character), for every league, second tier, foreign club, Draft-world club and
+# free agent. And the API's squads move a player the day his transfer shows, and bring in the new faces ----
+_CTX = {}
+
+
+def _zf(p, prim):
+    norm, g = _CTX.get('norm') or {}, _GROUP[prim]
+    def z(m):
+        if not p or p.get(m) is None or (g, m) not in norm:
+            return 0.0
+        mu, sd = norm[(g, m)]
+        return max(-2.5, min(2.5, (p[m] - mu) / sd)) * min(1, p['min'] / 1500)
+    return z
+
+
+def data_ovr(x, e, w, season):
+    """What the API's data says of his level on the Premier League's scale, and how much to trust it (0-1): the Draft's
+    rating, else his season's rating, starts and minutes on the Premier League's fit."""
+    if w and w.get('ovr'):
+        return ability(w), 1.0
+    s = _stats(e, season, x.get('club')) if e else None
+    p = _per90(s) if s else None
+    coef = _CTX.get('coef')
+    if coef and p and p['rt'] and p['min'] >= 200:
+        return coef[0] + coef[1] * p['rt'] + coef[2] * p['share'] + coef[3] * math.log1p(p['min']), min(1, p['min'] / 1200)
+    return None, 0.0
+
+
+def club_levels(players, people, wp, season, base=None):
+    """The Draft and the season ratings are on the Premier League's scale and run high for a man who stands out in a weaker
+    league: within each club they set who is better than whom, around the club's own level (its players' Transfermarkt
+    and Elo overalls, or base). Returns {id: overall}."""
+    by, out = {}, {}
+    for x in players:
+        by.setdefault(x['club'], []).append(x)
+    for cid, L in by.items():
+        D = [(x, *data_ovr(x, people.get(str(x['id'])), wp.get(x['id']), season)) for x in L]
+        D = [(x, d, k) for x, d, k in D if d is not None]
+        if len(D) < 5:
+            continue
+        top = sorted(D, key=lambda t: -t[1])[:14]
+        md = statistics.mean(d for _, d, _ in top)
+        mp = base if base is not None else statistics.mean(sorted((x.get('ovr') or 60 for x in L), reverse=True)[:14])
+        for x, d, k in D:
+            o = mp + (d - md)
+            out[x['id']] = k * o + (1 - k) * (x.get('ovr') or o)
+    return out
+
+
+def model_one(x, e, w, season, today, prior=None, gc=None, level=None):
+    """x: a player of any section (id, club, prim, pos, ovr, age, ht...). Overall, attributes, ratings and style as the
+    Premier League's are made; his overall stays as it was where neither the Draft nor a season of the API knows him."""
+    pid = x['id']
+    s = _stats(e, season, x.get('club')) if e else None
+    p = _per90(s) if s else None
+    o = level if level is not None else prior if prior is not None else x.get('ovr') or 60
+    prim = x.get('prim') or 'CMF'
+    if w and w.get('pos') and not x.get('pos'):
+        x['pos'] = list(w['pos'])
+    pl = x.get('pos') or [prim]
+    if prim not in pl:
+        pl = [prim] + pl
+    ht = x.get('ht') or (e or {}).get('ht') or (w or {}).get('ht'); wt = x.get('wt') or (e or {}).get('wt')
+    age = x.get('age') or age_of(e or {}, today)
+    a, r, style = make_attrs(pid, prim, pl, o, ht, wt, age, _zf(p, prim), random.Random(f'cm-{pid}'), p)
+    x.update({'ovr': r[prim], 'r': r, 'a': a, 'style': style, 'pos': pl})
+    if ht and not x.get('ht'): x['ht'] = ht
+    if wt and not x.get('wt'): x['wt'] = wt
+    return x
+
+
+def _val_of(ovr, age, pid):
+    t = TM_FACTS.get(str(pid)) or {}
+    if t.get('eur'):
+        return round(t['eur'] / 1.17, 1) if t['eur'] >= 1.17 else round(max(.05, t['eur'] / 1.17), 2)
+    return round(max(.2, 2 ** ((ovr - 70) / 4) * (1.4 if age <= 23 else .6 if age >= 31 else 1)), 1)
+
+
+def unify(out, world, people, squads, lastseen, season, today):
+    def _fx(n):
+        if n and any(ch in n for ch in 'ÃÄÅÐÑ'):
+            try: return n.encode('latin-1').decode('utf-8')
+            except Exception: return n
+        return n
+    wp = {p['id']: p for p in (world or {}).get('players', [])}
+    secs = []   # (clubs, players) of every section but the Premier League's, which is already made this way
+    if out.get('second'): secs.append(out['second'])
+    for L in (out.get('leagues') or {}).values():
+        secs.append(L)
+        if L.get('second'): secs.append(L['second'])
+    for k in ('europe', 'cwc'):
+        if out.get(k): secs.append(out[k])
+    # the Draft world's other clubs (the European qualifiers and the rest): their own section, as the others
+    have = {c['id'] for S_ in [out] + secs for c in S_.get('clubs') or []}
+    wcl = [c for c in (world or {}).get('clubs', []) if c['id'] not in have and c.get('name') and c.get('ctry')]
+    if wcl:
+        wplayers = []
+        for c in wcl:
+            ids = (squads.get(str(c['id'])) or {}).get('p') or [p['id'] for p in wp.values() if p.get('club') == c['id']]
+            base = 10.46 + .03644 * (c.get('elo') or 1300)   # the club's level from its UEFA Elo (fitted on the clubs both files have)
+            for pid in ids:
+                e = people.get(str(pid)) or {}; w = wp.get(pid)
+                if not (w or e.get('n')): continue
+                s = _stats(e, season, c['id']); p = _per90(s) if s else None
+                ls = (lastseen or {}).get(pid) or (lastseen or {}).get(str(pid)); gcx = (ls[2] if ls and len(ls) > 2 else None) or {}
+                prim = (w or {}).get('prim') or (max(gcx.items(), key=lambda kv: kv[1])[0] if gcx else _rough_pos(e.get('sp'), p, e.get('ht'), e.get('no')))
+                pl, sh = api_positions(prim, w, gcx)
+                age = age_of(e, today) if e else ((w or {}).get('age') or 25)
+                prior = (youth_ovr(age, base) if age <= 21 else base - 6) if not w else None
+                x = {'id': pid, 'n': _fx((w or {}).get('name') or e.get('n')), 'nat': (w or {}).get('nat') or e.get('nat'), 'age': age, 'no': e.get('no') if e.get('no') is not None else (w or {}).get('no'),
+                     'club': c['id'], 'prim': prim, 'pos': pl, **({'pc': sh} if sh else {}), 'eu': 1, 'wx': 1}
+                x['ovr'] = prior if prior is not None else base
+                x['_e'], x['_w'], x['_base'] = e, w, base
+                wplayers.append(x)
+        for c in wcl:
+            L = [x for x in wplayers if x['club'] == c['id']]
+            if not L: continue
+            lv = club_levels(L, people, wp, season, base=L[0]['_base'])
+            for x in L:
+                e, w = x.pop('_e'), x.pop('_w'); x.pop('_base')
+                model_one(x, e, w, season, today, level=lv.get(x['id']))
+                x['val'] = _val_of(x['ovr'], x['age'], x['id'])
+        cl = []
+        for c in wcl:
+            q14 = sorted((x['ovr'] for x in wplayers if x['club'] == c['id']), reverse=True)[:14]
+            if len(q14) < 11: continue
+            cl.append({'id': c['id'], 'name': c['name'], 'full': c['name'], 'ctry': c['ctry'], 'q': round(statistics.mean(q14), 1), 'eu': 1, 'wx': 1})
+        keep = {c['id'] for c in cl}
+        out['world'] = {'clubs': cl, 'players': [x for x in wplayers if x['club'] in keep]}
+        secs.append(out['world'])
+    # everyone else in the sections: the same model on what the API knows of him
+    for S_ in secs:
+        if S_ is out.get('world'): continue
+        lv = club_levels(S_.get('players') or [], people, wp, season)
+        for x in S_.get('players') or []:
+            model_one(x, people.get(str(x['id'])), wp.get(x['id']), season, today, level=lv.get(x['id']))
+    # transfers the API's squads show: a player of the game in another game club's fresh squad moves there; a new face in
+    # a game club's squad joins it
+    allsec = [out] + secs
+    where = {}
+    for S_ in allsec:
+        for x in S_.get('players') or []:
+            where[x['id']] = (S_, x)
+    club_sec = {c['id']: S_ for S_ in allsec for c in S_.get('clubs') or []}
+    fresh = {int(t): v for t, v in (squads or {}).items() if t.isdigit() and int(t) in club_sec and v.get('f') and (datetime.date.fromisoformat(today) - datetime.date.fromisoformat(v['f'])).days <= 7}
+    # the same man under another spelling ('V. Castellanos', 'Valentín Castellanos'; 'Edson Álvarez Velázquez'): a first
+    # initial and a surname-like word in common at the club
+    def _keys(n):
+        t = [w for w in _fold(n).replace('.', ' ').split() if w]
+        return {(t[0][0], w) for w in t[1:] if len(w) >= 3} | ({('', t[0])} if len(t) == 1 else set()) if t else set()
+    names = {}
+    for S_ in allsec:
+        for x in S_.get('players') or []:
+            for k in _keys(x['n']): names.setdefault((k, x['club']), x)
+    def _fix(n):
+        if n and any(ch in n for ch in 'ÃÄÅÐÑ'):
+            try: return n.encode('latin-1').decode('utf-8')
+            except Exception: return n
+        return n
+    moved = added = 0
+    for tid, v in sorted(fresh.items(), key=lambda kv: kv[1]['f']):
+        for pid in v.get('p') or []:
+            if pid in where:
+                S0, x = where[pid]
+                if x['club'] == tid or x.get('lo'): continue   # out on loan already: the game brings him back in the summer
+                old = fresh.get(x['club'])
+                if old and old['f'] >= v['f'] and pid in (old.get('p') or []): continue   # his old club's list is as fresh and still has him
+                S1 = club_sec[tid]
+                if S1 is not S0:
+                    S0['players'].remove(x); S1['players'].append(x); where[pid] = (S1, x)
+                x['club'] = tid; x.pop('ac', None); x.pop('lo', None); x['jn'] = v['f']; moved += 1
+                continue
+            e = people.get(str(pid)) or {}
+            if not e.get('n') or any((k, tid) in names for k in _keys(_fix(e['n']))): continue
+            S1 = club_sec[tid]; w = wp.get(pid)
+            s = _stats(e, season, tid); p = _per90(s) if s else None
+            ls = (lastseen or {}).get(pid) or (lastseen or {}).get(str(pid)); gcx = (ls[2] if ls and len(ls) > 2 else None) or {}
+            prim = (w or {}).get('prim') or (max(gcx.items(), key=lambda kv: kv[1])[0] if gcx else _rough_pos(e.get('sp'), p, e.get('ht'), e.get('no')))
+            pl, sh = api_positions(prim, w, gcx)
+            age = age_of(e, today); cq = next((c.get('q') for c in S1.get('clubs') or [] if c['id'] == tid), 70) or 70
+            x = {'id': pid, 'n': _fix(e['n']), 'nat': e.get('nat'), 'age': age, **({'bd': e['bd'][:10]} if e.get('bd') else {}), 'no': e.get('no'), 'club': tid, 'prim': prim, 'pos': pl,
+                 **({'pc': sh} if sh else {}), 'jn': v['f'], **({k: 1 for k in ('eu',) if S1 is out.get('europe') or S1 is out.get('world') or S1 is out.get('cwc')}),
+                 **({'ch': 1} if S1.get('clubs') and S1['clubs'][0].get('second') else {})}
+            pr = youth_ovr(age, cq) if age <= 21 else cq - 6
+            d, k = data_ovr(x, e, w, season)
+            if d is not None:   # his data against his new club's men who have data too
+                mates = [(y, *data_ovr(y, people.get(str(y['id'])), wp.get(y['id']), season)) for y in S1['players'] if y['club'] == tid and y is not x]
+                mates = [(y, dd) for y, dd, kk in mates if dd is not None]
+                if len(mates) >= 5:
+                    pr = k * (statistics.mean(y['ovr'] for y, _ in mates) + d - statistics.mean(dd for _, dd in mates)) + (1 - k) * pr
+            model_one(x, e, w, season, today, prior=pr)
+            x['val'] = _val_of(x['ovr'], age, pid)
+            if age <= 19 and not (p and p['min'] >= 450): x['ac'] = 1   # a boy on the club's list with little senior football: its reserves
+            S1['players'].append(x); where[pid] = (S1, x); added += 1
+            for k in _keys(x['n']): names[(k, tid)] = x
+    # free agents: the same shapes on Transfermarkt's facts (no API id, no season)
+    for i, f in enumerate(out.get('free_agents') or []):
+        prim = f.get('pos') if f.get('pos') in POSITIONS else 'CMF'
+        x = {'id': f'fa-{i}-{f.get("n")}', 'prim': prim, 'pos': [prim], 'ovr': f.get('ovr') or 60, 'age': f.get('age') or 27, 'ht': f.get('ht')}
+        model_one(x, None, None, season, today)
+        f['a'], f['r'], f['style'] = x['a'], x['r'], x['style']
+        if x.get('wt'): f['wt'] = x['wt']
+    print(f'  every player modelled alike; {moved} moved and {added} new from the API squads')
 
 
 FORM_LAST = 10   # matches: a club's usual shape is the one it used most in its last ten with a known formation

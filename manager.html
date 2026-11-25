@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
-<script>window.__cm = fetch('cm.json', { cache: 'no-cache' }).catch(() => null); window.__wx = fetch('world.json').catch(() => null);   /* the league starts downloading first */</script>
+<script>window.__cm = fetch('cm.json', { cache: 'no-cache' }).catch(() => null);   /* the league starts downloading first */</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Manager · This Time Next Year</title>
 <meta name="description" content="Take charge of a Premier League club: squad, tactics, training, the board, and every match told in words.">
@@ -2845,7 +2845,14 @@ function natFill(L){ for (const p of L || []){ if (p.nat) continue; const c = C.
    qualifying rounds against your clubs, friendlies, and can be scouted and signed like any foreign club */
 const WX_KIT = [['#C8102E', '#FFFFFF'], ['#003DA5', '#FFFFFF'], ['#006B3F', '#FFFFFF'], ['#111111', '#FFFFFF'], ['#FFD100', '#111111'], ['#6A1B9A', '#FFFFFF'], ['#FFFFFF', '#C8102E'], ['#87CEEB', '#0B2545'], ['#F57C00', '#111111'], ['#7B1E2A', '#F2C14E'], ['#FFFFFF', '#003DA5'], ['#2E7D32', '#FFEB3B']];
 function worldAdd(W){
-  const E = D.europe; if (!E || !W || !Array.isArray(W.clubs) || !Array.isArray(W.players)) return;
+  const E = D.europe; if (!E) return;
+  // the data's own Draft-world section (cm.json world): its players modelled as every other player of the game
+  if (D.world && Array.isArray(D.world.clubs) && D.world.clubs.length){ if (E._wx) return; E._wx = 1;
+    const have = new Set([...C.keys(), ...E.clubs.map(c => c.id)]), pid = new Set([...P.keys(), ...E.players.map(p => p.id)]), keep = new Set();
+    for (const c of D.world.clubs) if (!have.has(c.id)){ E.clubs.push({ ...c, kit: c.kit || WX_KIT[c.id % WX_KIT.length] }); keep.add(c.id); }
+    for (const p of D.world.players) if (keep.has(p.club) && !pid.has(p.id)) E.players.push({ ...p, inj: p.inj || 1 + (p.id % 3) });
+    return; }
+  if (!W || !Array.isArray(W.clubs) || !Array.isArray(W.players)) return;
   const have = new Set([...C.keys(), ...E.clubs.map(c => c.id)]), pid = new Set([...P.keys(), ...E.players.map(p => p.id)]);
   const T = {}; for (const p of D.all) if (p.a && p.r && p.prim) (T[p.prim] = T[p.prim] || []).push(p);
   for (const k in T) T[k].sort((a, b) => a.ovr - b.ovr);
@@ -2930,6 +2937,9 @@ function faAttach(){
     const T = {}; for (const p of D.all) if (p.a && p.r && p.prim && p.ovr) (T[p.prim] = T[p.prim] || []).push(p);
     for (const k in T) T[k].sort((a, b) => a.ovr - b.ovr);
     D.faAll = L.map((f, i) => { const r = rng(`fa-${i}-${f.n}`), prim = T[f.pos] ? f.pos : 'CMF', ovr = Math.round(f.ovr), Lt = T[prim];
+      if (f.a && f.r)   // modelled in the data as every other player
+        return { id: -(8e6 + i), n: f.n, nat: f.nat || '', age: f.age, no: 0, club: 0, prim, pos: [prim], ht: f.ht, wt: f.wt, a: { ...f.a }, r: { ...f.r }, ovr: f.r[prim] || ovr,
+          val: +Math.max(.04, (f.eur || .05) / 1.17).toFixed(2), style: f.style, inj: 1 + Math.floor(r() * 3), ...(f.ft ? { ft: { left: 'L', right: 'R', both: 'B' }[f.ft] } : {}), fa: 1, last: f.last || null, lg: f.lg || '', since: f.since || null };
       let lo = 0, hi = Lt.length; while (lo < hi){ const m = (lo + hi) >> 1; if (Lt[m].ovr < ovr) lo = m + 1; else hi = m; }
       const t = Lt[clamp(lo + Math.floor((r() - .5) * 10), 0, Lt.length - 1)], d = t.ovr - ovr, a = {}, rr = {};
       for (const [k, v] of Object.entries(t.a)) a[k] = clamp(Math.round(v - d + (r() - .5) * 4), 35, 99);
@@ -9751,7 +9761,8 @@ function run(){
   D.allClubs.forEach(c => C.set(c.id, c)); natFill(D.players);
   D.players.forEach(p => { P.set(p.id, p); p._c0 = p.club; p._n0 = p.no; }); D.all = D.players.slice();
   D.pool = D.all.slice(); setLeagues(null);
-  try { const r = (await window.__wx) || await fetch('world.json'); if (r && r.ok) worldAdd(await r.json()); } catch (e) { console.warn('world.json', e); }
+  if (D.world && (D.world.clubs || []).length) worldAdd(null);   // the Draft world's clubs come modelled in cm.json: world.json is not needed
+  else try { const r = await fetch('world.json'); if (r && r.ok) worldAdd(await r.json()); } catch (e) { console.warn('world.json', e); }
   euLoad();
   if (D.cup && (D.cup.rounds || []).length >= 5){ CUP_NAMES = D.cup.rounds.slice(-6).map(r => r[0]); CUP = D.cup.name || 'Cup'; }
   if (D.rules && D.rules.bench) BENCH = D.rules.bench;

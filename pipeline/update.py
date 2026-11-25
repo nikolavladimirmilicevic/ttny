@@ -1079,6 +1079,102 @@ def season_stats(stats, tid):
     return [round(v, 2) if i in (3, 10) else int(v) for i, v in enumerate(tot)]
 
 
+CM_ALL_MAX = int(os.environ.get('CM_ALL_MAX', '2000'))   # calls per run at most for every other club of the manager game
+
+
+def game_club_ids(top_ids):
+    """Every club of the manager game the API knows (its own id under 100000): the other leagues, their second tiers,
+    the European and intercontinental clubs, and every club of the Draft world. The Draft's ranked clubs come first in
+    the list (they are fetched anyway), the rest after, the leagues' clubs first."""
+    ids = []
+    try:
+        with open(os.path.join(ROOT, 'cm.json'), encoding='utf-8') as f:
+            cmd = json.load(f)
+        secs = [cmd.get('clubs') or []]
+        for L in (cmd.get('leagues') or {}).values():
+            secs += [L.get('clubs') or [], (L.get('second') or {}).get('clubs') or []]
+        secs += [(cmd.get('second') or {}).get('clubs') or [], (cmd.get('europe') or {}).get('clubs') or [], (cmd.get('cwc') or {}).get('clubs') or [], (cmd.get('world') or {}).get('clubs') or []]
+        for L in secs:
+            ids += [c['id'] for c in L if isinstance(c.get('id'), int) and 0 < c['id'] < 100000]
+    except (OSError, ValueError):
+        pass
+    try:
+        with open(OUT, encoding='utf-8') as f:
+            ids += [c['id'] for c in json.load(f).get('clubs') or [] if isinstance(c.get('id'), int)]
+    except (OSError, ValueError):
+        pass
+    top = set(top_ids)
+    return list(dict.fromkeys(i for i in ids if i not in top))
+
+
+def read_player(pid, people):
+    """One player the squads show and whose seasons we lack (a new signing, a youngster): his last two seasons with
+    every club, and his details. One or two calls."""
+    e = people.setdefault(str(pid), {})
+    for season in (current_season(), current_season() - 1):
+        r = api('players', id=pid, season=season).get('response') or []
+        if not r:
+            continue
+        p = r[0]['player']
+        if p.get('nationality'): e['nat'] = p['nationality']
+        if (p.get('birth') or {}).get('date'): e['bd'] = p['birth']['date']
+        if p.get('age') and 14 <= p['age'] <= 45: e['age'] = p['age']
+        for k, src in (('ht', 'height'), ('wt', 'weight')):
+            m = re.match(r'(\d+)', str(p.get(src) or ''))
+            if m: e[k] = int(m.group(1))
+        by = {}
+        for s in r[0].get('statistics') or []:
+            tid = (s.get('team') or {}).get('id')
+            if tid: by.setdefault(tid, []).append(s)
+        for tid, L in by.items():
+            agg = season_stats(L, tid)
+            if agg:
+                e.setdefault('ss', {})[f'{season}:{tid}'] = agg
+        for k in sorted(e.get('ss') or {}, key=lambda k: -int(k.split(':')[0]))[4:]:
+            e['ss'].pop(k, None)
+    e['pf'] = TODAY.isoformat()
+
+
+def update_cm_all(top_ids, squads, people, meta):
+    """Everything the Premier League's players have, for every other club of the manager game: the squad every day (so a
+    transfer shows the next day), every player's season stats with the club every 14 days (and last season's once), and
+    a new face's last two seasons as soon as he appears. At most CM_ALL_MAX calls a run; the next run carries on."""
+    global BUDGET
+    ids = game_club_ids(top_ids)
+    if not ids:
+        return
+    cap, saved = used + CM_ALL_MAX, BUDGET
+    BUDGET = min(BUDGET, cap)
+    st = meta.setdefault('cmall', {})
+    cs = current_season()
+    try:
+        # first the squads (oldest first), then the season stats, then the new faces
+        for tid in sorted(ids, key=lambda t: squads.get(str(t), {}).get('f', '')):
+            s = squads.get(str(tid))
+            if s and days_old(s['f']) < SQUAD_MAX_AGE and s.get('v') == 3:
+                continue
+            fetch_squads([tid], squads, people)
+        for tid in sorted(ids, key=lambda t: (st.get(str(t)) or {}).get('c', '')):
+            x = st.setdefault(str(tid), {})
+            if days_old(x.get('c')) >= CM_STATS_MAX_AGE:
+                read_players(tid, cs, people); x['c'] = TODAY.isoformat()
+            if not x.get('p'):
+                read_players(tid, cs - 1, people); x['p'] = TODAY.isoformat()
+        ss_have = lambda e: any(int(k.split(':')[0]) >= cs - 1 for k in (e.get('ss') or {}))
+        for tid in ids:
+            for pid in (squads.get(str(tid)) or {}).get('p') or []:
+                e = people.get(str(pid)) or {}
+                if not ss_have(e) and days_old(e.get('pf')) >= 30:
+                    read_player(pid, people)
+    except OutOfBudget:
+        if BUDGET == saved:
+            raise
+    finally:
+        BUDGET = saved
+    n = sum(1 for t in ids if (st.get(str(t)) or {}).get('c'))
+    log(f'  manager game, every other club: {n}/{len(ids)} with season stats, {sum(1 for t in ids if str(t) in squads)} with a squad')
+
+
 # ---------------- beyond the ranked clubs: national teams and clubs players came from ----------------
 def fetch_nations(people, squads, extra, meta):
     """The national team of every nationality among the ranked clubs' players (one search per country, once)."""
@@ -1952,6 +2048,7 @@ def main():
         fetch_missing_nat(squads, people, lu, fx)
         log('6b Manager game league')
         update_cm(squads, people, meta, last_starts(fx, lu))
+        update_cm_all(top_ids, squads, people, meta)
         update_cwc()
         log('7/7 National teams and the clubs players came from')
         fetch_nations(people, squads, extra, meta)
