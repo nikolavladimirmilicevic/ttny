@@ -1779,7 +1779,11 @@ function schedule(ids, seed, season, n = 5){
 // sixteen referees of a country (England's are the old list): names only, their strictness is the game's
 function refNames(k){ const [F, Lst] = REF_NAMES[k] || [REF_FIRST, REF_LAST]; return F.map((f, i) => `${f} ${Lst[(i * 7 + 3) % Lst.length]}`); }
 const REFS_OF = {};
-function refsOf(k){ if (k === (S.home || 'ENG')) return S.refs; return REFS_OF[k] = REFS_OF[k] || refNames(k).map((n, i) => ({ n, s: 5 + Math.floor(rng(`ref-${k}-${i}`)() * 12) })); }
+// a country's real referees (from the API's matches, with their yellow cards per game), strictness against the league's
+// average on the game's scale (10.5 the average); the invented list where the data has none
+function realRefs(k){ const L = (D.refs || {})[k]; if (!L || L.length < 6) return null; const avg = L.reduce((t, r) => t + r[2] * r[1], 0) / Math.max(1, L.reduce((t, r) => t + r[1], 0)) || 4;
+  return L.slice(0, 22).map(([n, , y]) => ({ n, s: clamp(Math.round(10.5 * y / avg), 4, 17), real: 1 })); }
+function refsOf(k){ if (k === (S.home || 'ENG')) return S.refs; return REFS_OF[k] = REFS_OF[k] || realRefs(k) || refNames(k).map((n, i) => ({ n, s: 5 + Math.floor(rng(`ref-${k}-${i}`)() * 12) })); }
 /* who referees: a league or cup match, a man of the clubs' own country; two countries (the European cups, the Club World
    Cup), a man of a third */
 function refFor(h, a, r0){
@@ -1793,7 +1797,7 @@ function newGame(cid, manager){
   const ids = D.clubs.map(c => c.id), seed = `${D.season}-${cid}-${Date.now()}`, r0 = rng(seed);
   const cn = cupStages(), { rounds, cupDates } = schedule(ids, seed, D.season, cn);
   const rank = expRank(cid), aim = aimFor(rank);
-  const refs = refNames(HOME).map(n => ({ n, s: 5 + Math.floor(r0() * 12) }));
+  const refs = realRefs(HOME) || refNames(HOME).map(n => ({ n, s: 5 + Math.floor(r0() * 12) }));
   const q = club(cid).q;
   S = { v: 2, lines: 8, club: cid, manager: manager || 'The manager', season: D.season, seed, rounds, round: 0, cupDates, cup: { stage: 0, alive: cupEntrants(cn), log: [], n: cn },
     date: `${D.season}-07-01`, pl: {}, tac: {}, table: Object.fromEntries(ids.map(id => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: [] }])),
@@ -4178,7 +4182,8 @@ function adopt(s){
   if (!(s && s.v === 2 && C.has(s.club) && Object.keys(s.table).length === D.clubs.length && Object.keys(s.table).every(id => LG.has(+id)))){ setHome((S && S.home) || 'ENG'); setLeagues(S && S.lg); return false; }
   S = s; unpackPl(S); rebuildPlayers(); ensureStaff(); try { nlInit(); } catch (e) {}
   // a career abroad begun with England's referees: they get their country's names (each keeps his strictness)
-  if (REF_NAMES[HOME] && (S.refs || []).length && REF_FIRST.includes(S.refs[0].n.split(' ')[0])){ const nn = refNames(HOME); S.refs.forEach((r, i) => r.n = nn[i % nn.length]); }
+  if (realRefs(HOME) && (S.refs || []).length && !S.refs[0].real) S.refs = realRefs(HOME);   // the real referees, once the data has them
+  else if (REF_NAMES[HOME] && (S.refs || []).length && REF_FIRST.includes(S.refs[0].n.split(' ')[0])){ const nn = refNames(HOME); S.refs.forEach((r, i) => r.n = nn[i % nn.length]); }
   for (const q of Object.values(S.pl || {})) if (q.d) for (const k in q.d) q.d[k] = Math.round(q.d[k] * 100) / 100;
   for (const id in S.tac){ const t = S.tac[id]; t.xi = t.xi.map(x => x && P.has(x) ? x : null); t.bench = t.bench.filter(x => P.has(x));
     // a shape from before the PES presets: the club's best preset, the same players placed by the rules
@@ -8861,8 +8866,11 @@ function scrCoach(){
   const M = cid && LG.has(cid) ? managers() : null, mi = M ? M.findIndex(m => m.cid === cid) : -1, rw = relWord(relOf(n));
   const row = cid && k ? (LG.has(cid) ? standings() : sortTbl((S.aw[k] || {}).t)).map((r, i) => ({ ...r, pos: i + 1 })).find(r => r.id === cid) : null;
   const dl = L => `<dl class="kv">${L.filter(x => x && x[1] != null && x[1] !== '').map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl>`;
-  const det = dl([['Job', cid ? `Manager of <span class="lk" data-lc="${cid}">${esc(c.name)}</span>` : 'Out of work'], ['Contract until', cid && c.coach_until && !(S.coachOv || {})[cid] ? `June ${c.coach_until}` : null],
-    ['Nationality', free && free.nat ? `${flag(free.nat)}${esc(free.nat)}` : null], ['Age', free && free.age ? free.age : null], ['Last club', !cid && free && free.last ? esc(free.last) : null],
+  const cx = (D.coaches || {})[n] || {}, cage = cx.bd ? Math.floor(daysBetween(cx.bd, S.date) / 365.25) : null;
+  const car = (cx.car || []).filter(j => j[0]).map(j => `${esc(j[0])}${j[1] ? ` (${j[1]}${j[2] && j[2] !== j[1] ? `-${j[2]}` : j[2] ? '' : '-'})` : ''}`);
+  const won = (cx.tr || []).map(t => `${esc(t[0])} ${esc(String(t[2]).replace(/^(\d{4})\/\d{2}(\d{2})$/, '$1/$2'))}`);
+  const det = dl([['Job', cid ? `Manager of <span class="lk" data-lc="${cid}">${esc(c.name)}</span>` : 'Out of work'], ['Nationality', cx.nat ? `${flag(cx.nat)}${esc(cx.nat)}` : null], ['Age', cage], ['Contract until', cid && c.coach_until && !(S.coachOv || {})[cid] ? `June ${c.coach_until}` : null],
+    ['Nationality', !cx.nat && free && free.nat ? `${flag(free.nat)}${esc(free.nat)}` : null], ['Age', !cage && free && free.age ? free.age : null], ['Last club', !cid && free && free.last ? esc(free.last) : null],
     ['Out of work since', !cid && free && free.since ? fmtDate(free.since, true) : null], ['Points per game in his last job', !cid && free && free.ppm ? free.ppm.toFixed(2) : null]]);
   const st = cid ? dl([['Reputation', mi >= 0 ? `${M[mi].rep} (${ordinal(mi + 1)} in ${esc(HL().country)})` : null], ['Job security', mi >= 0 ? M[mi].sec : null],
     ['League', row ? `${ordinal(row.pos)} in ${esc(theLg(D.lgs[k].league))}, ${row.w} won, ${row.d} drawn, ${row.l} lost` : null]]) : '';
@@ -8871,6 +8879,7 @@ function scrCoach(){
   frame((cid ? ofClub : (x, o) => o)(cid, { title: esc(n), short: esc(n), sub: cid ? esc(c.name) : 'Out of work', body: `<div class="ovgrid">
     <div class="ovc"><div class="ovh"><span>Details</span></div>${det}</div>
     ${st ? `<div class="ovc"><div class="ovh"><span>This season</span></div>${st}</div>` : ''}
+    ${car.length ? `<div class="ovc"><div class="ovh"><span>Before</span></div><p class="small">He has managed ${car.slice(-8).join(', ')}.${won.length ? ` Won as a manager: ${won.slice(-6).join(', ')}.` : ''}</p></div>` : ''}
     <div class="ovc"><div class="ovh"><span>You and him</span></div><p style="color:${rw[1]}"><b>${rw[0]}</b></p><p class="small dim">Built by what you say about him and his side in the press, and by how your games go.</p></div>
     <div class="ovc"><div class="ovh"><span>Honours in this game</span></div>${aw.length ? aw.map(x => `<div>${x}</div>`).join('') : '<p class="dim">None yet.</p>'}</div>
     ${liked.length ? `<div class="ovc"><div class="ovh"><span>Players who speak well of him</span></div>${liked.map(p => `<div><span class="lk" data-lp="${p.id}">${esc(p.n)}</span></div>`).join('')}</div>` : ''}

@@ -545,7 +545,7 @@ def add_fixture(fx, item):
         hg, ag = item['goals'].get('home'), item['goals'].get('away')
     fx[str(f['id'])] = {'d': f['date'][:10], 's': f['status']['short'], 'h': t['home']['id'], 'a': t['away']['id'],
                         'hg': hg, 'ag': ag, 'lg': item['league'].get('name'),
-                        'hn': t['home'].get('name'), 'an': t['away'].get('name')}
+                        'hn': t['home'].get('name'), 'an': t['away'].get('name'), **({'ref': fix_text(f['referee'].split(',')[0].strip())} if f.get('referee') else {})}
 
 
 def season_list():
@@ -630,7 +630,7 @@ def fetch_lineups(top, fx, lu, evs, pst=None, first=frozenset(), until=None, sub
                     if p.get('id'):
                         xi.append([p['id'], p.get('grid') or '', p.get('name'), p.get('pos') or ''])   # pos: G, D, M or F
                 if xi:   # raw formation + grid, so the position model can change without refetching
-                    sides[str(side['team']['id'])] = {'f': side.get('formation') or '', 'xi': xi}
+                    sides[str(side['team']['id'])] = {'f': side.get('formation') or '', 'xi': xi, **({'c': fix_text((side.get('coach') or {}).get('name') or '')} if (side.get('coach') or {}).get('name') else {})}
             lu[fid] = sides
             goals = []
             for e in item.get('events') or []:
@@ -640,6 +640,9 @@ def fetch_lineups(top, fx, lu, evs, pst=None, first=frozenset(), until=None, sub
                 goals.append([(e.get('team') or {}).get('id'), (e.get('player') or {}).get('id'), (e.get('assist') or {}).get('id'),
                               kind, (e.get('time') or {}).get('elapsed')])
             evs[fid] = goals
+            cards = [(e.get('detail') or '').lower() for e in item.get('events') or [] if (e.get('type') or '').lower() == 'card']
+            if fx.get(fid) is not None and item.get('events') is not None:
+                fx[fid]['yc'] = sum('yellow' in c for c in cards); fx[fid]['rc'] = sum('red' in c for c in cards)   # the referee's strictness
             # substitutions: [team, player, other player, minute]; which one came on is decided against the XI later
             subs[fid] = [[(e.get('team') or {}).get('id'), (e.get('player') or {}).get('id'), (e.get('assist') or {}).get('id'),
                           (e.get('time') or {}).get('elapsed')] for e in item.get('events') or []
@@ -1152,6 +1155,7 @@ def update_cm_all(top_ids, squads, people, meta):
             if s and days_old(s['f']) < SQUAD_MAX_AGE and s.get('v') == 3:
                 continue
             fetch_squads([tid], squads, people)
+        update_coaches(ids, meta)   # the coaches before the stats: a change of manager matters more than a month's numbers
         for tid in sorted(ids, key=lambda t: (st.get(str(t)) or {}).get('c', '')):
             x = st.setdefault(str(tid), {})
             if days_old(x.get('c')) >= CM_STATS_MAX_AGE:
@@ -1171,6 +1175,39 @@ def update_cm_all(top_ids, squads, people, meta):
         BUDGET = saved
     n = sum(1 for t in ids if (st.get(str(t)) or {}).get('c'))
     log(f'  manager game, every other club: {n}/{len(ids)} with season stats, {sum(1 for t in ids if str(t) in squads)} with a squad')
+
+
+COACH_MAX_AGE = 30   # days between a club's coach list refreshes (a change of manager shows sooner from the line-ups)
+
+
+def update_coaches(ids, meta):
+    """Every club of the manager game: its coaches (API 'coachs': name, nationality, birth date, his whole career with
+    dates), monthly; and the trophies of each club's current coach every two months. Kept in data/cache/coaches.json."""
+    co = load('coaches', {})
+    try:
+        for tid in sorted(ids, key=lambda t: (co.get('t', {}).get(str(t)) or {}).get('f', '')):
+            x = co.setdefault('t', {}).get(str(tid)) or {}
+            if days_old(x.get('f')) < COACH_MAX_AGE:
+                continue
+            L = []
+            for c in api('coachs', team=tid).get('response', []):
+                car = [[(j.get('team') or {}).get('id'), fix_text((j.get('team') or {}).get('name') or ''), j.get('start'), j.get('end')] for j in c.get('career') or []]
+                L.append({'id': c.get('id'), 'n': fix_text(c.get('name') or ' '.join(filter(None, [c.get('firstname'), c.get('lastname')]))),
+                          'fn': fix_text(' '.join(filter(None, [c.get('firstname'), c.get('lastname')]))), 'nat': c.get('nationality'),
+                          'bd': (c.get('birth') or {}).get('date'), 'car': car})
+            co['t'][str(tid)] = {'f': TODAY.isoformat(), 'c': L}
+        cur = set()
+        for tid, x in (co.get('t') or {}).items():
+            now = [c for c in x.get('c') or [] if any(j[0] == int(tid) and not j[3] for j in c['car'])]
+            if now:
+                cur.add(max(now, key=lambda c: max((j[2] or '') for j in c['car'] if j[0] == int(tid)))['id'])
+        for cid in sorted(cur, key=lambda c: (co.get('tr', {}).get(str(c)) or {}).get('f', '')):
+            if not cid or days_old((co.get('tr', {}).get(str(cid)) or {}).get('f')) < 60:
+                continue
+            tr = [[t.get('league'), t.get('country'), t.get('season'), t.get('place')] for t in api('trophies', coach=cid).get('response', [])]
+            co.setdefault('tr', {})[str(cid)] = {'f': TODAY.isoformat(), 'l': tr}
+    finally:
+        save('coaches', co)
 
 
 # ---------------- beyond the ranked clubs: national teams and clubs players came from ----------------
@@ -2094,6 +2131,10 @@ def main():
         cmd = cm_model.build(world, people, squads, meta.get('cm') or {}, load('cm_fixtures', {}), kits, alias, current_season(), TODAY.isoformat(), lastseen=seen,
                               fixes=cm_model.load_fixes())
         if cmd and cmd['clubs']:
+            try:
+                cm_model.apply_staff_api(cmd, load('coaches', {}), fx, lu, TODAY.isoformat())
+            except Exception as e:
+                log(f'  manager game coaches and referees: {e!r}')
             try:
                 game_crests(cmd, cm_model)
             except OutOfBudget:

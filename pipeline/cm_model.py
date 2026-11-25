@@ -1039,6 +1039,75 @@ def unify(out, world, people, squads, lastseen, season, today):
     print(f'  every player modelled alike; {moved} moved and {added} new from the API squads')
 
 
+# ---- coaches and referees from the API (data/cache/coaches.json, the fixtures' referees and line-ups' coaches) ----
+REF_LG = {'Premier League': 'ENG', 'Championship': 'ENG', 'FA Cup': 'ENG', 'Ligue 1': 'FRA', 'Ligue 2': 'FRA', 'Serie A': 'ITA', 'Serie B': 'ITA',
+          'La Liga': 'ESP', 'Segunda División': 'ESP', 'Bundesliga': 'GER', '2. Bundesliga': 'GER', 'Super Liga': 'SRB', 'Prva Liga': 'SRB'}
+
+
+def _dmy(s):
+    m = re.match(r'(\d{2})/(\d{2})/(\d{4})', s or '')
+    return f'{m.group(3)}-{m.group(2)}-{m.group(1)}' if m else ''
+
+
+def apply_staff_api(out, coaches, fx, lu, today):
+    """Each club's head coach: the newest of Transfermarkt's (with its date), the API's coach list (his start) and the
+    coach in the club's latest line-up, so a change shows as soon as either source has it. Every current coach's
+    nationality, birth date, career (clubs and years) and trophies in out['coaches']; the real referees of each country
+    with their cards per game in out['refs']."""
+    T = (coaches or {}).get('t') or {}; TR = (coaches or {}).get('tr') or {}
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tm_facts.json'), encoding='utf-8') as f:
+            tmc = json.load(f).get('coaches') or {}
+    except (OSError, ValueError):
+        tmc = {}
+    last_lu = {}
+    for fid, f in (fx or {}).items():
+        for side in ('h', 'a'):
+            tid = f.get(side); L = (lu or {}).get(fid) or {}
+            c = (L.get(str(tid)) or {}).get('c') if isinstance(L.get(str(tid)), dict) else None
+            if c and f['d'] > last_lu.get(tid, ('',))[0]:
+                last_lu[tid] = (f['d'], c)
+    secs = [out]
+    for k in ('second', 'europe', 'cwc', 'world'):
+        if out.get(k): secs.append(out[k])
+    for L in (out.get('leagues') or {}).values():
+        secs.append(L)
+        if L.get('second'): secs.append(L['second'])
+    info = {}
+    sur = lambda n: _fold(n).replace('.', ' ').split()[-1] if n and _fold(n).split() else ''
+    for S_ in secs:
+        for c in S_.get('clubs') or []:
+            tid = c['id']; x = T.get(str(tid)) or {}
+            now = [k for k in x.get('c') or [] if any(j[0] == tid and not j[3] for j in k['car'])]
+            api = max(now, key=lambda k: max((j[2] or '') for j in k['car'] if j[0] == tid)) if now else None
+            api_d = max((j[2] or '') for j in api['car'] if j[0] == tid) if api else ''
+            tm = tmc.get(c.get('name')) or tmc.get(c.get('full')) or {}
+            best = (_dmy(tm.get('since')) if tm.get('n') else '', tm.get('n')) if tm.get('n') else ('', c.get('coach'))
+            cands = [best]
+            if api: cands.append((api_d, api['n']))
+            if tid in last_lu:
+                d, n = last_lu[tid]   # the line-up's short name ('A. Slot') to the full one where the list has him
+                full = next((k['n'] for k in x.get('c') or [] if sur(k['n']) == sur(n)), None)
+                cands.append((d, full or n))
+            d, n = max(cands, key=lambda t: t[0] or '')
+            if n and (not c.get('coach') or (d and sur(n) != sur(c.get('coach')) and d > (best[0] or ''))):
+                c['coach'] = n; c.pop('coach_until', None) if n != tm.get('n') else None
+            k = next((k for k in x.get('c') or [] if c.get('coach') and sur(k['n']) == sur(c['coach'])), None)
+            if k:
+                car = [[j[1], (j[2] or '')[:4], (j[3] or '')[:4]] for j in sorted(k['car'], key=lambda j: j[2] or '') if j[1]]
+                tr = (TR.get(str(k['id'])) or {}).get('l') or []
+                info[c['coach']] = {**({'nat': k['nat']} if k.get('nat') else {}), **({'bd': k['bd']} if k.get('bd') else {}), 'car': car,
+                                    **({'tr': [t for t in tr if t[3] == 'Winner']} if tr else {})}
+    out['coaches'] = info
+    R = {}
+    for f in (fx or {}).values():
+        n = f.get('ref'); k = REF_LG.get(f.get('lg') or '')
+        if not n or not k or f.get('yc') is None: continue
+        r = R.setdefault(k, {}).setdefault(n, [0, 0, 0]); r[0] += 1; r[1] += f['yc']; r[2] += f.get('rc') or 0
+    out['refs'] = {k: [[n, g, round(y / g, 2), round(rc / g, 2)] for n, (g, y, rc) in sorted(L.items(), key=lambda kv: -kv[1][0]) if g >= 3] for k, L in R.items()}
+    out['refs'] = {k: v for k, v in out['refs'].items() if len(v) >= 6}
+
+
 FORM_LAST = 10   # matches: a club's usual shape is the one it used most in its last ten with a known formation
 
 
