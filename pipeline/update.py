@@ -1084,8 +1084,7 @@ CM_ALL_MAX = int(os.environ.get('CM_ALL_MAX', '2000'))   # calls per run at most
 
 def game_club_ids(top_ids):
     """Every club of the manager game the API knows (its own id under 100000): the other leagues, their second tiers,
-    the European and intercontinental clubs, and every club of the Draft world. The Draft's ranked clubs come first in
-    the list (they are fetched anyway), the rest after, the leagues' clubs first."""
+    the European and intercontinental clubs, and every club of the Draft world, the leagues' clubs first."""
     ids = []
     try:
         with open(os.path.join(ROOT, 'cm.json'), encoding='utf-8') as f:
@@ -1103,8 +1102,7 @@ def game_club_ids(top_ids):
             ids += [c['id'] for c in json.load(f).get('clubs') or [] if isinstance(c.get('id'), int)]
     except (OSError, ValueError):
         pass
-    top = set(top_ids)
-    return list(dict.fromkeys(i for i in ids if i not in top))
+    return list(dict.fromkeys(ids))   # the Draft's ranked clubs too: their squads are fresh already, their stats are not
 
 
 def read_player(pid, people):
