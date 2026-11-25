@@ -66,12 +66,18 @@ def api(path, **params):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 data = json.load(r)
+                try:   # what is left of the day's quota (API-Football sends it with every answer)
+                    api.left = int(r.headers.get('x-ratelimit-requests-remaining'))
+                except (TypeError, ValueError):
+                    pass
         except Exception as e:  # network hiccup
             if attempt == 3:
                 raise
             time.sleep(10)
             continue
         used += 1
+        if getattr(api, 'floor', 0) and getattr(api, 'left', 10 ** 9) < api.floor:
+            raise OutOfBudget()   # a stage that may spend only what the day can spare
         errs = data.get('errors') or {}
         if errs:
             text = json.dumps(errs)
@@ -1082,7 +1088,8 @@ def season_stats(stats, tid):
     return [round(v, 2) if i in (3, 10) else int(v) for i, v in enumerate(tot)]
 
 
-CM_ALL_MAX = int(os.environ.get('CM_ALL_MAX', '1200'))   # calls per run at most for every other club of the manager game
+CM_ALL_MAX = int(os.environ.get('CM_ALL_MAX', '1200'))
+CM_ALL_FLOOR = int(os.environ.get('CM_ALL_FLOOR', '1500'))   # calls of the day's quota always kept for the rest   # calls per run at most for every other club of the manager game
 
 
 def game_club_ids(top_ids):
@@ -1146,6 +1153,7 @@ def update_cm_all(top_ids, squads, people, meta):
         return
     cap, saved = used + CM_ALL_MAX, BUDGET
     BUDGET = min(BUDGET, cap)
+    api.floor = CM_ALL_FLOOR   # never below this much of the day's quota left: the Draft's own fetching comes first
     st = meta.setdefault('cmall', {})
     cs = current_season()
     try:
@@ -1165,6 +1173,7 @@ def update_cm_all(top_ids, squads, people, meta):
         ss_have = lambda e: any(int(k.split(':')[0]) >= cs - 1 for k in (e.get('ss') or {}))
         for tid in ids:
             for pid in (squads.get(str(tid)) or {}).get('p') or []:
+                if not pid: continue   # the API's squads now and then list a player without an id
                 e = people.get(str(pid)) or {}
                 if not ss_have(e) and days_old(e.get('pf')) >= 30:
                     read_player(pid, people)
@@ -1172,7 +1181,7 @@ def update_cm_all(top_ids, squads, people, meta):
         if BUDGET == saved:
             raise
     finally:
-        BUDGET = saved
+        BUDGET = saved; api.floor = 0
     n = sum(1 for t in ids if (st.get(str(t)) or {}).get('c'))
     log(f'  manager game, every other club: {n}/{len(ids)} with season stats, {sum(1 for t in ids if str(t) in squads)} with a squad')
 

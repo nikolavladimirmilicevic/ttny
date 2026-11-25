@@ -935,6 +935,7 @@ def unify(out, world, people, squads, lastseen, season, today):
             ids = (squads.get(str(c['id'])) or {}).get('p') or [p['id'] for p in wp.values() if p.get('club') == c['id']]
             base = 10.46 + .03644 * (c.get('elo') or 1300)   # the club's level from its UEFA Elo (fitted on the clubs both files have)
             for pid in ids:
+                if not pid: continue
                 e = people.get(str(pid)) or {}; w = wp.get(pid)
                 if not (w or e.get('n')): continue
                 s = _stats(e, season, c['id']); p = _per90(s) if s else None
@@ -996,6 +997,7 @@ def unify(out, world, people, squads, lastseen, season, today):
     moved = added = 0
     for tid, v in sorted(fresh.items(), key=lambda kv: kv[1]['f']):
         for pid in v.get('p') or []:
+            if not pid: continue
             if pid in where:
                 S0, x = where[pid]
                 if x['club'] == tid or x.get('lo'): continue   # out on loan already: the game brings him back in the summer
