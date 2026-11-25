@@ -5589,8 +5589,33 @@ function firstTeam(cid){ if (ntOfC(cid)) return new Set(squadOf(cid).map(p => p.
 
 /* ---- attribute masking ---- */
 const known = p => !S.mask || p.club === me() || (S.kn || {})[p.id] || onTrial(p.id) || (S.seen || []).includes(p.club) || (S.short || []).some(x => x.id === p.id && daysBetween(x.d, S.date) >= 7);
-// a player you do not know yet: some of his attributes are known (about two in five, the same ones all game), the rest hidden
-const seenA = (p, k) => known(p) || (k != null && rng(`mk-${p.id}-${k}`)() < Math.max(.4, ((S.kp || {})[p.id] || 0) / 100));   // the better you know him, the more you see
+/* a player you do not know yet: only some of his attributes are known. How many depends on how famous he is (the better
+   the player, the more is known about him) and how far away he plays (a man in your own league or country is easier to
+   follow than one on the other side of the world); your scouts' work adds to it. The ones you see are the ones that
+   matter for his position first (the same ones all game): an outfield player's goalkeeping, or a keeper's outfield
+   attributes, only once you know him fully */
+const GEO = { ENG: [52, -1], FRA: [47, 2], ITA: [42, 12], ESP: [40, -4], GER: [51, 10], SRB: [44, 21], BEL: [50.8, 4.4], POR: [39.5, -8], AUT: [47.5, 14], TUR: [39, 35], UKR: [49, 32], NOR: [60, 10], NED: [52.3, 5],
+  GRE: [39, 22], AZE: [40.4, 49.9], CZE: [50, 15], SVK: [48.7, 19.5], HUN: [47.2, 19.5], CRO: [45.5, 16], BUL: [42.7, 25], CYP: [35, 33], SLO: [46, 15], POL: [52, 19], SCO: [56, -4], ISR: [31.5, 35], ARM: [40.2, 44.5],
+  SUI: [46.8, 8.2], DEN: [56, 10], ROU: [45.9, 25], SWE: [60, 15], LVA: [57, 24.6], BIH: [44, 18], GIB: [36.1, -5.35], ALB: [41, 20], KAZ: [48, 67], GEO: [42, 43.5], FIN: [61, 25], AND: [42.5, 1.5], LTU: [55, 24],
+  IRL: [53.3, -8], KOS: [42.6, 21], ISL: [64.9, -18], MDA: [47, 28.8], FRO: [62, -7], MKD: [41.6, 21.7], NIR: [54.6, -6.5], MLT: [35.9, 14.4], LIE: [47.15, 9.55], BLR: [53.7, 28], EST: [58.6, 25], WAL: [52.3, -3.7],
+  LUX: [49.8, 6.1], MNE: [42.7, 19.3], SMR: [43.9, 12.45], Brazil: [-15, -47], USA: [39, -98], Egypt: [26.8, 30.8], Argentina: [-34, -64], 'New-Zealand': [-41, 174], Tunisia: [34, 9], Mexico: [23, -102], Japan: [36, 138],
+  'South-Africa': [-29, 24], 'South-Korea': [36, 128], 'United-Arab-Emirates': [24, 54], Morocco: [32, -6], 'Saudi-Arabia': [24, 45], 'New-Zealand,Australia': [-33, 151] };
+const NAT_GEO = { England: 'ENG', France: 'FRA', Italy: 'ITA', Spain: 'ESP', Germany: 'GER', Serbia: 'SRB', Belgium: 'BEL', Portugal: 'POR', Netherlands: 'NED', Brazil: 'Brazil', Argentina: 'Argentina', Scotland: 'SCO', Wales: 'WAL', 'Republic of Ireland': 'IRL', Croatia: 'CRO', Denmark: 'DEN', Sweden: 'SWE', Norway: 'NOR', Poland: 'POL', Switzerland: 'SUI', Austria: 'AUT', 'United States': 'USA', USA: 'USA', Mexico: 'Mexico', Japan: 'Japan', 'Korea Republic': 'South-Korea', Morocco: 'Morocco', Egypt: 'Egypt' };
+function geoKm(a, b){ const A = GEO[a], B = GEO[b]; if (!A || !B) return 2500; const r = Math.PI / 180, dl = (B[0] - A[0]) * r, dn = (B[1] - A[1]) * r, h = Math.sin(dl / 2) ** 2 + Math.cos(A[0] * r) * Math.cos(B[0] * r) * Math.sin(dn / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); }
+let VIS_ = { d: null, m: new Map() };
+function visFrac(p){
+  if (VIS_.d !== S.date + me()){ VIS_ = { d: S.date + me(), m: new Map() }; }
+  const hit = VIS_.m.get(p.id); if (hit != null) return hit;
+  const mine = ctryOf(me()), his = p.club ? ctryOf(p.club) : NAT_GEO[p.nat], km = his ? geoKm(mine, his) : 2500;
+  let f = .12 + (ovrNow(p) - 62) * .028 - Math.min(.45, km / 1000 * .05) + (LG.has(p.club) ? .15 : 0);
+  f = Math.max(clamp(f, .05, .95), Math.min(.95, ((S.kp || {})[p.id] || 0) / 100));
+  VIS_.m.set(p.id, f); return f; }
+const ORD_ = new Map();
+// the order in which his attributes become known: those that matter for his position, then the rest of his kind
+function visOrder(p){ let o = ORD_.get(p.id); if (o) return o; const gk = p.prim === 'GK', r = rng(`mo-${p.id}`), jit = L => L.map(k => [k, r()]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+  const pos = (POS_KEYS[p.prim] || POS_KEYS.CMF).filter(k => ATTR_NAME[k]), rest = Object.keys(ATTR_NAME).filter(k => !pos.includes(k) && (gk ? ['lp', 'lf', 'kp', 'sp', 'ac', 'st'].includes(k) : !GK_KEYS.includes(k)));
+  o = [...jit(pos), ...jit(rest)]; ORD_.set(p.id, o); return o; }
+const seenA = (p, k) => { if (known(p)) return true; if (k == null) return false; const o = visOrder(p), i = o.indexOf(k); return i >= 0 && i < Math.round(visFrac(p) * o.length); };
 const showA = (p, v, k) => seenA(p, k) ? `${v}` : '<span class="msk" title="Not known yet">?</span>';
 
 /* ---- the board: confidence, and requests ---- */
@@ -6972,7 +6997,7 @@ function cnWire(p, ctx, b){
    scouts have a judging eye of their own (1-20): their reports grade a man against your side as it is now, in letters,
    with his strengths and weaknesses, a price and a wage, and are as good as the scout ---- */
 const kpOf = p => (S.kp || {})[p.id] || 0;
-const knowPct = p => known(p) ? 100 : Math.min(95, Math.round(kpOf(p) + (LG.has(p.club) ? 20 : 0)));
+const knowPct = p => known(p) ? 100 : Math.min(95, Math.round(visFrac(p) * 100));
 function kpAdd(p, v){ S.kp = S.kp || {}; S.kp[p.id] = Math.min(95, Math.round((S.kp[p.id] || 0) + v)); }
 function scStaff(){ if (!S.scSt){ const r = rng(`scst-${S.seed}`); S.scSt = [0, 1].map(() => ({ n: `${STAFF_FIRST[Math.floor(r() * STAFF_FIRST.length)]} ${STAFF_LAST[Math.floor(r() * STAFF_LAST.length)]}`, ju: 7 + Math.floor(r() * 9), jp: 6 + Math.floor(r() * 10) })); } return S.scSt; }
 const scSpread = k => 3 + (20 - (scStaff()[k] || { ju: 8 }).ju) * .45;
