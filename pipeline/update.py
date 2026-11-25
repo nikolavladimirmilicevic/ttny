@@ -1079,7 +1079,7 @@ def season_stats(stats, tid):
     return [round(v, 2) if i in (3, 10) else int(v) for i, v in enumerate(tot)]
 
 
-CM_ALL_MAX = int(os.environ.get('CM_ALL_MAX', '2000'))   # calls per run at most for every other club of the manager game
+CM_ALL_MAX = int(os.environ.get('CM_ALL_MAX', '1200'))   # calls per run at most for every other club of the manager game
 
 
 def game_club_ids(top_ids):
