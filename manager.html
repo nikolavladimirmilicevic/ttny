@@ -265,7 +265,8 @@ tr.me td{background:rgba(79,209,139,.10)}
 .ftp td{padding:5px 4px;vertical-align:middle}.ftp td:first-child{width:38px}
 .ftms{display:grid;gap:3px;margin-bottom:8px}.ftm{display:grid;grid-template-columns:44px 1fr;gap:6px;font-size:13px;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.03)}.ftm .m{color:var(--gold);font-variant-numeric:tabular-nums}.ftm.a{border-right:3px solid rgba(255,255,255,.18)}.ftm.h{border-left:3px solid rgba(255,255,255,.18)}
 .sqbar{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;width:100%}
-.sqseg button .dim{font-size:10.5px;margin-left:2px}.sqseg button.on .dim{color:inherit;opacity:.65}
+.sqseg button .dim{font-size:10.5px;margin-left:2px}
+@media(max-width:600px){.sqbar{gap:6px}.sqbar .sqseg{display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none;-webkit-overflow-scrolling:touch}.sqbar .sqseg::-webkit-scrollbar{display:none}.sqbar .sqseg button{flex:0 0 auto;white-space:nowrap}.sqbar>span[style*="flex:1"]{display:none}.sqbar .tgrp{padding:3px}.sqbar .tglbl{display:none}}.sqseg button.on .dim{color:inherit;opacity:.65}
 .sqsum{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--dim);margin:0 2px 10px}.sqsum b{color:var(--text)}.sqsum .bad b{color:var(--loss)}.sqsum .warn b{color:var(--gold)}
 .sqt{container-type:inline-size}.sqt table{width:100%;table-layout:auto}.sqt td.sqb{width:1%;padding-right:2px}.sqt td.sqb .box.wide{min-width:30px}
 .sqt td.sqn b{display:inline-block;max-width:230px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}.sqt td.sqn .lo{display:inline-block;max-width:110px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
