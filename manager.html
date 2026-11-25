@@ -2676,7 +2676,7 @@ function monthly(){
     q.dp = q.dn || {}; q.dn = snap; }
   ensureStaff(); const wages = (squadOf(me()).reduce((t, p) => t + S.con[p.id].w, 0) + S.staff.reduce((t, x) => t + x.w, 0)) * 4.3;
   S.fin.bal -= wages; S.fin.wages += wages;
-  try { instMonth(); devSnap(); youthMonth(); loanMonth2(); relMonth(); retMonth(); } catch (e) { console.warn(e); }
+  try { instMonth(); devSnap(); youthMonth(); loanMonth2(); relMonth(); retMonth(); revMonth(); } catch (e) { console.warn(e); }
   try { spEnsure(); spMonth(); loanMonth(); ownerMonth(); mgrMonth(); debtMonth(); evtMonth(); } catch (e) { console.warn(e); }
   S.fin.wk.push({ m: S.date.slice(0, 7), bal: S.fin.bal });
   if (S.round >= 3) news('board', 'A word from the board', boardComment());
@@ -3394,7 +3394,7 @@ function afterMatchday(res, kind, stage){
   if (kind === 'league'){ aiSackings(); unrest(); dressingRoom(); }
   const mine = res.find(r => r.h === me() || r.a === me());
   if (mine) try { pressBoldCheck(mine); pressAfter(mine, kind, stage); } catch (e) { console.warn(e); }
-  if (mine){ S.seen = S.seen || []; const opp = mine.h === me() ? mine.a : mine.h; if (!S.seen.includes(opp)) S.seen.push(opp); }
+  if (mine){ S.seen = S.seen || []; const opp = mine.h === me() ? mine.a : mine.h; if (!S.seen.includes(opp)) S.seen.push(opp); try { revMatch(mine); } catch (e) {} }
   if (mine){
     const us = mine.h === me(), opp = club(us ? mine.a : mine.h), won = mine.w === me(), drew = mine.w == null;
     const sc0 = mine.hs.filter(g => (g.side === 'h') === us).map(g => g.id), sc = [...new Set(sc0)].map(id => { const k = sc0.filter(x => x === id).length; return `<span class="lk" data-lp="${id}">${esc(surname(P.get(id).n))}</span>` + (k > 1 ? ` (${k})` : ''); });
@@ -6036,7 +6036,6 @@ function likesOf(p){
   const IX = carIndex(); if (IX) for (const x of spells(p)){ if (x[0] === club(cur).name) continue; for (const [id, a, b] of IX.get(x[0]) || []) if (id !== p.id && Math.max(a, x[1] || 0) < Math.min(b, x[2] || 9999) && P.get(id) && P.get(id).club !== cur) addP(ppl, id); }
   ppl.splice(4);
   for (const m of S.ment || []) if (m.y === p.id) addP(ppl, m.m); else if (m.m === p.id) addP(ppl, m.y);
-  if ((p.ovr || 0) >= 74){ const nr = allPlayers().filter(x => x.id !== p.id && x.nat === p.nat && x.prim === p.prim && x.club !== cur && Math.abs((x.ovr || 0) - p.ovr) <= 3).sort((a, b) => Math.abs(a.ovr - p.ovr) - Math.abs(b.ovr - p.ovr))[0]; if (nr && r() < .6) addP(dppl, nr.id); }
   for (const [k, v] of Object.entries(S.pp || {})) if (v <= -4){ const [a, b] = k.split('|').map(Number); if (a === p.id) addP(dppl, b); else if (b === p.id) addP(dppl, a); }
   // managers: his own (at another club) by the football he gives him; the ones he played under in this game
   if (cur && cur !== me()){ const n = coachOf(cur), rk = squadRank(p); if (n && !/ manager$/.test(n)){ if (rk < 9) addN(mg, n); else if (rk >= 18 && p.age >= 23) addN(dmg, n); } }
@@ -6045,16 +6044,52 @@ function likesOf(p){
 // a manager leaves: his regulars remember him kindly, the men he froze out do not
 function mgRec(cid, n){ if (!n || / manager$/.test(n)) return; S.mgL = S.mgL || {}; const x = S.mgL[n] = S.mgL[n] || { l: [], d: [] };
   for (const p of squadOf(cid)){ const rk = squadRank(p); if (rk < 9 && !x.l.includes(p.id)) x.l.push(p.id); else if (rk >= 18 && p.age >= 23 && !x.d.includes(p.id)) x.d.push(p.id); }
-  x.l = x.l.slice(-30); x.d = x.d.slice(-20); }
+  x.l = x.l.slice(-30); x.d = x.d.slice(-20);
+  if (LG.has(cid)){ const sq = squadOf(cid), a = sq.filter(p => x.l.includes(p.id)).sort((p, q) => q.ovr - p.ovr)[0], b = sq.filter(p => x.d.includes(p.id))[0];   // the farewell: a regular's thanks, a frozen-out man's parting shot
+    if (a && revAdd(a, 'm+:' + n)) news('comp', `${a.n} on ${n}`, `<span class="lk" data-lp="${a.id}">${esc(a.n)}</span> (${esc(club(cid).name)}) thanked ${esc(n)} on his way out, crediting him with making him the player he is.`);
+    if (b && revAdd(b, 'm-:' + n)) news('comp', `${b.n} on ${n}`, `<span class="lk" data-lp="${b.id}">${esc(b.n)}</span> (${esc(club(cid).name)}) said ${esc(n)} never gave him a real chance.`); } }
 // joining you: a club he dislikes, a man he cannot stand, or someone he likes
 function likesJoin(p){ const L = likesOf(p), sq = squadOf(me());
-  if (L.dcl.includes(me())) return { no: `${p.n} would never play for ${club(me()).name}.` };
-  const dp = L.dppl.find(id => sq.some(y => y.id === id)); if (dp && rng(`lkj-${p.id}-${S.season}`)() < .5) return { no: `${p.n} does not want to share a dressing room with ${P.get(dp).n}.` };
-  if (L.you <= -5) return { no: `${p.n} will not play for you.` };
+  if (L.dcl.includes(me())){ revAdd(p, 'c-:' + me()); return { no: `${p.n} would never play for ${club(me()).name}.` }; }
+  const dp = L.dppl.find(id => sq.some(y => y.id === id)); if (dp && rng(`lkj-${p.id}-${S.season}`)() < .5 && revAdd(p, 'p-:' + dp) !== null) return { no: `${p.n} does not want to share a dressing room with ${P.get(dp).n}.` };
+  if (L.you <= -5){ revAdd(p, 'y'); return { no: `${p.n} will not play for you.` }; }
   const lp = L.ppl.find(id => sq.some(y => y.id === id)), lc = L.cl.includes(me()); return lp || lc || L.you >= 5 ? { yes: 1 } : {}; }
-function likesHTML(p){ const L = likesOf(p), cR = id => `${crest(id)}${esc(club(id).name)}`, pR = id => { const q = P.get(id); return `<span class="lk" data-lp="${q.id}">${esc(cmName(q.n))}</span>`; };
-  const yes = [...L.cl.map(cR), ...L.ppl.map(pR), ...L.mg.map(esc), ...L.st.map(esc), ...(L.you >= 2 ? ['<b>you</b>'] : [])], no = [...L.dcl.slice(0, 4).map(cR), ...L.dppl.map(pR), ...L.dmg.map(esc), ...L.dst.map(esc), ...(L.you <= -2 ? ['<b>you</b>'] : [])];
-  return `<dt>Likes</dt><dd>${yes.length ? yes.join(', ') : '<span class="dim">Nobody in particular</span>'}</dd><dt>Dislikes</dt><dd>${no.length ? `<span style="color:var(--loss)">${no.join(', ')}</span>` : '<span class="dim">Nobody in particular</span>'}</dd>`; }
+function likesHTML(p){ const L0 = likesOf(p), sh = (pre, A) => A.filter(x => revHas(p, pre + x)), L = { cl: sh('c+:', L0.cl), dcl: sh('c-:', L0.dcl), ppl: sh('p+:', L0.ppl), dppl: sh('p-:', L0.dppl), mg: sh('m+:', L0.mg), dmg: sh('m-:', L0.dmg), st: [], dst: [], you: L0.you }, cR = id => `${crest(id)}${esc(club(id).name)}`, pR = id => { const q = P.get(id); return `<span class="lk" data-lp="${q.id}">${esc(cmName(q.n))}</span>`; };
+  const yes = [...L.cl.map(cR), ...L.ppl.map(pR), ...L.mg.map(esc), ...L.st.map(esc), ...(L.you >= 2 && revHas(p, 'y') ? ['<b>you</b>'] : [])], no = [...L.dcl.slice(0, 4).map(cR), ...L.dppl.map(pR), ...L.dmg.map(esc), ...L.dst.map(esc), ...(L.you <= -2 && revHas(p, 'y') ? ['<b>you</b>'] : [])];
+  return `<dt>Likes</dt><dd>${yes.length ? yes.join(', ') : '<span class="dim">Nothing he has let on</span>'}</dd><dt>Dislikes</dt><dd>${no.length ? `<span style="color:var(--loss)">${no.join(', ')}</span>` : '<span class="dim">Nothing he has let on</span>'}</dd>`; }
+/* ==== likes and dislikes are hidden until the man says so: in an interview, after a game against a club he feels for,
+   on meeting an old team-mate, when a friend leaves, in a row, when he turns you down, in a talk with you, in a scout's
+   report. Only what he has let slip is shown ==== */
+const revHas = (p, k) => ((S.rev || {})[p.id] || []).includes(k);
+function revAdd(p, k){ if (!p) return false; S.rev = S.rev || {}; const L = S.rev[p.id] = S.rev[p.id] || []; if (L.includes(k)) return false; L.push(k); if (L.length > 30) L.shift(); return true; }
+// the friends here he has been seen with, and the man he is at odds with: both ways
+function revPair(a, b, sign){ revAdd(a, `p${sign}:${b.id}`); revAdd(b, `p${sign}:${a.id}`); }
+// what he lets slip, in reported speech (the game does not put words in real people's mouths)
+function hiddenItems(p){ const L = likesOf(p), out = [];
+  for (const id of L.cl) out.push(['c+:' + id, `said ${club(id).name} will always mean a lot to him`]);
+  for (const id of L.dcl) out.push(['c-:' + id, `admitted a move to ${club(id).name} would never feel right`]);
+  for (const id of L.ppl){ const q = P.get(id); if (q) out.push(['p+:' + id, `said he is still close to ${q.n}`]); }
+  for (const id of L.dppl){ const q = P.get(id); if (q) out.push(['p-:' + id, `admitted that he and ${q.n} have not patched things up`]); }
+  for (const n of L.mg) out.push(['m+:' + n, `credited ${n} with making him the player he is`]);
+  for (const n of L.dmg) out.push(['m-:' + n, `said ${n} never gave him a real chance`]);
+  return out.filter(([k]) => !revHas(p, k)); }
+// let one slip: in an interview, a talk, a report
+function revSlip(p, r, how){ const H = hiddenItems(p); if (!H.length) return null; const [k, q] = H[Math.floor(r() * H.length)]; revAdd(p, k); return q; }
+function revMonth(){
+  const r = rng(`revm-${S.seed}-${S.date}`), mine = squadOf(me()).filter(p => !onLoan(p)), stars = D.players.filter(p => p.club !== me() && (p.ovr || 0) >= 80);
+  for (const p of [mine[Math.floor(r() * mine.length)], r() < .6 ? stars[Math.floor(r() * stars.length)] : null].filter(Boolean)){ const q = revSlip(p, r); if (q) news(p.club === me() ? 'club' : 'comp', `${p.n} talks`, `In an interview, <span class="lk" data-lp="${p.id}">${esc(p.n)}</span> (${esc(club(p.club).name)}) ${esc(q)}.`, { id: p.id }); }
+  // your assistant notices who has grown close in the squad
+  const pairs = []; for (let i = 0; i < mine.length; i++) for (let j = i + 1; j < mine.length; j++) if (ppOf(mine[i], mine[j]) >= 5 && !revHas(mine[i], 'p+:' + mine[j].id)) pairs.push([mine[i], mine[j]]);
+  if (pairs.length && r() < .6){ const [a, b] = pairs[Math.floor(r() * pairs.length)]; revPair(a, b, '+'); news('club', `${a.n} and ${b.n}`, `${assOf() ? esc(assOf().n) : 'Your assistant'} has noticed that <span class="lk" data-lp="${a.id}">${esc(a.n)}</span> and <span class="lk" data-lp="${b.id}">${esc(b.n)}</span> have become close.`); }
+}
+// after a game against a club he feels for, he says so
+function revMatch(x){ const opp = x.h === me() ? x.a : x.h, t = S.tac[me()], ids = t ? t.xi.filter(Boolean) : [], gd = (x.h === me() ? x.s[0] - x.s[1] : x.s[1] - x.s[0]);
+  for (const id of ids){ const p = P.get(id); if (!p) continue; const L = likesOf(p);
+    if (L.cl.includes(opp) && revAdd(p, 'c+:' + opp)){ news('club', `${p.n} on ${club(opp).name}`, `After the game, <span class="lk" data-lp="${p.id}">${esc(p.n)}</span> said that playing ${esc(club(opp).name)} is always special for him.`, { id: p.id }); return; }
+    if (L.dcl.includes(opp) && revAdd(p, 'c-:' + opp)){ news('club', `${p.n} on ${club(opp).name}`, `After the game, <span class="lk" data-lp="${p.id}">${esc(p.n)}</span> ${gd > 0 ? `said nothing beats beating ${esc(club(opp).name)}` : gd < 0 ? `said losing to ${esc(club(opp).name)}, of all teams, hurts` : `said against ${esc(club(opp).name)} he always wants to win`}.`, { id: p.id }); return; } } }
+// a newcomer and an old team-mate meet again
+function revMeet(p){ for (const x of squadOf(me()).filter(y => y.id !== p.id)){ const a = likesOf(x).ppl.includes(p.id), b = likesOf(p).ppl.includes(x.id);
+  if ((a || b) && revAdd(x, 'p+:' + p.id)){ revAdd(p, 'p+:' + x.id); news('club', `${x.n} and ${p.n} together again`, `<span class="lk" data-lp="${x.id}">${esc(x.n)}</span> is delighted to be reunited with <b>${esc(p.n)}</b>.`); } } }
 /* ==== retirement announced: in February the older men who mean to stop at the end of the season say so. You can ask
    one to play on another year (a man who rates you, or still plays, may agree) or offer him a coaching job for when he
    stops. The league's great names announce it too ==== */
@@ -6124,7 +6159,7 @@ const spcMul = () => { const x = staffBest('spc', 'co'); return x ? 1 + (x.co - 
    little worse, and a man whose friend is sold misses him ==== */
 const rkey = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
 const opOf = id => clamp((S.op || {})[id] || 0, -10, 10);
-function opAdd(id, v){ if (!id || !v) return; S.op = S.op || {}; S.op[id] = clamp(Math.round(((S.op[id] || 0) + v) * 10) / 10, -10, 10); }
+function opAdd(id, v){ if (!id || !v) return; S.op = S.op || {}; S.op[id] = clamp(Math.round(((S.op[id] || 0) + v) * 10) / 10, -10, 10); if (Math.abs(S.op[id]) >= 2){ const p = P.get(+id); if (p) revAdd(p, 'y'); } }   // he shows what he thinks of you
 const opWord = v => v >= 6 ? ['Admires you', 'var(--win)'] : v >= 2 ? ['Likes you', '#9AD07A'] : v > -2 ? ['Neutral', 'var(--muted)'] : v > -6 ? ['Has doubts about you', '#f2a65a'] : ['Dislikes you', 'var(--loss)'];
 const yearOf = d => d ? +String(d).slice(0, 4) : 9999;
 function ppBase(a, b){ let v = 0; if (a.nat === b.nat) v += 3; else if (langOf(a) === langOf(b)) v += 1.5;
@@ -6149,31 +6184,31 @@ function relMonth(){
   for (const p of sq){ const q = ps(p.id), cs = concerns(p).map(c => c.k); if (cs.includes('time')) opAdd(p.id, -.5); else if (q.mor >= 75) opAdd(p.id, .3);
     q.mor = clamp(q.mor + opOf(p.id) * .2, 15, 100); }
   for (const k of Object.keys(S.pp || {})){ const v = S.pp[k]; S.pp[k] = Math.abs(v) <= .5 ? 0 : v - Math.sign(v) * .5; if (!S.pp[k]) delete S.pp[k]; }
-  for (const m of S.ment || []){ const a = P.get(m.m), b = P.get(m.y); if (a && b) ppAdd(a, b, 1); }
+  for (const m of S.ment || []){ const a = P.get(m.m), b = P.get(m.y); if (a && b){ ppAdd(a, b, 1); revPair(a, b, '+'); } }
   if (sq.length > 10 && r() < .3){ const hot = sq.filter(p => hid(p).tem <= 8); const a = hot[Math.floor(r() * hot.length)]; if (a){ const L = sq.filter(x => x.id !== a.id && GROUP[x.prim] === GROUP[a.prim]), b = L[Math.floor(r() * L.length)];
-    if (b){ ppAdd(a, b, -6); for (const x of [a, b]){ const q = ps(x.id); q.mor = clamp(q.mor - 3, 15, 100); }
+    if (b){ ppAdd(a, b, -6); revPair(a, b, '-'); for (const x of [a, b]){ const q = ps(x.id); q.mor = clamp(q.mor - 3, 15, 100); }
       news('club', `${a.n} and ${b.n} fall out`, `<span class="lk" data-lp="${a.id}">${esc(a.n)}</span> and <span class="lk" data-lp="${b.id}">${esc(b.n)}</span> have had words in training and are not speaking. It may blow over; it may not.`); } } }
 }
 // a man sold: the friends he leaves behind miss him
 function friendGone(p){ const L = friendsOf(p, squadOf(me()).filter(x => x.id !== p.id)).filter(x => ppOf(p, x) >= 6 || (S.pp || {})[rkey(p.id, x.id)] > 0);
-  for (const x of L){ const q = ps(x.id); q.mor = clamp(q.mor - 4, 15, 100); }
+  for (const x of L){ const q = ps(x.id); q.mor = clamp(q.mor - 4, 15, 100); revPair(p, x, '+'); }
   if (L.length) news('club', `${L.length === 1 ? L[0].n : 'Some of the players'} will miss ${p.n}`, `${L.map(x => `<span class="lk" data-lp="${x.id}">${esc(x.n)}</span>`).join(', ')} ${L.length === 1 ? 'was' : 'were'} close to <b>${esc(p.n)}</b> and ${L.length === 1 ? 'is' : 'are'} sorry to see him go.`); }
 // a man arrives: a friend already here helps him settle
-function friendHere(p){ const L = friendsOf(p, squadOf(me()).filter(x => x.id !== p.id)); if (!L.length) return; const q = ps(p.id); q.mor = clamp(q.mor + 4, 15, 100);
+function friendHere(p){ revMeet(p); const L = friendsOf(p, squadOf(me()).filter(x => x.id !== p.id)); if (!L.length) return; for (const x of L) revPair(p, x, '+'); const q = ps(p.id); q.mor = clamp(q.mor + 4, 15, 100);
   news('club', `${p.n} among friends`, `<b>${esc(p.n)}</b> knows ${L.slice(0, 3).map(x => `<span class="lk" data-lp="${x.id}">${esc(x.n)}</span>`).join(', ')}${L.length > 3 ? ' and others' : ''} already: he will settle in quickly.`); }
 function relPlayerHTML(p){
-  const mine = p.club === me(), op = opWord(opOf(p.id)), L = squadOf(p.club).filter(x => x.id !== p.id), fr = friendsOf(p, L).sort((a, b) => ppOf(p, b) - ppOf(p, a)).slice(0, 6), fo = foesOf(p, L), pc = pastClubs(p);
+  const mine = p.club === me(), op = opWord(opOf(p.id)), L = squadOf(p.club).filter(x => x.id !== p.id), fr = friendsOf(p, L).filter(x => revHas(p, 'p+:' + x.id)).sort((a, b) => ppOf(p, b) - ppOf(p, a)).slice(0, 6), fo = foesOf(p, L).filter(x => revHas(p, 'p-:' + x.id)), pc = pastClubs(p);
   const why = x => { const r = []; if (x.nat === p.nat) r.push('compatriots'); else if (langOf(x) === langOf(p)) r.push(`both speak ${langOf(p)}`); if (p.fr && x.fr === p.fr) r.push(`both came from ${p.fr}`); else { const w = wereMates(p, x); if (w) r.push(`team-mates at ${tmName(w)}`); } if ((S.ment || []).some(m => (m.m === p.id && m.y === x.id) || (m.y === p.id && m.m === x.id))) r.push('mentor and pupil'); return r.join(', '); };
   const pl = x => `<span class="lk" data-lp="${x.id}">${esc(cmName(x.n))}</span>`;
-  return `<div class="ptitle">Relationships</div><dl class="kv" style="max-width:640px;margin:0 auto">${mine || opOf(p.id) ? `<dt>His view of you</dt><dd style="color:${op[1]}"><b>${op[0]}</b></dd>` : ''}
-    <dt>Friends here</dt><dd>${fr.length ? fr.map(pl).join(', ') : '<span class="dim">Nobody close</span>'}</dd>
+  return `<div class="ptitle">Relationships</div><dl class="kv" style="max-width:640px;margin:0 auto">${revHas(p, 'y') ? `<dt>His view of you</dt><dd style="color:${op[1]}"><b>${op[0]}</b></dd>` : ''}
+    <dt>Friends here</dt><dd>${fr.length ? fr.map(pl).join(', ') : '<span class="dim">Nobody you know of</span>'}</dd>
     ${fo.length ? `<dt>At odds with</dt><dd style="color:var(--loss)">${fo.map(pl).join(', ')}</dd>` : ''}
     ${likesHTML(p)}</dl>`; }
 function relSquadHTML(){
   const sq = squadOf(me()).filter(p => !onLoan(p)), pairs = [];
-  for (let i = 0; i < sq.length; i++) for (let j = i + 1; j < sq.length; j++){ const v = ppOf(sq[i], sq[j]); if (v >= 5 || v <= -3) pairs.push([sq[i], sq[j], v]); }
+  for (let i = 0; i < sq.length; i++) for (let j = i + 1; j < sq.length; j++){ const v = ppOf(sq[i], sq[j]); if ((v >= 5 && revHas(sq[i], 'p+:' + sq[j].id)) || (v <= -3 && revHas(sq[i], 'p-:' + sq[j].id))) pairs.push([sq[i], sq[j], v]); }
   const F = pairs.filter(x => x[2] >= 5).sort((a, b) => b[2] - a[2]).slice(0, 8), E = pairs.filter(x => x[2] <= -3).sort((a, b) => a[2] - b[2]);
-  const pl = x => `<span class="lk" data-lp="${x.id}">${esc(cmName(x.n))}</span>`, ops = sq.map(p => [p, opOf(p.id)]).filter(x => Math.abs(x[1]) >= 2).sort((a, b) => b[1] - a[1]);
+  const pl = x => `<span class="lk" data-lp="${x.id}">${esc(cmName(x.n))}</span>`, ops = sq.map(p => [p, opOf(p.id)]).filter(x => Math.abs(x[1]) >= 2 && revHas(x[0], 'y')).sort((a, b) => b[1] - a[1]);
   return `<div class="ovgrid"><div class="ovc"><div class="ovh"><span>Close friends</span></div>${F.length ? `<ul class="hon">${F.map(([a, b]) => `<li>${pl(a)} and ${pl(b)}</li>`).join('')}</ul>` : '<p class="dim small">No close friendships yet.</p>'}</div>
     <div class="ovc"><div class="ovh"><span>Fall-outs</span></div>${E.length ? `<ul class="hon">${E.map(([a, b]) => `<li style="color:var(--loss)">${pl(a)} and ${pl(b)}</li>`).join('')}</ul>` : '<p class="dim small">Nobody at odds.</p>'}</div>
     <div class="ovc"><div class="ovh"><span>What they think of you</span></div>${ops.length ? `<table><tbody>${[...ops.slice(0, 4), ...(ops.length > 8 ? ops.slice(-4) : ops.slice(4))].map(([p, v]) => { const w = opWord(v); return `<tr><td>${pl(p)}</td><td style="color:${w[1]}">${w[0]}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim small">Nobody has made his mind up about you yet.</p>'}</div></div>
@@ -7066,7 +7101,7 @@ function makeReport(p, k){
   const ab = ovrNow(p) + nz() * .6, pt = Math.max(ab, ovrNow(p) + (p.age < 24 ? (24 - p.age) * 1.7 * potOf(p) : 0) + nz());
   const est = (POS_KEYS[p.prim] || POS_KEYS.CMF).filter(x => ATTR_NAME[x]).map(x => [x, A(p, x) + nz()]).sort((a, b) => b[1] - a[1]);
   S.rpt = S.rpt || {}; S.rpt[p.id] = { d: S.date, k, ab: Math.round(ab), pt: Math.round(pt), pros: est.slice(0, 3).map(x => x[0]), cons: est.slice(-2).map(x => x[0]), fee: FAP.has(p.id) ? 0 : roundFee(askingPrice(p) * (1 + nz() / 40)), w: Math.round((FAP.has(p.id) ? faWage(p) : wageDemand(p)) * (1 + nz() / 50) / 500) * 500 };
-  (S.kn = S.kn || {})[p.id] = 1; return S.rpt[p.id]; }
+  (S.kn = S.kn || {})[p.id] = 1; if (r() < .5){ const q = revSlip(p, r); if (q) S.rpt[p.id].q = q; } return S.rpt[p.id]; }
 function repView(p){ const x = (S.rpt || {})[p.id]; if (!x) return null; const lv = myLevel(), ga = gradeOf(x.ab - lv), gp = gradeOf(x.pt - lv), role = roleAt(p, rankHere(p, x.ab)), afford = FAP.has(p.id) || x.fee <= S.fin.budget * 1.1;
   const rec = ga === 'A' || ga === 'B' ? (afford ? ['Sign him', 'He would improve your side.', 3] : ['Beyond your means', 'Good enough for your side, but he would cost more than you have.', 1]) : p.age <= 21 && (gp === 'A' || gp === 'B') ? ['One for the future', 'Not ready yet, but he could grow into a first-team player here.', 2] : ga === 'C' ? ['A squad player', 'He would give you cover and some games.', 1] : ['Not for us', 'Not good enough for your side.', 0];
   return { ...x, ga, gp, role, rec }; }
@@ -7100,7 +7135,7 @@ function repHTML(p){
     <div class="ovc"><div class="ovh"><span>Verdict</span></div><p style="font-size:18px;margin:4px 0" class="yel"><b>${v.rec[0]}</b></p><p class="small">${v.rec[1]}</p><dl class="kv"><dt>Ability now</dt><dd>${gradeH(v.ga)}</dd><dt>Potential</dt><dd>${gradeH(v.gp)}</dd><dt>He would be here</dt><dd>${roleName(v.role)}</dd></dl></div>
     <div class="ovc"><div class="ovh"><span>Strengths and weaknesses</span></div><p class="small dim" style="margin:2px 0">Strengths</p><ul class="hon">${v.pros.map(k => `<li style="color:var(--win)">${nm(k)}</li>`).join('')}</ul><p class="small dim" style="margin:2px 0">Weaknesses</p><ul class="hon">${v.cons.map(k => `<li style="color:var(--loss)">${nm(k)}</li>`).join('')}</ul></div>
     <div class="ovc"><div class="ovh"><span>The deal</span></div><dl class="kv"><dt>Likely price</dt><dd>${v.fee ? cash(v.fee) : 'No fee'}</dd><dt>Wage he would want</dt><dd>${wage(v.w)}</dd><dt>Contract</dt><dd>${S.con[p.id] ? 'until 30.6.' + String(S.con[p.id].y).slice(2) : '-'}</dd><dt>Agent</dt><dd>${esc(agentOf(p).n)}</dd><dt>Would he come?</dt><dd>${keen}</dd></dl></div></div>
-    ${relPlayerHTML(p)}<p class="small dim">Report by ${esc(sc[v.k].n)} (judging ability ${sc[v.k].ju}/20), ${fmtDate(v.d)}. The letters compare him with your side as it is now, from A (better than your best) to E. A scout's eye is never perfect: the better the judge, the closer he is.</p>${btn}`;
+    ${relPlayerHTML(p)}${v.q ? `<p class="small">Your scout heard that he ${esc(v.q)}.</p>` : ''}<p class="small dim">Report by ${esc(sc[v.k].n)} (judging ability ${sc[v.k].ju}/20), ${fmtDate(v.d)}. The letters compare him with your side as it is now, from A (better than your best) to E. A scout's eye is never perfect: the better the judge, the closer he is.</p>${btn}`;
 }
 function scrScoutC(){
   const sc = scStaff(), F = S.rf || [], Q = S.scQ || [], f0 = V.rfd || { pos: 'CB', amax: 0, fee: 0, reg: '' };
