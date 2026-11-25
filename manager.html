@@ -346,6 +346,8 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tog{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:5px 10px;font-size:12px;color:var(--muted)}
 .tog.on{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);font-weight:600}
 /* news */
+.rpre{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:10px 0 6px}.rpc{display:flex;flex-direction:column;gap:4px;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);cursor:pointer;font:inherit}.rpc span{font-size:12px;color:var(--muted);line-height:1.35}.rpc.on{border-color:var(--win);box-shadow:inset 0 0 0 1px var(--win)}.rpc:hover{border-color:#ffffff40}.rrow{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line)}.rrow>div{min-width:0;white-space:normal}.rch{justify-self:end}.rch .seg{flex-wrap:wrap}@media(max-width:800px){.rrow{grid-template-columns:1fr}.rch{justify-self:start}}
+.spsel{display:none;margin:6px 0}@media(max-width:700px){.spsel{display:block}.spt[data-spj="0"] .spj1,.spt[data-spj="0"] .spj2,.spt[data-spj="1"] .spj0,.spt[data-spj="1"] .spj2,.spt[data-spj="2"] .spj0,.spt[data-spj="2"] .spj1{display:none}.spt+p,.pane>p.small.dim:first-child{font-size:12px}}
 .nl{max-height:220px;overflow-y:auto;border-radius:10px;background:var(--panel-2)}
 @media(min-width:1100px){.pane:has(>.nl+.nmsg){display:grid;grid-template-columns:minmax(300px,40%) 1fr;gap:16px;align-items:start}.pane:has(>.nl+.nmsg)>.nl{max-height:calc(100vh - 230px);min-height:320px}.pane:has(>.nl+.nmsg)>.nmsg{margin-top:0}.pane:has(>.nl+.nmsg)>.nmsg h2{margin-top:0}}
 :not(.ptitle)+.ptitle{margin-top:18px}
@@ -1937,7 +1939,7 @@ function readyTactic(cid){
     if (avail(back) && canPlay(P.get(back), slots[i] ? slots[i][0] : '')){ t.xi[i] = back; t.bench = t.bench.filter(x => x !== back); if (cur && t.bench.length < BENCH && !t.bench.includes(cur)) t.bench.push(cur); delete t.out[i]; delete t.stand[i]; } }
   t.xi = t.xi.map((id, i) => { if (id && !avail(id)){ t.out[i] = id; return null; } return id; }); t.bench = t.bench.filter(id => avail(id) && !t.xi.includes(id));
   // a place left empty stays empty: nobody is put in your side without you (Continue warns, and the assistant can fill it)
-  const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => t.xi.includes(v)));
+  const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => typeof v !== 'number' || t.xi.includes(v)));
   t.set = Object.assign(setPieces(cid, t.xi), keep);
   return t;
 }
@@ -1960,7 +1962,7 @@ function fillRest(cid = me()){
   while (t.bench.length < BENCH){ const groups = t.bench.map(id => GROUP[P.get(id).prim]), need = ['DEF', 'MID', 'FWD'].find(g => !groups.includes(g));
     const c = pool().filter(p => p.prim !== 'GK' && (!need || GROUP[p.prim] === need)).sort((a, b) => fit(b, b.prim) - fit(a, a.prim))[0] || pool().filter(p => p.prim !== 'GK').sort((a, b) => fit(b, b.prim) - fit(a, a.prim))[0];
     if (!c) break; t.bench.push(c.id); used.add(c.id); }
-  const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => t.xi.includes(v))); t.set = Object.assign(setPieces(cid, t.xi), keep);
+  const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => typeof v !== 'number' || t.xi.includes(v))); t.set = Object.assign(setPieces(cid, t.xi), keep);
 }
 /* ask the assistant: each job on its own, done with his eye (good, not perfect). Returns a line saying what he did */
 const ASK = [
@@ -1979,7 +1981,7 @@ const ASK = [
 function askAssistant(k){
   const cid = me(), t = S.tac[cid], jq = judge(), nm = id => cmName(P.get(id).n), say = [];
   // set pieces: only those who left the eleven are replaced; the rest of your choices stay
-  const reSet = () => { const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => t.xi.includes(v))); t.set = Object.assign(setPieces(cid, t.xi), keep); };
+  const reSet = () => { const keep = Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => typeof v !== 'number' || t.xi.includes(v))); t.set = Object.assign(setPieces(cid, t.xi), keep); };
   // a new eleven leaves the bench alone, except that a man moved up leaves it and a starter left out takes his seat
   const newXI = xi => { const old = t.xi.slice(); t.xi = xi; t.bench = t.bench.filter(id => !xi.includes(id)); for (const id of old) if (id && !xi.includes(id) && t.bench.length < BENCH) t.bench.push(id); reSet(); };
   if (k === 'side'){ const a = autoTactic(cid, jq); Object.assign(t, { form: a.form, xi: a.xi, bench: a.bench, shape: null }); t.set = setPieces(cid, t.xi); say.push(`${a.form}, side and bench picked`); }
@@ -2521,7 +2523,7 @@ function passDays(n){
   scoutTick();
   transferTick();
   try { promTick(); sqPromTick(); relTick(); visEnsure(); } catch (e) { console.warn(e); }
-  try { cgTick(); fanTick(); affTick(); agTick(); respTick(); dofTick(); buildTick(); trialTick(); } catch (e) { console.warn(e); }
+  try { cgTick(); fanTick(); affTick(); agTick(); respTick(); dofTick(); delegTick(); buildTick(); trialTick(); } catch (e) { console.warn(e); }
   contractWarn();
   if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
   intlTick(); ntTick();
@@ -3917,7 +3919,7 @@ function view(){
   if (!S || SETUP_OPEN){ viewSetup(); return; }
   CTX = LIVE && LIVE.nt && !LIVE.peek ? LIVE.ntC : null;
   if (LIVE && !LIVE.peek){ viewMatch(); return; }
-  ({ home: scrHome, press: scrPress, event: scrEvent, deadline: scrDeadline, nt: scrNT, ntjob: scrNTJob, friendlies: scrFriendlies, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers, coach: scrCoach, staffp: scrStaffP, person: scrPerson })[V.s]();
+  ({ home: scrHome, press: scrPress, event: scrEvent, deadline: scrDeadline, nt: scrNT, ntjob: scrNTJob, friendlies: scrFriendlies, nation: scrNation, news: scrNews, club: scrClub, player: scrPlayer, comp: scrComp, awl: scrAway, eu: scrEU, clubs: scrClubs, find: scrFind, manager: scrManager, options: scrOptions, compare: scrCompare, managers: scrManagers, records: scrRecords, review: scrReview, transfers: scrTransfers, resp: scrResp, coach: scrCoach, staffp: scrStaffP, person: scrPerson })[V.s]();
   linkify(document.body); autoSort();
 }
 /* every table sorts: a table with a header and no sorting of its own sorts by any column on a click on its head (again
@@ -3955,14 +3957,14 @@ function menuTree(o, unread){
   const mine = me(), cv = (cid, tab) => ({ s: 'club', cid, tab });
   // your club in the order of a week's work: the side, the plan, the games, then the business; other clubs as a scout sees them
   // your club in groups, as a week's work goes: the squad, the tactics and training, the games, the market, the club itself
-  const ck = (cid, t, n) => ({ id: `c${cid}.${t}`, label: n, v: t === 'frd' ? { s: 'friendlies' } : t === 'tr' ? { s: 'transfers' } : t === 'fa' ? { s: 'transfers', tab: 'fa' } : t === 'squad' ? { ...cv(cid, 'squad'), team: 'first' } : t === 'res' ? { ...cv(cid, 'squad'), team: 'res' } : /^f:/.test(t) ? { s: 'find', tab: t.slice(2) } : cv(cid, t) });
+  const ck = (cid, t, n) => ({ id: `c${cid}.${t}`, label: n, v: t === 'frd' ? { s: 'friendlies' } : t === 'tr' ? { s: 'transfers' } : t === 'fa' ? { s: 'transfers', tab: 'fa' } : t === 'squad' ? { ...cv(cid, 'squad'), team: 'first' } : t === 'res' ? { ...cv(cid, 'squad'), team: 'res' } : /^f:/.test(t) ? { s: 'find', tab: t.slice(2) } : t === 'resp' ? { s: 'resp' } : cv(cid, t) });
   const grp = (cid, g, n, L) => { const kids = L.map(([t, l]) => ck(cid, t, l)); return { id: `c${cid}.g.${g}`, label: n, v: kids[0].v, kids }; };
   const myKids = cid => [ck(cid, 'ov', 'Overview'),
     grp(cid, 'sq', 'Squad', [['squad', 'First Team'], ['res', 'Reserves'], ['plan', 'Squad Planner'], ['dress', 'Dressing Room'], ['dev', 'Development Centre'], ['med', 'Medical Centre']]),
     grp(cid, 'tac', 'Tactics &amp; Training', [['tactics', 'Tactics'], ['training', 'Training'], ['trep', 'Team Report'], ['data', 'Data Hub']]),
     grp(cid, 'm', 'Matches', [['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['frd', 'Friendlies']]),
     grp(cid, 'tr', 'Transfers', [['tr', 'Transfers'], ['fa', 'Free Agents'], ['f:short', 'Short List'], ['f:scout', 'Scouting'], ['f:sc1', esc(scName(0))], ['f:sc2', esc(scName(1))]]),
-    grp(cid, 'cl', 'Club', [['staff', 'Staff'], ['f:staff', 'Hire &amp; Release Staff'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']])];
+    grp(cid, 'cl', 'Club', [['staff', 'Staff'], ['resp', 'Responsibilities'], ['f:staff', 'Hire &amp; Release Staff'], ['info', 'Finances &amp; Info'], ['board', 'Board'], ['hist', 'History']])];
   const clubKids = cid => cid === mine ? myKids(cid) : ([['ov', 'Overview'], ['squad', 'Squad'], ['res', 'Reserves'], ['next', 'Next Match'], ['last', 'Last Match'], ['fix', 'Fixtures'], ['trep', 'Team Report'], ['staff', 'Staff'], ['hist', 'History'], ['info', 'General Info']])
     .map(([t, n]) => ck(cid, t, n));
   const otherKids = cid => [['ov', 'Overview'], ['squad', 'Squad'], ['hist', 'History'], ['info', 'General Info']].map(([t, n]) => ({ id: `c${cid}.${t}`, label: n, v: t === 'squad' ? { ...cv(cid, t), team: 'first' } : cv(cid, t) }));
@@ -5614,7 +5616,7 @@ function startNewGame(){
   LIVE = null; liveDrop(); newGame(NEWG.club, name);
   Object.assign(S, { mask: NEWG.mask, nat: NEWG.nat, slot: NEWG.file || name, seen: [], short: [], fac: {}, hist: [{ d: S.date, c: S.club, t: `Hired as ${club(S.club).name} manager` }] });
   news('comp', `${D.season}/${String((D.season + 1) % 100).padStart(2, '0')} ${D.league} fixture list decided`, `The fixtures for the new season are out. ${esc(club(S.club).name)} start ${matchLine(S.rounds[0].m.find(m => m.h === S.club || m.a === S.club))}.`);
-  save(); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'home' }; view();
+  S.respAsk = 1; save(); SETUP_OPEN = false; HIST = []; FWD = []; V = { s: 'resp', first: 1 }; view();
 }
 
 /* ---- the squad's slots, as a strip of boxes above the list: the eleven places, then the substitutes ---- */
@@ -6643,7 +6645,7 @@ function talkBase(stage, k, M){
   const avg = us.on.length ? us.on.reduce((t, x) => t + (us.rate[x.id] || 0), 0) / us.on.length : 0, poor = avg < -.15, good = avg > .25;
   return { praise: d > 0 ? .03 : d === 0 ? (good ? .02 : -.005) : (good ? .005 : -.02), demand: d < 0 ? .03 : d === 0 ? (poor ? .025 : .01) : (good ? -.02 : .005), calm: .012, none: 0 }[k] || 0;
 }
-function giveTalk(stage, k){
+function giveTalk(stage, k, quiet){
   const L = LIVE, M = L.M, us = usSide(M), them = us === M.H ? M.A : M.H, d = us.goals - them.goals, tone = L.tone || 'calm';
   M.tr = M.tr || {}; if (M.tr[stage]) return;
   const base = talkBase(stage, k, M), list = [];
@@ -6655,8 +6657,11 @@ function giveTalk(stage, k){
   const T = (stage === 'pre' ? PRE_TALKS : HT_TALKS).find(t => t[0] === k), up = list.filter(x => ['Fired up', 'Motivated'].includes(x[1])).length, down = list.filter(x => ['Nervous', 'Annoyed', 'Complacent', 'Unhappy'].includes(x[1])).length;
   if (stage === 'ht') M.talk = k;
   say(M, us, up > down ? 'yel' : 'minor', `${stage === 'pre' ? 'Team talk before kick-off' : 'Half-time team talk'}: "${T[2]}" ${k === 'none' ? 'The dressing room is quiet.' : up >= 7 ? 'The players are fired up.' : up > down ? 'Most of the players respond well.' : down > up ? 'Some of the players do not take it well.' : 'The players look unmoved.'}`);
-  save(); liveSave(true); viewMatch();
+  save(); liveSave(true); if (!quiet) viewMatch();
 }
+// a team talk given by your assistant: what he thinks will go down best (his reading has some error)
+function autoTalk(stage){ const L = LIVE, M = L.M, w = whoDoes('talk'); if (w === 'me' || (M.tr || {})[stage]) return; const x = respMan(RESP_ALL.find(y => y[0] === 'talk'), w), r = rng(`at-${M.h}-${M.a}-${stage}-${S.date}`), sp = .01 * (20 - ((x || {}).mm || 10)) / 10;
+  const k = (stage === 'pre' ? PRE_TALKS : HT_TALKS).map(([k2]) => [k2, talkBase(stage, k2, M) + (r() * 2 - 1) * sp]).sort((a, b) => b[1] - a[1])[0][0]; L.tone = 'calm'; giveTalk(stage, k, true); if (M.tr[stage] && x) M.tr[stage].by = x.n; }
 function oneTalk(stage, id, k){
   const L = LIVE, M = L.M, us = usSide(M), x = us.on.find(y => y.id === id), T = M.tr && M.tr[stage]; if (!x || !T) return;
   M.iw = M.iw || {}; const W = M.iw[stage] = M.iw[stage] || {}; if (W[id] || Object.keys(W).length >= 3) return;
@@ -6674,7 +6679,7 @@ function talkUI(stage, opts){
   const title = stage === 'pre' ? 'Team talk before kick-off' : 'Half-time team talk';
   if (!T) return `<div class="talk"><div class="ovh"><span>${title}</span><span class="small dim">${opts.sub}</span></div><div class="tools" style="margin:4px 0"><span class="small dim">Tone</span><span class="seg" id="ttone">${TONES.map(([k, n]) => `<button data-v="${k}" class="${tone === k ? 'on' : ''}">${n}</button>`).join('')}</span></div><div class="talkb">${(stage === 'pre' ? PRE_TALKS : HT_TALKS).map(([k, n, q]) => `<button data-gtalk="${stage}|${k}"><b>${n}</b><span>"${q}"</span></button>`).join('')}</div></div>`;
   const W = (M.iw || {})[stage] || {}, left = 3 - Object.keys(W).length, Tt = (stage === 'pre' ? PRE_TALKS : HT_TALKS).find(t => t[0] === T.k);
-  return `<div class="talk done"><div class="ovh"><span>${title}</span><span class="small dim">${(TONES.find(t => t[0] === T.tone) || [, ''])[1]}: "${esc(Tt ? Tt[2] : '')}"</span></div>
+  return `<div class="talk done"><div class="ovh"><span>${title}</span><span class="small dim">${T.by ? `${esc(T.by)}, ` : ''}${(TONES.find(t => t[0] === T.tone) || [, ''])[1].toLowerCase()}: "${esc(Tt ? Tt[2] : '')}"</span></div>
     <table class="trt"><tbody>${T.list.map(([id, w, c, k]) => { const p = P.get(id); return p ? `<tr><td><b>${esc(cmName(p.n))}</b></td><td style="color:${c}">${w}</td><td class="r">${k ? `<span class="small dim">${(ONE_TALKS.find(t => t[0] === k) || [, ''])[1]}</span>` : left > 0 && us.on.some(x => x.id === id && !x.off) ? `<select class="dd sm" data-otalk="${stage}|${id}"><option value="">A word…</option>${ONE_TALKS.map(([k2, n]) => `<option value="${k2}">${n}</option>`).join('')}</select>` : ''}</td></tr>` : ''; }).join('')}</tbody></table>
     <p class="small dim">${left > 0 ? `You can have a word with ${left} more player${left > 1 ? 's' : ''}.` : 'You have had your words.'} The calm settle the nervous; passion fires up the brave and frightens the anxious; a hard word annoys the hot-headed; praise can make the lazy complacent.</p></div>`;
 }
@@ -6870,15 +6875,17 @@ function clubPlan(cid, o){
   const rows = SP_ROWS.map(([code, name, f, need, rf]) => {
     const cells = [0, 1, 2].map(j => { const L = sq.filter(p => f(p) && inSeason(p, j)).map(p => ({ p, v: est(p, j) })).sort((a, b) => b.v - a.v);
       const good = L.filter(x => x.v >= lv - 6).length, short = L.length < need || good < Math.ceil(need / 2); if (j === 1 && short) gaps.push([code, rf]);
-      return `<td class="${short ? 'spgap' : ''}"><div class="small ${short ? '' : 'dim'}">${L.length} of ${need}, ${good} good enough${short ? ' <b style="color:var(--loss)">short</b>' : ''}</div>${L.map(({ p, v }) => { const c = S.con[p.id], ends = c && c.y === S.season + j + 1, age = p.age + j, out = ln[p.id] && ln[p.id].from === me();
+      return `<td class="spj${j} ${short ? 'spgap' : ''}"><div class="small ${short ? '' : 'dim'}">${L.length} of ${need}, ${good} good enough${short ? ' <b style="color:var(--loss)">short</b>' : ''}</div>${L.map(({ p, v }) => { const c = S.con[p.id], ends = c && c.y === S.season + j + 1, age = p.age + j, out = ln[p.id] && ln[p.id].from === me();
         return `<div class="spc" data-spp="${p.id}">${gradeH(gradeOf(v - lv))} <span class="lk">${esc(surname(p.n))}</span> <span class="small dim">${age}</span>${ends ? ' <span class="tag" title="His contract ends that summer">Ctr</span>' : ''}${age >= 32 ? ' <span class="tag" title="Getting on">Old</span>' : ''}${out ? ' <span class="tag">Loan</span>' : ''}</div>`; }).join('') || '<div class="small dim">Nobody</div>'}</td>`; }).join('');
     return `<tr><td><b>${code}</b><br><span class="small dim">${name}</span></td>${cells}</tr>`; }).join('');
   const sy = s => `${s}/${String((s + 1) % 100).padStart(2, '0')}`;
   const uniq = [...new Map(gaps.map(g => [g[1], g])).values()];
   o.body = `<p class="small dim">Your squad by position, this season and the next two, as ${assOf() ? esc(assOf().n) : 'your coaches'} sees it: a man leaves the plan when his contract ends (renew him to keep him), the young should grow, the old decline. Letters against your side as it is now (D or better is good enough for it). A position is short with fewer men than it needs, or with too few good enough.</p>
-    <div class="tw"><table class="spt"><thead><tr><th>Position</th><th>${sy(S.season)}</th><th>${sy(S.season + 1)}</th><th>${sy(S.season + 2)}</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="spsel"><span class="seg">${[0, 1, 2].map(j => `<button data-spj="${j}" class="${(V.spj || 0) === j ? 'on' : ''}">${sy(S.season + j)}</button>`).join('')}</span></div>
+    <div class="tw"><table class="spt" data-spj="${V.spj || 0}"><thead><tr><th>Position</th><th class="spj0">${sy(S.season)}</th><th class="spj1">${sy(S.season + 1)}</th><th class="spj2">${sy(S.season + 2)}</th></tr></thead><tbody>${rows}</tbody></table></div>
     ${uniq.length ? `<div class="ptitle">Next season's gaps</div><p>${uniq.map(g => `<b>${g[0]}</b>`).join(', ')}.</p><div class="tools">${uniq.map(g => `<button class="btn sm" data-spf="${g[1]}">Scout for ${esc((RF_POS.find(x => x[0] === g[1]) || [, g[1]])[1].toLowerCase())}s</button>`).join('')}</div>` : '<p class="c dim">No gaps next season as things stand.</p>'}`;
   frame(o);
+  document.querySelectorAll('[data-spj] button, .spsel button').forEach(b => b.addEventListener('click', () => { V = { ...V, spj: +b.dataset.spj }; view(); }));
   document.querySelectorAll('.spc[data-spp]').forEach(el => el.addEventListener('click', () => go({ s: 'player', id: +el.dataset.spp, tab: 'rep' })));
   document.querySelectorAll('[data-spf]').forEach(b => b.addEventListener('click', () => { S.rf = S.rf || []; if (S.rf.length >= 3){ toast('Your scouts have three briefs already: drop one in Search, Scouting.'); return; }
     S.rf.push({ pos: b.dataset.spf, amax: 0, fee: Math.round(S.fin.budget * .8 / 1e6) * 1e6 || 0, reg: '' }); save(); toast('A new brief for your scouts.'); view(); }));
@@ -7352,7 +7359,7 @@ function scrStaff(tab){
     onTab: t => { V = { s: 'find', tab: t }; view(); },
     body: `<div class="ptitle">Your Staff</div><div class="tw"><table>${head}<tbody>${mine.map(x => row(x, 'fire')).join('')}</tbody></table></div><p class="small dim">Staff wages: ${wage(wageAll)}. Coaching speeds training (Training shows your level), Physiotherapy recovery from injury, Man Management keeps players happy; the assistant's Judging Ability picks your side while you are away.</p>
       <div class="ptitle">Available Staff</div><div class="tw"><table>${head}<tbody>${pool.filter(x => !mine.some(y => y.id === x.id)).sort((a, b) => b.int - a.int || a.role.localeCompare(b.role)).map(x => row(x, 'hire')).join('')}</tbody></table></div><p class="small dim">A new list of free staff each month; players who have just retired and want to coach stay on it for two seasons.</p>${respHTML()}` });
-  document.querySelectorAll('.seg[data-resp] button').forEach(b => b.addEventListener('click', () => { (S.resp = S.resp || {})[b.parentElement.dataset.resp] = b.dataset.v; save(); view(); }));
+  document.querySelectorAll('[data-goresp]').forEach(b => b.addEventListener('click', () => go({ s: 'resp' })));
   document.querySelectorAll('[data-hire]').forEach(b => b.addEventListener('click', () => { const x = pool.find(y => y.id === +b.dataset.hire); if (!x) return;
     const max = STAFF_ROLES[x.role][1], same = S.staff.filter(y => y.role === x.role);
     if (same.length >= max){ toast(`You have ${max === 1 ? 'an' : max} ${STAFF_ROLES[x.role][0].toLowerCase()}${max > 1 ? 's' : ''} already: release one first.`); return; }
@@ -8172,9 +8179,104 @@ function dynHTML(){
 /* ---- staff responsibilities: what you leave to your assistant. Press conferences (he speaks for you: nothing gained,
    nothing lost), contract renewals (he renews the players he thinks worth keeping, at about what they ask: his judgement,
    with its error), and mentoring (he pairs the youngsters each month) ---- */
-const RESP = [['press', 'Press conferences', 'Faces the press for you: nothing gained, nothing lost.', ['ass']], ['con', 'Contract renewals', 'Renews the players he thinks worth keeping, in their last season (a director of football gets better terms).', ['ass', 'dof']], ['ment', 'Mentoring', 'Pairs your youngsters with mentors, once a month.', ['ass']],
-  ['sell', 'Bids for fringe players', 'Answers bids for players outside your first team: a fair price, he sells.', ['dof']], ['loan', 'Loans for youngsters', 'Sends young players who are not playing out on loan, in the windows.', ['dof']], ['recruit', 'Recruitment', 'Each month, three targets for your weakest position on your short list.', ['dof']]];
+/* ==== responsibilities, as in FM: what you do yourself and what you hand to whom. Grouped as a week goes (the matches,
+   the training, the media, the market, the contracts, the backroom); for each, the man on your staff best suited to it
+   is recommended, from the ability that matters for that job. When you take over a club you choose how hands-on you
+   want to be, then fine-tune it item by item ==== */
+const RESP_SEC = [
+  ['Matches', [
+    ['talk', 'Team talks', 'Before kick-off and at half-time he decides what to say to the side.', ['ass'], 'mm'],
+    ['oi', 'Opposition instructions', 'Before each game he sets how to treat their dangerous men.', ['ana', 'ass'], 'ju'],
+    ['setp', 'Set-piece routines', 'He sets the corner, free-kick and defending routines to suit your side.', ['spc', 'coach', 'ass'], 'co'],
+    ['rest', 'Resting tired players', 'On match day he swaps tired or at-risk starters for fresh men who play the same position.', ['sci', 'phys', 'ass'], { sci: 'ph', phys: 'ph', ass: 'ju' }],
+    ['frd', 'Friendlies', 'In pre-season he arranges friendlies on the free days.', ['ass'], 'ju']]],
+  ['Training', [
+    ['tprog', 'Training programme', 'Each week he picks the programme for the fixtures ahead: sharpness in a busy run, fitness in a break.', ['ass', 'coach'], 'co'],
+    ['itr', 'Individual training', 'He gives each young player a focus to work on.', ['coach', 'ass'], 'co'],
+    ['ment', 'Mentoring', 'Pairs your youngsters with mentors, once a month.', ['ass'], 'mm']]],
+  ['Media', [
+    ['press', 'Press conferences', 'Faces the press for you: nothing gained, nothing lost.', ['ass'], 'mm']]],
+  ['Transfers and scouting', [
+    ['scas', 'Scouting assignments', 'Keeps your two scouts busy: one looking for players ready for your side, one for young talent.', ['scout'], 'ju'],
+    ['recruit', 'Recruitment', 'Each month, three targets for your weakest position on your short list.', ['dof'], 'ju'],
+    ['sell', 'Bids for fringe players', 'Answers bids for players outside your first team: a fair price, he sells.', ['dof'], 'mm'],
+    ['loan', 'Loans for youngsters', 'Sends young players who are not playing out on loan, in the windows.', ['dof'], 'ju']]],
+  ['Contracts', [
+    ['con', 'Contract renewals', 'Renews the players he thinks worth keeping, in their last season (a director of football gets better terms).', ['ass', 'dof'], 'mm'],
+    ['yc', 'Youth contracts', 'After the youth intake he signs the boys he rates highest.', ['hoy', 'ass'], 'ju']]],
+  ['Backroom', [
+    ['hire', 'Filling the backroom', 'When a job in the backroom is empty he hires the best man interested, within reason.', ['dof', 'ass'], 'ju']]]];
+const RESP_ALL = RESP_SEC.flatMap(s => s[1]);
+const RESP = RESP_ALL.map(([k, n, t, can]) => [k, n, t, can]);   // the old shape, for the screens that list a man's duties
+const ROLE_SHORT = { ass: 'Assistant', coach: 'Coach', ana: 'Analyst', spc: 'Set-piece coach', sci: 'Sports scientist', phys: 'Physio', dof: 'Director of football', hoy: 'Head of youth', scout: 'Chief scout' };
+const ATTR_W = { co: 'coaching', ju: 'judging', mm: 'man management', ph: 'physiotherapy' };
+const respAttr = (it, role) => typeof it[4] === 'string' ? it[4] : it[4][role];
+// the man in a role who would do this job best (the chief scout is always there, hired or not)
+function respMan(it, role){ const a = respAttr(it, role); if (role === 'scout'){ const s = scStaff()[0]; return s ? { n: s.n, [a]: s[a] ?? s.ju, role } : null; } return staffBest(role, a); }
+function respRec(it){ const L = it[3].map(r => { const x = respMan(it, r); return x ? { role: r, x, v: x[respAttr(it, r)] } : null; }).filter(Boolean).sort((a, b) => b.v - a.v); return L[0] || null; }
+const whoDoes = k => { const v = (S.resp || {})[k] || 'me'; if (v === 'me') return 'me'; const it = RESP_ALL.find(x => x[0] === k); return it && respMan(it, v) ? v : 'me'; };
 const respAss = k => whoDoes(k) === 'ass';
+const RESP_PRE = [
+  ['me', 'Hands-on', 'You do everything yourself, down to the friendlies.', []],
+  ['boss', 'Manager', 'You run the side and the market; your staff look after the details.', ['setp', 'itr', 'ment', 'rest', 'frd', 'scas', 'yc', 'press', 'hire']],
+  ['coach', 'Head coach', 'You run the side and the training; your staff run the market, the contracts and the media.', ['press', 'frd', 'scas', 'recruit', 'sell', 'loan', 'con', 'yc', 'hire']],
+  ['match', 'Matchday', 'You pick the side, the tactics and the team talks; your staff do everything else.', RESP_ALL.map(x => x[0]).filter(k => k !== 'talk')],
+  ['dir', 'Director', 'You run the market and the contracts; your staff run the matches and the training.', ['talk', 'oi', 'setp', 'rest', 'frd', 'tprog', 'itr', 'ment', 'press', 'scas', 'yc', 'hire']]];
+function respPreset(id){ const P0 = RESP_PRE.find(x => x[0] === id); if (!P0) return; S.resp = {}; for (const it of RESP_ALL){ const r = P0[3].includes(it[0]) ? respRec(it) : null; S.resp[it[0]] = r && r.v >= 9 ? r.role : 'me'; } S.respPre = id; }
+function scrResp(){
+  ensureStaff(); const first = V.first || S.respAsk, cur = S.respPre;
+  const rec = it => { const r = respRec(it); if (!r) return `<span class="small dim">Nobody on your staff can take this on: it needs ${it[3].map(x => `a ${(STAFF_ROLES[x] || ['chief scout'])[0].toLowerCase()}`).join(' or ')}.</span>`;
+    return r.v < 9 ? `<span class="small dim">Best kept yourself: the best on your staff for it is ${esc(r.x.n)} (${ATTR_W[respAttr(it, r.role)]} ${r.v}).</span>` : `<span class="small">Recommended: <b class="yel">${esc(r.x.n)}</b>, ${ROLE_SHORT[r.role].toLowerCase()} (${ATTR_W[respAttr(it, r.role)]} ${r.v}).</span>`; };
+  const row = it => { const [k, n, t, can] = it, w = whoDoes(k), r = respRec(it), opts = [['me', 'You'], ...can.filter(role => respMan(it, role)).map(role => [role, ROLE_SHORT[role]])];
+    return `<div class="rrow"><div><b>${n}</b><div class="small dim">${t}</div></div><div>${rec(it)}</div><div class="rch"><span class="seg" data-resp="${k}">${opts.map(([v, l]) => `<button data-v="${v}" class="${w === v ? 'on' : ''}">${l}${r && r.v >= 9 && r.role === v ? ' ★' : ''}</button>`).join('')}</span></div></div>`; };
+  const body = `${first ? `<p>Welcome to ${esc(club(me()).name)}. How much do you want to do yourself, and how much do you leave to your staff? Pick a way of working, then change anything you like below: each job can be yours or handed to someone, and the man best suited to it is recommended.</p>` : '<p class="small dim">What you do yourself and what you leave to your staff. Change it at any time; when a man leaves, his jobs come back to you.</p>'}
+    <div class="rpre">${RESP_PRE.map(([id, n, t]) => `<button class="rpc ${cur === id ? 'on' : ''}" data-rpre="${id}"><b>${n}</b><span>${t}</span></button>`).join('')}</div>
+    ${RESP_SEC.map(([s, L]) => `<div class="ptitle">${s}</div><div class="rlist">${L.map(row).join('')}</div>`).join('')}
+    <p class="small dim">★ the man best suited to the job, from the ability that matters for it. Picking the side and the tactics stay yours in every case.</p>
+    ${first ? `<div class="tools" style="justify-content:flex-end"><button class="btn go" id="respok">Done</button></div>` : ''}`;
+  frame(ofClub(me(), { title: 'Responsibilities', short: 'Responsibilities', sub: esc(club(me()).name), body }));
+  document.querySelectorAll('.seg[data-resp] button').forEach(b => b.addEventListener('click', () => { (S.resp = S.resp || {})[b.parentElement.dataset.resp] = b.dataset.v; S.respPre = null; save(); view(); }));
+  document.querySelectorAll('[data-rpre]').forEach(b => b.addEventListener('click', () => { respPreset(b.dataset.rpre); save(); view(); toast(`${RESP_PRE.find(x => x[0] === b.dataset.rpre)[1]}: your staff know what is theirs.`); }));
+  const ok = $('#respok'); if (ok) ok.addEventListener('click', () => { delete S.respAsk; save(); go({ s: 'home' }); });
+}
+// the jobs your staff do for you, day by day
+function delegTick(){
+  if (!me() || S.done || !S.club || S.ntOnly) return; const t = S.tac[me()], nx = nextFixture(me()), dd = nx ? daysBetween(S.date, nx.date) : 99, opp = nx && nx.m ? (nx.m.h === me() ? nx.m.a : nx.m.h) : null;
+  const by = k => { const it = RESP_ALL.find(x => x[0] === k), w = whoDoes(k); return w === 'me' ? null : respMan(it, w); };
+  // opposition instructions, a few days before each game
+  if (opp && dd <= 3 && by('oi') && (S.oiAuto || {})[opp] !== nx.date){ try { (S.oi = S.oi || {})[opp] = oiSuggest(opp, oiPlayers({ live: false }, opp)); (S.oiAuto = S.oiAuto || {})[opp] = nx.date; } catch (e) {} }
+  // set-piece routines: once a month, to the side as it is
+  if (t && by('setp') && S.spM !== S.date.slice(0, 7)){ S.spM = S.date.slice(0, 7); const xi = t.xi.map(id => P.get(id)).filter(Boolean), tall = xi.filter(p => p.prim !== 'GK' && A(p, 'he') >= 74).sort((a, b) => A(b, 'he') - A(a, 'he')), tech = xi.filter(p => A(p, 'lp') >= 78).length;
+    t.set = { ...(t.set || {}), crt: tall.length >= 3 ? 'far' : tech >= 5 ? 'short' : 'near', ctg: tall[0] ? tall[0].id : 0, fkr: xi.some(p => A(p, 'pk') >= 80) ? 'shoot' : tall.length >= 3 ? 'cross' : 'short', cdef: tall.length >= 4 ? 'zonal' : 'mixed' }; }
+  // resting tired men on match day
+  if (t && dd <= 1 && by('rest') && S.restD !== nx.date){ S.restD = nx.date; const out = [];
+    for (let i = 0; i < t.xi.length; i++){ const p = P.get(t.xi[i]); if (!p) continue; const q = ps(p.id); if (!((q.cond ?? 100) < 72 || injRiskSeen(p)[2] === 2)) continue;
+      const sub = squadOf(me()).filter(x => !t.xi.includes(x.id) && !onLoan(x) && avail(x.id) && (ps(x.id).cond ?? 100) >= 85 && (x.prim === p.prim || (x.pos || []).includes(p.prim))).sort((a, b) => ovrNow(b) - ovrNow(a))[0];
+      if (!sub || ovrNow(sub) < ovrNow(p) - 6) continue; t.xi[i] = sub.id; t.bench = (t.bench || []).filter(id => id !== sub.id); if (t.bench.length < 9) t.bench.push(p.id); out.push([p, sub]); }
+    if (out.length){ const x = by('rest'); news('club', 'Rested for the next game', `${esc(x.n)}: ${out.map(([p, s]) => `<span class="lk" data-lp="${s.id}">${esc(s.n)}</span> starts for the tired <span class="lk" data-lp="${p.id}">${esc(p.n)}</span>`).join('; ')}.`); } }
+  // friendlies in pre-season
+  if (by('frd') && S.frdS !== S.season && S.date.slice(5, 7) === '07'){ S.frdS = S.season; const have = (S.frs || []).filter(f => !f.x && f.d >= S.date).length, first = S.rounds.length ? S.rounds[0].date : day(S.date, 30), q0 = club(me()).q, made = [];
+    const O = frOpps().map(id => club(id)).filter(c => c.q && Math.abs(c.q - q0) <= 8).sort(() => Math.random() - .5);
+    for (let d = day(S.date, 4); d < day(first, -3) && have + made.length < 4 && O.length; d = day(d, 4)){ if (frBusy(d)) continue; const o = O.shift(), home = made.length % 2 === 0; (S.frs = S.frs || []).push({ d, h: home ? me() : o.id, a: home ? o.id : me(), res: null }); made.push([d, o]); }
+    if (made.length) news('club', 'Friendlies arranged', `${esc(by('frd').n)} has arranged ${made.length} friendl${made.length > 1 ? 'ies' : 'y'}: ${made.map(([d, o]) => `${fmtDate(d)} against <span class="lk" data-lc="${o.id}">${esc(o.name)}</span>`).join(', ')}.`); }
+  // the training programme, each week
+  const wk = S.date.slice(0, 10); if (by('tprog') && (!S.tpW || daysBetween(S.tpW, S.date) >= 7)){ S.tpW = wk; const n7 = fixtureRows(me()).filter(x => x.date >= S.date && daysBetween(S.date, x.date) <= 7).length, n10 = fixtureRows(me()).filter(x => x.date >= S.date && daysBetween(S.date, x.date) <= 10).length;
+    const young = squadOf(me()).filter(p => !onLoan(p)).reduce((s, p, i, a) => s + p.age / a.length, 0) < 24, id = n7 >= 2 ? 'sharp' : n10 === 0 ? 'fitness' : young ? 'dev' : 'balanced', x = TR_PRESETS.find(y => y[0] === id); if (x) S.train.reg = JSON.parse(JSON.stringify(x[3])); }
+  // individual training, scouting assignments, youth contracts and the backroom: once a month or when it comes up
+  if (by('itr') && S.itrM !== S.date.slice(0, 7)){ S.itrM = S.date.slice(0, 7); S.itr = S.itr || {};
+    for (const p of squadOf(me()).filter(p => p.age <= 24 && !onLoan(p) && !itrOf(p.id).f)){ const g = GROUP[p.prim], keys = g === 'GK' ? ['gk'] : g === 'DEF' ? ['def', 'air', 'phys'] : g === 'MID' ? ['pass', 'tech', 'phys'] : ['fin', 'tech', 'phys'];
+      const f = keys.map(k => [k, FOCI[k][1].reduce((s, a) => s + A(p, a), 0) / FOCI[k][1].length]).sort((a, b) => a[1] - b[1])[0][0]; (S.itr[p.id] = S.itr[p.id] || {}).f = f; } }
+  if (by('scas')){ S.scouts = S.scouts || [null, null]; const reg = REGIONS[Math.floor(daysBetween(`${S.season}-07-01`, S.date) / 30) % REGIONS.length];
+    for (const k of [0, 1]){ const sc = S.scouts[k]; if (sc && (sc.c || sc.reg || sc.next)) continue; const R = k === 0 ? REGIONS[(REGIONS.indexOf(reg) + 3) % REGIONS.length] : reg; S.scouts[k] = { reg: R[0], foc: k === 0 ? 'ready' : 'young', from: S.date }; } }
+  if (S.yc && !S.yc.auto && by('yc')){ const h = by('yc'), sp = 3 + (20 - (h.ju || 10)) * .5, r = rng(`ycd-${S.seed}-${S.season}`), L = S.yc.ids.map(id => P.get(id)).filter(p => p && p.club === me() && !S.yc.ok.includes(p.id)).map(p => [p, youthProj(p) + (r() * 2 - 1) * sp]).sort((a, b) => b[1] - a[1]);
+    const n = Math.max(0, (h.ju >= 15 ? 3 : 2) - S.yc.ok.length), got = L.slice(0, n).map(x => x[0]); for (const p of got) S.yc.ok.push(p.id); S.yc.auto = 1;
+    if (got.length) news('club', 'Youth contracts offered', `${esc(h.n)} has offered youth contracts to ${got.map(p => `<span class="lk" data-lp="${p.id}">${esc(p.n)}</span>`).join(', ')}.`); }
+  if (by('hire') && S.hireM !== S.date.slice(0, 7)){ S.hireM = S.date.slice(0, 7); const x0 = by('hire'), avgW = (S.staff || []).reduce((s, x) => s + x.w, 0) / Math.max(1, (S.staff || []).length);
+    for (const role of ['phys', 'sci', 'ana', 'fit', 'doc', 'hoy', 'spc', 'gk', 'ysc', 'scout']){ if ((S.staff || []).some(x => x.role === role)) continue; const main = STAFF_MAIN[role];
+      const c = staffPool().filter(x => x.role === role && x.int !== false && !x.no && x.w <= avgW * 1.6).sort((a, b) => b[main] - a[main])[0]; if (!c || c[main] < 8) continue;
+      S.staff.push(c); news('club', `${c.n} joins`, `${esc(x0.n)} has hired <b>${esc(c.n)}</b> as ${STAFF_ROLES[role][0].toLowerCase()} on ${wage(c.w)}.`); break; } }
+}
+
 function respTick(){
   const m = S.date.slice(0, 7); if (S.respM === m) return; S.respM = m;
   if (respAss('ment')) for (const x of mentSuggest()) mentPair(x.m.id, x.y.id);
@@ -8184,9 +8286,7 @@ function respTick(){
       if (rank.indexOf(p) >= 20 || p.age >= 32) continue; const n = negAsk(p); offerTo(p, Math.ceil(n.ask * (dof ? 1.05 - (dof.mm - 10) * .01 : 1.05) / 500) * 500, n.y, n.role, null); } }
 }
 function respHTML(){
-  const a = assOf();
-  const d = dofOf(), who = { ass: 'Assistant', dof: 'Director of Football' };
-  return `<div class="ptitle">Responsibilities</div><p class="small dim">What you leave to your assistant${a ? ` (${esc(a.n)})` : ''} or your director of football${d ? ` (${esc(d.n)})` : ': hire one above to hand him transfers and contracts'}.</p><table><tbody>${RESP.map(([k, n, t, can]) => `<tr><td><b>${n}</b><br><span class="small dim">${t}</span></td><td class="r"><span class="seg" data-resp="${k}"><button data-v="me" class="${whoDoes(k) === 'me' ? 'on' : ''}">You</button>${can.map(c => `<button data-v="${c}" class="${whoDoes(k) === c ? 'on' : ''}" ${c === 'dof' && !d ? 'disabled title="No director of football"' : ''}>${who[c]}</button>`).join('')}</span></td></tr>`).join('')}</tbody></table>`;
+  return `<div class="ptitle">Responsibilities</div><p class="small">What you do yourself and what you leave to your staff, item by item: <button class="btn sm" data-goresp>Responsibilities</button></p>`;
 }
 /* ---- old players into coaching: when a player retires (one of yours, or a good one anywhere), he may want to start on
    the staff side. He joins the staff market for two seasons, his abilities from his own game: a keeper coaches keepers,
@@ -8288,7 +8388,6 @@ function scrSocial(){
    gets a little more), loans for youngsters who are not playing, contract renewals (better terms than the assistant), and
    recruitment (each month three targets for your weakest position, on your short list). His judgement has its error ---- */
 const dofOf = () => (S.staff || []).find(x => x.role === 'dof') || null;
-const whoDoes = k => { const v = (S.resp || {})[k] || 'me'; return v === 'dof' && !dofOf() ? 'me' : v; };
 const dofSpread = () => { const d = dofOf(); return 3 + (20 - (d ? d.ju : 8)) * .4; };
 function dofTick(){
   const d = dofOf(); if (!d) return; const ft = firstTeam(me());
@@ -8739,6 +8838,7 @@ function takeJob(cid){
   if (over) for (const p of squadOf(cid)){ const k = S.con[p.id]; if (k && k.y <= S.season + 1) S.con[p.id] = { ...k, y: S.season + 2 + Math.floor(Math.random() * 3) }; }
   (S.hist = S.hist || []).push({ d: S.date, c: cid, t: `Hired as ${c.name} manager` });
   news('board', `Welcome to ${c.name}`, `The chairman has appointed ${esc(S.manager)} as manager. The board's expectation: <b>${AIMS[S.aim].name}</b>.`);
+  S.respAsk = 1;   // the home screen opens Responsibilities first
 }
 /* ---- a manager of another club, or one out of work: who he is, where, how his side is doing, what he has won in this
    game and what he thinks of you. Any manager's name, wherever it stands, opens him ---- */
@@ -9160,6 +9260,7 @@ function scrHomeNT(){
   const ha = $('#hact'); if (ha) ha.addEventListener('click', () => go(acts[0].v));
 }
 function scrHome(){
+  if (S.respAsk && S.club && !S.ntOnly){ V = { s: 'resp', first: 1 }; view(); return; }
   if (!me()){ scrHomeNT(); return; }
   const cid = me(), c = club(cid), [k1, k2] = kitOf(cid), all = officialRes(cid);
   const gfo = r => r.h === cid ? r.s[0] : r.s[1], gao = r => r.h === cid ? r.s[1] : r.s[0], res = r => r.w === cid ? 'W' : r.w == null ? 'D' : 'L';
@@ -9493,9 +9594,9 @@ function asstNotes(M){
 function talkPanel(){
   const L = LIVE, M = L.M; if (M.over || L.nt) return '';
   const us = usSide(M), them = us === M.H ? M.A : M.H, d = us.goals - them.goals;
-  if (!L.started) return talkUI('pre', { sub: `${club(them.cid).name}${M.derby ? ', a derby' : ''}: ${ftExp(M).exp > .6 ? 'we are expected to win' : ftExp(M).exp < .4 ? 'few expect us to win' : 'a game that could go either way'}` });
+  if (!L.started){ autoTalk('pre'); } if (!L.started) return talkUI('pre', { sub: `${club(them.cid).name}${M.derby ? ', a derby' : ''}: ${ftExp(M).exp > .6 ? 'we are expected to win' : ftExp(M).exp < .4 ? 'few expect us to win' : 'a game that could go either way'}` });
   if (!L.atHT || M.half > 2) return '';
-  const an = asstNotes(M);
+  const an = asstNotes(M); autoTalk('ht');
   return `<div class="asst"><div class="ovh"><span>Assistant's view</span><span class="small dim">${esc(an.who)}</span></div><ul>${an.notes.map(t => `<li>${t}</li>`).join('')}</ul></div>${talkUI('ht', { sub: d > 0 ? `${d} up at the break` : d < 0 ? `${-d} down at the break` : 'level at the break' })}`;
 }
 // how the result stood against what was expected of it (the board's view and the full-time talk's)
