@@ -309,7 +309,7 @@ tr.me td{background:rgba(79,209,139,.10)}
 .tok.empty .dot{background:rgba(0,0,0,.35);color:#fff;border-style:dashed;border-color:rgba(255,255,255,.7)}
 .tok.sel .dot{outline:3px solid var(--gold);outline-offset:2px}.tok.over .dot,.tbrow.over,.tbzone.over{outline:2px dashed var(--gold);outline-offset:2px}
 .tok.dragging,.tbrow.dragging{opacity:.35}
-.lk{cursor:pointer;text-decoration:none;color:#9fd2ff}td .lk,.stp .lk,.pcard .lk,.mteams .lk{color:color-mix(in srgb,currentColor 60%,#8fd0ff 40%)}.lk:hover{text-decoration:underline;text-underline-offset:3px}.lk:hover{color:var(--sky,#8fd0ff)}.lk:hover{color:var(--sky);text-decoration-color:var(--sky)}
+.lk{cursor:pointer;text-decoration:none;color:#9fd2ff}td .lk,.stp .lk,.pcard .lk,.mteams .lk{color:color-mix(in srgb,currentColor 45%,#8fd0ff 55%)}.lk:hover{text-decoration:underline;text-underline-offset:3px}.lk:hover{color:var(--sky,#8fd0ff)}.lk:hover{color:var(--sky);text-decoration-color:var(--sky)}
 .tbghost b{margin-left:6px;padding:2px 6px;border-radius:4px;background:var(--gold);color:#111}.tbghost b.f1{background:#5CC08A;color:#0B1626}.tbghost b.f2{background:#F2C14E;color:#0B1626}.tbghost b.f3{background:#E8604C;color:#fff}.tbghost b.f4{background:#0E2A1B;color:#dfe6ef;outline:1px solid rgba(255,255,255,.35)}.tbghost b.no{background:var(--loss);color:#fff;outline:2px solid #fff}
 .tbghost{position:fixed;z-index:999;transform:translate(-50%,-130%);pointer-events:none;background:#0B1626;color:#fff;border:1px solid rgba(255,255,255,.25);font:700 12px/1 var(--body);padding:6px 9px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
 .tbleg .lgp{display:inline-block;width:16px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;background:#5CC08A}.tbleg .lgp.f2{background:#F2C14E}.tbleg .lgp.f3{background:#E8604C}.tbleg .lgp.f4{background:#0E2A1B;outline:1px solid rgba(255,255,255,.35)}
@@ -3843,6 +3843,7 @@ function linkPeople(M, B){
   for (const n of Object.keys(S.mgL || {})) add(n, 'k:' + n);
   for (const a of S.coachAw || []) if (a.n) add(a.n, 'k:' + a.n);
   for (const x of S.staff || []) add(x.n, 's:' + x.id);
+  if (V.s === 'find' && V.tab === 'staff') for (const x of staffPool()) add(x.n, 's:' + x.id);
   // 'Saka, B' (the short form): the players of your club and of the club on screen, where it is unique
   for (const cid of new Set([me(), V.cid, V.s === 'player' && P.get(V.id) ? P.get(V.id).club : null].filter(Boolean))){ const sq = squadOf(cid), cnt = {}; for (const p of sq){ const k = cmName(p.n); cnt[k] = (cnt[k] || 0) + 1; } for (const p of sq){ const k = cmName(p.n); if (cnt[k] === 1 && k !== p.n) add(k, 'p:' + p.id); } }
   if (S.club) for (const x of club(S.club).mgmt || []) add(x.n, `e:${S.club}|${x.n}`);
@@ -3881,7 +3882,7 @@ function linkify(root){
     while (w.nextNode()) nodes.push(w.currentNode);
     const { W } = LKN;
     for (const n of nodes){ const t1 = n.nodeValue.trim(); if (W && W.has(t1) && !n.parentElement.closest('p')){ const sp = lkEl(W.get(t1), n.nodeValue); n.replaceWith(sp); continue; }
-      const txt = n.nodeValue, ms = linkMatches(txt, M).map(([a, b, v]) => [a, b, lkResolve(n.parentElement, v, txt.slice(a, b))]).filter(([a, b, v]) => v && !lkOwn(n.parentElement, v) && !(v[0] === 'c' && (/^\s+(Stadium|Arena|Park|Building|Community|Ground|Road|Lane|Stadion|Estadio|Stade|Academy|Women|U\d\d)\b/.test(txt.slice(b)))));
+      const txt = n.nodeValue, ms = linkMatches(txt, M).map(([a, b, v]) => [a, b, lkResolve(n.parentElement, v, txt.slice(a, b))]).filter(([a, b, v]) => v && !lkOwn(n.parentElement, v) && !(v[0] === 'c' && (/^\s+((FC|AFC|CF)\s+)?(Stadium|Arena|Park|Building|Community|Ground|Road|Lane|Stadion|Estadio|Stade|Academy|Women|Reserves|II|B|U\d\d)\b/.test(txt.slice(b)))));
       // a club whose name is an everyday word ('Inter', 'Nice') is the club after 'v', 'at', 'against', 'from' or 'to', or in brackets after a comma
       if (W && W.size){ const re = /(?:\b(?:v|vs|at|against|from|to|joins|join)\s|,\s)(\p{Lu}[\p{L}]+)(?=$|[\s.,;:)!?])/gu; let x; while ((x = re.exec(txt))){ const v = W.get(x[1]); if (!v) continue; const a = x.index + x[0].length - x[1].length, b = a + x[1].length; if (!ms.some(([p, q]) => a < q && b > p)) ms.push([a, b, v]); } ms.sort((p, q) => p[0] - q[0]); }
       if (!ms.length) continue;
@@ -5194,10 +5195,12 @@ const POS_LONG = { GK: 'Goalkeeper', CB: 'Defender (Centre)', LB: 'Defender (Lef
 function playerCard(p, q, con, born){
   const kn = known(p);
   // every single attribute, alphabetical, in three columns like CM 01/02; his other details close the last column
+  // a goalkeeper's own attributes come first for a goalkeeper and last for everyone else
+  const gkF = k => GK_KEYS.includes(k) === (p.prim === 'GK') ? 0 : 1;
   const rows = Object.keys(ATTR_NAME).map(k => { const v = A(p, k), d = q.d[k] || 0;
-    return [TT(ATTR_NAME[k]), `${kn ? arrow(recentD(p, k)) + ' ' : ''}<span class="${vcls(v)}">${showA(p, v, k)}</span>`]; });
-  if (p.inj) rows.push(['Injury Resistance', `<span class="${vcls([90, 75, 55][p.inj - 1])}">${4 - p.inj}</span>`]);
-  rows.sort((x, y) => x[0].localeCompare(y[0]));
+    return [TT(ATTR_NAME[k]), `${kn ? arrow(recentD(p, k)) + ' ' : ''}<span class="${vcls(v)}">${showA(p, v, k)}</span>`, gkF(k)]; });
+  if (p.inj) rows.push(['Injury Resistance', `<span class="${vcls([90, 75, 55][p.inj - 1])}">${4 - p.inj}</span>`, 0]);
+  rows.sort((x, y) => x[2] - y[2] || x[0].localeCompare(y[0]));
   const tail = [['Height', p.ht ? p.ht + ' cm' : '-'], ['Weight', p.wt ? p.wt + ' kg' : '-'], ...(p.ft ? [['Preferred Foot', { L: 'Left', R: 'Right', B: 'Either' }[p.ft]]] : []), ['Playing Style', esc(p.style || '-')], ['Personality', known(p) || p.club === me() ? persWord(p) : '<span class="msk" title="Not known yet">?</span>'], ...(p.prim !== 'GK' ? [['Traits', known(p) || p.club === me() ? (traitsOf(p).map(k => TRAITS[k].n).join('; ') || 'None') : '<span class="msk" title="Not known yet">?</span>']] : []), ...(() => { const x = (S.ment || []).find(z => z.y === p.id), L = (S.ment || []).filter(z => z.m === p.id); return x && P.get(x.m) ? [['Mentor', esc(cmName(P.get(x.m).n))]] : L.length ? [['Mentoring', L.map(z => P.get(z.y) ? esc(cmName(P.get(z.y).n)) : '').join(', ')]] : []; })(), ['Morale', morWord(q.mor)], ['Condition', Math.round(q.cond) + '%']].map(([n, v]) => [n, `<span class="org">${v}</span>`]);
   const per = Math.ceil(rows.length / 3), crow = ([n, v]) => `<div class="crow"><span>${n}</span><b>${v}</b></div>`;
   const col = i => `<div>${rows.slice(i * per, (i + 1) * per).map(crow).join('')}</div>`;
