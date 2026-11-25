@@ -2530,7 +2530,7 @@ function passDays(n){
   scoutTick();
   transferTick();
   try { promTick(); sqPromTick(); relTick(); visEnsure(); } catch (e) { console.warn(e); }
-  try { cgTick(); fanTick(); affTick(); agTick(); respTick(); dofTick(); delegTick(); frTick(); stTick(); buildTick(); trialTick(); } catch (e) { console.warn(e); }
+  try { cgTick(); fanTick(); affTick(); agTick(); respTick(); dofTick(); delegTick(); frTick(); stTick(); deadlineTick(); buildTick(); trialTick(); } catch (e) { console.warn(e); }
   contractWarn();
   if (!S.mstat || S.mstat.m !== S.date.slice(0, 7)) monthAwards();
   intlTick(); ntTick();
@@ -3209,6 +3209,12 @@ function frTick(){
   S.frReq = (S.frReq || []).filter(x => !x.done || daysBetween(x.at, S.date) < 30);
 }
 // a member of staff offered a job answers in a day or two: one with no wish to come says no
+// after deadline day: the window's business in one message, the window's business in one message (yours, then the biggest fees)
+function deadlineTick(){ const w = WINDOWS().find(([a, b]) => S.date >= b && daysBetween(b, S.date) <= 4); if (!w || S.dlDone === w[1]) return; S.dlDone = w[1];
+  const feeN = x => { const m = String(x.fee || '').match(/([\d.]+)\s*(M|K)/i); return m ? +m[1] * (m[2].toUpperCase() === 'M' ? 1e6 : 1e3) : 0; };
+  const L = (S.transfers || []).filter(x => x.d >= w[0] && x.d <= w[1]), nm = club(me()).name, mine = L.filter(x => x.to === nm || x.from === nm), big = L.slice().sort((a, b) => feeN(b) - feeN(a)).slice(0, 5);
+  const line = x => `${esc(x.n)}: ${esc(x.from)} to ${esc(x.to)}${x.fee ? ` (${esc(x.fee)})` : ''}`;
+  news('comp', 'The window has shut', `The transfer window has shut. ${L.length} moves in this window.${mine.length ? `<br>Ours: ${mine.map(line).join('; ')}.` : '<br>We have done no business in this window.'}${big.length ? `<br>The biggest: ${big.map(line).join('; ')}.` : ''}`); }
 function stTick(){ for (const o of (S.stOff || []).filter(o => !o.done && S.date >= o.due)){ o.done = 1; const x = o.x, max = STAFF_ROLES[x.role][1];
     if ((S.staff || []).filter(y => y.role === x.role).length >= max){ news('club', `${x.n}: the job is filled`, `You have filled the post since offering it to ${esc(x.n)}.`); continue; }
     if (x.int === false || (!x.int && rng(`hire-${x.id}-${o.due}`)() < .45)){ news('club', `${x.n} says no`, `<b>${esc(x.n)}</b> has turned down the job of ${STAFF_ROLES[x.role][0].toLowerCase()}.`); S.exNo = [...(S.exNo || []), x.id]; continue; }
@@ -3773,6 +3779,7 @@ function newSeason(){
   if (S.visAdj){ S.conf = clamp(S.conf + S.visAdj * .5, 0, 100); S.visAdj = 0; }   // last summer's review of the club vision carries into the new season
   if (S.vis && S.season > S.vis.to) S.vis = null; try { visEnsure(); } catch (e) { console.warn(e); }
   const q = club(me()).q; S.fin.budget = Math.round(S.fin.budget * .5 + Math.max(12, (q - 70) * 9) * 1e6);
+  S.fin.wageB = Math.round(Math.max(wageBill() * 1.04, (S.fin.wageB || 0) * (S.fin.bal > 0 ? 1.03 : .97)) / 1000) * 1000;   // the board's wage budget for the new season
   for (const id of ids) S.tac[id] = id === me() ? Object.assign(S.tac[id], bestXI(id, S.tac[id].form, false, judge(), S.tac[id].shape && S.tac[id].shape.length === 11 ? S.tac[id].shape : undefined)) : autoTactic(id);
   const pv = S.past[S.past.length - 1], a = AIMS[S.aim];
   news('board', `The ${S.season}/${String((S.season + 1) % 100).padStart(2, '0')} season`, `${esc(club(pv.champ).name)} were last season's champions${pv.cup ? `, ${esc(club(pv.cup).name)} won the ${esc(CUP)}` : ''}. The board's expectation this season: <b>${a.name}</b>. Your transfer budget: ${cash(S.fin.budget)}. The league starts on ${fmtDate(rounds[0].date, true)}.`);
@@ -4840,12 +4847,12 @@ function clubInfo(cid, o){
   const pos = standings().findIndex(r => r.id === cid) + 1;
   let fin = '';
   if (mine){ const f = S.fin, max = Math.max(...f.wk.map(y => Math.abs(y.bal)), 1);
-    fin = `<div><div class="ptitle">Finances</div><dl class="kv"><dt>Balance</dt><dd><b>${cash(f.bal)}</b></dd><dt>Transfer budget</dt><dd>${cash(f.budget)}</dd><dt>Wage bill</dt><dd>${wage(wk)}</dd><dt>Gate receipts</dt><dd>${cash(f.gate)}</dd><dt>TV and prize money</dt><dd>${cash(f.tv)}</dd><dt>Sponsors</dt><dd>${cash(f.spon || 0)}</dd>${S.sloan ? `<dt>Stadium loan</dt><dd>${cash(S.sloan.m)} a month, ${S.sloan.left} left</dd>` : ''}${S.embargo ? '<dt>Embargo</dt><dd style="color:var(--loss)">Transfer embargo</dd>' : ''}<dt>Wages paid</dt><dd>${cash(f.wages)}</dd></dl>
+    fin = `<div>${budgetHTML()}<div class="ptitle">Finances</div><dl class="kv"><dt>Balance</dt><dd><b>${cash(f.bal)}</b></dd><dt>Transfer budget</dt><dd>${cash(f.budget)}</dd><dt>Wage bill</dt><dd>${wage(wk)}</dd><dt>Gate receipts</dt><dd>${cash(f.gate)}</dd><dt>TV and prize money</dt><dd>${cash(f.tv)}</dd><dt>Sponsors</dt><dd>${cash(f.spon || 0)}</dd>${S.sloan ? `<dt>Stadium loan</dt><dd>${cash(S.sloan.m)} a month, ${S.sloan.left} left</dd>` : ''}${S.embargo ? '<dt>Embargo</dt><dd style="color:var(--loss)">Transfer embargo</dd>' : ''}<dt>Wages paid</dt><dd>${cash(f.wages)}</dd></dl>
       ${f.wk.length ? (() => { const vals = f.wk.map(x => x.bal), lo = Math.min(...vals), hi = Math.max(...vals), span = Math.max(1, hi - lo), base = lo - span * .6;   // bars from a floor below the lowest month, so the changes show
         return `<div class="small dim" style="margin-top:12px">Balance at the start of each month</div><div class="finch">${f.wk.map((x, k) => { const prev = k ? f.wk[k - 1].bal : null, dlt = prev == null ? '' : x.bal - prev;
           return `<div title="${cash(x.bal)}"><span class="fv">${cash(x.bal)}</span>${dlt !== '' ? `<span class="fd ${dlt >= 0 ? 'up' : 'dn'}">${dlt >= 0 ? '+' : '−'}${cash(Math.abs(dlt))}</span>` : '<span class="fd"></span>'}<i style="height:${Math.round(18 + 62 * (x.bal - base) / (hi - base || 1))}px;background:${x.bal >= 0 ? 'var(--ok)' : 'var(--hot)'}"></i><span class="small dim">${new Date(x.m + '-01T12:00:00Z').toLocaleDateString('en-GB', { month: 'short' })}</span></div>`; }).join('')}</div>`; })() : ''}</div>`; }
   o.body = `<div class="cols2"><div><div class="ptitle">General Info</div><dl class="kv"><dt>Stadium</dt><dd>${esc(mine && S.stadName ? S.stadName : c.venue || '')}${mine && S.build ? ` <span class="small dim">(works until ${shortDate(S.build.done)})</span>` : ''}</dd><dt>Capacity</dt><dd>${Math.round((c.cap || 0) * (mine ? S.capMul || 1 : 1)).toLocaleString('en-GB')}${c.att ? ` <span class="small dim">(${c.att[1]}% full last season)</span>` : ''}</dd>${!mine && c.coach ? `<dt>Manager</dt><dd>${esc(c.coach)}</dd>` : ''}${c.last === 'promoted' || (c.last && c.last.pos) ? `<dt>Last season</dt><dd>${c.last === 'promoted' ? 'Promoted' : `${ordinal(c.last.pos)}, ${c.last.pts} pts`}</dd>` : ''}${c.kitm ? `<dt>Kit</dt><dd>${esc(c.kitm)}${c.sponsor ? ', ' + esc(c.sponsor) : ''}</dd>` : ''}${c.city ? `<dt>City</dt><dd>${esc(c.city)}</dd>` : ''}${EU.has(cid) ? `<dt>Country</dt><dd>${esc(c.ctry || '-')}</dd>` : ''}${euOn() ? (k => k ? `<dt>Europe</dt><dd>${EU_NAME[k]}</dd>` : '')(EU_KEYS.find(k => S.eu.c[k] && S.eu.c[k].teams.includes(cid))) : ''}${LG.has(cid) ? `<dt>League</dt><dd>${esc(D.league)}, ${S.round ? ordinal(pos) : '-'}</dd>` : ''}<dt>Squad</dt><dd>${sq.length} players, average age ${(sq.reduce((t, p) => t + p.age, 0) / Math.max(1, sq.length)).toFixed(1)}</dd><dt>Squad value</dt><dd>${cash(sq.reduce((t, p) => t + p.val, 0) * 1e6)}</dd>${mine ? `<dt>Board expect</dt><dd>${AIMS[S.aim].name}</dd>` : `<dt>Usual shape</dt><dd>${esc((S.tac[cid] || autoTactic(cid)).form)}</dd>`}</dl>${mine ? identHTML() : ''}</div>${fin}</div>${mine ? spHTML() : ''}`;
-  frame(o); if (mine) spWire();
+  frame(o); if (mine){ spWire(); budgetWire(); }
 }
 function lastResult(cid){ const L = allResults().filter(r => r.h === cid || r.a === cid).sort((a, b) => a.date < b.date ? -1 : 1); return L[L.length - 1]; }
 function clubLast(cid, o){
@@ -5790,6 +5797,15 @@ function visEnsure(){
   return S.vis;
 }
 const wageBill = () => squadOf(me()).reduce((t, p) => t + ((S.con[p.id] || {}).w || 0), 0);
+/* the wage budget, as in FM: the board's weekly limit for the playing staff's wages (a little above the bill when you
+   arrive, set again each summer), and the slider that trades transfer budget for wage budget (a pound a week for 52
+   pounds of fee, a year's wages) */
+const wageB = () => { if (!S.fin.wageB) S.fin.wageB = Math.round(wageBill() * 1.06 / 1000) * 1000; return S.fin.wageB; };
+function budgetHTML(){ const wb = wageB(), bill = wageBill(), room = wb - bill, tot = S.fin.budget + wb * 52, max = Math.round(tot / 52), min = Math.round(bill * .98 / 1000) * 1000;
+  return `<div class="ptitle">Budgets</div><dl class="kv"><dt>Wage budget</dt><dd><b>${wage(wb)}</b> <span class="small ${room < 0 ? 'neg' : 'dim'}">${room >= 0 ? `${wage(room)} to spare` : `${wage(-room)} over`}</span></dd><dt>Transfer budget</dt><dd><b>${cash(S.fin.budget)}</b></dd></dl>
+    <input type="range" id="bslide" min="${min}" max="${Math.max(min, max)}" step="1000" value="${wb}" style="width:100%"><div class="small dim" style="display:flex;justify-content:space-between"><span>more for transfers</span><span>more for wages</span></div>
+    <p class="small dim">A contract that would take the wage bill over the budget needs the board's yes, which they rarely give. Moving money: a pound a week of wages for 52 of transfer fees.</p>`; }
+function budgetWire(){ const s = $('#bslide'); if (!s) return; s.addEventListener('change', () => { const nw = +s.value, d = nw - wageB(); if (S.fin.budget - d * 52 < 0) { toast('Not enough transfer budget for that.'); view(); return; } S.fin.budget -= d * 52; S.fin.wageB = nw; save(); view(); toast(`Wage budget ${wage(nw)}, transfer budget ${cash(S.fin.budget)}.`); }); }
 // how each objective stands this season
 function visStat(x){
   const V0 = S.vis, row = standings().find(r => r.id === me()), pld = row ? row.p || (row.w + row.d + row.l) || 0 : 0, pos = standings().findIndex(r => r.id === me()) + 1, early = S.round < 5;
@@ -6033,8 +6049,8 @@ function transferTick(){
     // the other clubs' business: a player who would be a regular for the buyer and is not one for the seller
     if (Math.random() < .22){
       const others = D.clubs.filter(c => c.id !== me()), to = others[Math.floor(Math.random() * others.length)];
-      const need = squadOf(to.id).sort((a, b) => ovrNow(b) - ovrNow(a))[13], bar = need ? ovrNow(need) : 70;
-      const pool = D.pool.filter(p => p.club !== to.id && p.club !== me() && !onLoan(p) && squadOf(p.club).length > 20 && (squadRank(p) >= 7 || !LG.has(p.club) && p.age <= 27) && ovrNow(p) >= bar - 1 && ovrNow(p) <= bar + 6 && !(S.moves || {})[p.id]);
+      const need = squadOf(to.id).sort((a, b) => ovrNow(b) - ovrNow(a))[13], bar = need ? ovrNow(need) : 70, cap = Math.max(15e6, ((to.q || 70) - 65) * 4e6);   // what the buyer can pay
+      const pool = D.pool.filter(p => p.club !== to.id && p.club !== me() && !onLoan(p) && p.val * 1e6 <= cap && squadOf(p.club).length > 20 && (squadRank(p) >= 7 || !LG.has(p.club) && p.age <= 27) && ovrNow(p) >= bar - 1 && ovrNow(p) <= bar + 6 && !(S.moves || {})[p.id]);
       const p = pool[Math.floor(Math.random() * pool.length)];
       if (p){ const fee = roundFee(p.val * 1e6 * (.9 + Math.random() * .4)); S.con[p.id] = { y: S.season + 2 + Math.floor(Math.random() * 3), w: wageDemand(p) }; moveP(p, to.id, fee); }
     }
@@ -7224,6 +7240,8 @@ function cnViol(p, n, o){ const v = [], a = n.ask, ix = o.ix || {};
   else if (o.af < a.af * .5) v.push('His agent calls his fee an insult.');
   return v; }
 function cnOffer(p, o){
+  const cur = p.club === me() ? ((S.con[p.id] || {}).w || 0) : 0, over = wageBill() - cur + o.w - wageB();
+  if (over > 0 && rng(`wb-${p.id}-${S.date}-${o.w}`)() > (over < wageB() * .02 ? .5 : .1)) return { ok: false, lines: [`The board will not let the wage bill go ${wage(over)} over the wage budget. Offer less, move money from the transfer budget (Finances), or let someone go first.`], ct: { ...o, ix: { ...(o.ix || {}) } } };
   const n = S.cn[p.id], need = cnNeed(p, n, o), viol = cnViol(p, n, o);
   if (!viol.length && o.w >= need - 1) return { ok: true };
   const ins = o.w < need * .85; n.pat -= ins ? 2 : 1;
