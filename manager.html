@@ -6025,7 +6025,7 @@ function carIndex(){ if (CARIX_ || !CAR || !CAR.size) return CARIX_; CARIX_ = ne
 let LK_ = { d: null, m: new Map() };
 // what we have to go on: his career (where he came through, where he spent years, who he played with), what has happened
 // in this game (a mentor, a quarrel, a manager who played him or froze him out, a club that let him go), how much he plays
-// for his manager now, his professionalism in the eyes of your coaches, and real rivalries. Nothing made up
+// for his manager now, and real rivalries. Nothing made up (his hidden personality is the game's, so it is not used here)
 function likesOf(p){
   if (LK_.d !== S.date){ LK_ = { d: S.date, m: new Map() }; } const hit = LK_.m.get(p.id); if (hit) return hit;
   const r = rng(`lk-${p.id}`), cl = [], ppl = [], dcl = [], dppl = [], mg = [], dmg = [], st = [], dst = [], cur = p.club;
@@ -6041,8 +6041,6 @@ function likesOf(p){
   // managers: his own (at another club) by the football he gives him; the ones he played under in this game
   if (cur && cur !== me()){ const n = coachOf(cur), rk = squadRank(p); if (n && !/ manager$/.test(n)){ if (rk < 9) addN(mg, n); else if (rk >= 18 && p.age >= 23) addN(dmg, n); } }
   for (const [n, x] of Object.entries(S.mgL || {})){ if (n === coachOf(cur)) continue; if (x.l.includes(p.id)) addN(mg, n); if (x.d.includes(p.id)) addN(dmg, n); }
-  // your coaches: they warm to the professional and despair of the casual, and he feels it
-  if (cur === me()){ const h = hid(p); for (const x of S.staff || []) if (['coach', 'ass', 'gk', 'hoy'].includes(x.role) && (x.role !== 'gk' || p.prim === 'GK') && (x.role !== 'hoy' || p.age <= 21)){ if (h.pro >= 15 && h.det >= 13) addN(st, x.n); else if (h.pro <= 5) addN(dst, x.n); } }
   const o = { cl, ppl, dcl, dppl, mg, dmg, st, dst, you: opOf(p.id) }; LK_.m.set(p.id, o); return o; }
 // a manager leaves: his regulars remember him kindly, the men he froze out do not
 function mgRec(cid, n){ if (!n || / manager$/.test(n)) return; S.mgL = S.mgL || {}; const x = S.mgL[n] = S.mgL[n] || { l: [], d: [] };
