@@ -4596,24 +4596,23 @@ function clubTrophies(cid){ const T = [], add = (k, y, real) => T.push({ k, s: y
     if (x.champ === cid) add(Lh.league, x.s); if (x.cup === cid) add(cupN(Lh), x.s); if (x.shield === cid) add(Lh.shield, x.s);
     for (const [k, f] of Object.entries(x.aw || {})){ if (f.champ === cid) add(D.lgs[k].league, x.s); if (f.cup === cid) add(cupN(D.lgs[k]), x.s); } if (x.lc === cid) add(LC, x.s); for (const [k, w] of Object.entries(x.eu || {})) if (w === cid) add(EU_NAME[k], x.s); }
   if (!(S.past || []).some(x => x.s === S.season)){ if (S.shield && S.shield.done && S.shield.res && S.shield.res.w === cid) add(SHIELD, S.season); if (S.lc && S.lc.stage >= 6 && S.lc.alive[0] === cid) add(LC, S.season); if (S.cup.stage >= CN() && S.cup.alive[0] === cid) add(CUP, S.season); if (euOn()) for (const c of Object.values(S.eu.c)) if (c.win === cid) add(EU_NAME[c.k], S.season); if (S.usc && S.usc.res && S.usc.res.w === cid) add(USC, S.season); if (S.fic && S.fic.win === cid) add(FIC, S.season); if (S.cwc && S.cwc.win === cid) add(CWC, S.season); }
-  return T.sort((a, b) => b.s - a.s); }
+  return T.filter(t => !t.real).sort((a, b) => b.s - a.s); }   // only what has been won in this game
 // every move in and out: the real ones Transfermarkt lists for this squad (and last year's players who left), then the game's own
-function clubMoves(cid){ const nm = club(cid).name, ids = new Set((S.transfers || []).map(t => t.id)), since = `${D.season - 1}-06-01`, fee = p => typeof p.tf === 'number' ? cash(p.tf * 1e6 / EUR) : p.tf === 'loan' ? 'Loan' : p.tf === 'free' ? 'Free' : /U\d\d|Academy|Reserves|B$/.test(p.fr || '') ? 'Youth' : '';
+function clubMoves(cid){ const nm = club(cid).name, ids = new Set((S.transfers || []).map(t => t.id)), since = `${D.season}-06-01`, fee = p => typeof p.tf === 'number' ? cash(p.tf * 1e6 / EUR) : p.tf === 'loan' ? 'Loan' : p.tf === 'free' ? 'Free' : /U\d\d|Academy|Reserves|B$/.test(p.fr || '') ? 'Youth' : '';
   const L = [];
   for (const p of D.pool){ if (!p.jn) continue; const c0 = p._c0 ?? p.club;
+    if (p.jn < since) continue;
     if (c0 === cid) L.push({ d: p.jn, p, io: 'in', other: p.fr ? tmName(p.fr) : '', fee: fee(p), real: 1 });
     else if (p.jn >= since && p.fr && lfClub(p.fr) === cid) L.push({ d: p.jn, p, io: 'out', other: club(c0).name, fee: fee(p), real: 1 }); }
   for (const t of S.transfers || []){ if (t.to === nm) L.push({ d: t.d, p: P.get(t.id), n: t.n, io: 'in', other: t.from, fee: t.fee }); if (t.from === nm) L.push({ d: t.d, p: P.get(t.id), n: t.n, io: 'out', other: t.to, fee: t.fee }); }
   return L.sort((a, b) => a.d < b.d ? 1 : -1); }
 const trophyCabinet = T => { const by = {}; for (const t of T) (by[t.k] = by[t.k] || []).push(t.s); const sn = y => `${String(y % 100).padStart(2, '0')}/${String((y + 1) % 100).padStart(2, '0')}`;
-  return Object.keys(by).length ? `<div class="troph">${Object.entries(by).map(([k, L]) => `<div class="tph"><div class="tphn">${L.length}</div><div><b>${esc(k)}</b><div class="small dim">${L.map(sn).join(', ')}</div></div></div>`).join('')}</div>` : '<p class="dim">No trophies yet. The cabinet counts from 2025/26.</p>'; };
+  return Object.keys(by).length ? `<div class="troph">${Object.entries(by).map(([k, L]) => `<div class="tph"><div class="tphn">${L.length}</div><div><b>${esc(k)}</b><div class="small dim">${L.map(sn).join(', ')}</div></div></div>`).join('')}</div>` : '<p class="dim">No trophies yet: the cabinet counts what is won in this game.</p>'; };
 function clubHistory(cid, o){
   const c = club(cid), T = clubTrophies(cid), f = V.hf || 'all', M = clubMoves(cid).filter(x => f === 'all' || x.io === f), sn = y => `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
   const seasons = [];
   const L0 = (D.lgs || {})[c.ctry || 'ENG'] || HL(), cupN = L => (L.cup && L.cup.name) || CUP;
   const r0 = L0.last_season && (L0.last_season.table || []).find(x => x[0] === c.name || x[0] === c.full);
-  if (r0) seasons.push({ s: D.season - 1, lg: L0.league, pos: r0[1], pts: r0[2], real: 1, l: c.last, L: L0 });
-  else if (c.last && c.last.pos) seasons.push({ s: D.season - 1, lg: L0.league, pos: c.last.pos, pts: c.last.pts ?? '', real: 1, L: L0 });
   for (const x of S.past || []){ const k = x.home || 'ENG', Lh = D.lgs[k] || HL();
     const each = [[Lh, x.table, x.cup, x.lc, x.down, x.up, x.cht], ...Object.entries(x.aw || {}).map(([k2, f]) => [D.lgs[k2], f.table, f.cup, null, f.down, f.up, null])];
     for (const [L, tb, cup, lc, dn, up, cht] of each){ if (!L) continue; const i = (tb || []).findIndex(r => r[0] === cid);
@@ -4656,7 +4655,7 @@ function clubOverview(cid, o){
   const outs = (S.transfers || []).filter(t => t.from === nm).map(t => ({ d: t.d, p: P.get(t.id), n: t.n, other: t.to, fee: t.fee })).sort((a, b) => a.d < b.d ? 1 : -1).slice(0, 8);
   const tr = L => L.map(x => `<tr><td><span class="pill">${x.d ? shortDate(x.d) : 'Summer'}</span></td><td>${x.p ? `<b class="lk" data-lp="${x.p.id}">${esc(cmName(x.p.n))}</b>` : `<b>${esc(x.n || '')}</b>`} <span class="small dim">${esc(x.other || '')}</span></td><td class="r yel">${esc(x.fee || '')}</td></tr>`).join('') || '<tr><td class="dim">None</td></tr>';
   const head = `<div class="ovclub" style="--k1:${k1};--k2:${k2}">${shirt(k1, k2)}<div class="ovci"><div class="ovcn">${esc(fullName(cid))}</div><div class="small dim">${esc(c.city || '')}${c.city ? ' · ' : ''}${esc(c.venue || '')}${c.cap ? ` (${c.cap.toLocaleString('en-GB')})` : ''}</div>
-    <div class="ovchips"><span>${lg ? `${esc(D.league)}${S.round ? ', ' + ordinal(standings().findIndex(r => r.id === cid) + 1) : ''}` : ''}</span><span>${mine ? 'Manager: you' : c.coach ? 'Manager: ' + esc(c.coach) : ''}</span><span>${sq.length} players, avg age ${(sq.reduce((t, p) => t + p.age, 0) / Math.max(1, sq.length)).toFixed(1)}</span><span>Squad value ${cash(sq.reduce((t, p) => t + p.val, 0) * 1e6)}</span>${c.kitm ? `<span>Kit: ${esc(c.kitm)}${c.sponsor ? ', ' + esc(c.sponsor) : ''}</span>` : ''}</div></div>${lg ? `<div class="ovform">${(((S.table[cid] || {}).form) || []).slice(-5).map(x => `<span class="${x}">${x}</span>`).join('') || '<span class="dim small">no games yet</span>'}</div>` : ''}</div>`;
+    <div class="ovchips"><span>${lg ? `${esc(D.league)}${S.round ? ', ' + ordinal(standings().findIndex(r => r.id === cid) + 1) : ''}` : ''}</span><span>${mine ? 'Manager: you' : coachOf(cid) ? 'Manager: ' + esc(coachOf(cid)) : ''}</span><span>${sq.length} players, avg age ${(sq.reduce((t, p) => t + p.age, 0) / Math.max(1, sq.length)).toFixed(1)}</span><span>Squad value ${cash(sq.reduce((t, p) => t + p.val, 0) * 1e6)}</span>${c.kitm ? `<span>Kit: ${esc(c.kitm)}${c.sponsor ? ', ' + esc(c.sponsor) : ''}</span>` : ''}</div></div>${lg ? `<div class="ovform">${(((S.table[cid] || {}).form) || []).slice(-5).map(x => `<span class="${x}">${x}</span>`).join('') || '<span class="dim small">no games yet</span>'}</div>` : ''}</div>`;
   const box = (t, inner, more) => `<div class="ovc"><div class="ovh"><span>${t}</span>${more || ''}</div>${inner}</div>`;
   o.body = `${head}<div class="ovgrid">
     ${lg ? box('Next match', next) : ''}${box('Recent results', res.length ? `<table><tbody>${res.map(resRow).join('')}</tbody></table>` : '<p class="dim">No matches yet.</p>', lg ? '<button class="lnk" data-ctab2="fix">Fixtures</button>' : '')}
@@ -5224,7 +5223,7 @@ function scrPlayer(){
   if (tab === 'con' && p.club === me() && !onLoan(p) && !(S.loans || {})[p.id] && S.con[p.id]) body += releaseHTML(p);
   if (tab === 'talk') body = talkTab(p);
   const hon = (S.awards || []).filter(a => a.id === p.id);
-  if (tab === 'hist') body = `${careerHTML(p)}${careerMoves(p)}${hon.length ? `<div class="ptitle">Honours</div><ul class="hon">${hon.map(a => `<li>${esc(a.k)}, ${a.s}/${String((a.s + 1) % 100).padStart(2, '0')}${a.why ? ` <span class="dim">(${a.why})</span>` : ''}</li>`).join('')}</ul>` : ''}<div class="ptitle">History</div><div class="tw"><table><thead><tr><th>Season</th><th>Club</th><th class="r">Apps</th><th class="r">Gls</th><th class="r">Asts</th><th class="r">Av R</th></tr></thead><tbody>${(q.hs || []).map(h => `<tr><td>${h.s}/${String((h.s + 1) % 100).padStart(2, '0')}</td><td>${h.c && C.has(h.c) ? esc(club(h.c).name) : '-'}</td><td class="r">${h.apps}</td><td class="r">${h.g}</td><td class="r">${h.a}</td><td class="r">${h.rt ?? '-'}</td></tr>`).join('')}
+  if (tab === 'hist') body = `${careerMoves(p)}${hon.length ? `<div class="ptitle">Honours</div><ul class="hon">${hon.map(a => `<li>${esc(a.k)}, ${a.s}/${String((a.s + 1) % 100).padStart(2, '0')}${a.why ? ` <span class="dim">(${a.why})</span>` : ''}</li>`).join('')}</ul>` : ''}<div class="ptitle">History</div><div class="tw"><table><thead><tr><th>Season</th><th>Club</th><th class="r">Apps</th><th class="r">Gls</th><th class="r">Asts</th><th class="r">Av R</th></tr></thead><tbody>${(q.hs || []).map(h => `<tr><td>${h.s}/${String((h.s + 1) % 100).padStart(2, '0')}</td><td>${h.c && C.has(h.c) ? esc(club(h.c).name) : '-'}</td><td class="r">${h.apps}</td><td class="r">${h.g}</td><td class="r">${h.a}</td><td class="r">${h.rt ?? '-'}</td></tr>`).join('')}
     <tr class="me"><td>${S.season}/${String((S.season + 1) % 100).padStart(2, '0')}</td><td>${esc(club(p.club).name)}</td><td class="r">${q.apps}</td><td class="r">${q.g}</td><td class="r">${q.a}</td><td class="r">${avgRt(q)}</td></tr></tbody></table></div>`;
   if (tab === 'tr') body = transferTab(p);
   if (tab === 'rep') body = repHTML(p);
@@ -6003,6 +6002,55 @@ function favClubs(p){ const L = spells(p).filter(x => !x[3]); const out = []; if
 const isFav = (p, cid) => favClubs(p).some(n => lfClub(n) === cid || n === club(cid).name);
 function careerHTML(p){ const L = spells(p); if (!L.length) return '';
   return `<div class="ptitle">Career</div><table><tbody>${L.map(x => `<tr><td class="small">${x[1] ? x[1] : '…'}–${x[2] && x[2] < D.season ? x[2] : ''}</td><td><b>${esc(tmName(x[0]))}</b>${x[3] ? ' <span class="small dim">(loan)</span>' : ''}${favClubs(p).includes(x[0]) ? ' <span class="tag" title="He holds this club dear">Favoured</span>' : ''}</td></tr>`).join('')}</tbody></table>`; }
+/* ==== likes and dislikes: the people and clubs a player feels for beyond his own club, as a modern game lists them.
+   Clubs: the one he supported as a boy (a club of his own country, the big ones more often; a great club abroad if his
+   country has none here), the clubs where he spent years, and the other way, their bitter rivals and a club that let
+   him go. People: a famous older player he looks up to, team-mates from his past, a mentor, you; and the other way, a
+   rival for his place in the national team, a man he fell out with, you. Every player has them, the same all game.
+   They matter: he will not join a club he dislikes or share a dressing room lightly with a man he cannot stand, and
+   he is keener on a club where someone he likes plays ==== */
+const NAT_CODE = { England: 'ENG', France: 'FRA', Italy: 'ITA', Spain: 'ESP', Germany: 'GER', Serbia: 'SRB', Belgium: 'BEL', Portugal: 'POR', Austria: 'AUT', 'Türkiye': 'TUR', Turkey: 'TUR', Ukraine: 'UKR', Norway: 'NOR',
+  Netherlands: 'NED', Greece: 'GRE', Azerbaijan: 'AZE', 'Czech Republic': 'CZE', Czechia: 'CZE', Slovakia: 'SVK', Hungary: 'HUN', Croatia: 'CRO', Bulgaria: 'BUL', Cyprus: 'CYP', Slovenia: 'SLO', Poland: 'POL', Scotland: 'SCO',
+  Israel: 'ISR', Armenia: 'ARM', Switzerland: 'SUI', Denmark: 'DEN', Romania: 'ROU', Sweden: 'SWE', Latvia: 'LVA', 'Bosnia-Herzegovina': 'BIH', 'Bosnia and Herzegovina': 'BIH', Albania: 'ALB', Kazakhstan: 'KAZ', Georgia: 'GEO',
+  Finland: 'FIN', Lithuania: 'LTU', 'Republic of Ireland': 'IRL', Ireland: 'IRL', Kosovo: 'KOS', Iceland: 'ISL', Moldova: 'MDA', 'North Macedonia': 'MKD', 'Northern Ireland': 'NIR', Malta: 'MLT', Belarus: 'BLR', Estonia: 'EST',
+  Wales: 'WAL', Luxembourg: 'LUX', Montenegro: 'MNE', Brazil: 'Brazil', 'United States': 'USA', USA: 'USA', Egypt: 'Egypt', Argentina: 'Argentina', Mexico: 'Mexico', Japan: 'Japan', Morocco: 'Morocco', 'Saudi Arabia': 'Saudi-Arabia',
+  'Korea Republic': 'South-Korea', 'South Korea': 'South-Korea', 'South Africa': 'South-Africa', Tunisia: 'Tunisia', 'New Zealand': 'New-Zealand', Andorra: 'AND', 'Faroe Islands': 'FRO', Gibraltar: 'GIB', 'San Marino': 'SMR', Liechtenstein: 'LIE' };
+let RIV_ = null;
+function rivalsOf(cid){ if (!RIV_){ RIV_ = new Map(); const byName = new Map(everyClub().map(c => [c.name, c.id])); for (const [x, y] of DERBIES){ const i = byName.get(x), j = byName.get(y); if (i == null || j == null) continue; (RIV_.get(i) || RIV_.set(i, []).get(i)).push(j); (RIV_.get(j) || RIV_.set(j, []).get(j)).push(i); } } return RIV_.get(cid) || []; }
+let CARIX_ = null;
+function carIndex(){ if (CARIX_ || !CAR || !CAR.size) return CARIX_; CARIX_ = new Map(); for (const [id, L] of CAR) for (const x of L) (CARIX_.get(x[0]) || CARIX_.set(x[0], []).get(x[0])).push([id, x[1] || 0, x[2] || 9999]); return CARIX_; }
+let LK_ = { d: null, m: new Map() };
+function likesOf(p){
+  if (LK_.d !== S.date){ LK_ = { d: S.date, m: new Map() }; } const hit = LK_.m.get(p.id); if (hit) return hit;
+  const r = rng(`lk-${p.id}`), cl = [], ppl = [], dcl = [], dppl = [], cur = p.club, addC = (L, id, why) => { if (id != null && id !== cur && C.has(id) && !L.some(x => x.id === id)) L.push({ id, why }); }, addP = (L, id, why) => { if (id != null && id !== p.id && P.get(id) && !L.some(x => x.id === id)) L.push({ id, why }); };
+  // the club he supported as a boy
+  const code = NAT_CODE[p.nat], home = everyClub().filter(c => c.q && ctryOf(c.id) === code && !c.nt), pool = home.length ? home : everyClub().filter(c => c.q >= 80 && !c.nt), boy = (() => { const W = pool.map(c => Math.exp((c.q - 70) / 4)), T = W.reduce((t, w) => t + w, 0); let x = r() * T; for (let i = 0; i < pool.length; i++){ x -= W[i]; if (x <= 0) return pool[i]; } return pool[0]; })();
+  if (boy) addC(cl, boy.id, home.length ? 'supported them as a boy' : 'grew up admiring them');
+  // the clubs where he spent years
+  for (const n of (CAR ? favClubs(p) : [])) addC(cl, lfClub(n), 'played there for years');
+  // their rivals, and a club that let him go
+  for (const x of cl.slice()) for (const rv of rivalsOf(x.id)) addC(dcl, rv, `rivals of ${club(x.id).name}`);
+  for (const t of (S.transfers || []).filter(t => t.id === p.id && t.fee === 'Released')) addC(dcl, lfClub(t.from), 'released him');
+  // an older, famous man of his position he looks up to
+  const g = GROUP[p.prim], idolL = allPlayers().filter(x => x.id !== p.id && GROUP[x.prim] === g && x.age >= p.age + 4 && (x.ovr || 0) >= 80), idol = idolL.filter(x => x.nat === p.nat).sort((a, b) => b.ovr - a.ovr)[0] || ((p.ovr || 0) < 84 ? idolL.filter(x => x.ovr >= 86).sort((a, b) => b.ovr - a.ovr)[Math.floor(r() * 3)] : null);
+  if (idol) addP(ppl, idol.id, idol.nat === p.nat ? 'looks up to him' : 'grew up watching him');
+  // team-mates from his past, at another club
+  const IX = carIndex(); if (IX) for (const x of spells(p)){ if (x[0] === club(cur).name) continue; for (const [id, a, b] of IX.get(x[0]) || []) if (id !== p.id && Math.max(a, x[1] || 0) < Math.min(b, x[2] || 9999) && P.get(id) && P.get(id).club !== cur) addP(ppl, id, `team-mates at ${tmName(x[0])}`); }
+  ppl.splice(4);
+  for (const m of S.ment || []) if (m.y === p.id) addP(ppl, m.m, 'his mentor');
+  // a rival for his place in the national team
+  if ((p.ovr || 0) >= 74){ const nr = allPlayers().filter(x => x.id !== p.id && x.nat === p.nat && x.prim === p.prim && x.club !== cur && Math.abs((x.ovr || 0) - p.ovr) <= 3).sort((a, b) => Math.abs(a.ovr - p.ovr) - Math.abs(b.ovr - p.ovr))[0]; if (nr && r() < .6) addP(dppl, nr.id, 'a rival for his place in the national team'); }
+  // men he fell out with
+  for (const [k, v] of Object.entries(S.pp || {})) if (v <= -4){ const [a, b] = k.split('|').map(Number); if (a === p.id) addP(dppl, b, 'they fell out'); else if (b === p.id) addP(dppl, a, 'they fell out'); }
+  const o = { cl, ppl, dcl, dppl, you: opOf(p.id) }; LK_.m.set(p.id, o); return o; }
+// joining you: a club he dislikes, a man he cannot stand, or someone he likes
+function likesJoin(p){ const L = likesOf(p), sq = squadOf(me());
+  const dc = L.dcl.find(x => x.id === me()); if (dc) return { no: `${p.n} would never play for ${club(me()).name} (${dc.why}).` };
+  const dp = L.dppl.find(x => sq.some(y => y.id === x.id)); if (dp && rng(`lkj-${p.id}-${S.season}`)() < .5) return { no: `${p.n} does not want to share a dressing room with ${P.get(dp.id).n}.` };
+  const lp = L.ppl.find(x => sq.some(y => y.id === x.id)), lc = L.cl.find(x => x.id === me()); return lp || lc ? { yes: 1 } : {}; }
+function likesHTML(p){ const L = likesOf(p), cR = x => `${crest(x.id)}${esc(club(x.id).name)} <span class="small dim">(${esc(x.why)})</span>`, pR = x => { const q = P.get(x.id); return `<span class="lk" data-lp="${q.id}">${esc(cmName(q.n))}</span> <span class="small dim">(${esc(x.why)}${q.club ? `, ${esc(club(q.club).name)}` : ''})</span>`; };
+  const yes = [...L.cl.map(cR), ...L.ppl.map(pR), ...(L.you >= 2 ? ['<b>You</b> <span class="small dim">(rates you as a manager)</span>'] : [])], no = [...L.dcl.slice(0, 4).map(cR), ...L.dppl.map(pR), ...(L.you <= -2 ? ['<b>You</b> <span class="small dim">(does not rate you)</span>'] : [])];
+  return `<dt>Likes</dt><dd>${yes.length ? yes.join('<br>') : '<span class="dim">Nobody in particular</span>'}</dd><dt>Dislikes</dt><dd>${no.length ? `<span style="color:var(--loss)">${no.join('<br>')}</span>` : '<span class="dim">Nobody in particular</span>'}</dd>`; }
 /* ==== retirement announced: in February the older men who mean to stop at the end of the season say so. You can ask
    one to play on another year (a man who rates you, or still plays, may agree) or offer him a coaching job for when he
    stops. The league's great names announce it too ==== */
@@ -6116,7 +6164,7 @@ function relPlayerHTML(p){
   return `<div class="ptitle">Relationships</div><dl class="kv" style="max-width:640px;margin:0 auto">${mine || opOf(p.id) ? `<dt>His view of you</dt><dd style="color:${op[1]}"><b>${op[0]}</b></dd>` : ''}
     <dt>Friends here</dt><dd>${fr.length ? fr.map(x => `${pl(x)}${why(x) ? ` <span class="small dim">(${esc(why(x))})</span>` : ''}`).join(', ') : '<span class="dim">Nobody close</span>'}</dd>
     ${fo.length ? `<dt>At odds with</dt><dd style="color:var(--loss)">${fo.map(pl).join(', ')}</dd>` : ''}
-    <dt>Clubs he played for</dt><dd>${pc.length ? pc.map(esc).join(', ') : '<span class="dim">Only this one, as far as we know</span>'}</dd>${favClubs(p).length ? `<dt>Clubs he holds dear</dt><dd>${favClubs(p).map(n => esc(tmName(n))).join(', ')}</dd>` : ''}</dl>`; }
+    ${likesHTML(p)}</dl>`; }
 function relSquadHTML(){
   const sq = squadOf(me()).filter(p => !onLoan(p)), pairs = [];
   for (let i = 0; i < sq.length; i++) for (let j = i + 1; j < sq.length; j++){ const v = ppOf(sq[i], sq[j]); if (v >= 5 || v <= -3) pairs.push([sq[i], sq[j], v]); }
@@ -6948,6 +6996,7 @@ function willJoin(p, b){
   if (b.fa){ const up = ovrNow(p) - club(me()).q; return up > 5 && rng(`fa-${p.id}-${me()}`)() < Math.min(.85, .25 + up * .08) ? `${p.n} would rather wait for an offer from a bigger club than ${club(me()).name}.` : null; }
   const step = (S.agOff || {})[p.id] === S.season || (S.trialDisc || {})[p.id] === S.season ? -99 : club(p.club).q - club(me()).q, star = (S.agOff || {})[p.id] !== S.season && squadRank(p) < 4;
   if (opOf(p.id) >= 5) return null;   // he played for you before and rates you: he wants to again
+  { const lj = likesJoin(p); if (lj.no) return lj.no; if (lj.yes) return null; }   // a club or a man he likes, or one he cannot stand
   if (isFav(p, me())) return null;   // a club he holds dear: he would love to come back
   if (opOf(p.id) <= -5) return `${p.n} has not forgotten his time under you and will not play for you again.`;
   const h = hid(p), am = .6 + h.amb / 25, lo = .7 + h.loy / 30;   // the ambitious will not step down; the loyal will not leave
@@ -8517,7 +8566,7 @@ function scrManagers(){
    loan or a free) and every move he has made in this game since */
 function careerMoves(p){
   const L = [];
-  if (p.jn) L.push({ d: p.jn, from: p.fr ? tmName(p.fr) : null, to: club(p._c0 ?? p.club).name, fee: typeof p.tf === 'number' ? cash(p.tf * 1e6 / EUR) : p.tf === 'loan' ? 'Loan' : p.tf === 'free' ? 'Free' : /U\d\d|Academy|Reserves|B$/.test(p.fr || '') ? 'Youth' : '' });
+  if (p.jn && p.jn >= `${D.season}-06-01`) L.push({ d: p.jn, from: p.fr ? tmName(p.fr) : null, to: club(p._c0 ?? p.club).name, fee: typeof p.tf === 'number' ? cash(p.tf * 1e6 / EUR) : p.tf === 'loan' ? 'Loan' : p.tf === 'free' ? 'Free' : /U\d\d|Academy|Reserves|B$/.test(p.fr || '') ? 'Youth' : '' });
   for (const t of S.transfers || []) if (t.id === p.id) L.push({ d: t.d, from: t.from, to: t.to, fee: t.fee, game: 1 });
   if (!L.length) return '';
   return `<div class="ptitle">Transfers</div><table><tbody>${L.map(x => `<tr${x.game ? ' class="me"' : ''}><td><span class="pill">${shortDate(x.d)}</span></td><td>${x.from ? `${esc(x.from)} → ` : ''}<b>${esc(x.to)}</b></td><td class="r yel">${esc(x.fee || '')}</td></tr>`).join('')}</tbody></table>`;
