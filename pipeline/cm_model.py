@@ -758,6 +758,9 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         st = (_tm.get('staff') or {}).get(c['name'])
         if st:
             c['staff'] = st
+        mg = (_tm.get('mgmt') or {}).get(c['name'])
+        if mg:
+            c['mgmt'] = mg   # the people above the manager: president, chief executive, technical director, secretary...
     _cid = {c['name']: c['id'] for c in clubs}
     _pl = [{'id': l['id'], 'from': _cid[l['from']], 'to': _cid[l['to']]} for l in _tm.get('pl_loans') or [] if l['from'] in _cid and l['to'] in _cid]
     extra = {k: hb[k] for k in ('cup', 'rules', 'last_season') if hb and hb.get('season') == season and hb.get(k)}
@@ -799,6 +802,12 @@ def build(world, people, squads, cm, cm_fx, kits, alias, season, today, lastseen
         except Exception as e:   # another league is an extra: the Premier League is built whatever happens here
             print(f'  {LG_SPEC[_k]["country"]} not built: {e!r}')
     if _lgs:
+        for _L in _lgs.values():   # the other leagues' clubs get their staff pages too (Transfermarkt, by short or full name)
+            for c in _L.get('clubs') or []:
+                for _k, _f in (('staff', 'staff'), ('mgmt', 'mgmt')):
+                    v = (_tm.get(_f) or {}).get(c.get('name')) or (_tm.get(_f) or {}).get(c.get('full'))
+                    if v:
+                        c[_k] = v
         extra['leagues'] = _lgs
     try:
         _eu = build_europe(world, out_players, clubs, kits, alias, today, people, lastseen=lastseen, other_lg={c['full']: c['id'] for L in _lgs.values() for c in L.get('clubs', [])})
