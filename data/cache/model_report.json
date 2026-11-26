@@ -29,51 +29,51 @@
  ],
  "competitions": {
   "cl": {
-   "title_share_top8_of_field": 0.755,
-   "title_share_bottom_half": 0.058,
+   "title_share_top8_of_field": 0.742,
+   "title_share_bottom_half": 0.05,
    "favourites": [
-    "Bayern München 17.1%",
-    "Barcelona 12.4%",
-    "Real Madrid 12.1%",
-    "Paris 9.0%",
-    "Arsenal 8.6%",
-    "Inter 7.3%"
+    "Bayern München 16.9%",
+    "Barcelona 12.3%",
+    "Real Madrid 11.5%",
+    "Arsenal 10.2%",
+    "Paris 8.9%",
+    "Inter 5.8%"
    ]
   },
   "el": {
-   "title_share_top8_of_field": 0.61,
-   "title_share_bottom_half": 0.076,
+   "title_share_top8_of_field": 0.643,
+   "title_share_bottom_half": 0.063,
    "favourites": [
-    "Bodø/Glimt 4.7%",
-    "Union SG 4.7%",
-    "Real Betis 3.5%",
-    "Olympiacos 3.2%",
-    "Bournemouth 3.1%",
-    "Juventus 2.7%"
+    "Bodø/Glimt 5.0%",
+    "Union SG 4.5%",
+    "Freiburg 3.9%",
+    "Bournemouth 3.9%",
+    "Aston Villa 3.5%",
+    "Real Betis 3.3%"
    ]
   },
   "ecl": {
-   "title_share_top8_of_field": 0.687,
-   "title_share_bottom_half": 0.069,
+   "title_share_top8_of_field": 0.696,
+   "title_share_bottom_half": 0.067,
    "favourites": [
-    "Brighton 3.1%",
-    "Bournemouth 2.8%",
-    "Leipzig 2.2%",
-    "Como 2.1%",
-    "Bodø/Glimt 2.1%",
-    "Ajax 2.0%"
+    "Brighton 2.7%",
+    "Bournemouth 2.6%",
+    "Lugano 2.1%",
+    "Monaco 2.0%",
+    "Leipzig 2.0%",
+    "Lazio 2.0%"
    ]
   }
  },
- "title_share_top8_of_field": 0.755,
- "max_title_share_outside_top30": 0.002,
+ "title_share_top8_of_field": 0.742,
+ "max_title_share_outside_top30": 0.0025,
  "title_favourites": [
-  "Bayern München 17.1%",
-  "Barcelona 12.4%",
-  "Real Madrid 12.1%",
-  "Paris 9.0%",
-  "Arsenal 8.6%",
-  "Inter 7.3%"
+  "Bayern München 16.9%",
+  "Barcelona 12.3%",
+  "Real Madrid 11.5%",
+  "Arsenal 10.2%",
+  "Paris 8.9%",
+  "Inter 5.8%"
  ],
  "pass": {
   "big12_in_top15": true,
@@ -88,20 +88,20 @@
  },
  "backtest": {
   "train": 3950,
-  "test": 1302,
+  "test": 1303,
   "base_rates": {
-   "logloss": 1.0739,
-   "brier": 0.6512,
-   "hit": 0.42
+   "logloss": 1.0737,
+   "brier": 0.6511,
+   "hit": 0.421
   },
   "uefa_only": {
-   "logloss": 1.0243,
-   "brier": 0.6141,
-   "hit": 0.499
+   "logloss": 1.024,
+   "brier": 0.6139,
+   "hit": 0.5
   },
   "model": {
-   "logloss": 0.9917,
-   "brier": 0.5918,
+   "logloss": 0.9913,
+   "brier": 0.5916,
    "hit": 0.533
   }
  }
