@@ -2524,7 +2524,7 @@ function passDays(n){
     if (q.injD){ q.injD = Math.max(0, q.injD - n * (p.club === me() ? physioRate() : 1)); if (!q.injD){ q.light = 1; if (p.club === me()) news('injury', `${p.n} is fit again`, `${esc(p.n)} has recovered and is back in training. He may not be at his sharpest for his first game back.`); } }
   }
   const to = day(S.date, n);
-  while (daysBetween(f.last, to) >= 7){ f.last = day(f.last, 7); trainWeek(f.last); try { mentWeek(f.last); medWeek(); dynWeek(); staffWeek(); posWeek(); u21Week(f.last); scoutWeek(f.last); famWeek(); trWeek(); licWeek(); } catch (e) { console.warn(e); } }
+  while (daysBetween(f.last, to) >= 7){ f.last = day(f.last, 7); trainWeek(f.last); try { mentWeek(f.last); medWeek(); dynWeek(); staffWeek(); posWeek(); resWeek(); u21Week(f.last); scoutWeek(f.last); famWeek(); trWeek(); licWeek(); } catch (e) { console.warn(e); } }
   S.date = to;
   chTick(); awTick();
   scoutTick();
@@ -4438,7 +4438,8 @@ function clubSquad(cid, o){
   o.tools = `<div class="sqbar">${chips('sqv', [['gen', 'General'], ['attr', 'Attributes'], ['stats', 'Stats'], ['con', 'Contracts'], ...(mine ? [['pos', 'Pick the side']] : [])], view_)}${chips('sqt', [['first', 'First Team'], ['res', 'Reserves'], ['all', 'Whole Squad']], team)}</div>${view_ === 'attr' ? `<div class="sqbar">${chips('sqa', AGRP.map(g => [g[0], g[1]]), ag[0])}</div>` : ''}
     <div class="sqbar">${chips('sqf', [['all', 'All'], ['gk', 'GK'], ['def', 'DEF'], ['mid', 'MID'], ['fwd', 'FWD'], ['avail', 'Available'], ['out', 'Out'], ...(mine ? [['first', 'Picked']] : []), ['exp', 'Expiring']].map(([k, x]) => [k, `${x} <span class="dim">${n(k)}</span>`]), filt)}<span style="flex:1"></span>${mine ? '<span class="tgrp clr"><span class="tglbl">Clear</span><button class="btn sm" id="clearb">Bench</button><button class="btn sm" id="clearsq">Everything</button></span><span class="tgrp ask"><span class="tglbl">Assistant</span><button class="btn sm" id="autoxi" title="Empty places and bench spots only; your picks stay">Fill the rest</button></span>' : ''}</div>`;
   o.body = sum + body + (mine ? `<p class="small dim" style="margin:8px 2px 0">Tap a box to give that player the next free place in your ${esc(formLabel(t))}${nf ? ` (next: <b class="yel">${nf}</b>)` : ''}; tap it again to take it back. Or drag a place from the strip onto a player, a player onto a place, or one place onto another to swap them (with a finger, hold the player a moment first).</p>` : '');
-  frame(o);
+  if (mine && team === 'res') o.body = resHTML() + o.body;
+  frame(o); if (mine && team === 'res') resWire();
   document.querySelectorAll('#sqv button').forEach(b => b.addEventListener('click', () => { V = { ...V, view: b.dataset.v }; view(); }));
   document.querySelectorAll('#sqt button').forEach(b => b.addEventListener('click', () => { V = { ...V, team: b.dataset.v }; view(); }));
   document.querySelectorAll('#sqf button').forEach(b => b.addEventListener('click', () => { V = { ...V, filt: b.dataset.v }; view(); }));
@@ -5214,7 +5215,7 @@ function clubTactics(cid, o){
   if (V.sub && V.sub !== TB.vsub){ TB.tab = { overview: 'squad', team: 'team', player: 'player', set: 'set' }[V.sub] || 'squad'; TB.vsub = V.sub; }
   const B = boardWeek();
   o.title = `${esc(club(me()).name)} Tactics`;
-  o.tools = `<span class="small dim dhelp">Drag players onto each other, onto open grass or in from the list; or tap one, then the other. Double-tap a player to open his profile.</span><span style="flex:1"></span><span class="tgrp clr"><span class="tglbl">Clear</span><button class="btn sm" id="clrb">Bench</button><button class="btn sm" id="clra">Everything</button></span><span class="tgrp ask"><span class="tglbl">Assistant</span><button class="btn sm" id="fillr" title="Empty places and bench spots only; your picks stay">Fill the rest</button><button class="btn sm" id="auto" title="The assistant picks shape, side and bench">Pick the side</button><span class="askw"><button class="btn sm go" id="askb" aria-haspopup="true" aria-expanded="false">Ask him ▾</button><div class="askm" id="askm" role="menu" hidden>${ASK.map(([k, n, d]) => `<button role="menuitem" data-ask="${k}"><b>${n}</b><span>${d}</span></button>`).join('')}</div></span></span>`;
+  o.tools = `<span class="small dim dhelp">Drag players onto each other, onto open grass or in from the list; or tap one, then the other. Double-tap a player to open his profile.</span><span style="flex:1"></span><span class="tgrp clr"><span class="tglbl">Clear</span><button class="btn sm" id="clrb">Bench</button><button class="btn sm" id="clra">Everything</button></span><span class="tgrp tsv"><span class="tglbl">Saved</span><select class="dd" id="tsav"><option value="">${(S.tacSv || []).length ? 'Saved tactics' : 'No saved tactics'}</option>${(S.tacSv || []).map((x, i) => `<option value="${i}">${esc(x.n)}</option>`).join('')}</select><input type="text" id="tsn" placeholder="Name" maxlength="30" style="width:110px"><button class="btn sm" id="tsave" title="Keep this tactic in your save game">Save</button><button class="btn sm" id="tload">Load</button><button class="btn sm" id="tdel" title="Delete the saved tactic">✕</button></span><span class="tgrp ask"><span class="tglbl">Assistant</span><button class="btn sm" id="fillr" title="Empty places and bench spots only; your picks stay">Fill the rest</button><button class="btn sm" id="auto" title="The assistant picks shape, side and bench">Pick the side</button><span class="askw"><button class="btn sm go" id="askb" aria-haspopup="true" aria-expanded="false">Ask him ▾</button><div class="askm" id="askm" role="menu" hidden>${ASK.map(([k, n, d]) => `<button role="menuitem" data-ask="${k}"><b>${n}</b><span>${d}</span></button>`).join('')}</div></span></span>`;
   o.body = boardHTML(B);
   frame(o);
   $('#auto').addEventListener('click', () => { const a = autoTactic(me(), judge()); Object.assign(B.t, { form: a.form, xi: a.xi, bench: a.bench, set: a.set, shape: null }); TB.sel = null; save(); view(); });
@@ -5224,6 +5225,17 @@ function clubTactics(cid, o){
   askm.querySelectorAll('[data-ask]').forEach(b => b.addEventListener('click', () => { const said = askAssistant(b.dataset.ask); TB.sel = null; view(); toast('Assistant: ' + said.join('; ') + '.', 6000); }));
   $('#fillr').addEventListener('click', () => { fillRest(); TB.sel = null; save(); view(); });
   $('#clrb').addEventListener('click', () => { B.t.bench = []; save(); view(); });
+  // saved tactics, kept in the save game: the shape, the style and instructions, each position's role and duty and the set
+  // pieces' routines; the players stay those of the day (a role goes to whoever stands in that position)
+  const tsv = () => { const i = $('#tsav').value; return i === '' ? null : +i; };
+  $('#tsave').addEventListener('click', () => { const t = B.t, sl = slotsOf(t), name = ($('#tsn').value || '').trim() || `${formLabel(t)}${styleOf(t) ? ' ' + styleOf(t).n : ''} (${shortDate(S.date)})`;
+    const x = { n: name, form: t.form, ...(t.shape ? { shape: JSON.parse(JSON.stringify(t.shape)) } : {}), ...Object.fromEntries([...ST_KEYS, ...ST_PI, 'pi'].filter(k => t[k] !== undefined).map(k => [k, JSON.parse(JSON.stringify(t[k]))])),
+      rlS: sl.map((s, i) => (t.rl || {})[t.xi[i]] || null), set: Object.fromEntries(Object.entries(t.set || {}).filter(([, v]) => typeof v !== 'number')) };
+    S.tacSv = (S.tacSv || []).filter(y => y.n !== name); S.tacSv.push(x); if (S.tacSv.length > 12) S.tacSv.shift(); save(); view(); toast(`Tactic saved as "${name}".`); });
+  $('#tload').addEventListener('click', () => { const i = tsv(); if (i == null){ toast('Choose a saved tactic first.'); return; } const x = S.tacSv[i], t = B.t;
+    t.form = x.form; if (x.shape) t.shape = JSON.parse(JSON.stringify(x.shape)); else delete t.shape; for (const k of [...ST_KEYS, ...ST_PI, 'pi']) if (x[k] !== undefined) t[k] = JSON.parse(JSON.stringify(x[k]));
+    t.rl = {}; (x.rlS || []).forEach((r, j) => { if (r && t.xi[j]) t.rl[t.xi[j]] = { ...r }; }); t.set = { ...(t.set || {}), ...(x.set || {}) }; save(); view(); toast(`"${x.n}" loaded.`); });
+  $('#tdel').addEventListener('click', () => { const i = tsv(); if (i == null){ toast('Choose a saved tactic first.'); return; } const n = S.tacSv[i].n; S.tacSv.splice(i, 1); save(); view(); toast(`"${n}" deleted.`); });
   $('#clra').addEventListener('click', () => { B.t.xi = Array(11).fill(null); B.t.bench = []; TB.sel = null; save(); view(); });
   boardWire(B);
 }
@@ -6521,6 +6533,37 @@ function posTrainHTML(p){
     ${prog.length ? `<table class="ltab"><tbody>${prog.map(([k, v]) => `<tr><td>${cmPos([k])}</td><td style="width:60%"><div class="pbar"><i style="width:${Math.round(v * 100)}%;background:${v >= 1 ? 'var(--win)' : 'var(--gold)'}"></i></div></td><td class="r small">${v >= 1 ? 'Learnt' : posWord(p, k)}</td></tr>`).join('')}</tbody></table>` : ''}`;
 }
 document.addEventListener('change', e => { const el = e.target.closest && e.target.closest('[data-posl]'); if (!el) return; S.posT = S.posT || {}; if (el.value) S.posT[+el.dataset.posl] = el.value; else delete S.posT[+el.dataset.posl]; save(); toast(el.value ? `Position training: ${cmPos([el.value])}.` : 'Position training stopped.'); view(); });
+/* ---- the reserves play the first team's way: an option. Each reserve is profiled for the role the first team uses in his
+   position (his own pick, or the head of youth development's / assistant's under Responsibilities), trains toward that
+   role's key attributes, and learns the first team's shape and style, so a promoted man knows the way. ---- */
+function resRoleFor(p){ const t = S.tac[me()]; if (!t) return null; const sl = slotsOf(t);
+  const own = (S.resRl || {})[p.id]; if (own && PR[own.r] && PR[own.r].g.split(' ').includes(ROLE[p.prim])) return { rk: own.r, code: own.c || p.prim };
+  // the first team's role in his own position, else in his group (a left-back in a side of wing-backs on the right...)
+  let j = sl.findIndex(s => s[0] === p.prim); if (j < 0) j = sl.findIndex(s => ROLE[s[0]] === ROLE[p.prim]);
+  if (j < 0) return { rk: PR_DEF[ROLE[p.prim]] || 'cm', code: p.prim };
+  return { rk: roleIn(t, t.xi[j], sl[j][0]).rk, code: sl[j][0] }; }
+const resOf = () => { const ft = firstTeam(me()); return squadOf(me()).filter(p => !ft.has(p.id) && !onLoan(p)); };
+function resWeek(){
+  if (!me() || !S.club || !S.resSame) return; const t = S.tac[me()]; if (!t) return; const co = staffBest(whoDoes('resv') === 'hoy' ? 'hoy' : 'coach', 'co'), cof = co ? .7 + co.co / 40 : .7, f = fkey(t);
+  S.resFam = S.resFam || {};
+  for (const p of resOf()){ const q = S.pl[p.id]; if (!q) continue; const r = resRoleFor(p); if (!r) continue;
+    // a key attribute of the role, now and then, the young most (q.d holds what training has added)
+    const ag = p.age <= 19 ? .3 : p.age <= 21 ? .22 : p.age <= 23 ? .14 : .06, rr = rng(`res-${p.id}-${S.date}`);
+    if (rr() < ag * cof){ const ks = PR[r.rk].k, k = ks[Math.floor(rr() * ks.length)]; q.d = q.d || {}; if (A(p, k) < 92){ q.d[k] = (q.d[k] || 0) + 1; } }
+    S.resFam[p.id] = { f, v: Math.min(100, ((S.resFam[p.id] || {}).f === f ? S.resFam[p.id].v : 40) + 2.5 * cof) }; }
+}
+// a man who has learnt the way with the reserves takes little off the side's familiarity when he plays
+const resKnows = id => { const x = (S.resFam || {})[id], t = S.tac[me()]; return x && t && x.f === fkey(t) ? x.v : 0; };
+function resHTML(){
+  const L = resOf(), on = !!S.resSame, dg = whoDoes('resv') !== 'me';
+  const rows = L.map(p => { const r = resRoleFor(p), s = r ? suitOf(p, r.rk, r.code) : null, opts = Object.entries(PR).filter(([k, d]) => d.g.split(' ').includes(ROLE[p.prim]));
+    return `<tr><td><span class="lk" data-lp="${p.id}">${esc(p.n)}</span> <span class="small dim">${cmPos([p.prim])}, ${p.age}</span></td><td>${on && !dg ? `<select class="dd" data-resrl="${p.id}">${opts.map(([k, d]) => `<option value="${k}" ${r && r.rk === k ? 'selected' : ''}>${d.n}</option>`).join('')}</select>` : r ? PR[r.rk].n : ''}</td><td class="small" style="color:${s ? s[1] : ''}">${s ? s[0] : ''}</td><td class="small dim">${on ? `knows the way: ${Math.round(resKnows(p.id))}%` : ''}</td></tr>`; }).join('');
+  return `<div class="ovc" style="margin-bottom:12px"><div class="ovh"><span>The reserves' way of playing</span></div>
+    <label class="small"><input type="checkbox" id="ressame" ${on ? 'checked' : ''}> The reserves play the first team's way (${esc(formLabel(S.tac[me()]))}${styleOf(S.tac[me()]) ? `, ${styleOf(S.tac[me()]).n}` : ''})</label>
+    <p class="small dim">Each reserve is profiled for the role the first team uses in his position and trains toward its key attributes; he learns the shape and the style, so when he steps up he knows the way. ${dg ? 'Your staff choose the roles (Responsibilities).' : 'You can change a man’s role.'}</p>
+    ${on && L.length ? `<div class="tw"><table class="ltab"><tbody>${rows}</tbody></table></div>` : ''}</div>`; }
+function resWire(){ const c = $('#ressame'); if (c) c.addEventListener('change', () => { S.resSame = c.checked; save(); view(); toast(c.checked ? 'The reserves will play the first team\'s way.' : 'The reserves play their own way.'); });
+  document.querySelectorAll('[data-resrl]').forEach(s => s.addEventListener('change', () => { const p = P.get(+s.dataset.resrl), r = resRoleFor(p); (S.resRl = S.resRl || {})[p.id] = { r: s.value, c: r ? r.code : p.prim }; save(); view(); })); }
 function famWeek(){
   const t = S.tac[me()]; if (!t) return; const F = famEnsure(), c = calWeek().tac, f = fkey(t), k = famKey(t);
   for (const x of Object.keys(F.f)) if (x !== f) F.f[x] = Math.max(35, F.f[x] - 1.5);
@@ -6529,7 +6572,9 @@ function famWeek(){
 }
 function famMul(side){ const t = side.t; if (!S.fam || side.cid !== me() || !t) return 1;
   const key = [t.form, JSON.stringify(t.shape || ''), ...ST_KEYS.map(k => t[k])].join(); if (side._fk === key) return side._fm;
-  const f = famF(fkey(t)), s = famS(famKey(t)); side._fk = key; side._fm = 1 - Math.max(0, 75 - f) * .0012 - Math.max(0, 75 - s) * .0008; return side._fm; }
+  const f = famF(fkey(t)), s = famS(famKey(t)); side._fk = key; side._fm = 1 - Math.max(0, 75 - f) * .0012 - Math.max(0, 75 - s) * .0008;
+  // men brought up with the reserves in this very way know it a little better than the club as a whole
+  if (f < 90) side._fm += Math.min(.02, .004 * t.xi.filter(id => resKnows(id) >= 60).length); return side._fm; }
 const famWord = v => v >= 90 ? ['Fluid', 'var(--win)'] : v >= 75 ? ['Familiar', '#9AD07A'] : v >= 60 ? ['Getting there', 'var(--gold)'] : v >= 45 ? ['Awkward', '#f2a65a'] : ['Unfamiliar', 'var(--loss)'];
 function famBox(t){
   const fk = fkey(t), f = famF(fk), sk = famKey(t), s = famS(sk), sn = sk === 'own' ? 'Your own instructions' : (STYLES.find(x => x.k === sk) || {}).n, wf = famWord(f), ws = famWord(s);
@@ -8299,6 +8344,7 @@ const RESP_SEC = [
   ['Training', [
     ['tprog', 'Training programme', 'Each week he picks the programme for the fixtures ahead: sharpness in a busy run, fitness in a break.', ['ass', 'coach'], 'co'],
     ['itr', 'Individual training', 'He gives each young player a focus to work on.', ['coach', 'ass'], 'co'],
+    ['resv', "The reserves' roles", "When the reserves play the first team's way, he picks each reserve's role and runs their training.", ['hoy', 'coach', 'ass'], 'co'],
     ['postr', 'Position training', 'Teaches squad players a neighbouring position where the squad is short.', ['coach', 'ass'], 'co'],
     ['ment', 'Mentoring', 'Pairs your youngsters with mentors, once a month.', ['ass'], 'mm']]],
   ['Media', [
@@ -8325,10 +8371,10 @@ const whoDoes = k => { const v = (S.resp || {})[k] || 'me'; if (v === 'me') retu
 const respAss = k => whoDoes(k) === 'ass';
 const RESP_PRE = [
   ['me', 'Hands-on', 'You do everything yourself, down to the friendlies.', []],
-  ['boss', 'Manager', 'You run the side and the market; your staff look after the details.', ['setp', 'itr', 'postr', 'ment', 'rest', 'frd', 'scas', 'yc', 'press', 'hire']],
+  ['boss', 'Manager', 'You run the side and the market; your staff look after the details.', ['setp', 'itr', 'postr', 'resv', 'ment', 'rest', 'frd', 'scas', 'yc', 'press', 'hire']],
   ['coach', 'Head coach', 'You run the side and the training; your staff run the market, the contracts and the media.', ['press', 'frd', 'scas', 'recruit', 'sell', 'loan', 'con', 'yc', 'hire']],
   ['match', 'Matchday', 'You pick the side, the tactics and the team talks; your staff do everything else.', RESP_ALL.map(x => x[0]).filter(k => k !== 'talk')],
-  ['dir', 'Director', 'You run the market and the contracts; your staff run the matches and the training.', ['talk', 'oi', 'setp', 'rest', 'frd', 'tprog', 'itr', 'postr', 'ment', 'press', 'scas', 'yc', 'hire']]];
+  ['dir', 'Director', 'You run the market and the contracts; your staff run the matches and the training.', ['talk', 'oi', 'setp', 'rest', 'frd', 'tprog', 'itr', 'postr', 'resv', 'ment', 'press', 'scas', 'yc', 'hire']]];
 function respPreset(id){ const P0 = RESP_PRE.find(x => x[0] === id); if (!P0) return; S.resp = {}; for (const it of RESP_ALL){ const r = P0[3].includes(it[0]) ? respRec(it) : null; S.resp[it[0]] = r && r.v >= 9 ? r.role : 'me'; } S.respPre = id; }
 function scrResp(){
   ensureStaff(); const first = V.first || S.respAsk, cur = S.respPre;
