@@ -11,7 +11,7 @@
   "Pedri 95.3",
   "Michael Olise 95.1",
   "Joshua Kimmich 95.0",
-  "Luis Díaz 94.3",
+  "Luis Díaz 94.4",
   "Kylian Mbappé 94.3",
   "Matheus Nunes 94.0"
  ],
@@ -29,51 +29,51 @@
  ],
  "competitions": {
   "cl": {
-   "title_share_top8_of_field": 0.742,
-   "title_share_bottom_half": 0.05,
+   "title_share_top8_of_field": 0.746,
+   "title_share_bottom_half": 0.049,
    "favourites": [
-    "Bayern München 16.2%",
-    "Barcelona 12.4%",
-    "Real Madrid 11.2%",
-    "Arsenal 9.6%",
-    "Paris 8.9%",
-    "Inter 7.2%"
+    "Bayern München 17.8%",
+    "Barcelona 12.5%",
+    "Real Madrid 10.7%",
+    "Paris 9.2%",
+    "Arsenal 9.0%",
+    "Inter 6.9%"
    ]
   },
   "el": {
-   "title_share_top8_of_field": 0.64,
-   "title_share_bottom_half": 0.075,
+   "title_share_top8_of_field": 0.632,
+   "title_share_bottom_half": 0.071,
    "favourites": [
-    "Bodø/Glimt 4.9%",
-    "Union SG 3.8%",
-    "Aston Villa 3.5%",
+    "Bodø/Glimt 4.3%",
+    "Union SG 3.6%",
     "Freiburg 3.4%",
-    "Brighton 3.1%",
-    "Bournemouth 3.1%"
+    "Aston Villa 3.3%",
+    "Real Betis 3.2%",
+    "Milan 3.1%"
    ]
   },
   "ecl": {
-   "title_share_top8_of_field": 0.697,
-   "title_share_bottom_half": 0.054,
+   "title_share_top8_of_field": 0.695,
+   "title_share_bottom_half": 0.058,
    "favourites": [
-    "Ajax 3.3%",
-    "Panathinaikos 2.7%",
-    "Brighton 2.7%",
-    "Como 2.7%",
-    "Bournemouth 2.4%",
-    "Lazio 2.0%"
+    "Bournemouth 4.0%",
+    "AEK Athens 3.0%",
+    "Brighton 2.6%",
+    "Como 2.3%",
+    "Bodø/Glimt 2.2%",
+    "Slavia Praha 2.0%"
    ]
   }
  },
- "title_share_top8_of_field": 0.742,
+ "title_share_top8_of_field": 0.746,
  "max_title_share_outside_top30": 0.0025,
  "title_favourites": [
-  "Bayern München 16.2%",
-  "Barcelona 12.4%",
-  "Real Madrid 11.2%",
-  "Arsenal 9.6%",
-  "Paris 8.9%",
-  "Inter 7.2%"
+  "Bayern München 17.8%",
+  "Barcelona 12.5%",
+  "Real Madrid 10.7%",
+  "Paris 9.2%",
+  "Arsenal 9.0%",
+  "Inter 6.9%"
  ],
  "pass": {
   "big12_in_top15": true,
@@ -88,21 +88,21 @@
  },
  "backtest": {
   "train": 3945,
-  "test": 1327,
+  "test": 1329,
   "base_rates": {
-   "logloss": 1.0718,
-   "brier": 0.6497,
+   "logloss": 1.0717,
+   "brier": 0.6496,
    "hit": 0.424
   },
   "uefa_only": {
    "logloss": 1.0221,
-   "brier": 0.6125,
+   "brier": 0.6126,
    "hit": 0.502
   },
   "model": {
-   "logloss": 0.9913,
-   "brier": 0.5916,
-   "hit": 0.535
+   "logloss": 0.9921,
+   "brier": 0.5922,
+   "hit": 0.534
   }
  }
 }
