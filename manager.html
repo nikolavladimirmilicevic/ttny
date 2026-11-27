@@ -1830,7 +1830,7 @@ function newGame(cid, manager){
   news('club', 'Your first match', `The league starts on ${fmtDate(rounds[0].date, true)} with ${matchLine(rounds[0].m.find(m => m.h === cid || m.a === cid))}. The ${esc(CUP)} starts with the ${cupName(0).toLowerCase()} on ${fmtDate(cupDates[0])}.`);
   const lc = club(cid), ch = D.last_season && club(D.last_season.champion);
   if (ch) news('club', 'Last season', `${esc(ch.name)} are the champions of ${D.season - 1}/${String(D.season % 100).padStart(2, '0')}${ch.last && ch.last.pts ? ` with ${ch.last.pts} points` : ''}. ${lc === ch ? `You take over the champions${lc.last && lc.last.w != null ? ` (${lc.last.w} won, ${lc.last.d} drawn, ${lc.last.l} lost)` : ''}, and the board expect them to defend the title.` : lc.last === 'promoted' ? `${esc(lc.name)} are newly promoted, and staying up is the first job.` : lc.last && lc.last.pos ? `${esc(lc.name)} finished ${ordinal(lc.last.pos)}${lc.last.pts != null ? ` with ${lc.last.pts} points (${lc.last.w} won, ${lc.last.d} drawn, ${lc.last.l} lost)` : ''}.` : ''}`);
-  mediaPred(); nlInit();
+  mediaPred(); nlInit(); try { loansLive(); } catch (e) { console.warn('loans', e); }
   news('club', 'The backroom staff', 'Your assistant has picked a side and a formation to suit the squad. Look them over under Tactics, and set the training schedule under Training. Press Continue to move the calendar on.');
   save();
 }
@@ -4213,9 +4213,17 @@ function rebuildPlayers(){
 function applyMoves(){ const yrs = S ? (S.season || D.season) - D.season : 0;
   for (const p of D.pool || D.players){ p.club = p._c0 ?? p.club; p.no = p._n0 ?? p.no; if (p._a0 == null) p._a0 = p.age; p.age = p._a0 + yrs; if (p._st0 === undefined) p._st0 = p.style ?? null; p.style = p._st0; }
   for (const [id, st] of Object.entries((S && S.styOv) || {})){ const p = P.get(+id); if (p) p.style = st; }
+  for (const p of D.pool || D.players){ if (p._lo0 === undefined) p._lo0 = p.lo ?? null; if (p._lo0) p.lo = p._lo0; }
   for (const [id, cid] of Object.entries((S && S.moves) || {})){ const p = P.get(+id); if (p && C.has(cid)) p.club = cid; }
+  for (const id of Object.keys((S && S.loLive) || {})){ const p = P.get(+id); if (p && S.season === D.season) delete p.lo; }   // out on loan at a club of the game: he plays there
   for (const [id, n] of Object.entries((S && S.nos) || {})){ const p = P.get(+id); if (p) p.no = n; }
   if (D.pool && D.pl0) setLeagues(S && S.lg); }
+/* a player out on loan at a club that is in the game (an Arsenal youngster at Dortmund, a Chelsea defender at Napoli)
+   plays there for the season and comes back in the summer, like every loan of the game; one at a club outside it stays away */
+function loansLive(){ if (S.loLive) return; S.loLive = {}; const f = s => String(s || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\b(fc|afc|cf|sc|ac|ssc|acf|rc|rcd|cd|ud|sv|vfb|vfl|tsg|bsc|fk|1\.)\b/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const by = new Map(); for (const c of everyClub()) for (const n of [c.name, c.full]) if (n && !by.has(f(n))) by.set(f(n), c.id);
+  for (const p of D.pool || []){ if (!p.lo || p.club == null) continue; const k = f(p.lo); let to = by.get(k); if (to == null) for (const [n, id] of by) if (n.length >= 5 && (k.startsWith(n + ' ') || k.endsWith(' ' + n) || k === n)){ to = id; break; }
+    if (to == null || to === p.club) continue; (S.loans = S.loans || {})[p.id] = { from: p.club, to, pre: 1 }; (S.moves = S.moves || {})[p.id] = to; p.club = to; S.loLive[p.id] = 1; delete p.lo; } }
 function adopt(s){
   setHome(s && s.v === 2 && s.home || 'ENG');
   if (s && s.v === 2) setLeagues(s.lg);

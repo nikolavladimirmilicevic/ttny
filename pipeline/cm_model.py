@@ -1061,6 +1061,12 @@ def unify(out, world, people, squads, lastseen, season, today):
         model_one(x, None, None, season, today)
         f['a'], f['r'], f['style'] = x['a'], x['r'], x['style']
         if x.get('wt'): f['wt'] = x['wt']
+    # Transfermarkt's facts win in every section (values in euros, contract end years)
+    for S_ in allsec:
+        for x in S_.get('players') or []:
+            t = TM_FACTS.get(str(x['id'])) or {}
+            if t.get('eur'): x['val'] = round(t['eur'] / 1.17, 2 if t['eur'] < 1.17 else 1)
+            if t.get('con'): x['cy'] = int(t['con'])
     print(f'  every player modelled alike; {moved} moved and {added} new from the API squads')
 
 
