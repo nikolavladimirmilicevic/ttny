@@ -1593,8 +1593,35 @@ def build_world(clubs, teams, fx, lu, squads, people, evs=None, pst=None, extra=
         if e is not None and not e.get('nat'):
             e['nat'] = cnt.most_common(1)[0][0]
     out_players, seen = [], set()
+    # the API drops a man with a long injury from his club's squad list (Mitoma, out until February): one on no club's
+    # list whose last start was for a ranked club stays with it. With the API's word on him (check_absent): no move
+    # since that start and an injury that began after it and is not over. Without it: a start within 150 days (this
+    # season), so the men who left for clubs outside the world or retired in the summer do not come back.
+    listed = {pid for sq in squads.values() if isinstance(sq, dict) for pid in (sq.get('p') or [])}
+    gone = defaultdict(list)
+    for pid, st in starts.items():
+        if pid in listed or not st:
+            continue
+        last = max(st)
+        d0 = str(last[0])[:10]
+        if last[8] not in top:
+            continue
+        e = people.get(str(pid)) or {}
+        if 'chk' in e:
+            if any(t[0] and t[0] >= d0[:7] and t[1] != last[8] for t in e.get('tr') or []):
+                continue
+            if not any(y[1] and y[1] >= d0 and 'suspen' not in (y[0] or '').lower() and (not y[2] or y[2] >= TODAY.isoformat())
+                       for y in e.get('sl') or []):
+                continue
+        else:
+            try:
+                if (TODAY - dt.date.fromisoformat(d0)).days > 150:
+                    continue
+            except ValueError:
+                continue
+        gone[last[8]].append(pid)
     for tid, c in sorted(top.items(), key=lambda x: int(x[1]['rank'])):
-        for pid in (squads.get(str(tid)) or {}).get('p', []):
+        for pid in list((squads.get(str(tid)) or {}).get('p', [])) + gone.get(tid, []):
             if pid in seen:
                 continue
             st = sorted(starts.get(pid, []), reverse=True)
